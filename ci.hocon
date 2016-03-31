@@ -28,7 +28,7 @@ common : {
   timelimit : "30:00"
 }
 
-common_default ${common} {
+common_default : ${common} {
   downloads : {
     JAVA_HOME : ${java8}
     EXTRA_JAVA_HOMES : { pathlist :[
@@ -37,7 +37,7 @@ common_default ${common} {
   }
 }
 
-common_downstream ${common} {
+common_downstream : ${common} {
   downloads : {
     JAVA_HOME : ${java7}
     EXTRA_JAVA_HOMES : { pathlist :[
