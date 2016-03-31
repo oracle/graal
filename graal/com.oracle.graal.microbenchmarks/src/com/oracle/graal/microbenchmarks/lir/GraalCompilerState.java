@@ -105,7 +105,7 @@ public abstract class GraalCompilerState {
      * executed in the right order.
      */
     @SuppressWarnings("try")
-    private GraalCompilerState() {
+    protected GraalCompilerState() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
@@ -188,6 +188,10 @@ public abstract class GraalCompilerState {
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
         // defensive copying
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
+    }
+
+    protected LIRSuites getLIRSuites() {
+        return request.lirSuites;
     }
 
     private Request<CompilationResult> request;
@@ -297,7 +301,7 @@ public abstract class GraalCompilerState {
      */
     protected final void preAllocationStage() {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGenTool);
-        request.lirSuites.getPreAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
+        getLIRSuites().getPreAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
     }
 
     /**
@@ -307,7 +311,7 @@ public abstract class GraalCompilerState {
      */
     protected final void allocationStage() {
         AllocationContext allocContext = new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig));
-        request.lirSuites.getAllocationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
+        getLIRSuites().getAllocationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
     }
 
     /**
@@ -317,7 +321,7 @@ public abstract class GraalCompilerState {
      */
     protected final void postAllocationStage() {
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGenTool);
-        request.lirSuites.getPostAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
+        getLIRSuites().getPostAllocationOptimizationStage().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
     }
 
     /**
