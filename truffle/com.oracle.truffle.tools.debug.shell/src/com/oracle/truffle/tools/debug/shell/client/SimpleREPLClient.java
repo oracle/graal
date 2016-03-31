@@ -179,6 +179,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
         addCommand(REPLRemoteCommand.LOAD_CMD);
         addCommand(REPLRemoteCommand.LOAD_STEP_INTO_CMD);
         addCommand(quitCommand);
+        addCommand(REPLRemoteCommand.RUN_CMD);
         addCommand(setCommand);
         addCommand(REPLRemoteCommand.SET_LANG_CMD);
         addCommand(REPLRemoteCommand.STEP_INTO_CMD);
