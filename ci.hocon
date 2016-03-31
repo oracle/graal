@@ -3,10 +3,12 @@ java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
 eclipse : {name: eclipse, version: "4.3.0", platformspecific: true}
+mvn : {name: mvn, version: "3.3.3", platformspecific: false}
 
 common : {
   packages : {
     git : ">=1.8.3"
+    maven : ">=3.3.3"
     mercurial : ">=2.2"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
