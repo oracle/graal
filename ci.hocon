@@ -26,7 +26,7 @@ common : {
 
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
-    PATH : "$MAVEN:$PATH"
+    PATH : "$MAVEN/bin:$PATH"
   }
 
   timelimit : "30:00"
