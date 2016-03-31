@@ -186,7 +186,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return cloneIndex;
     }
 
-    public OptimizedCallTarget cloneUninitialized() {
+    OptimizedCallTarget cloneUninitialized() {
         if (!initialized) {
             initialize();
         }
