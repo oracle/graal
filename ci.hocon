@@ -98,6 +98,6 @@ builds = [
 # ${gateBootstrap9}  {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
   ${gateStyle}          {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
   ${gateTest8}      {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9"}
-  ${benchSPECjvm2008}   {capabilities : [linux, amd64, bench],  name: "gate-specjvm2008-linux-amd64"}
-  ${benchDaCapo}        {capabilities : [linux, amd64, bench],  name: "gate-specjvm2008-linux-amd64"}
+  ${benchSPECjvm2008}   {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+  ${benchDaCapo}        {capabilities : [linux, amd64, bench],  name: "bench-dacapo-linux-amd64"}
 ]
