@@ -257,7 +257,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 }
             }
             if (result.isEmpty()) {
-                result.add("Top Scope");
+                result.add(graph.toString());
             }
             // Reverse list such that inner method comes after outer method.
             Collections.reverse(result);

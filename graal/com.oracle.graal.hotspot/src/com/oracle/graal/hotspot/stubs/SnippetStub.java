@@ -109,25 +109,25 @@ public abstract class SnippetStub extends Stub implements Snippets {
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
-        graph.disableUnsafeAccessTracking();
+        try (Scope outer = Debug.scope("SnippetStub", graph)) {
+            graph.disableUnsafeAccessTracking();
 
-        if (SnippetGraphUnderConstruction != null) {
-            assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;
-            SnippetGraphUnderConstruction.set(graph);
-        }
-
-        try {
-            IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-            new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
-
-        } finally {
             if (SnippetGraphUnderConstruction != null) {
-                SnippetGraphUnderConstruction.set(null);
+                assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;
+                SnippetGraphUnderConstruction.set(graph);
             }
-        }
 
-        graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
-        try (Scope s = Debug.scope("LoweringStub", graph)) {
+            try {
+                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
+                new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
+
+            } finally {
+                if (SnippetGraphUnderConstruction != null) {
+                    SnippetGraphUnderConstruction.set(null);
+                }
+            }
+
+            graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, new PhaseContext(providers));
         } catch (Throwable e) {
             throw Debug.handle(e);
