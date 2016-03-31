@@ -48,6 +48,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     public OptimizedDirectCallNode(GraalTruffleRuntime runtime, OptimizedCallTarget target) {
         super(target);
+        assert target.getSourceCallTarget() == null;
         this.runtime = runtime;
         this.splittingStrategy = new DefaultTruffleSplittingStrategy(this);
     }
@@ -134,28 +135,27 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     /** Used by the splitting strategy to install new targets. */
-    public void installSplitCallTarget(OptimizedCallTarget newTarget) {
+    synchronized void split() {
         CompilerAsserts.neverPartOfCompilation();
 
-        OptimizedCallTarget currentTarget = getCurrentCallTarget();
-        if (currentTarget == newTarget) {
+        if (splitCallTarget != null) {
             return;
         }
+
+        assert isCallTargetCloningAllowed();
+        OptimizedCallTarget currentTarget = getCallTarget();
+        OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
 
         if (callCount >= 1) {
             currentTarget.decrementKnownCallSites();
         }
-        newTarget.incrementKnownCallSites();
+        splitTarget.incrementKnownCallSites();
 
         if (getParent() != null) {
             // dummy replace to report the split, irrelevant if this node is not adopted
-            replace(this, "Split call " + newTarget.toString());
+            replace(this, "Split call " + splitTarget.toString());
         }
-        if (newTarget.getSourceCallTarget() == null) {
-            splitCallTarget = null;
-        } else {
-            splitCallTarget = newTarget;
-        }
+        splitCallTarget = splitTarget;
         runtime.getCompilationNotify().notifyCompilationSplit(this);
     }
 

@@ -40,7 +40,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
     public void beforeCall(Object[] arguments) {
         if (call.getCallCount() == 2) {
             if (shouldSplit()) {
-                forceSplitting();
+                call.split();
             }
         }
     }
@@ -50,7 +50,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         if (!canSplit()) {
             return;
         }
-        call.installSplitCallTarget(call.getCallTarget().cloneUninitialized());
+        call.split();
     }
 
     private boolean canSplit() {
