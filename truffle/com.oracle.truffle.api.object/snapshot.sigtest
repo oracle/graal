@@ -35,7 +35,7 @@ meth public abstract void setDouble(com.oracle.truffle.api.object.DynamicObject,
 meth public abstract void setDouble(com.oracle.truffle.api.object.DynamicObject,double,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 
 CLSS public abstract com.oracle.truffle.api.object.DynamicObject
-cons public init()
+cons protected init()
 intf com.oracle.truffle.api.TypedObject
 intf com.oracle.truffle.api.interop.TruffleObject
 meth public abstract boolean delete(java.lang.Object)
@@ -86,7 +86,7 @@ meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int
 meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 
 CLSS public abstract com.oracle.truffle.api.object.Layout
-cons public init()
+cons protected init()
 fld public final static java.lang.String OPTION_PREFIX = "truffle.object."
 innr public final static !enum ImplicitCast
 innr public final static Builder
@@ -128,7 +128,7 @@ meth public abstract com.oracle.truffle.api.object.Property createProperty(java.
 meth public abstract int getPriority()
 
 CLSS public abstract com.oracle.truffle.api.object.Location
-cons public init()
+cons protected init()
 meth protected abstract java.lang.Object getInternal(com.oracle.truffle.api.object.DynamicObject)
 meth protected abstract void setInternal(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.IncompatibleLocationException
 meth protected static boolean checkShape(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
@@ -208,7 +208,7 @@ meth public static com.oracle.truffle.api.object.Property create(java.lang.Objec
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.object.Shape
-cons public init()
+cons protected init()
 innr public abstract interface static Pred
 innr public abstract static Allocator
 meth public abstract boolean check(com.oracle.truffle.api.object.DynamicObject)
@@ -254,7 +254,7 @@ supr java.lang.Object
 
 CLSS public abstract static com.oracle.truffle.api.object.Shape$Allocator
  outer com.oracle.truffle.api.object.Shape
-cons public init()
+cons protected init()
 meth protected abstract com.oracle.truffle.api.object.Location locationForType(java.lang.Class<?>,boolean,boolean)
 meth protected abstract com.oracle.truffle.api.object.Location locationForValue(java.lang.Object,boolean,boolean)
 meth public abstract com.oracle.truffle.api.object.Location constantLocation(java.lang.Object)
