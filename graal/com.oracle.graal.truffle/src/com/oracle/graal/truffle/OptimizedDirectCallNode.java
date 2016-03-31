@@ -142,6 +142,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             return;
         }
 
+        assert isCallTargetCloningAllowed();
         OptimizedCallTarget currentTarget = getCallTarget();
         OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
 
