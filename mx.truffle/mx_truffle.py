@@ -153,3 +153,5 @@ class TruffleArchiveParticipant:
 def mx_post_parse_cmd_line(opts):
     dist = mx.distribution('TRUFFLE_TEST')
     dist.set_archiveparticipant(TruffleArchiveParticipant())
+    dist = mx.distribution('TRUFFLE_DEBUG')
+    dist.set_archiveparticipant(TruffleArchiveParticipant())
