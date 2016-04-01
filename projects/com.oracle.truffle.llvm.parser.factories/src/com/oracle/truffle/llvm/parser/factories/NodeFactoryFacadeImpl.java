@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalPhiWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
@@ -258,11 +257,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
         return LLVMLiteralFactory.createArrayLiteral(runtime, arrayValues, arrayType);
-    }
-
-    @Override
-    public LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode) {
-        return new LLVMConditionalPhiWriteNode((LLVMI1Node) create, phiWriteNode);
     }
 
     @Override

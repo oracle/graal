@@ -147,8 +147,6 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
 
-    LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode);
-
     LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment);
 
     LLVMExpressionNode createAlloc(int size, int alignment);
