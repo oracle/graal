@@ -804,7 +804,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         for (Constant c : indices) {
             constants.add((Integer) LLVMConstantEvaluator.evaluateConstant(this, c));
         }
-        if (constants.size() != 0) {
+        if (constants.size() != 1) {
             throw new AssertionError(constants);
         }
         int index = constants.get(0);
