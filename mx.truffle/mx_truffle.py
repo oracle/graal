@@ -151,5 +151,21 @@ class TruffleArchiveParticipant:
             self.arc.zf.writestr(arcname, content + os.linesep)
 
 def mx_post_parse_cmd_line(opts):
-    dist = mx.distribution('TRUFFLE_TEST')
-    dist.set_archiveparticipant(TruffleArchiveParticipant())
+
+    def _uses_truffle_dsl_processor(dist):
+        for dep in dist.deps:
+            if dep.name.startswith('TRUFFLE_DSL_PROCESSOR'):
+                return True
+        truffle_dsl_processors = set()
+        def visit(dep, edge):
+            if dep is not dist and dep.isJavaProject():
+                for ap in dep.annotation_processors():
+                    if ap.name.startswith('TRUFFLE_DSL_PROCESSOR'):
+                        truffle_dsl_processors.add(ap)
+        dist.walk_deps(visit=visit)
+        return len(truffle_dsl_processors) != 0
+
+    for d in mx.dependencies():
+        if d.isJARDistribution():
+            if _uses_truffle_dsl_processor(d):
+                d.set_archiveparticipant(TruffleArchiveParticipant())
