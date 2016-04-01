@@ -63,9 +63,6 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
  * <p>
  * In order to get
  * <ol>
- * <li>A debugging session should start from this shell, but there is no machinery in place for
- * doing that; instead, an entry into the language implementation creates both the server and this
- * shell;</li>
  * <li>The current startup sequence is based on method calls, not messages;</li>
  * <li>Only a very few request types and keys are implemented, omitting for example request and
  * session ids;</li>
@@ -278,6 +275,10 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
         private int selectedFrameNumber = 0;
 
         private String currentPrompt;
+
+        // A execution context stacked on top of this one was explicitly
+        // killed, and this context will receive the resulting exception.
+        private boolean killPending;
 
         /**
          * Create a new context on the occasion of an execution halting.
@@ -519,7 +520,12 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
             }
         }
 
-        public void displayKillMessage(String message) {
+        public void notifyKilled() {
+            // A kill will not be received until after
+            // This context is released, so the exception
+            // must be handles specially by the
+            // context that will catch it.
+            predecessor.killPending = true;
             writer.println(clientContext.currentPrompt + " killed");
         }
 
@@ -606,7 +612,16 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
                     } else {
                         assert false; // Should not happen.
                     }
-
+                } catch (ThreadDeath ex) {
+                    if (killPending) {
+                        // If the previous context was killed by REPL command, then
+                        // assume this exception is the result and the REPL should
+                        // continue debugging in this context.
+                        killPending = false;
+                    } else {
+                        // A legitimate use of the exception
+                        throw ex;
+                    }
                 } catch (REPLContinueException ex) {
                     break;
                 } catch (IOException e) {
