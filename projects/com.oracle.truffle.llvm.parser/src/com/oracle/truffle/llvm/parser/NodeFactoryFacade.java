@@ -191,4 +191,6 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createStructureConstantNode(boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants);
 
+    LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode, LLVMExpressionNode isVolatileNode);
+
 }
