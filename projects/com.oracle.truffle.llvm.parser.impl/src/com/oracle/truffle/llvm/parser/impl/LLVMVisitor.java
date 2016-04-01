@@ -90,8 +90,6 @@ import com.intel.llvm.ireditor.lLVM_IR.Instruction_switch;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_unreachable;
 import com.intel.llvm.ireditor.lLVM_IR.LocalValue;
 import com.intel.llvm.ireditor.lLVM_IR.LocalValueRef;
-import com.intel.llvm.ireditor.lLVM_IR.MetadataNode;
-import com.intel.llvm.ireditor.lLVM_IR.MetadataNodeElement;
 import com.intel.llvm.ireditor.lLVM_IR.MiddleInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.intel.llvm.ireditor.lLVM_IR.NamedMetadata;
@@ -127,7 +125,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMMetadataNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
@@ -172,7 +169,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMMetadata;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -1017,9 +1013,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
         } else if (constant instanceof ArrayConstant) {
             return visitArrayConstantStore((ArrayConstant) constant);
         } else {
-            if (resolve(type).isMetadata()) {
-                return new LLVMMetadataNode(null);
-            }
             if (constant.getRef() instanceof FunctionHeader) {
                 FunctionHeader header = (FunctionHeader) constant.getRef();
                 LLVMFunction function = createLLVMFunctionFromHeader(header);
@@ -1057,26 +1050,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 return visitVectorConstant((VectorConstant) constant);
             } else if (constant.getRef() instanceof Alias) {
                 return visitAliasConstant((Alias) constant.getRef());
-            } else if (constant instanceof MetadataNode) {
-                return visitMetadataNode((MetadataNode) constant);
             } else {
                 throw new AssertionError(constant);
             }
         }
-    }
-
-    private static LLVMExpressionNode visitMetadataNode(MetadataNode constant) {
-        EList<MetadataNodeElement> metaDataElements = constant.getElements();
-        List<LLVMMetadata> metaDatas = new ArrayList<>();
-        for (MetadataNodeElement metaData : metaDataElements) {
-            metaDatas.add(visitMetaData(metaData));
-        }
-        assert metaDataElements.size() == 1;
-        return new LLVMMetadataNode(metaDatas.get(0));
-    }
-
-    private static LLVMMetadata visitMetaData(@SuppressWarnings("unused") MetadataNodeElement metaData) {
-        return new LLVMMetadata();
     }
 
     private LLVMExpressionNode visitAliasConstant(Alias ref) {
