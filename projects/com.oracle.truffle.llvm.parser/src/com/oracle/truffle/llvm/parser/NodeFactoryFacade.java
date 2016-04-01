@@ -41,7 +41,6 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -135,11 +134,13 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createZeroVectorInitializer(int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType);
 
-    // TODO we do want to have a LLVM node here or merge with createStructLiteralNode
-    Node createStructWriteNode(LLVMExpressionNode node, ResolvedType type);
-
-    LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc);
-
+    /**
+     * Creates a node representing an <code>unreachable</code> instruction.
+     *
+     * @return an unreachable node
+     * @see <a href="http://llvm.org/docs/LangRef.html#unreachable-instruction">Unreachable in the
+     *      LLVM Language Reference Manual</a>
+     */
     LLVMNode createUnreachableNode();
 
     LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites);
@@ -152,8 +153,6 @@ public interface NodeFactoryFacade {
     LLVMNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites);
 
     LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
-
-    LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode);
 
     LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment);
 
@@ -186,5 +185,26 @@ public interface NodeFactoryFacade {
      * @return the wrapped global root
      */
     RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType);
+
+    /**
+     * Creates a structure literal node.
+     *
+     * @param packed whether the struct is packed (alignment of the struct is one byte and there is
+     *            no padding between the elements)
+     * @param structSize the size of the structure
+     * @param types the types of the structure members
+     * @param constants the structure members
+     * @return the constructed structure literal
+     */
+    LLVMExpressionNode createStructureConstantNode(boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants);
+
+    LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode, LLVMExpressionNode isVolatileNode);
+
+    /**
+     * Creates an phi node. The node will perform no operation for most implementations.
+     *
+     * @return the phi node
+     */
+    LLVMNode createPhiNode();
 
 }

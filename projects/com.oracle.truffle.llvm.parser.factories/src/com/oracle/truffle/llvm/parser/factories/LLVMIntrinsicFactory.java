@@ -80,8 +80,6 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.bit.CountSetBitsNodeFa
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI64NodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.debug.LLVMDebugDeclareFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.debug.LLVMDebugValueFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
@@ -132,11 +130,6 @@ public final class LLVMIntrinsicFactory {
         factories.put("@llvm.returnaddress", LLVMReturnAddressFactory.getInstance());
         factories.put("@llvm.lifetime.start", LLVMLifetimeStartFactory.getInstance());
         factories.put("@llvm.lifetime.end", LLVMLifetimeEndFactory.getInstance());
-
-        // debug
-        factories.put("@llvm.dbg.value", LLVMDebugValueFactory.getInstance());
-        factories.put("@llvm.dbg.declare", LLVMDebugDeclareFactory.getInstance());
-
     }
 
     private LLVMIntrinsicFactory() {
