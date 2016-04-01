@@ -41,7 +41,6 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -135,11 +134,6 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createZeroVectorInitializer(int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType);
 
-    // TODO we do want to have a LLVM node here or merge with createStructLiteralNode
-    Node createStructWriteNode(LLVMExpressionNode node, ResolvedType type);
-
-    LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc);
-
     LLVMNode createUnreachableNode();
 
     LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites);
@@ -186,5 +180,17 @@ public interface NodeFactoryFacade {
      * @return the wrapped global root
      */
     RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType);
+
+    /**
+     * Creates a structure literal node.
+     *
+     * @param packed whether the struct is packed (alignment of the struct is one byte and there is
+     *            no padding between the elements)
+     * @param structSize the size of the structure
+     * @param types the types of the structure members
+     * @param constants the structure members
+     * @return the constructed structure literal
+     */
+    LLVMExpressionNode createStructureConstantNode(boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants);
 
 }

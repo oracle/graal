@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.intel.llvm.ireditor.lLVM_IR.TypedConstant;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -68,7 +69,9 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public final class LLVMAggregateFactory {
 
@@ -101,7 +104,38 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static Node createStructWriteNode(LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
+    public static LLVMExpressionNode createInsertValue(LLVMAddressNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
+                    LLVMBaseType llvmType) {
+        switch (llvmType) {
+            case FLOAT:
+                return new LLVMInsertFloatValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMFloatNode) valueToInsert);
+            case DOUBLE:
+                return new LLVMInsertDoubleValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMDoubleNode) valueToInsert);
+            default:
+                throw new AssertionError(llvmType);
+        }
+    }
+
+    public static LLVMExpressionNode createStructConstantNode(LLVMParserRuntime runtime, boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants) {
+        int[] offsets = new int[types.length];
+        LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[types.length];
+        int currentOffset = 0;
+        // FIXME alignment
+        LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(structSize, LLVMStack.NO_ALIGNMENT_REQUIREMENTS);
+        for (int i = 0; i < types.length; i++) {
+            ResolvedType resolvedType = types[i];
+            if (!packed) {
+                currentOffset += LLVMTypeHelper.computePaddingByte(currentOffset, resolvedType);
+            }
+            offsets[i] = currentOffset;
+            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+            nodes[i] = createStructWriteNode(constants[i], resolvedType);
+            currentOffset += byteSize;
+        }
+        return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
+    }
+
+    private static LLVMStructWriteNode createStructWriteNode(LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
         int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
         LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType);
         switch (llvmType) {
@@ -132,22 +166,6 @@ public final class LLVMAggregateFactory {
                 return new LLVMAddressStructWriteNode((LLVMAddressNode) parsedConstant);
             case FUNCTION_ADDRESS:
                 return new LLVMFunctionStructWriteNode((LLVMFunctionNode) parsedConstant);
-            default:
-                throw new AssertionError(llvmType);
-        }
-    }
-
-    public static LLVMExpressionNode createStructLiteralNode(int[] offsets, LLVMStructWriteNode[] nodes, LLVMAddressNode alloc) {
-        return new StructLiteralNode(offsets, nodes, alloc);
-    }
-
-    public static LLVMExpressionNode createInsertValue(LLVMAddressNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
-                    LLVMBaseType llvmType) {
-        switch (llvmType) {
-            case FLOAT:
-                return new LLVMInsertFloatValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMFloatNode) valueToInsert);
-            case DOUBLE:
-                return new LLVMInsertDoubleValueNode(resultAggregate, sourceAggregate, size, offset, (LLVMDoubleNode) valueToInsert);
             default:
                 throw new AssertionError(llvmType);
         }

@@ -41,7 +41,6 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -49,7 +48,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
@@ -232,18 +230,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public Node createStructWriteNode(LLVMExpressionNode node, ResolvedType type) {
-        return LLVMAggregateFactory.createStructWriteNode(node, type);
-    }
-
-    @Override
-    public LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc) {
-        LLVMStructWriteNode[] structWriteNodes = new LLVMStructWriteNode[nodes.length];
-        System.arraycopy(nodes, 0, structWriteNodes, 0, nodes.length);
-        return LLVMAggregateFactory.createStructLiteralNode(offsets, structWriteNodes, (LLVMAddressNode) alloc);
-    }
-
-    @Override
     public LLVMNode createUnreachableNode() {
         return new LLVMUnreachableNode();
     }
@@ -312,7 +298,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses,
                     Object... args) {
-        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()), staticInits,
+        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        staticInits,
                         mainCallTarget, allocatedGlobalAddresses,
                         args);
     }
@@ -320,6 +307,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {
         return LLVMFunctionFactory.createGlobalRootNodeWrapping(mainCallTarget, returnType);
+    }
+
+    public LLVMExpressionNode createStructureConstantNode(boolean packed, int structureSize, ResolvedType[] types, LLVMExpressionNode[] constants) {
+        return LLVMAggregateFactory.createStructConstantNode(runtime, packed, structureSize, types, constants);
     }
 
 }

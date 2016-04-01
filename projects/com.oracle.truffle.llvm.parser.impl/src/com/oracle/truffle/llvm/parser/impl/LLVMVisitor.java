@@ -1259,31 +1259,21 @@ public class LLVMVisitor implements LLVMParserRuntime {
     private LLVMExpressionNode visitStructureConstant(StructureConstant structure) {
         ConstantList list = structure.getList();
         EList<TypedConstant> typedConstants = list.getTypedConstants();
-        int[] offsets = new int[typedConstants.size()];
-        Node[] nodes = new LLVMStructWriteNode[typedConstants.size()];
-        int i = 0;
-        int currentOffset = 0;
         boolean packed = structure.getPacked() != null;
+        ResolvedType[] types = new ResolvedType[typedConstants.size()];
+        LLVMExpressionNode[] constants = new LLVMExpressionNode[(typedConstants.size())];
         int structSize = LLVMTypeHelper.getStructureSizeByte(structure, typeResolver);
-        // FIXME alignment
-        LLVMExpressionNode alloc = allocateFunctionLifetime(structSize, LLVMStack.NO_ALIGNMENT_REQUIREMENTS);
-        for (TypedConstant constant : typedConstants) {
-            ResolvedType resolvedType = resolve(constant.getType());
-            if (!packed) {
-                currentOffset += LLVMTypeHelper.computePaddingByte(currentOffset, resolvedType);
-            }
-            offsets[i] = currentOffset;
+        for (int i = 0; i < types.length; i++) {
+            TypedConstant constant = typedConstants.get(i);
+            types[i] = resolve(constant.getType());
             LLVMExpressionNode parsedConstant = visitConstant(constant.getType(), constant.getValue());
-            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
-            nodes[i] = factoryFacade.createStructWriteNode(parsedConstant, resolvedType);
-            currentOffset += byteSize;
-            i++;
+            constants[i] = parsedConstant;
         }
         GlobalValueDef ref = structure.getRef();
         if (ref != null) {
             throw new AssertionError();
         }
-        return factoryFacade.createStructLiteralNode(offsets, nodes, alloc);
+        return factoryFacade.createStructureConstantNode(packed, structSize, types, constants);
     }
 
     private LLVMExpressionNode getUndefinedValueNode(EObject type) {
