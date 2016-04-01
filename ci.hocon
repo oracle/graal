@@ -1,0 +1,39 @@
+java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
+#java9 : {name : oraclejdk, version : "9",    platformspecific: true}
+ecj : {name: ecj, version: "4.5.1", platformspecific: false}
+eclipse : {name: eclipse, version: "4.3.0", platformspecific: true}
+
+common : {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    maven : ">=3.3.9"
+  }
+
+  # need pyhocon fix
+  downloads : {
+    JDT : ${ecj}
+    ECLIPSE : ${eclipse}
+    JAVA_HOME : ${java8}
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+  }
+
+  environment : {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+    PATH : "$JAVA_HOME/bin:$PATH"
+  }
+
+  timelimit : "30:00"
+}
+
+
+builds = [
+  ${common} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
+  ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
+  ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
+]
