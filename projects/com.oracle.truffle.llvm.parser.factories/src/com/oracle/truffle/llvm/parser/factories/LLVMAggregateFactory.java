@@ -118,7 +118,8 @@ public final class LLVMAggregateFactory {
         int[] offsets = new int[types.length];
         LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[types.length];
         int currentOffset = 0;
-        // FIXME alignment
+        // FIXME we need to find a test case where alignment of structure constants matters and then
+        // supply the right alignment
         LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(structSize, LLVMStack.NO_ALIGNMENT_REQUIREMENTS);
         for (int i = 0; i < types.length; i++) {
             ResolvedType resolvedType = types[i];
