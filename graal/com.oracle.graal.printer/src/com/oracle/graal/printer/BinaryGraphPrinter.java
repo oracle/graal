@@ -143,9 +143,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
         this.channel = channel;
     }
 
-    public void print(Graph graph, String title) throws IOException {
+    @Override
+    public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
+        writeProperties(properties);
         writeGraph(graph);
         flush();
     }
@@ -494,17 +496,25 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
-            // properties
-            writeShort((char) props.size());
-            for (Entry<Object, Object> entry : props.entrySet()) {
-                String key = entry.getKey().toString();
-                writePoolObject(key);
-                writePropertyObject(entry.getValue());
-            }
+            writeProperties(props);
             writeEdges(node, Inputs);
             writeEdges(node, Successors);
 
             props.clear();
+        }
+    }
+
+    private void writeProperties(Map<Object, Object> props) throws IOException {
+        if (props == null) {
+            writeShort((char) 0);
+            return;
+        }
+        // properties
+        writeShort((char) props.size());
+        for (Entry<Object, Object> entry : props.entrySet()) {
+            String key = entry.getKey().toString();
+            writePoolObject(key);
+            writePropertyObject(entry.getValue());
         }
     }
 
@@ -579,14 +589,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) throws IOException {
+    @Override
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
         writePoolObject(method);
         writeInt(bci);
+        writeProperties(properties);
     }
 
+    @Override
     public void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
     }
