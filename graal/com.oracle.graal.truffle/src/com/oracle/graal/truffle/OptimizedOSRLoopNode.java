@@ -213,20 +213,14 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private OSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
-        Class truffleLanguage;
+        Class truffleLanguage = TruffleLanguage.class;
         FrameDescriptor frameDescriptor;
         if (root != null) {
-            truffleLanguage = runtime().getTvmci().findLanguage(root);
             frameDescriptor = root.getFrameDescriptor();
         } else {
-            truffleLanguage = TruffleLanguage.class;
             frameDescriptor = new FrameDescriptor();
         }
         return createRootNode(truffleLanguage, frameDescriptor, frameClass);
-    }
-
-    private static GraalTruffleRuntime runtime() {
-        return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
