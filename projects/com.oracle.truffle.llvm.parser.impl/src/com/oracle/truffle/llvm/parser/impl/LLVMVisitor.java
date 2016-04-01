@@ -81,8 +81,6 @@ import com.intel.llvm.ireditor.lLVM_IR.Instruction_icmp;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_indirectbr;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_insertelement;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_insertvalue;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_invoke_nonVoid;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_landingpad;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_load;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_ret;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_select;
@@ -98,7 +96,6 @@ import com.intel.llvm.ireditor.lLVM_IR.MiddleInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.intel.llvm.ireditor.lLVM_IR.NamedMetadata;
 import com.intel.llvm.ireditor.lLVM_IR.NamedMiddleInstruction;
-import com.intel.llvm.ireditor.lLVM_IR.NamedTerminatorInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.Parameter;
 import com.intel.llvm.ireditor.lLVM_IR.Parameters;
 import com.intel.llvm.ireditor.lLVM_IR.SimpleConstant;
@@ -134,8 +131,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMMetadataNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.exception.LLVMInvokeNode;
-import com.oracle.truffle.llvm.nodes.impl.exception.LLVMLandingPadNode.LLVMAddressLandingPadNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionBodyNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
@@ -751,8 +746,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
             result = visitExtractElement((Instruction_extractelement) instr);
         } else if (instr instanceof Instruction_insertelement) {
             result = visitInsertElement((Instruction_insertelement) instr);
-        } else if (instr instanceof Instruction_landingpad) {
-            result = visitLandingPad((Instruction_landingpad) instr);
         } else if (instr instanceof Instruction_extractvalue) {
             result = visitExtractValue((Instruction_extractvalue) instr);
         } else if (instr instanceof Instruction_shufflevector) {
@@ -792,17 +785,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode targetAddress = getConstantElementPtr(aggregate, instr.getAggregate().getType(), indices);
         LLVMBaseType type = getLLVMType(instr);
         return factoryFacade.createExtractValue(type, targetAddress);
-    }
-
-    private LLVMExpressionNode visitLandingPad(Instruction_landingpad instr) {
-        Type resultType = instr.getResultType();
-        LLVMBaseType llvmType = getLLVMType(resultType);
-        switch (llvmType) {
-            case STRUCT:
-                return new LLVMAddressLandingPadNode();
-            default:
-                throw new AssertionError(llvmType);
-        }
     }
 
     private LLVMExpressionNode visitExtractElement(Instruction_extractelement instr) {
@@ -1380,21 +1362,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
             return visitSwitch((Instruction_switch) termInstruction);
         } else if (termInstruction instanceof Instruction_indirectbr) {
             return visitIndirectBranch((Instruction_indirectbr) termInstruction);
-        } else if (termInstruction instanceof NamedTerminatorInstruction) {
-            return visitNamedTerminator((NamedTerminatorInstruction) termInstruction);
         } else {
             throw new AssertionError(termInstruction);
         }
-    }
-
-    private LLVMNode visitNamedTerminator(NamedTerminatorInstruction termInstruction) {
-        Instruction_invoke_nonVoid invoke = termInstruction.getInstruction();
-        int normalContinueIndex = getIndexFromBasicBlock(invoke.getToLabel().getRef());
-        int exceptionIndex = getIndexFromBasicBlock(invoke.getExceptionLabel().getRef());
-        Callee callee = invoke.getCallee();
-        EList<Argument> args = invoke.getArgs().getArguments();
-        LLVMNode callInstruction = visitFunctionCall(callee, args, resolve(invoke));
-        return new LLVMInvokeNode(normalContinueIndex, exceptionIndex, callInstruction);
     }
 
     private LLVMNode visitIndirectBranch(Instruction_indirectbr instr) {
