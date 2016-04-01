@@ -17,6 +17,10 @@ common : {
   downloads : {
     JDT : ${ecj}
     ECLIPSE : ${eclipse}
+    JAVA_HOME : ${java8}
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
   }
 
   environment : {
@@ -27,26 +31,9 @@ common : {
   timelimit : "30:00"
 }
 
-common_default : ${common} {
-  downloads : {
-    JAVA_HOME : ${java8}
-    EXTRA_JAVA_HOMES : { pathlist :[
-      ${java7}
-    ]}
-  }
-}
-
-common_downstream : ${common} {
-  downloads : {
-    JAVA_HOME : ${java7}
-    EXTRA_JAVA_HOMES : { pathlist :[
-      ${java8}
-    ]}
-  }
-}
 
 builds = [
-  ${common_default} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
-  ${common_default} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-  ${common_default} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
+  ${common} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
+  ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
+  ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
 ]
