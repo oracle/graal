@@ -41,7 +41,6 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -49,16 +48,16 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalPhiWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyFactory;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMPhiNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -232,18 +231,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public Node createStructWriteNode(LLVMExpressionNode node, ResolvedType type) {
-        return LLVMAggregateFactory.createStructWriteNode(node, type);
-    }
-
-    @Override
-    public LLVMExpressionNode createStructLiteralNode(int[] offsets, Node[] nodes, LLVMExpressionNode alloc) {
-        LLVMStructWriteNode[] structWriteNodes = new LLVMStructWriteNode[nodes.length];
-        System.arraycopy(nodes, 0, structWriteNodes, 0, nodes.length);
-        return LLVMAggregateFactory.createStructLiteralNode(offsets, structWriteNodes, (LLVMAddressNode) alloc);
-    }
-
-    @Override
     public LLVMNode createUnreachableNode() {
         return new LLVMUnreachableNode();
     }
@@ -272,11 +259,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
         return LLVMLiteralFactory.createArrayLiteral(runtime, arrayValues, arrayType);
-    }
-
-    @Override
-    public LLVMNode createConditionalPhiWriteNode(LLVMExpressionNode create, LLVMNode phiWriteNode) {
-        return new LLVMConditionalPhiWriteNode((LLVMI1Node) create, phiWriteNode);
     }
 
     @Override
@@ -312,7 +294,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses,
                     Object... args) {
-        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()), staticInits,
+        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        staticInits,
                         mainCallTarget, allocatedGlobalAddresses,
                         args);
     }
@@ -320,6 +303,20 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {
         return LLVMFunctionFactory.createGlobalRootNodeWrapping(mainCallTarget, returnType);
+    }
+
+    public LLVMExpressionNode createStructureConstantNode(boolean packed, int structureSize, ResolvedType[] types, LLVMExpressionNode[] constants) {
+        return LLVMAggregateFactory.createStructConstantNode(runtime, packed, structureSize, types, constants);
+    }
+
+    public LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode,
+                    LLVMExpressionNode isVolatileNode) {
+        return LLVMMemI32CopyFactory.create((LLVMAddressNode) globalVarAddress, (LLVMAddressNode) constant, (LLVMI32Node) lengthNode, (LLVMI32Node) alignNode,
+                        (LLVMI1Node) isVolatileNode);
+    }
+
+    public LLVMNode createPhiNode() {
+        return new LLVMPhiNode();
     }
 
 }
