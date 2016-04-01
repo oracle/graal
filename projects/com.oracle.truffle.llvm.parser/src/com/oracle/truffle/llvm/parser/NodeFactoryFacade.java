@@ -193,4 +193,11 @@ public interface NodeFactoryFacade {
 
     LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode, LLVMExpressionNode isVolatileNode);
 
+    /**
+     * Creates an phi node. The node will perform no operation for most implementations.
+     *
+     * @return the phi node
+     */
+    LLVMNode createPhiNode();
+
 }

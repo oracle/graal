@@ -131,7 +131,6 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockControlFlowNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockNoControlFlowNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMPhiNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMByteNuller;
@@ -640,8 +639,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
-    private static LLVMNode visitStartingInstruction(@SuppressWarnings("unused") StartingInstruction instr) {
-        return new LLVMPhiNode();
+    private LLVMNode visitStartingInstruction(@SuppressWarnings("unused") StartingInstruction instr) {
+        return factoryFacade.createPhiNode();
     }
 
     private List<LLVMNode> visitMiddleInstruction(MiddleInstruction middleInstr) {
