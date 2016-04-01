@@ -57,24 +57,34 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
+    private static final int NUMBER_OF_PROPERTIES_PER_ENTRY = 4;
+
     private void generateFile(List<TypeElement> instruments) {
         String filename = "META-INF/truffle/instrument";
         Properties p = new Properties();
+        int numInstruments = loadIfFileAlreadyExists(filename, p);
 
-        int cnt = 0;
         for (TypeElement l : instruments) {
             Registration annotation = l.getAnnotation(Registration.class);
             if (annotation == null) {
                 continue;
             }
-            String prefix = "instrument" + ++cnt + ".";
+
+            int instNum = findInstrument(annotation.id(), p);
+            if (instNum == 0) { // not found
+                numInstruments += 1;
+                instNum = numInstruments;
+            }
+
+            String prefix = "instrument" + instNum + ".";
             String className = processingEnv.getElementUtils().getBinaryName(l).toString();
+
             p.setProperty(prefix + "id", annotation.id());
             p.setProperty(prefix + "name", annotation.name());
             p.setProperty(prefix + "version", annotation.version());
             p.setProperty(prefix + "className", className);
         }
-        if (cnt > 0) {
+        if (numInstruments > 0) {
             try {
                 FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename);
                 try (OutputStream os = file.openOutputStream()) {
@@ -83,6 +93,31 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
             } catch (IOException e) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), instruments.get(0));
             }
+        }
+    }
+
+    private static int findInstrument(String id, Properties p) {
+        int cnt = 1;
+        String val;
+        while ((val = p.getProperty("instrument" + cnt + ".id")) != null) {
+            if (id.equals(val)) {
+                return cnt;
+            }
+            cnt += 1;
+        }
+        return 0;
+    }
+
+    private int loadIfFileAlreadyExists(String filename, Properties p) {
+        try {
+            FileObject file = processingEnv.getFiler().getResource(
+                            StandardLocation.CLASS_OUTPUT, "", filename);
+            p.load(file.openInputStream());
+
+            return p.keySet().size() / NUMBER_OF_PROPERTIES_PER_ENTRY;
+        } catch (IOException e) {
+            // Ignore error. It is ok if the file does not exist
+            return 0;
         }
     }
 
