@@ -25,10 +25,18 @@ package com.oracle.graal.microbenchmarks.lir;
 import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraph;
 import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getMethodFromMethodSpec;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -134,7 +142,101 @@ public abstract class GraalCompilerState {
     }
 
     protected Method getMethod() {
-        return getMethodFromMethodSpec(getClass());
+        Class<?> c = getClass();
+        if (isAnnotationPresent(c)) {
+            return getMethodFromMethodSpec(c);
+        }
+        return findParamField(this);
+    }
+
+    protected boolean isAnnotationPresent(Class<?> startClass) {
+        Class<?> c = startClass;
+        while (c != null) {
+            if (c.isAnnotationPresent(MethodSpec.class)) {
+                return true;
+            }
+            c = c.getSuperclass();
+        }
+        return false;
+    }
+
+    /**
+     * Declares {@link GraalCompilerState#getMethodFromString(String) method description field}. The
+     * field must be a {@link String} and have a {@link Param} annotation.
+     */
+    @Inherited
+    @Target({ElementType.FIELD})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MethodDescString {
+    }
+
+    private static Method findParamField(Object obj) {
+        Class<?> c = obj.getClass();
+        Class<? extends Annotation> annotationClass = MethodDescString.class;
+        try {
+            for (Field f : c.getFields()) {
+                if (f.isAnnotationPresent(annotationClass)) {
+                    // these checks could be done by an annotation processor
+                    if (!f.getType().equals(String.class)) {
+                        throw new RuntimeException("Found a field annotated with " + annotationClass.getSimpleName() + " in " + c + " which is not a " + String.class.getSimpleName());
+                    }
+                    if (!f.isAnnotationPresent(Param.class)) {
+                        throw new RuntimeException("Found a field annotated with " + annotationClass.getSimpleName() + " in " + c + " which is not annotated with " + Param.class.getSimpleName());
+                    }
+                    String methodName;
+                    methodName = (String) f.get(obj);
+                    assert methodName != null;
+                    return getMethodFromString(methodName);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        throw new RuntimeException("Could not find class annotated with " + annotationClass.getSimpleName() + " in hierarchy of " + c);
+    }
+
+    /**
+     * Gets a {@link Method} from a method description string. The format is as follows:
+     *
+     * <pre>
+     * ClassName#MethodName
+     * ClassName#MethodName(ClassName, ClassName, ...)
+     * </pre>
+     *
+     * <code>CodeName</code> is passed to {@link Class#forName(String)}. <br>
+     * <b>Examples:</b>
+     *
+     * <pre>
+     * java.lang.String#equals
+     * java.lang.String#equals(java.lang.Object)
+     * </pre>
+     */
+    protected static Method getMethodFromString(String methodDesc) {
+        try {
+            String[] s0 = methodDesc.split("#", 2);
+            if (s0.length != 2) {
+                throw new RuntimeException("Missing method description? " + methodDesc);
+            }
+            String className = s0[0];
+            Class<?> clazz = Class.forName(className);
+            String[] s1 = s0[1].split("\\(", 2);
+            String name = s1[0];
+            Class<?>[] parameters = null;
+            if (s1.length > 1) {
+                String parametersPart = s1[1];
+                if (parametersPart.charAt(parametersPart.length() - 1) != ')') {
+                    throw new RuntimeException("Missing closing ')'? " + methodDesc);
+                }
+                String[] s2 = parametersPart.substring(0, parametersPart.length() - 1).split(",");
+                parameters = new Class<?>[s2.length];
+                for (int i = 0; i < s2.length; i++) {
+                    parameters[i] = Class.forName(s2[i]);
+                }
+            }
+            return GraalUtil.getMethod(clazz, name, parameters);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
