@@ -75,6 +75,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable, P
         this.offset = offset;
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (base instanceof RawAddressNode) {
             // The RawAddressNode is redundant, just directly use its input as base.

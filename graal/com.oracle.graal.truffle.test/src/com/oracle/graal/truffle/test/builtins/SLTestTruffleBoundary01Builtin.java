@@ -61,6 +61,7 @@ public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuilt
         }
         try {
             int result = (int) CompilerDirectives.interpreterOnly(new Callable<Object>() {
+                @Override
                 public Object call() throws Exception {
                     return 1;
                 }

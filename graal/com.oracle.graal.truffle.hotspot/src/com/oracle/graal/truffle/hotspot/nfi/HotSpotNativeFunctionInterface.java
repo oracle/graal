@@ -161,6 +161,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         return lookupFunctionPointer(name, rtldDefault, false);
     }
 
+    @Override
     public boolean isDefaultLibrarySearchSupported() {
         return rtldDefault != null;
     }

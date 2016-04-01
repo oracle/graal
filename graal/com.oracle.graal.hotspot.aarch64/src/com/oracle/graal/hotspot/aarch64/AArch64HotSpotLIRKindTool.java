@@ -30,10 +30,12 @@ import jdk.vm.ci.meta.LIRKind;
 
 public class AArch64HotSpotLIRKindTool extends AArch64LIRKindTool implements HotSpotLIRKindTool {
 
+    @Override
     public LIRKind getNarrowOopKind() {
         return LIRKind.reference(AArch64Kind.DWORD);
     }
 
+    @Override
     public LIRKind getNarrowPointerKind() {
         return LIRKind.value(AArch64Kind.DWORD);
     }

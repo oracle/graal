@@ -93,6 +93,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
 
     private static boolean isMaxSingleCall(OptimizedDirectCallNode call) {
         return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
+            @Override
             public boolean isCounted(Node node) {
                 return node instanceof DirectCallNode;
             }
@@ -101,6 +102,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
 
     private static int countPolymorphic(OptimizedDirectCallNode call) {
         return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
+            @Override
             public boolean isCounted(Node node) {
                 NodeCost cost = node.getCost();
                 boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;

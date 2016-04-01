@@ -53,6 +53,7 @@ public class TypeCastElem extends JTTTest {
             this.a = a;
         }
 
+        @Override
         public int do1() {
             return a;
         }
@@ -67,6 +68,7 @@ public class TypeCastElem extends JTTTest {
             this.b = b;
         }
 
+        @Override
         public int do2() {
             return b;
         }
@@ -82,10 +84,12 @@ public class TypeCastElem extends JTTTest {
             this.b = b;
         }
 
+        @Override
         public int do3() {
             return b;
         }
 
+        @Override
         public int do1() {
             return a;
         }

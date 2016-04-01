@@ -34,5 +34,6 @@ public interface GuardedNode extends NodeInterface {
 
     void setGuard(GuardingNode guard);
 
+    @Override
     ValueNode asNode();
 }

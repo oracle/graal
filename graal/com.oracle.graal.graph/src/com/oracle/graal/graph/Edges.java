@@ -401,6 +401,7 @@ public abstract class Edges extends Fields {
             return nextElement();
         }
 
+        @Override
         public Position nextPosition() {
             if (needsForward) {
                 forward();
@@ -505,6 +506,7 @@ public abstract class Edges extends Fields {
                 }
             }
 
+            @Override
             public EdgesIterator withNullIterator() {
                 return new AllEdgesIterator(node, Edges.this);
             }

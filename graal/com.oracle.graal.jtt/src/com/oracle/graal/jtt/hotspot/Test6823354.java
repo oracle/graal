@@ -217,6 +217,7 @@ public class Test6823354 {
             VALUE = value;
         }
 
+        @Override
         public void run() { check(VALUE, lzint(VALUE), dolzcomp()); }
         static int dolzcomp() { return lzcomp(VALUE); }
     }
@@ -232,6 +233,7 @@ public class Test6823354 {
             VALUE = value;
         }
 
+        @Override
         public void run() { check(VALUE, lzint(VALUE), dolzcomp()); }
         static int dolzcomp() { return lzcomp(VALUE); }
     }
@@ -247,6 +249,7 @@ public class Test6823354 {
             VALUE = value;
         }
 
+        @Override
         public void run() { check(VALUE, tzint(VALUE), dotzcomp()); }
         static int dotzcomp() { return tzcomp(VALUE); }
     }
@@ -262,6 +265,7 @@ public class Test6823354 {
             VALUE = value;
         }
 
+        @Override
         public void run() { check(VALUE, tzint(VALUE), dotzcomp()); }
         static int dotzcomp() { return tzcomp(VALUE); }
     }

@@ -44,6 +44,7 @@ public interface ValueConsumer extends InstructionValueConsumer {
      */
     void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 
+    @Override
     default void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(value, mode, flags);
     }

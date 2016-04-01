@@ -113,6 +113,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         return this;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }

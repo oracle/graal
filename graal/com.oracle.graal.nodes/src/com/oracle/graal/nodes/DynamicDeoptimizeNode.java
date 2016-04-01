@@ -70,6 +70,7 @@ public final class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implemen
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.getLIRGeneratorTool().emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), generator.state(this));
     }

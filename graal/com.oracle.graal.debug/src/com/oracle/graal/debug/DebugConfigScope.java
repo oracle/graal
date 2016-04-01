@@ -49,6 +49,7 @@ public class DebugConfigScope implements AutoCloseable {
         DebugScope.getInstance().setConfig(config);
     }
 
+    @Override
     public void close() {
         DebugScope.getInstance().setConfig(current);
     }

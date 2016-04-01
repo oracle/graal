@@ -26,6 +26,7 @@ import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 
 public interface ArithmeticLIRLowerable extends LIRLowerable {
 
+    @Override
     default void generate(NodeLIRBuilderTool builder) {
         generate(builder, builder.getLIRGeneratorTool().getArithmetic());
     }

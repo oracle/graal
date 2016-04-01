@@ -775,6 +775,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             this.ok = true;
         }
 
+        @Override
         public void accept(Node node, Node curNode) {
             if (!(curNode instanceof ValueNode)) {
                 ok = false;

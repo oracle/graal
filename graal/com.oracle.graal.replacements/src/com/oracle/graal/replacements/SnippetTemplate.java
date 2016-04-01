@@ -387,6 +387,7 @@ public class SnippetTemplate {
             return result.toString();
         }
 
+        @Override
         public void formatTo(Formatter formatter, int flags, int width, int precision) {
             if ((flags & ALTERNATE) == 0) {
                 formatter.format(applyFormattingFlagsAndWidth(toString(), flags, width));
@@ -482,6 +483,7 @@ public class SnippetTemplate {
             this.varargs = varargs;
         }
 
+        @Override
         public ValueNode length() {
             return ConstantNode.forInt(varargs.length);
         }

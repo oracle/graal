@@ -35,6 +35,7 @@ public class NodeIterableContains<T extends Node> extends TypeSafeDiagnosingMatc
         this.node = node;
     }
 
+    @Override
     public void describeTo(Description description) {
         description.appendText("is a NodeIterable containing ").appendValue(node);
     }

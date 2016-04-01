@@ -92,6 +92,7 @@ public abstract class Backend implements TargetProvider {
 
     public abstract SuitesProvider getSuites();
 
+    @Override
     public TargetDescription getTarget() {
         return providers.getCodeCache().getTarget();
     }

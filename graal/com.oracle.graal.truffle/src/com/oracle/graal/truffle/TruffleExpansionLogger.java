@@ -119,6 +119,7 @@ public class TruffleExpansionLogger {
             }
         }
 
+        @Override
         public int compareTo(ExpansionTree o) {
             if (parent == o.parent) {
                 return parentBci - o.parentBci;

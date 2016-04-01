@@ -47,6 +47,7 @@ public class CollectionsFactory {
             this.previousMode = previousMode;
         }
 
+        @Override
         public void close() {
             tl.set(previousMode);
         }

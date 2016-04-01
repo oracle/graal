@@ -34,10 +34,12 @@ public final class MetricImpl extends DebugValue implements DebugMetric {
         }
     }
 
+    @Override
     public void increment() {
         add(1);
     }
 
+    @Override
     public void add(long value) {
         if (isEnabled()) {
             super.addToCurrentValue(value);

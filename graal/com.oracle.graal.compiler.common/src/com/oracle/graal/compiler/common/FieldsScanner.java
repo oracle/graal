@@ -73,6 +73,7 @@ public class FieldsScanner {
         /**
          * Sorts fields in ascending order by their {@link #offset}s.
          */
+        @Override
         public int compareTo(FieldInfo o) {
             return offset < o.offset ? -1 : (offset > o.offset ? 1 : 0);
         }

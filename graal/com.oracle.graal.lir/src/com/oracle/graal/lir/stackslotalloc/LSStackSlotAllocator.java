@@ -406,6 +406,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         }
 
         ValueProcedure assignSlot = new ValueProcedure() {
+            @Override
             public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(value)) {
                     VirtualStackSlot slot = asVirtualStackSlot(value);

@@ -39,26 +39,31 @@ public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> 
         super(copyFrom);
     }
 
+    @Override
     public Node get(Object key) {
         return super.get((Node) key);
     }
 
+    @Override
     public Node put(Node key, Node value) {
         Node oldValue = super.get(key);
         super.set(key, value);
         return oldValue;
     }
 
+    @Override
     public Node remove(Object key) {
         throw new UnsupportedOperationException("Cannot remove keys from this map");
     }
 
+    @Override
     public void putAll(Map<? extends Node, ? extends Node> m) {
         for (Entry<? extends Node, ? extends Node> entry : m.entrySet()) {
             put(entry.getKey(), entry.getValue());
         }
     }
 
+    @Override
     public Set<Node> keySet() {
         HashSet<Node> entries = new HashSet<>();
         for (int i = 0; i < values.length; ++i) {
@@ -78,6 +83,7 @@ public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> 
         return Collections.unmodifiableSet(entries);
     }
 
+    @Override
     public Collection<Node> values() {
         ArrayList<Node> result = new ArrayList<>(this.size());
         for (int i = 0; i < values.length; ++i) {
@@ -89,6 +95,7 @@ public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> 
         return result;
     }
 
+    @Override
     public Set<Map.Entry<Node, Node>> entrySet() {
         HashSet<Map.Entry<Node, Node>> entries = new HashSet<>();
         for (Map.Entry<Node, Node> entry : entries()) {

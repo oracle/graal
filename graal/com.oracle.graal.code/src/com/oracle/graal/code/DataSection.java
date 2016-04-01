@@ -366,6 +366,7 @@ public final class DataSection implements Iterable<Data> {
         return null;
     }
 
+    @Override
     public Iterator<Data> iterator() {
         return dataItems.iterator();
     }

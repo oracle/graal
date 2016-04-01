@@ -147,6 +147,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
 
     public void addLiveValues(ReferenceMapBuilder refMap) {
         ValueConsumer addLiveValue = new ValueConsumer() {
+            @Override
             public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 refMap.addLiveValue(value);
             }

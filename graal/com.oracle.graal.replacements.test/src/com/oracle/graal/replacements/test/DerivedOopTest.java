@@ -142,6 +142,7 @@ public class DerivedOopTest extends GraalCompilerTest implements Snippets {
 
         ResolvedJavaMethod intrinsic = getResolvedJavaMethod("getRawPointerIntrinsic");
         r.register1("getRawPointer", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 return b.intrinsify(targetMethod, intrinsic, new ValueNode[]{arg});
             }

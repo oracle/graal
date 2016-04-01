@@ -68,6 +68,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             return register;
         }
 
+        @Override
         public void close() {
             assert nextFreeScratchRegister > 0 : "Close called too often";
             nextFreeScratchRegister--;

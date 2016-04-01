@@ -37,10 +37,12 @@ public class HotSpotNativeFunctionPointer implements NativeFunctionPointer {
         this.name = name;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public long getRawValue() {
         return value;
     }

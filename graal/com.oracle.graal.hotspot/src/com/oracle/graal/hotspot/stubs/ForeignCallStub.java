@@ -132,10 +132,12 @@ public class ForeignCallStub extends Stub {
     }
 
     private class DebugScopeContext implements JavaMethod, JavaMethodContext {
+        @Override
         public JavaMethod asJavaMethod() {
             return this;
         }
 
+        @Override
         public Signature getSignature() {
             ForeignCallDescriptor d = linkage.getDescriptor();
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -147,10 +149,12 @@ public class ForeignCallStub extends Stub {
             return new HotSpotSignature(jvmciRuntime, metaAccess.lookupJavaType(d.getResultType()), parameters);
         }
 
+        @Override
         public String getName() {
             return linkage.getDescriptor().getName();
         }
 
+        @Override
         public JavaType getDeclaringClass() {
             return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
         }

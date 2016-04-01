@@ -52,6 +52,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
     }
 
     public interface SimpleEffect extends Effect {
+        @Override
         default void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
             apply(graph);
         }

@@ -78,6 +78,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
      * </p>
      *
      */
+    @Override
     public double applyAsDouble(FixedNode node) {
         assert node != null;
         metricComputeNodeProbability.increment();

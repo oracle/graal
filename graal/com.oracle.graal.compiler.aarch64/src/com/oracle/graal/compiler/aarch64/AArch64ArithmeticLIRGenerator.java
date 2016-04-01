@@ -367,10 +367,12 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         return emitBitManipulation(BitManipulationOpCode.BSR, inputVal);
     }
 
+    @Override
     public Value emitCountLeadingZeros(Value value) {
         return emitBitManipulation(BitManipulationOpCode.CLZ, value);
     }
 
+    @Override
     public Value emitCountTrailingZeros(Value value) {
         throw JVMCIError.unimplemented();
     }
@@ -434,22 +436,27 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         getLIRGen().append(new StoreOp(kind, storeAddress, input, state));
     }
 
+    @Override
     public Value emitMathLog(Value input, boolean base10) {
         throw JVMCIError.unimplemented();
     }
 
+    @Override
     public Value emitMathCos(Value input) {
         throw JVMCIError.unimplemented();
     }
 
+    @Override
     public Value emitMathSin(Value input) {
         throw JVMCIError.unimplemented();
     }
 
+    @Override
     public Value emitMathTan(Value input) {
         throw JVMCIError.unimplemented();
     }
 
+    @Override
     public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
         throw JVMCIError.unimplemented();
     }

@@ -136,6 +136,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return ls.intValue();
     }
 
+    @Override
     public boolean isLogEnabledForMethod() {
         Boolean fs = featureState.get(Feature.LOG_METHOD);
         if (fs == null) {
@@ -153,6 +154,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return fs.booleanValue();
     }
 
+    @Override
     public boolean isMemUseTrackingEnabled() {
         Boolean fs = featureState.get(Feature.TRACK_MEM_USE);
         if (fs == null) {
@@ -170,6 +172,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return ls.intValue();
     }
 
+    @Override
     public boolean isDumpEnabledForMethod() {
         Boolean fs = featureState.get(Feature.DUMP_METHOD);
         if (fs == null) {
@@ -187,6 +190,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return fs.booleanValue();
     }
 
+    @Override
     public boolean isVerifyEnabledForMethod() {
         Boolean fs = featureState.get(Feature.VERIFY_METHOD);
         if (fs == null) {

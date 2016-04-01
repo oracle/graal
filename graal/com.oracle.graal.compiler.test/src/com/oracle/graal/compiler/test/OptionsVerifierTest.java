@@ -95,6 +95,7 @@ public class OptionsVerifierTest {
             }
         }
 
+        @Override
         public void close() throws IOException {
             for (Object e : entries.values()) {
                 if (e instanceof URLClassLoader) {

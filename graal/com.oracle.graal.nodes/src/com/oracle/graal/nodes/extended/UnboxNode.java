@@ -50,6 +50,7 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
     @Input protected ValueNode value;
     protected final JavaKind boxingKind;
 
+    @Override
     public ValueNode getValue() {
         return value;
     }

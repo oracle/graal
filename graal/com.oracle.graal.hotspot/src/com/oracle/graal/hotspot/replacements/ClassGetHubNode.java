@@ -108,6 +108,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     @NodeIntrinsic
     public static native KlassPointer readClass(Class<?> clazz, GuardingNode guard);
 
+    @Override
     public ValueNode getValue() {
         return clazz;
     }
@@ -129,6 +130,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
         return constantReflection.asJavaClass(objectType);
     }
 
+    @Override
     public boolean isLossless() {
         return false;
     }

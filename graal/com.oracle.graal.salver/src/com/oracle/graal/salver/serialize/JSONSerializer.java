@@ -40,6 +40,7 @@ public class JSONSerializer extends AbstractSerializer {
         super(writer);
     }
 
+    @Override
     public JSONSerializer serialize(Object obj) throws IOException {
         if (writer != null) {
             writer.write(appendValue(new StringBuilder(), obj).append('\n'));

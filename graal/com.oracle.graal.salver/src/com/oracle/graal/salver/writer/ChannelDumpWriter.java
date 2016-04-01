@@ -59,12 +59,14 @@ public class ChannelDumpWriter implements DumpWriter {
         }
     }
 
+    @Override
     public ChannelDumpWriter write(byte b) throws IOException {
         ensureAvailable(1);
         buffer.put(b);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter write(byte[] arr) throws IOException {
         if (buffer.isReadOnly()) {
             throw new ReadOnlyBufferException();
@@ -82,6 +84,7 @@ public class ChannelDumpWriter implements DumpWriter {
         return this;
     }
 
+    @Override
     public ChannelDumpWriter write(ByteBuffer buf) throws IOException {
         if (buf == buffer) {
             throw new IllegalArgumentException();
@@ -102,6 +105,7 @@ public class ChannelDumpWriter implements DumpWriter {
         return this;
     }
 
+    @Override
     public ChannelDumpWriter write(CharSequence csq) throws IOException {
         if (buffer.isReadOnly()) {
             throw new ReadOnlyBufferException();
@@ -124,42 +128,49 @@ public class ChannelDumpWriter implements DumpWriter {
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeChar(char v) throws IOException {
         ensureAvailable(1 << 1);
         buffer.putChar(v);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeShort(short v) throws IOException {
         ensureAvailable(1 << 1);
         buffer.putShort(v);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeInt(int v) throws IOException {
         ensureAvailable(1 << 2);
         buffer.putInt(v);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeLong(long v) throws IOException {
         ensureAvailable(1 << 3);
         buffer.putLong(v);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeFloat(float v) throws IOException {
         ensureAvailable(1 << 2);
         buffer.putFloat(v);
         return this;
     }
 
+    @Override
     public ChannelDumpWriter writeDouble(double v) throws IOException {
         ensureAvailable(1 << 3);
         buffer.putDouble(v);
         return this;
     }
 
+    @Override
     public void flush() throws IOException {
         if (buffer != null && channel != null) {
             buffer.flip();
@@ -168,6 +179,7 @@ public class ChannelDumpWriter implements DumpWriter {
         }
     }
 
+    @Override
     public void close() throws IOException {
         if (channel != null) {
             try {

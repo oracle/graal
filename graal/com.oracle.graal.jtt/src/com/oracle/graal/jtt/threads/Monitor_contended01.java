@@ -34,6 +34,7 @@ public final class Monitor_contended01 extends JTTTest {
         boolean started = false;
         boolean acquired = false;
 
+        @Override
         public void run() {
             // signal that we have started up so first thread will release lock
             synchronized (cond) {

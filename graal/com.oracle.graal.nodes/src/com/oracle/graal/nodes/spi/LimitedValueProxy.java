@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.ValueNode;
  */
 public interface LimitedValueProxy extends Proxy {
 
+    @Override
     ValueNode getOriginalNode();
 
 }

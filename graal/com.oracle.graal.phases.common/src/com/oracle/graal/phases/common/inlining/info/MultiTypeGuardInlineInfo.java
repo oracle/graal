@@ -167,6 +167,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         }
     }
 
+    @Override
     public boolean shouldInline() {
         for (ResolvedJavaMethod method : concretes) {
             if (method.shouldBeInlined()) {

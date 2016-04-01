@@ -53,6 +53,7 @@ public abstract class SPARCLIRInstruction extends LIRInstruction implements SPAR
 
     protected abstract void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm);
 
+    @Override
     public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
         return store;
     }

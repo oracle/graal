@@ -78,6 +78,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
+    @Override
     public final IntegerConvertOp<OP> getArithmeticOp() {
         return getOp(getValue());
     }

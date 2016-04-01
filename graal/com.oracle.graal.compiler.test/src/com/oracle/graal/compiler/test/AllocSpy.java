@@ -138,6 +138,7 @@ public final class AllocSpy implements AutoCloseable {
         current.set(this);
     }
 
+    @Override
     public void close() {
         current.set(parent);
         PrintStream ps = System.out;
@@ -231,6 +232,7 @@ public final class AllocSpy implements AutoCloseable {
 
     static class GraalContextSampler implements Sampler {
 
+        @Override
         public void sampleAllocation(int count, String desc, Object newObj, long size) {
             AllocSpy scope = current.get();
             if (scope != null) {
@@ -302,6 +304,7 @@ public final class AllocSpy implements AutoCloseable {
             this.value = value;
         }
 
+        @Override
         public int compareTo(CountedValue o) {
             if (count < o.count) {
                 return 1;

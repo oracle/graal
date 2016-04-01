@@ -69,10 +69,12 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field);
     }
 
+    @Override
     public ValueNode getValue() {
         return object();
     }
 
+    @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
         if (tool.allUsagesAvailable() && hasNoUsages() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
             return null;
@@ -144,6 +146,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         }
     }
 
+    @Override
     public Stamp uncheckedStamp() {
         return uncheckedStamp;
     }

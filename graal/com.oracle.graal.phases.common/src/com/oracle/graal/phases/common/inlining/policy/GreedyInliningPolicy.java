@@ -48,6 +48,7 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         super(hints);
     }
 
+    @Override
     public boolean continueInlining(StructuredGraph currentGraph) {
         if (InliningUtil.getNodeCount(currentGraph) >= MaximumDesiredSize.getValue()) {
             InliningUtil.logInliningDecision("inlining is cut off by MaximumDesiredSize");

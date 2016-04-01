@@ -98,6 +98,7 @@ public final class SSIVerifier {
         HashMap<Value, LIRInstruction> defined = new HashMap<>();
 
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (checkUsage(value)) {
                     assert defined.containsKey(value) || flags.contains(OperandFlag.UNINITIALIZED) : String.format("Value %s is used by instruction %s in block %s but not defined.", value,
@@ -106,6 +107,7 @@ public final class SSIVerifier {
             }
         };
         InstructionValueConsumer stateConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (checkUsage(value)) {
                     /*
@@ -119,6 +121,7 @@ public final class SSIVerifier {
         };
 
         InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (trackDefinition(value)) {
                     assert !defined.containsKey(value) : String.format("Value %s is redefined by instruction %s in block %s but already defined by %s.", value, instruction, block, defined.get(value));

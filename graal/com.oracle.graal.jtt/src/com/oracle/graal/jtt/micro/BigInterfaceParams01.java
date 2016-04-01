@@ -42,6 +42,7 @@ public class BigInterfaceParams01 extends JTTTest {
 
     static class A implements I {
 
+        @Override
         public String test(String p0, String p1, String p2, String p3, String p4, String p5, String p6, String p7, String p8, String p9) {
             return "A" + p0 + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
         }
@@ -49,6 +50,7 @@ public class BigInterfaceParams01 extends JTTTest {
 
     static class B implements I {
 
+        @Override
         public String test(String p0, String p1, String p2, String p3, String p4, String p5, String p6, String p7, String p8, String p9) {
             return "B" + p0 + p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
         }

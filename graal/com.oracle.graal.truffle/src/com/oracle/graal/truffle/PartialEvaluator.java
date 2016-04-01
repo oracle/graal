@@ -188,6 +188,7 @@ public class PartialEvaluator {
             this.receiver = receiver;
         }
 
+        @Override
         public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
             if (index == 0) {
                 return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
@@ -308,10 +309,12 @@ public class PartialEvaluator {
 
     private class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
+        @Override
         public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
             return method.getAnnotation(ExplodeLoop.class) != null;
         }
 
+        @Override
         public boolean shouldMergeExplosions(ResolvedJavaMethod method) {
             ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
             if (explodeLoop != null) {

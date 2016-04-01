@@ -33,14 +33,17 @@ public abstract class LazyName implements CharSequence {
 
     private String value;
 
+    @Override
     public int length() {
         return toString().length();
     }
 
+    @Override
     public char charAt(int index) {
         return toString().charAt(index);
     }
 
+    @Override
     public CharSequence subSequence(int start, int end) {
         return toString().subSequence(start, end);
     }

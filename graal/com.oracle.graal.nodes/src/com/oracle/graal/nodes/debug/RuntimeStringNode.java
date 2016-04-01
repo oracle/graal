@@ -45,6 +45,7 @@ public final class RuntimeStringNode extends FixedWithNextNode implements Lowera
         return value;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }

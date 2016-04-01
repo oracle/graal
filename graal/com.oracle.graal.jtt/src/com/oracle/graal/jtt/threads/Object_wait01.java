@@ -31,6 +31,7 @@ import com.oracle.graal.jtt.JTTTest;
 public class Object_wait01 extends JTTTest {
 
     private static class TestClass implements Runnable {
+        @Override
         public void run() {
             int i = 0;
             while (i++ < 1000000 && !done) {

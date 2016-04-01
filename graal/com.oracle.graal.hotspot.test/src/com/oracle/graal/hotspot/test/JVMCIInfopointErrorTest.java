@@ -107,10 +107,12 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
             this.spec = spec;
         }
 
+        @Override
         public boolean canDeoptimize() {
             return true;
         }
 
+        @Override
         public void generate(NodeLIRBuilderTool gen) {
             LIRGeneratorTool tool = gen.getLIRGeneratorTool();
             LIRFrameState state = gen.state(this);

@@ -34,5 +34,6 @@ public interface DebugCloseable extends AutoCloseable {
         }
     };
 
+    @Override
     void close();
 }

@@ -38,6 +38,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
+    @Override
     public void customize(DebugConfig config) {
         config.dumpHandlers().add(new GraphPrinterDumpHandler());
         config.dumpHandlers().add(new NodeDumper());
@@ -52,6 +53,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     private static class NodeDumper implements DebugDumpHandler {
 
+        @Override
         public void dump(Object object, String message) {
             if (object instanceof Node) {
                 String location = GraphUtil.approxSourceLocation((Node) object);
@@ -64,6 +66,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
             }
         }
 
+        @Override
         public void close() {
         }
     }

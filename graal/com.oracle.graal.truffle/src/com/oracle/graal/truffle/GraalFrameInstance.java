@@ -69,6 +69,7 @@ public final class GraalFrameInstance implements FrameInstance {
         this.callNodeFrame = callNodeFrame;
     }
 
+    @Override
     @TruffleBoundary
     public Frame getFrame(FrameAccess access, boolean slowPath) {
         if (!slowPath && currentFrame) {
@@ -106,6 +107,7 @@ public final class GraalFrameInstance implements FrameInstance {
         }
     }
 
+    @Override
     public boolean isVirtualFrame() {
         return callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
     }

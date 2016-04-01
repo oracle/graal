@@ -1571,12 +1571,14 @@ public abstract class SPARCAssembler extends Assembler {
             super(ArithOp);
         }
 
+        @Override
         public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, Register rs2, Register rd) {
             int inst = setBits(0, condition, cc, rd);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding());
             masm.emitInt(inst);
         }
 
+        @Override
         public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, int simm11, Register rd) {
             int inst = setBits(0, condition, cc, rd);
             inst = BitSpec.i.setBits(inst, 1);
@@ -1609,6 +1611,7 @@ public abstract class SPARCAssembler extends Assembler {
             this.opfLow = opfLow;
         }
 
+        @Override
         public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, Register rs2, Register rd) {
             int inst = setBits(0);
             inst = BitSpec.rd.setBits(inst, rd.encoding());
@@ -1620,6 +1623,7 @@ public abstract class SPARCAssembler extends Assembler {
             masm.emitInt(inst);
         }
 
+        @Override
         public void emit(SPARCMacroAssembler masm, ConditionFlag condition, CC cc, int simm11, Register rd) {
             throw new IllegalArgumentException("FMOVCC cannot be used with immediate value");
         }

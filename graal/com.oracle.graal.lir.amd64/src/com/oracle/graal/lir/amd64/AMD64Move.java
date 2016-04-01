@@ -149,10 +149,12 @@ public class AMD64Move {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return input;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -373,10 +375,12 @@ public class AMD64Move {
             masm.nullCheck(address.toAddress());
         }
 
+        @Override
         public Value getCheckedValue() {
             return address.base;
         }
 
+        @Override
         public LIRFrameState getState() {
             return state;
         }

@@ -44,6 +44,7 @@ public final class ParameterNode extends AbstractLocalNode implements IterableNo
         this.uncheckedStamp = stamp.getUncheckedStamp();
     }
 
+    @Override
     public Stamp uncheckedStamp() {
         return uncheckedStamp;
     }

@@ -198,6 +198,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private void compileLoop(VirtualFrame frame) {
         atomic(new Runnable() {
+            @Override
             public void run() {
                 /*
                  * Compilations need to run atomically as they may be scheduled by multiple threads
@@ -271,6 +272,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         return true;
     }
 
+    @Override
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         invalidate(newNode, reason);
         return false;

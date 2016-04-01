@@ -51,6 +51,7 @@ public class DebugHistogramRPrinter implements Printer {
         this.limit = limit;
     }
 
+    @Override
     public void print(DebugHistogram histogram) {
         List<CountedValue> list = histogram.getValues();
         if (list.isEmpty()) {

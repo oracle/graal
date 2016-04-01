@@ -53,6 +53,7 @@ public final class TruffleInliningDecision extends TruffleInlining implements Co
         return profile;
     }
 
+    @Override
     public int compareTo(TruffleInliningDecision o) {
         return Double.compare(o.getProfile().getScore(), getProfile().getScore());
     }

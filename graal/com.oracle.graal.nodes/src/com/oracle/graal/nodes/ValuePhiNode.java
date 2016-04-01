@@ -70,6 +70,7 @@ public class ValuePhiNode extends PhiNode implements ArrayLengthProvider {
         return updateStamp(valuesStamp);
     }
 
+    @Override
     public ValueNode length() {
         if (merge() instanceof LoopBeginNode) {
             return null;

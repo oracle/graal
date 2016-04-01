@@ -31,6 +31,7 @@ import com.oracle.graal.jtt.JTTTest;
 public class Object_wait03 extends JTTTest {
 
     private static class TestClass implements Runnable {
+        @Override
         public void run() {
             try {
                 Thread.sleep(sleep);

@@ -30,5 +30,6 @@ import com.oracle.graal.nodes.ValueNode;
  */
 public interface MemoryNode extends NodeInterface {
 
+    @Override
     ValueNode asNode();
 }

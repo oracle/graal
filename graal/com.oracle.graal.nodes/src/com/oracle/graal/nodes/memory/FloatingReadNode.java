@@ -63,10 +63,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         this.lastLocationAccess = lastLocationAccess;
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode newlla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(newlla));
         lastLocationAccess = newlla;

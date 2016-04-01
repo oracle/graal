@@ -667,6 +667,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return !(start.next() instanceof ReturnNode);
     }
 
+    @Override
     public JavaMethod asJavaMethod() {
         return method();
     }

@@ -27,5 +27,6 @@ import com.oracle.graal.nodes.ValueNode;
 
 public interface GuardingNode extends NodeInterface {
 
+    @Override
     ValueNode asNode();
 }

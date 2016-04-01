@@ -177,6 +177,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 assert fromId >= 0;
             }
 
+            @Override
             public void visit(Value phiIn, Value phiOut) {
                 assert !isRegister(phiOut) : "Out is a register: " + phiOut;
                 assert !isRegister(phiIn) : "In is a register: " + phiIn;

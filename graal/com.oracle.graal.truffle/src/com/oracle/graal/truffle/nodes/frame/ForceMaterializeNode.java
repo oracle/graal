@@ -41,6 +41,7 @@ public final class ForceMaterializeNode extends FixedWithNextNode implements LIR
         this.object = object;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }

@@ -121,6 +121,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     private static final class CountingClosure implements VirtualClosure {
         int count;
 
+        @Override
         public void apply(VirtualState node) {
             count++;
         }

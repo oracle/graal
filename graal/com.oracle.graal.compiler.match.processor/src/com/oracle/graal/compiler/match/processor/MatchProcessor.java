@@ -551,9 +551,11 @@ public class MatchProcessor extends AbstractProcessor {
                 out.printf("    private static final String[] %s = new String[] {%s};\n", invoker.argumentsListName(), args);
                 out.printf("    private static final class %s implements MatchGenerator {\n", invoker.wrapperClass());
                 out.printf("        static MatchGenerator instance = new %s();\n", invoker.wrapperClass());
+                out.printf("        @Override\n");
                 out.printf("        public ComplexMatchResult match(NodeMatchRules nodeMatchRules, Object...args) {\n");
                 out.printf("            return ((%s) nodeMatchRules).%s(%s);\n", invoker.nodeLIRBuilderClass, invoker.methodName, types);
                 out.printf("        }\n");
+                out.printf("        @Override\n");
                 out.printf("        public String getName() {\n");
                 out.printf("             return \"%s\";\n", invoker.methodName);
                 out.printf("        }\n");
@@ -564,6 +566,7 @@ public class MatchProcessor extends AbstractProcessor {
 
             String desc = MatchStatement.class.getSimpleName();
 
+            out.println("    @Override");
             out.println("    public Class<? extends NodeMatchRules> forClass() {");
             out.println("        return " + topDeclaringClass + ".class;");
             out.println("    }");

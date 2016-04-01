@@ -53,6 +53,7 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
         return true;
     }
 
+    @Override
     public FrameState stateBefore() {
         return stateBefore;
     }

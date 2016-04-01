@@ -108,6 +108,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
     }
 
     private static final NodePredicate IS_CONSTANT = new NodePredicate() {
+        @Override
         public boolean apply(Node n) {
             return n instanceof ConstantNode;
         }

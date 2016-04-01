@@ -37,6 +37,7 @@ final class TraceIntervalDumper implements IntervalDumper {
         this.intervals = intervals;
     }
 
+    @Override
     public void visitIntervals(IntervalVisitor visitor) {
         for (FixedInterval interval : fixedIntervals) {
             if (interval != null) {

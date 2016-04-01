@@ -55,6 +55,7 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
+    @Override
     public final UnaryOp<OP> getArithmeticOp() {
         return getOp(getValue());
     }

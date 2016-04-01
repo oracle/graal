@@ -36,6 +36,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 @ServiceProvider(DisassemblerProvider.class)
 public class HotSpotDisassemblerProvider implements DisassemblerProvider {
 
+    @Override
     public String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
         return null;
     }
@@ -45,6 +46,7 @@ public class HotSpotDisassemblerProvider implements DisassemblerProvider {
         return ((HotSpotCodeCacheProvider) codeCache).disassemble(code);
     }
 
+    @Override
     public String getName() {
         return "hsdis";
     }

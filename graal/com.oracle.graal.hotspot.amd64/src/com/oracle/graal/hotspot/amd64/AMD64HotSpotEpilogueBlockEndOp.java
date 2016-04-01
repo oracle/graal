@@ -46,6 +46,7 @@ abstract class AMD64HotSpotEpilogueBlockEndOp extends AMD64BlockEndOp implements
         AMD64HotSpotEpilogueOp.leaveFrameAndRestoreRbp(savedRbp, crb, masm);
     }
 
+    @Override
     public void setSavedRbp(AllocatableValue value) {
         savedRbp = value;
     }

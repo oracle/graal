@@ -60,10 +60,12 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
         return delta;
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(gen.operand(address), gen.operand(delta));
         gen.setResult(this, result);

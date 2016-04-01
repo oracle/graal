@@ -77,6 +77,7 @@ public class ClassCastBytecodeExceptionTest extends BytecodeExceptionTest {
     @Override
     protected void registerPlugin(InvocationPlugins plugins) {
         plugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj, ValueNode classNode) {
                 ResolvedJavaType type = b.getConstantReflection().asJavaType(classNode.asConstant());
                 Constant hub = b.getConstantReflection().asObjectHub(type);

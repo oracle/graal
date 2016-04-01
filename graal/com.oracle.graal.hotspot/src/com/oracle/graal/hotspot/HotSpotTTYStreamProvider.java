@@ -40,6 +40,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         // @formatter:on
     }
 
+    @Override
     public PrintStream getStream() {
         return Options.LogFile.getStream();
     }

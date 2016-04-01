@@ -335,10 +335,12 @@ public class InliningTest extends GraalCompilerTest {
             this.value = value;
         }
 
+        @Override
         public int publicNotOverriddenMethod() {
             return value;
         }
 
+        @Override
         public int publicOverriddenMethod() {
             return value;
         }

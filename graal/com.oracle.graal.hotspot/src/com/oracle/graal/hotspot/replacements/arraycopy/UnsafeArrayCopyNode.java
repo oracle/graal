@@ -131,10 +131,12 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
         return any();
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;

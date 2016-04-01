@@ -59,6 +59,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
     private static void logTruffleCallTree(OptimizedCallTarget compilable) {
         CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
 
+            @Override
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
                     OptimizedDirectCallNode callNode = ((OptimizedDirectCallNode) node);

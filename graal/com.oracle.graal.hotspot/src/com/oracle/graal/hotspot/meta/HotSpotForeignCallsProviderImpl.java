@@ -153,6 +153,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final LocationIdentity[] NO_LOCATIONS = {};
 
+    @Override
     public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
         assert foreignCalls != null : descriptor;
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(descriptor);
@@ -166,16 +167,19 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         return foreignCalls.get(descriptor).isReexecutable();
     }
 
+    @Override
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
         return foreignCalls.get(descriptor).needsDebugInfo();
     }
 
+    @Override
     public boolean isGuaranteedSafepoint(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
         return foreignCalls.get(descriptor).isGuaranteedSafepoint();
     }
 
+    @Override
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
         return foreignCalls.get(descriptor).getKilledLocations();

@@ -49,6 +49,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         // @formatter:on
     }
 
+    @Override
     public TruffleRuntime getRuntime() {
         // initialize JVMCI to make sure the TruffleCompiler option is parsed
         JVMCI.initialize();
@@ -79,6 +80,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
         private volatile GraalRuntime graalRuntime;
 
+        @Override
         public GraalRuntime get() {
             if (graalRuntime == null) {
                 synchronized (this) {

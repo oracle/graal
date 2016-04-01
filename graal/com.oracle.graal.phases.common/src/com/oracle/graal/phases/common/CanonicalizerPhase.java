@@ -182,10 +182,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private void processWorkSet(StructuredGraph graph) {
             NodeEventListener listener = new NodeEventListener() {
 
+                @Override
                 public void nodeAdded(Node node) {
                     workList.add(node);
                 }
 
+                @Override
                 public void inputChanged(Node node) {
                     workList.add(node);
                     if (node instanceof IndirectCanonicalization) {
@@ -195,6 +197,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     }
                 }
 
+                @Override
                 public void usagesDroppedToZero(Node node) {
                     workList.add(node);
                 }
@@ -426,6 +429,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 workList.add(node);
             }
 
+            @Override
             public void addToWorkList(Iterable<? extends Node> nodes) {
                 workList.addAll(nodes);
             }
@@ -445,6 +449,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 return true;
             }
 
+            @Override
             public Assumptions getAssumptions() {
                 return assumptions;
             }

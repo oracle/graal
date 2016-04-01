@@ -49,6 +49,7 @@ public class SPARCGraphBuilderPlugins {
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
+            @Override
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long);
@@ -65,6 +66,7 @@ public class SPARCGraphBuilderPlugins {
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
 
         r.register1("bitCount", type, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
                 return true;

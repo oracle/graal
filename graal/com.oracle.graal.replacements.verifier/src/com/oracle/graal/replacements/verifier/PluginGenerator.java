@@ -141,6 +141,7 @@ public class PluginGenerator {
 
             private int idx = 0;
 
+            @Override
             public String apply(GeneratedPlugin plugin) {
                 return plugin.getPluginName() + "_" + (idx++);
             }
@@ -201,6 +202,7 @@ public class PluginGenerator {
     }
 
     private static void createPluginFactoryMethod(PrintWriter out, List<GeneratedPlugin> plugins) {
+        out.printf("    @Override\n");
         out.printf("    public void registerPlugins(InvocationPlugins plugins, InjectionProvider injection) {\n");
         for (GeneratedPlugin plugin : plugins) {
             plugin.register(out);

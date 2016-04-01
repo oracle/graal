@@ -65,6 +65,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         this.addressingMode = AddressingMode.REGISTER_OFFSET;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 

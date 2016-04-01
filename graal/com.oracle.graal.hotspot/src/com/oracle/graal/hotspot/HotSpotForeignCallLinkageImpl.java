@@ -171,26 +171,32 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return sb.toString();
     }
 
+    @Override
     public boolean isReexecutable() {
         return reexecutable;
     }
 
+    @Override
     public boolean isGuaranteedSafepoint() {
         return transition == Transition.SAFEPOINT;
     }
 
+    @Override
     public LocationIdentity[] getKilledLocations() {
         return killedLocations;
     }
 
+    @Override
     public CallingConvention getOutgoingCallingConvention() {
         return outgoingCallingConvention;
     }
 
+    @Override
     public CallingConvention getIncomingCallingConvention() {
         return incomingCallingConvention;
     }
 
+    @Override
     public Value[] getTemporaries() {
         if (temporaries.length == 0) {
             return temporaries;
@@ -198,14 +204,17 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return temporaries.clone();
     }
 
+    @Override
     public long getMaxCallTargetOffset() {
         return runtime().getHostJVMCIBackend().getCodeCache().getMaxCallTargetOffset(address);
     }
 
+    @Override
     public ForeignCallDescriptor getDescriptor() {
         return descriptor;
     }
 
+    @Override
     public void setCompiledStub(Stub stub) {
         assert address == 0L : "cannot set stub for linkage that already has an address: " + this;
         this.stub = stub;
@@ -214,10 +223,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     /**
      * Determines if this is a call to a compiled {@linkplain Stub stub}.
      */
+    @Override
     public boolean isCompiledStub() {
         return address == 0L || stub != null;
     }
 
+    @Override
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
             assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
@@ -236,6 +247,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         }
     }
 
+    @Override
     public long getAddress() {
         assert address != 0L : "address not yet finalized: " + this;
         return address;
@@ -251,10 +263,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return transition == Transition.SAFEPOINT;
     }
 
+    @Override
     public boolean mayContainFP() {
         return transition != Transition.LEAF_NOFP;
     }
 
+    @Override
     public boolean needsJavaFrameAnchor() {
         if (transition == Transition.SAFEPOINT || transition == Transition.STACK_INSPECTABLE_LEAF) {
             if (stub != null) {
@@ -268,6 +282,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return false;
     }
 
+    @Override
     public String getSymbol() {
         return stub == null ? null : stub.toString();
     }

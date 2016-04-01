@@ -73,6 +73,7 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
     private static void searchInlined(InliningTrace trace, OptimizedCallTarget rootTarget, SLFunction parent, SLFunction inlinedFunction) {
         rootTarget.accept(new CallTreeNodeVisitor() {
 
+            @Override
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
                     OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) node;

@@ -67,6 +67,7 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
             PhiValueVisitor visitor = new PhiValueVisitor() {
 
+                @Override
                 public void visit(Value phiIn, Value phiOut) {
                     assert !isRegister(phiOut) : "phiOut is a register: " + phiOut;
                     assert !isRegister(phiIn) : "phiIn is a register: " + phiIn;

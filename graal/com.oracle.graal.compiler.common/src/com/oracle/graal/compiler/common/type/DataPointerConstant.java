@@ -43,6 +43,7 @@ public abstract class DataPointerConstant implements SerializableConstant {
         return alignment;
     }
 
+    @Override
     public boolean isDefaultForKind() {
         return false;
     }
