@@ -21,7 +21,7 @@ common : {
 
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
-    PATH : $JAVA_HOME/bin:$PATH
+    PATH : "$JAVA_HOME/bin:$PATH"
   }
 
   timelimit : "30:00"
