@@ -63,6 +63,7 @@ import com.oracle.truffle.sl.nodes.call.SLInvokeNodeGen;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLDebuggerNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLIfNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLReturnNode;
@@ -212,6 +213,17 @@ public class SLNodeFactory {
                 flattenedNodes.add((SLStatementNode) n);
             }
         }
+    }
+
+    /**
+     * Returns an {@link SLDebuggerNode} for the given token.
+     *
+     * @param debuggerToken The token containing the debugger node's info.
+     * @return A SLDebuggerNode for the given token.
+     */
+    SLStatementNode createDebugger(Token debuggerToken) {
+        final SLDebuggerNode debuggerNode = new SLDebuggerNode(srcFromToken(debuggerToken));
+        return debuggerNode;
     }
 
     /**
