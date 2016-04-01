@@ -21,6 +21,7 @@ common : {
 
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
+    PATH : $JAVA_HOME/bin:$PATH
   }
 
   timelimit : "30:00"
@@ -47,5 +48,5 @@ common_downstream : ${common} {
 builds = [
   ${common_default} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
   ${common_default} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-  ${common_downstream} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
+  ${common_default} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
 ]
