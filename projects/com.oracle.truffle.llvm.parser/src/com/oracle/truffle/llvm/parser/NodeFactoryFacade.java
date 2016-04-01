@@ -134,6 +134,13 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createZeroVectorInitializer(int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType);
 
+    /**
+     * Creates a node representing an <code>unreachable</code> instruction.
+     *
+     * @return an unreachable node
+     * @see <a href="http://llvm.org/docs/LangRef.html#unreachable-instruction">Unreachable in the
+     *      LLVM Language Reference Manual</a>
+     */
     LLVMNode createUnreachableNode();
 
     LLVMNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMNode[] phiWrites);
