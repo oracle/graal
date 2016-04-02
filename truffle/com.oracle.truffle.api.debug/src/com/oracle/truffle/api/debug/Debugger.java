@@ -191,6 +191,7 @@ public final class Debugger {
      * Head of the stack of executions.
      */
     private DebugExecutionContext currentDebugContext;
+    private volatile boolean executing;
 
     /**
      * Sets a breakpoint to halt at a source line.
@@ -240,6 +241,32 @@ public final class Debugger {
     @TruffleBoundary
     public Collection<Breakpoint> getBreakpoints() {
         return breakpoints.getAll();
+    }
+
+    /**
+     * Check whether the debugger is associated with an ongoing execution.
+     *
+     * @return <code>true</code> if there is an ongoing execution.
+     * @since 0.13
+     */
+    public boolean isExecuting() {
+        return executing;
+    }
+
+    /**
+     * Request a pause. As soon as the execution arrives at a node holding a debugger tag,
+     * {@link SuspendedEvent} is emitted.
+     * <p>
+     * This method can be called in any thread. When called from the {@link SuspendedEvent} callback
+     * thread, execution is paused on a nearest next node holding a debugger tag.
+     *
+     * @since 0.13
+     */
+    public void pause() {
+        DebugExecutionContext dc = currentDebugContext;
+        if (dc != null) {
+            dc.doPause();
+        }
     }
 
     /**
@@ -723,6 +750,46 @@ public final class Debugger {
         }
     }
 
+    private final class PauseHandler {
+
+        private EventBinding<?>[] bindings;
+
+        @TruffleBoundary
+        PauseHandler(final DebugExecutionContext debugContext) {
+            if (TRACE) {
+                debugContext.trace("PAUSE requested.");
+            }
+            ExecutionEventListener execListener = new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    debugContext.halt(context, frame.materialize(), HaltPosition.BEFORE, "Paused");
+                }
+
+                @Override
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                    debugContext.halt(context, frame.materialize(), HaltPosition.AFTER, "Paused");
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                    debugContext.halt(context, frame.materialize(), HaltPosition.AFTER, "Paused");
+                }
+            };
+            bindings = new EventBinding<?>[]{
+                            instrumenter.attachListener(HALT_FILTER, execListener),
+                            instrumenter.attachListener(CALL_FILTER, execListener),
+            };
+        }
+
+        private void disable() {
+            for (EventBinding<?> eb : bindings) {
+                eb.dispose();
+            }
+            bindings = null;
+        }
+
+    }
+
     /**
      * Information and debugging state for a single Truffle execution (which make take place over
      * one or more suspended executions). This holds interaction state, for example what is
@@ -752,6 +819,8 @@ public final class Debugger {
 
         /** Static context where halted; null if running. */
         private EventContext haltedEventContext;
+        private final Object pauseHandlerLock = new Object();
+        private PauseHandler pauseHandler;
 
         /** Frame where halted; null if running. */
         private MaterializedFrame haltedFrame;
@@ -812,6 +881,30 @@ public final class Debugger {
             }
         }
 
+        void doPause() {
+            synchronized (pauseHandlerLock) {
+                if (pauseHandler != null) {
+                    // Pause was requested already
+                    return;
+                }
+                pauseHandler = new PauseHandler(this);
+            }
+        }
+
+        private void clearPause() {
+            boolean cleared = false;
+            synchronized (pauseHandlerLock) {
+                if (pauseHandler != null) {
+                    pauseHandler.disable();
+                    pauseHandler = null;
+                    cleared = true;
+                }
+            }
+            if (TRACE && cleared) {
+                trace("CLEAR PAUSE");
+            }
+        }
+
         /**
          * Handle a program halt, caused by a breakpoint, stepping action, or other cause.
          *
@@ -834,7 +927,10 @@ public final class Debugger {
             haltedPosition = haltPosition;
             running = false;
 
-            clearAction();
+            if (haltReason.startsWith("Step")) {
+                clearAction();
+            }
+            clearPause();
 
             // Clean up, just in cased the one-shot breakpoints got confused
             breakpoints.disposeOneShots();
@@ -864,7 +960,7 @@ public final class Debugger {
             contextStack = Collections.unmodifiableList(frames);
 
             if (TRACE) {
-                final String reason = haltReason == null ? "" : haltReason;
+                final String reason = haltReason + "";
                 trace("HALT %s: (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
             }
 
@@ -880,7 +976,7 @@ public final class Debugger {
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
                 if (TRACE) {
-                    final String reason = haltReason == null ? "" : haltReason;
+                    final String reason = haltReason + "";
                     trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
                 }
             } finally {
@@ -948,6 +1044,7 @@ public final class Debugger {
         currentDebugContext = new DebugExecutionContext(execSource, currentDebugContext, depth);
         prepareContinue(depth);
         currentDebugContext.trace("BEGIN EXECUTION");
+        executing = true;
     }
 
     private void executionEnded() {
@@ -955,6 +1052,7 @@ public final class Debugger {
         currentDebugContext.dispose();
         // Pop the stack of execution contexts.
         currentDebugContext = currentDebugContext.predecessor;
+        executing = currentDebugContext != null;
     }
 
     /**
@@ -984,11 +1082,12 @@ public final class Debugger {
         protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
             final PolyglotEngine engine = (PolyglotEngine) vm;
             final Debugger[] debugger = {find(engine, initializeDebugger)};
+            final ExecutionEvent event;
             if (debugger[0] != null) {
                 debugger[0].executionStarted(currentDepth, s);
-                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(debugger[0]));
+                event = new ExecutionEvent(debugger[0]);
             } else {
-                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
+                event = new ExecutionEvent(new Callable<Debugger>() {
                     @Override
                     public Debugger call() throws Exception {
                         if (debugger[0] == null) {
@@ -997,8 +1096,10 @@ public final class Debugger {
                         }
                         return debugger[0];
                     }
-                }));
+                });
             }
+            ACCESSOR.dispatchEvent(engine, event);
+            event.dispose();
             return new Closeable() {
                 @Override
                 public void close() throws IOException {
