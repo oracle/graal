@@ -545,6 +545,18 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return args;
     }
 
+    /**
+     * Intrinsified in {@link TruffleGraphBuilderPlugins}.
+     *
+     * @param type avoid warning
+     * @param condition avoid warning
+     * @param nonNull avoid warning
+     */
+    @SuppressWarnings({"unchecked"})
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+        return (T) value;
+    }
+
     /** Intrinsified in {@link TruffleGraphBuilderPlugins}. */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
@@ -658,18 +670,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             return options;
         }
         return DefaultCompilerOptions.INSTANCE;
-    }
-
-    /**
-     * Intrinsified in {@link TruffleGraphBuilderPlugins}.
-     *
-     * @param type avoid warning
-     * @param condition avoid warning
-     * @param nonNull avoid warning
-     */
-    @SuppressWarnings({"unchecked"})
-    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
-        return (T) value;
     }
 
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
