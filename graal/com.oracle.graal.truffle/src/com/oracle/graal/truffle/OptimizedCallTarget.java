@@ -225,6 +225,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return speculationLog;
     }
 
+    /**
+     * Call from an IndirectCallNode or CallTarget#call().
+     */
     @Override
     public Object call(Object... args) {
         compilationProfile.reportIndirectCall();
@@ -237,6 +240,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return doInvoke(args);
     }
 
+    /**
+     * Call from a DirectCallNode.
+     */
     public final Object callDirect(Object... args) {
         compilationProfile.reportDirectCall();
         profileArguments(args);
