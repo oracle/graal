@@ -96,7 +96,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile RootNode uninitializedRootNode;
 
     private TruffleInlining inlining;
-    private int cachedNonTrivialNodeCount = -1;
+    private volatile int cachedNonTrivialNodeCount = -1;
     private int cloneIndex;
     private volatile boolean initialized;
 
