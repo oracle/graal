@@ -29,7 +29,7 @@ On the Mac you can use Homebrew:
 
     brew tap homebrew/versions
     brew install gcc46 --with-fortran
-    brew install gmp4
+    brew link --force gmp4
 
 On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
 fault (https://github.com/Homebrew/homebrew-versions/issues/515). A fix for this
@@ -38,11 +38,10 @@ https://gist.githubusercontent.com/chrisseaton/7008085997269e3478e1/raw/46bff773
 shasum `51814a0d79a9f21344c76f2d4235b59d9a4bc1601117e8ca5bfabdb82305aad0`.
 
 However you install GCC on the Mac, you may then need to manually link the
-libraries we use into a location where they can be found, as
+gcc libraries we use into a location where they can be found, as
 `DYLD_LIBRARY_PATH` cannot normally be set on the Mac.
 
     ln -s /usr/local/Cellar/gcc46/4.6.4/lib/gcc/4.6/libgfortran.3.dylib /usr/local/lib
-    ln -s /usr/local/Cellar/gmp/6.1.0/lib/libgmp.10.dylib /usr/local/lib
 
 How to get started?
 -------------------
