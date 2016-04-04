@@ -35,11 +35,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 
 @NodeChild(type = LLVMI1Node.class)
-public abstract class LLVMConditionalBranchNode extends LLVMStatementNode {
+public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
 
     @Children final LLVMNode[] truePhiWriteNodes;
     @Children final LLVMNode[] falsePhiWriteNodes;

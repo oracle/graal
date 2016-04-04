@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.factories;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalBranchNodeFactory;
@@ -46,7 +46,7 @@ public class LLVMBranchFactory {
         return new LLVMIndirectBranchNode((LLVMAddressNode) value, labelTargets, phiWrites);
     }
 
-    public static LLVMStatementNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes,
+    public static LLVMTerminatorNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes,
                     LLVMNode[] falsePhiWriteNodes) {
         if (runtime.getOptimizationConfiguration().injectBranchProbabilitiesForConditionalBranch()) {
             return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, (LLVMI1Node) conditionNode);
@@ -55,7 +55,7 @@ public class LLVMBranchFactory {
         }
     }
 
-    public static LLVMStatementNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites) {
+    public static LLVMTerminatorNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites) {
         return new LLVMBrUnconditionalNode(unconditionalIndex, phiWrites);
     }
 

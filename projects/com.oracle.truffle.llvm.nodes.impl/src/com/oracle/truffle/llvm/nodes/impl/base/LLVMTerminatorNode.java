@@ -27,25 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.others;
+package com.oracle.truffle.llvm.nodes.impl.base;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
 
-public class LLVMWrappedStatementNode extends LLVMStatementNode {
+/**
+ * This node represents a terminator instruction in LLVM IR. This node decides which basic block is
+ * executed next, or terminates execution of a function.
+ *
+ * @see <a href="http://llvm.org/docs/LangRef.html#terminator-instructions">terminator
+ *      instructions</a>
+ */
+public abstract class LLVMTerminatorNode extends LLVMNode {
 
-    @Child private LLVMNode wrappedNode;
+    @CompilationFinal private final int[] successors;
 
-    public LLVMWrappedStatementNode(LLVMNode wrappedNode, int defaultSuccessor) {
-        super(defaultSuccessor);
-        this.wrappedNode = wrappedNode;
+    public LLVMTerminatorNode(int... successors) {
+        this.successors = successors;
     }
 
+    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
+
     @Override
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
-        wrappedNode.executeVoid(frame);
-        return DEFAULT_SUCCESSOR;
+    public void executeVoid(VirtualFrame frame) {
+        executeGetSuccessorIndex(frame);
+    }
+
+    public int nrSuccessors() {
+        return successors.length;
+    }
+
+    public int[] getSuccessors() {
+        return successors;
     }
 
 }

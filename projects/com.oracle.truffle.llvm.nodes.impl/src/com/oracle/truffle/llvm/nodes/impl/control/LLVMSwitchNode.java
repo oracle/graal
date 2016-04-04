@@ -33,13 +33,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 
 // TODO remove code duplication
-public abstract class LLVMSwitchNode extends LLVMStatementNode {
+public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     private static final int DEFAULT_LABEL_INDEX = 0;
     private static final int CASE_LABEL_START_INDEX = 1;

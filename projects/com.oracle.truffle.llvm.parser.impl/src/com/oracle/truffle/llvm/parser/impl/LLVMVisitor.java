@@ -123,14 +123,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionBodyNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockControlFlowNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockNoControlFlowNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMByteNuller;
@@ -139,7 +139,6 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMFloatN
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMObjectNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMWrappedStatementNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
@@ -482,15 +481,15 @@ public class LLVMVisitor implements LLVMParserRuntime {
     }
 
     private LLVMBlockNode getFunctionBlockStatements(FunctionDef def) {
-        List<LLVMNode> allFunctionNodes = new ArrayList<>();
+        List<LLVMBasicBlockNode> allFunctionNodes = new ArrayList<>();
         int currentIndex = 0;
         int[] basicBlockIndices = new int[def.getBasicBlocks().size()];
         int i = 0;
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
-            List<LLVMNode> statementNodes = visitBasicBlock(basicBlock);
-            currentIndex += statementNodes.size();
-            basicBlockIndices[i++] = currentIndex - 1;
-            allFunctionNodes.addAll(statementNodes);
+            LLVMBasicBlockNode statementNodes = visitBasicBlock(basicBlock);
+            basicBlockIndices[i++] = currentIndex;
+            currentIndex++;
+            allFunctionNodes.add(statementNodes);
         }
         LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[currentIndex][];
         i = 0;
@@ -505,28 +504,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             LLVMParserAsserts.assertNoNullElement(deadSlots);
             indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
         }
-        int size = allFunctionNodes.size();
-        boolean lastStatementIsControl = allFunctionNodes.get(size - 1) instanceof LLVMStatementNode;
-        if (!lastStatementIsControl) {
-            throw new IllegalStateException("last statement in basic block should be control statement");
-        }
-        boolean containsControlFlow = size != 1 && allFunctionNodes.stream().limit(allFunctionNodes.size() - 1).anyMatch(node -> node instanceof LLVMStatementNode);
-        if (containsControlFlow) {
-            LLVMStatementNode[] statements = new LLVMStatementNode[allFunctionNodes.size()];
-            for (i = 0; i < allFunctionNodes.size(); i++) {
-                LLVMNode currentNode = allFunctionNodes.get(i);
-                if (currentNode instanceof LLVMStatementNode) {
-                    statements[i] = (LLVMStatementNode) currentNode;
-                } else {
-                    final int successorIndex = i + 1;
-                    statements[i] = new LLVMWrappedStatementNode(currentNode, successorIndex);
-                }
-            }
-            LLVMParserAsserts.assertNoNullElement(statements);
-            return new LLVMBlockControlFlowNode(statements, indexToSlotNuller);
-        } else {
-            return new LLVMBlockNoControlFlowNode(allFunctionNodes.toArray(new LLVMNode[allFunctionNodes.size()]));
-        }
+        return new LLVMBlockControlFlowNode(allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), indexToSlotNuller);
     }
 
     private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
@@ -598,8 +576,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         HashMap<String, Integer> labels = new HashMap<>();
         for (BasicBlock basicBlock : functionDef.getBasicBlocks()) {
             labels.put(basicBlock.getName(), labelIndex);
-            int nrInstructions = basicBlock.getInstructions().size();
-            labelIndex += nrInstructions;
+            labelIndex++;
         }
         return labels;
     }
@@ -612,7 +589,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private BasicBlock currentBasicBlock;
 
-    private List<LLVMNode> visitBasicBlock(BasicBlock basicBlock) {
+    private LLVMBasicBlockNode visitBasicBlock(BasicBlock basicBlock) {
         currentBasicBlock = basicBlock;
         List<LLVMNode> statements = new ArrayList<>(basicBlock.getInstructions().size());
         for (Instruction instr : basicBlock.getInstructions()) {
@@ -621,7 +598,11 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 statements.add(instruction);
             }
         }
-        return statements;
+        LLVMNode[] statementNodes = new LLVMNode[statements.size() - 1];
+        System.arraycopy(statements.toArray(new LLVMNode[statementNodes.length]), 0, statementNodes, 0, statementNodes.length);
+        LLVMParserAsserts.assertNoNullElement(statementNodes);
+        LLVMTerminatorNode terminatorNode = (LLVMTerminatorNode) statements.get(statements.size() - 1);
+        return new LLVMBasicBlockNode(statementNodes, terminatorNode);
     }
 
     private List<LLVMNode> visitInstruction(Instruction instr) {

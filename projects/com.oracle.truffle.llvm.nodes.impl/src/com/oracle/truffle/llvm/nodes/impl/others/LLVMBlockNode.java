@@ -36,17 +36,17 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
 
 public abstract class LLVMBlockNode extends LLVMNode {
 
     public static class LLVMBlockControlFlowNode extends LLVMBlockNode {
 
-        @Children private final LLVMStatementNode[] bodyNodes;
+        @Children private final LLVMBasicBlockNode[] bodyNodes;
         @CompilationFinal private final LLVMStackFrameNuller[][] indexToSlotNuller;
 
-        public LLVMBlockControlFlowNode(LLVMStatementNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
+        public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
             this.bodyNodes = bodyNodes;
             this.indexToSlotNuller = indexToSlotNuller;
         }
@@ -62,15 +62,15 @@ public abstract class LLVMBlockNode extends LLVMNode {
                     loopCount++;
                 }
                 CompilerAsserts.partialEvaluationConstant(bci);
-                LLVMStatementNode statement = bodyNodes[bci];
-                int successorSelection = statement.executeGetSuccessorIndex(frame);
+                LLVMBasicBlockNode bb = bodyNodes[bci];
+                int successorSelection = bb.executeGetSuccessorIndex(frame);
                 LLVMStackFrameNuller[] stackNuller = indexToSlotNuller[bci];
                 if (stackNuller != null) {
                     for (int j = 0; j < stackNuller.length; j++) {
                         stackNuller[j].nullifySlot(frame);
                     }
                 }
-                int[] successors = statement.getSuccessors();
+                int[] successors = bb.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
                     if (i == successorSelection) {
                         bci = successors[i];
