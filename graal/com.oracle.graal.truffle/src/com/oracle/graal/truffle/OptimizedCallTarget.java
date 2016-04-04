@@ -374,10 +374,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     protected void invalidate(Object source, CharSequence reason) {
+        cachedNonTrivialNodeCount = -1;
         if (isValid()) {
             runtime().invalidateInstalledCode(this, source, reason);
         }
-        cachedNonTrivialNodeCount = -1;
     }
 
     public TruffleInlining getInlining() {
