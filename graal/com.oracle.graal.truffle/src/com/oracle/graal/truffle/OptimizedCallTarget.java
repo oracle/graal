@@ -80,7 +80,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
 
-    private SpeculationLog speculationLog;
+    private final SpeculationLog speculationLog;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
     private final OptimizedCallTarget sourceCallTarget;
