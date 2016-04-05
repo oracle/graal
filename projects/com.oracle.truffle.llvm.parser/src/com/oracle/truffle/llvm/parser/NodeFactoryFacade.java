@@ -39,11 +39,13 @@ import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
@@ -206,5 +208,44 @@ public interface NodeFactoryFacade {
      * @return the phi node
      */
     LLVMNode createPhiNode();
+
+    /**
+     * Creates a basic block node.
+     *
+     * @param statementNodes the statement nodes that do not change control flow
+     * @param terminatorNode the terminator instruction node that changes control flow
+     * @return the basic block node
+     */
+    LLVMNode createBasicBlockNode(LLVMNode[] statementNodes, LLVMNode terminatorNode);
+
+    /**
+     * Creates a node that groups together several basic blocks in a function.
+     *
+     * @param basicBlockNodes the basic blocks
+     * @param indexToSlotNuller nuller node for nulling dead variables
+     * @return the function block node
+     */
+    LLVMNode createFunctionBlockNode(List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller);
+
+    /**
+     * Creates a function body node that returns the result of a basic block group.
+     *
+     * @param block the group of basic blocks
+     * @param retSlot the slot for the return value
+     * @return the return value
+     */
+    LLVMExpressionNode createFunctionBodyNode(LLVMNode block, FrameSlot retSlot);
+
+    /**
+     * Creates the entry point for a function.
+     *
+     * @param functionBodyNode the body of a function that returns the functions result
+     * @param beforeFunction function prologue nodes
+     * @param afterFunction function epilogue nodes
+     * @param frameDescriptor
+     * @param functionName
+     * @return a function root node
+     */
+    RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName);
 
 }

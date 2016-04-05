@@ -123,22 +123,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNull;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMObjectNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionBodyNode;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockControlFlowNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMBooleanNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMByteNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMDoubleNull;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMFloatNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMIntNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMLongNuller;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStackFrameNuller.LLVMObjectNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
@@ -465,12 +459,12 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMAttributeVisitor.visitFunctionHeader(def.getHeader());
         labelList = getBlockLabelIndexMapping(def);
         List<LLVMNode> formalParameters = getFormalParametersInit(def);
-        LLVMBlockNode block = getFunctionBlockStatements(def);
+        LLVMNode block = getFunctionBlockStatements(def);
         String functionName = def.getHeader().getName();
-        LLVMFunctionBodyNode functionBodyNode = new LLVMFunctionBodyNode(block, retSlot);
+        LLVMExpressionNode functionBodyNode = factoryFacade.createFunctionBodyNode(block, retSlot);
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionName);
+        RootNode rootNode = factoryFacade.createFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionName);
         if (LLVMOptions.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
@@ -480,13 +474,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return function;
     }
 
-    private LLVMBlockNode getFunctionBlockStatements(FunctionDef def) {
-        List<LLVMBasicBlockNode> allFunctionNodes = new ArrayList<>();
+    private LLVMNode getFunctionBlockStatements(FunctionDef def) {
+        List<LLVMNode> allFunctionNodes = new ArrayList<>();
         int currentIndex = 0;
         int[] basicBlockIndices = new int[def.getBasicBlocks().size()];
         int i = 0;
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
-            LLVMBasicBlockNode statementNodes = visitBasicBlock(basicBlock);
+            LLVMNode statementNodes = visitBasicBlock(basicBlock);
             basicBlockIndices[i++] = currentIndex;
             currentIndex++;
             allFunctionNodes.add(statementNodes);
@@ -504,7 +498,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             LLVMParserAsserts.assertNoNullElement(deadSlots);
             indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
         }
-        return new LLVMBlockControlFlowNode(allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), indexToSlotNuller);
+        return factoryFacade.createFunctionBlockNode(allFunctionNodes, indexToSlotNuller);
     }
 
     private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
@@ -589,7 +583,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private BasicBlock currentBasicBlock;
 
-    private LLVMBasicBlockNode visitBasicBlock(BasicBlock basicBlock) {
+    private LLVMNode visitBasicBlock(BasicBlock basicBlock) {
         currentBasicBlock = basicBlock;
         List<LLVMNode> statements = new ArrayList<>(basicBlock.getInstructions().size());
         for (Instruction instr : basicBlock.getInstructions()) {
@@ -601,8 +595,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode[] statementNodes = new LLVMNode[statements.size() - 1];
         System.arraycopy(statements.toArray(new LLVMNode[statementNodes.length]), 0, statementNodes, 0, statementNodes.length);
         LLVMParserAsserts.assertNoNullElement(statementNodes);
-        LLVMTerminatorNode terminatorNode = (LLVMTerminatorNode) statements.get(statements.size() - 1);
-        return new LLVMBasicBlockNode(statementNodes, terminatorNode);
+        LLVMNode terminatorNode = statements.get(statements.size() - 1);
+        return factoryFacade.createBasicBlockNode(statementNodes, terminatorNode);
     }
 
     private List<LLVMNode> visitInstruction(Instruction instr) {
