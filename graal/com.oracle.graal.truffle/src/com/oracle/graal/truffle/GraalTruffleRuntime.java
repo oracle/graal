@@ -441,7 +441,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         Future<?> codeTask = optimizedCallTarget.getCompilationTask();
         if (codeTask != null && isCompiling(optimizedCallTarget)) {
-            optimizedCallTarget.setCompilationTask(null);
+            optimizedCallTarget.resetCompilationTask();
             boolean result = codeTask.cancel(true);
             if (result) {
                 optimizedCallTarget.notifyCompilationFinished(false);
@@ -481,7 +481,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         Future<?> codeTask = optimizedCallTarget.getCompilationTask();
         if (codeTask != null) {
             if (codeTask.isCancelled() || codeTask.isDone()) {
-                optimizedCallTarget.setCompilationTask(null);
+                optimizedCallTarget.resetCompilationTask();
                 return false;
             }
             return true;

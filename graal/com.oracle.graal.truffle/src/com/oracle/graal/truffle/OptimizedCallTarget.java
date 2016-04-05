@@ -485,7 +485,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (successful && inlining != null) {
             dequeueInlinedCallSites(inlining);
         }
-        setCompilationTask(null);
+        resetCompilationTask();
     }
 
     private void dequeueInlinedCallSites(TruffleInlining parentDecision) {
@@ -712,7 +712,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return compilationTask;
     }
 
-    void setCompilationTask(Future<?> compilationTask) {
-        this.compilationTask = compilationTask;
+    void resetCompilationTask() {
+        this.compilationTask = null;
     }
 }
