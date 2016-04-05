@@ -58,6 +58,7 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
         ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
+            @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }

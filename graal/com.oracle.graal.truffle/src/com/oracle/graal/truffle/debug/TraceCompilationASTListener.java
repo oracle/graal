@@ -53,6 +53,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
     private static void printCompactTree(OptimizedCallTarget target) {
         target.accept(new CallTreeNodeVisitor() {
 
+            @Override
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node == null) {
                     return true;

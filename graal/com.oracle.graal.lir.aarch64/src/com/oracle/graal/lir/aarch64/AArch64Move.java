@@ -88,10 +88,12 @@ public class AArch64Move {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return constant;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -324,10 +326,12 @@ public class AArch64Move {
             masm.ldr(64, zr, address.toAddress());
         }
 
+        @Override
         public Value getCheckedValue() {
             return address.base;
         }
 
+        @Override
         public LIRFrameState getState() {
             return state;
         }

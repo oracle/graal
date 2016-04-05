@@ -152,12 +152,14 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
     }
 
     InstructionStateProcedure stateConsumer = new InstructionStateProcedure() {
+        @Override
         public void doState(LIRInstruction inst, LIRFrameState info) {
             processState(inst, info, currentSet);
         }
     };
 
     ValueConsumer useConsumer = new ValueConsumer() {
+        @Override
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (shouldProcessValue(operand)) {
                 // no need to insert values and derived reference
@@ -170,6 +172,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
     };
 
     ValueConsumer defConsumer = new ValueConsumer() {
+        @Override
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (shouldProcessValue(operand)) {
                 if (Debug.isLogEnabled()) {

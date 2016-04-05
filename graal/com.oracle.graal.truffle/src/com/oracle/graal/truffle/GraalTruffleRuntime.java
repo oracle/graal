@@ -269,6 +269,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             this.skipFrames = skip;
         }
 
+        @Override
         public T visitFrame(InspectedFrame frame) {
             if (frame.isMethod(methods.callOSRMethod)) {
                 // we ignore OSR frames.
@@ -504,72 +505,84 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     // cached field access to make it fast in the interpreter
     private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.TruffleProfilingEnabled.getValue();
 
+    @Override
     public final boolean isProfilingEnabled() {
         return PROFILING_ENABLED;
     }
 
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 
+        @Override
         public void notifyCompilationQueued(OptimizedCallTarget target) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationQueued(target);
             }
         }
 
+        @Override
         public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationInvalidated(target, source, reason);
             }
         }
 
+        @Override
         public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationDequeued(target, source, reason);
             }
         }
 
+        @Override
         public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationFailed(target, graph, t);
             }
         }
 
+        @Override
         public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationSplit(callNode);
             }
         }
 
+        @Override
         public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationGraalTierFinished(target, graph);
             }
         }
 
+        @Override
         public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationSuccess(target, graph, result);
             }
         }
 
+        @Override
         public void notifyCompilationStarted(OptimizedCallTarget target) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationStarted(target);
             }
         }
 
+        @Override
         public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationTruffleTierFinished(target, graph);
             }
         }
 
+        @Override
         public void notifyShutdown(GraalTruffleRuntime runtime) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyShutdown(runtime);
             }
         }
 
+        @Override
         public void notifyStartup(GraalTruffleRuntime runtime) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyStartup(runtime);

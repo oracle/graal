@@ -265,6 +265,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
             if (selected == null) {
                 selected = new DisassemblerProvider() {
+                    @Override
                     public String getName() {
                         return "nop";
                     }

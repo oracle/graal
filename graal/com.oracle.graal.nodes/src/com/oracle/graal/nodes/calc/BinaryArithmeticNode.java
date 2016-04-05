@@ -67,6 +67,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return getOp.apply(table);
     }
 
+    @Override
     public final BinaryOp<OP> getArithmeticOp() {
         return getOp(getX(), getY());
     }

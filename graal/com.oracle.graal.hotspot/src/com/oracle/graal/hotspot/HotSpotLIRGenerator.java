@@ -145,6 +145,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      */
     VirtualStackSlot getLockSlot(int lockDepth);
 
+    @Override
     HotSpotProviders getProviders();
 
     Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull);

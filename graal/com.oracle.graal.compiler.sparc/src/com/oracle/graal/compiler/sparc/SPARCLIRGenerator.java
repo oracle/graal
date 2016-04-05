@@ -425,6 +425,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         PlatformKind kind = address.getPlatformKind();
         assert kind == XWORD : address + " - " + kind + " not an object!";

@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.FixedNode;
  */
 public interface MemoryCheckpoint extends MemoryNode {
 
+    @Override
     FixedNode asNode();
 
     interface Single extends MemoryCheckpoint {

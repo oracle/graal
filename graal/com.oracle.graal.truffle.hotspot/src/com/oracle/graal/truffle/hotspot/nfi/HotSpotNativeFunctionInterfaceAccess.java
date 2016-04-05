@@ -32,6 +32,7 @@ import com.oracle.truffle.api.Truffle;
 public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {
     private final NativeFunctionInterface instance = createNativeFunctionInterface();
 
+    @Override
     public NativeFunctionInterface getNativeFunctionInterface() {
         return instance;
     }

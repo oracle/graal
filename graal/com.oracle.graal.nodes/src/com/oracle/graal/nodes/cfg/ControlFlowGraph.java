@@ -159,10 +159,12 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return iterA;
     }
 
+    @Override
     public Block[] getBlocks() {
         return reversePostOrder;
     }
 
+    @Override
     public Block getStartBlock() {
         return reversePostOrder[0];
     }
@@ -179,6 +181,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return nodeToBlock.get(node);
     }
 
+    @Override
     public List<Loop<Block>> getLoops() {
         return loops;
     }

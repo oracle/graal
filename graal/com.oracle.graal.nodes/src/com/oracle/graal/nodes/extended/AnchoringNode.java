@@ -27,5 +27,6 @@ import com.oracle.graal.nodes.ValueNode;
 
 public interface AnchoringNode extends NodeInterface {
 
+    @Override
     ValueNode asNode();
 }

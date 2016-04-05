@@ -69,6 +69,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
         }
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool, Node forValue) {
         if (forValue instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) forValue;
@@ -96,6 +97,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
         }
     }
 
+    @Override
     public Node getValue() {
         return condition;
     }

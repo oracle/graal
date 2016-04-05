@@ -129,6 +129,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         }
     }
 
+    @Override
     public <T extends ValueNode> T append(T v) {
         if (v.graph() != null) {
             return v;
@@ -140,6 +141,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return added;
     }
 
+    @Override
     public <T extends ValueNode> T recursiveAppend(T v) {
         if (v.graph() != null) {
             return v;
@@ -151,74 +153,91 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return added;
     }
 
+    @Override
     public void push(JavaKind kind, ValueNode value) {
         assert kind != JavaKind.Void;
         assert returnValue == null;
         returnValue = value;
     }
 
+    @Override
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @Override
     public StampProvider getStampProvider() {
         return stampProvider;
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
 
+    @Override
     public StructuredGraph getGraph() {
         return graph;
     }
 
+    @Override
     public void setStateAfter(StateSplit sideEffect) {
         assert sideEffect.hasSideEffect();
         FrameState stateAfter = getGraph().add(new FrameState(BytecodeFrame.BEFORE_BCI));
         sideEffect.setStateAfter(stateAfter);
     }
 
+    @Override
     public GraphBuilderContext getParent() {
         return null;
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
 
+    @Override
     public int bci() {
         return invokeBci;
     }
 
+    @Override
     public InvokeKind getInvokeKind() {
         return method.isStatic() ? InvokeKind.Static : InvokeKind.Virtual;
     }
 
+    @Override
     public JavaType getInvokeReturnType() {
         return method.getSignature().getReturnType(method.getDeclaringClass());
     }
 
+    @Override
     public int getDepth() {
         return 0;
     }
 
+    @Override
     public boolean parsingIntrinsic() {
         return true;
     }
 
+    @Override
     public IntrinsicContext getIntrinsic() {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @Override
     public BailoutException bailout(String string) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @Override
     public ValueNode get() {
         return arguments[0];
     }
@@ -233,6 +252,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return null;
     }
 
+    @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
         throw JVMCIError.shouldNotReachHere();
     }

@@ -48,10 +48,12 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         this.shortCircuitProbability = shortCircuitProbability;
     }
 
+    @Override
     public LogicNode getX() {
         return x;
     }
 
+    @Override
     public LogicNode getY() {
         return y;
     }
@@ -94,6 +96,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         }
     }
 
+    @Override
     public LogicNode canonical(CanonicalizerTool tool, LogicNode forX, LogicNode forY) {
         ShortCircuitOrNode ret = canonicalizeNegation(forX, forY);
         if (ret != this) {

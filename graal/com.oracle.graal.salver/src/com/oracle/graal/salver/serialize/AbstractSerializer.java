@@ -39,17 +39,21 @@ public abstract class AbstractSerializer implements Serializer {
         }
     }
 
+    @Override
     public DumpWriter getWriter() {
         return writer;
     }
 
+    @Override
     public void setWriter(DumpWriter writer) {
         this.writer = writer;
     }
 
+    @Override
     public void reset() throws IOException {
     }
 
+    @Override
     public void flush() throws IOException {
         if (writer != null) {
             writer.flush();

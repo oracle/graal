@@ -116,6 +116,7 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
                             callCount.getAverage(), method.format("%h.%n(%p)")));
         }
 
+        @Override
         public int compareTo(MethodStatistics o) {
             int result = Long.compare(o.shallowCount.getSum(), shallowCount.getSum());
             if (result == 0) {

@@ -197,6 +197,7 @@ public class SPARCControlFlow {
             return asm.position() + maximumSelfOffsetInstructions * asm.target.wordSize;
         }
 
+        @Override
         public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             requestHints(masm);
             // When we use short branches, no delay slot is available
@@ -317,6 +318,7 @@ public class SPARCControlFlow {
             return hasShortJumpTarget;
         }
 
+        @Override
         public void resetState() {
             emitted = false;
             delaySlotPosition = -1;

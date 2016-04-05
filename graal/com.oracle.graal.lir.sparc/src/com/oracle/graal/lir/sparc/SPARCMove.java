@@ -100,10 +100,12 @@ public class SPARCMove {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return constant;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -192,10 +194,12 @@ public class SPARCMove {
             this.temp = temp;
         }
 
+        @Override
         public AllocatableValue getInput() {
             return input;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -274,6 +278,7 @@ public class SPARCMove {
             emitMemAccess(crb, masm);
         }
 
+        @Override
         public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
             if (state == null && address.isValidImplicitNullCheckFor(value, implicitNullCheckLimit)) {
                 state = nullCheckState;
@@ -399,10 +404,12 @@ public class SPARCMove {
             masm.ldub(addr, g0);
         }
 
+        @Override
         public Value getCheckedValue() {
             return input;
         }
 
+        @Override
         public LIRFrameState getState() {
             return state;
         }

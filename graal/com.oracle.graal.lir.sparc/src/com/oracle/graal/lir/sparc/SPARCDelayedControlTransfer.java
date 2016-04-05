@@ -35,6 +35,7 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 public interface SPARCDelayedControlTransfer {
 
     SPARCDelayedControlTransfer DUMMY = new SPARCDelayedControlTransfer() {
+        @Override
         public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             // do nothing
         }
@@ -44,6 +45,7 @@ public interface SPARCDelayedControlTransfer {
             return "null";
         }
 
+        @Override
         public void resetState() {
         }
     };

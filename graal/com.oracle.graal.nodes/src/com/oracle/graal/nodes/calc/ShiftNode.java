@@ -70,6 +70,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
+    @Override
     public final ShiftOp<OP> getArithmeticOp() {
         return getOp(getX());
     }
@@ -93,6 +94,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
         return getArithmeticOp().getShiftAmountMask(stamp());
     }
 
+    @Override
     public boolean isNarrowable(int resultBits) {
         assert CodeUtil.isPowerOf2(resultBits);
         int narrowMask = resultBits - 1;

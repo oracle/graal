@@ -39,6 +39,7 @@ public class NodeIterableIsEmpty extends TypeSafeDiagnosingMatcher<NodeIterable<
         return iterable.isEmpty();
     }
 
+    @Override
     public void describeTo(Description description) {
         description.appendText("is an empty NodeIterable");
     }

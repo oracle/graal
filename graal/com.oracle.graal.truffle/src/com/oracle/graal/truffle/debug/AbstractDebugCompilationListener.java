@@ -34,36 +34,47 @@ import com.oracle.graal.truffle.TruffleInlining;
 
 public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
 
+    @Override
     public void notifyCompilationQueued(OptimizedCallTarget target) {
     }
 
+    @Override
     public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
 
+    @Override
     public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
     }
 
+    @Override
     public void notifyCompilationStarted(OptimizedCallTarget target) {
     }
 
+    @Override
     public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
+    @Override
     public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
+    @Override
     public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
     }
 
+    @Override
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
     }
 
+    @Override
     public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
 
+    @Override
     public void notifyShutdown(GraalTruffleRuntime runtime) {
     }
 
+    @Override
     public void notifyStartup(GraalTruffleRuntime runtime) {
     }
 

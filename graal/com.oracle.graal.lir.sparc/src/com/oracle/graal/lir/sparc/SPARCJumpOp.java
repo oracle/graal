@@ -47,6 +47,7 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         this.store = new SPARCLIRInstructionMixinStore(SIZE);
     }
 
+    @Override
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         assert !emitDone;
         if (!crb.isSuccessorEdge(destination())) {
@@ -69,11 +70,13 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         }
     }
 
+    @Override
     public void resetState() {
         delaySlotPosition = -1;
         emitDone = false;
     }
 
+    @Override
     public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
         return store;
     }

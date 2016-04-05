@@ -167,6 +167,7 @@ public class Graph {
             seenNodeContext = true;
         }
 
+        @Override
         public void close() {
             currentNodeContext = previous;
         }
@@ -504,6 +505,7 @@ public class Graph {
             }
         }
 
+        @Override
         public void close() {
             assert nodeEventListener != null;
             if (nodeEventListener instanceof ChainedNodeEventListener) {
@@ -524,16 +526,19 @@ public class Graph {
             this.next = next;
         }
 
+        @Override
         public void nodeAdded(Node node) {
             head.nodeAdded(node);
             next.nodeAdded(node);
         }
 
+        @Override
         public void inputChanged(Node node) {
             head.inputChanged(node);
             next.inputChanged(node);
         }
 
+        @Override
         public void usagesDroppedToZero(Node node) {
             head.usagesDroppedToZero(node);
             next.usagesDroppedToZero(node);

@@ -131,6 +131,7 @@ public class InjectedDependencies implements Iterable<Dependency> {
         return ret.name;
     }
 
+    @Override
     public Iterator<Dependency> iterator() {
         return deps.values().iterator();
     }

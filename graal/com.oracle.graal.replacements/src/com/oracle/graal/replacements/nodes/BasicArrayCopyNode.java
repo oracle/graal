@@ -127,10 +127,12 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         return any();
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;
@@ -243,19 +245,23 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         }
     }
 
+    @Override
     public boolean canDeoptimize() {
         return true;
     }
 
+    @Override
     public FrameState stateDuring() {
         return stateDuring;
     }
 
+    @Override
     public void setStateDuring(FrameState stateDuring) {
         updateUsages(this.stateDuring, stateDuring);
         this.stateDuring = stateDuring;
     }
 
+    @Override
     public void computeStateDuring(FrameState currentStateAfter) {
         FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(getBci(), asNode().getStackKind());
         setStateDuring(newStateDuring);

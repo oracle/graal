@@ -30,10 +30,12 @@ import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
 
 public class AMD64HotSpotLIRKindTool extends AMD64LIRKindTool implements HotSpotLIRKindTool {
 
+    @Override
     public LIRKind getNarrowOopKind() {
         return LIRKind.reference(AMD64Kind.DWORD);
     }
 
+    @Override
     public LIRKind getNarrowPointerKind() {
         return LIRKind.value(AMD64Kind.DWORD);
     }

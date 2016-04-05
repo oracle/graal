@@ -54,10 +54,12 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
         this.compressible = compressible;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
     }

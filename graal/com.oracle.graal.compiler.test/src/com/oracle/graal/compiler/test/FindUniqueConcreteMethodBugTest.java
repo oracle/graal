@@ -81,6 +81,7 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
     }
 
     interface Tenant extends Person {
+        @Override
         default String getName() {
             return getAddress();
         }
@@ -98,6 +99,7 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
             this.name = name;
         }
 
+        @Override
         public String getName() {
             return name;
         }
@@ -110,6 +112,7 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
             this.id = id;
         }
 
+        @Override
         public String getAddress() {
             return String.valueOf(id);
         }

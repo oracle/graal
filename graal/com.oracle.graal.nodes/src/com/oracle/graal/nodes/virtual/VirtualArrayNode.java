@@ -169,6 +169,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
         return new AllocatedObjectNode(this);
     }
 
+    @Override
     public ValueNode length() {
         return ConstantNode.forInt(length);
     }

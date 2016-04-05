@@ -51,6 +51,7 @@ public final class TypeProfileNode extends FixedWithNextNode implements Canonica
         return new TypeProfileNode(profile);
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (this.usages().isEmpty()) {
             return null;

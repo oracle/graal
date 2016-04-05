@@ -65,6 +65,7 @@ public class DebugHistogramAsciiPrinter implements Printer {
         this.scale = scale;
     }
 
+    @Override
     public void print(DebugHistogram histogram) {
         List<CountedValue> list = histogram.getValues();
         if (list.isEmpty()) {

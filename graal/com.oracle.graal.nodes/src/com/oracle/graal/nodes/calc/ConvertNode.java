@@ -69,5 +69,6 @@ public interface ConvertNode extends NodeInterface {
         return preservesOrder(op);
     }
 
+    @Override
     ValueNode asNode();
 }

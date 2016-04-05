@@ -114,6 +114,7 @@ public class TruffleGraphBuilderPlugins {
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant() && b.getAssumptions() != null) {
                     Constant constant = receiver.get().asConstant();
@@ -148,30 +149,35 @@ public class TruffleGraphBuilderPlugins {
         for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
             Class<?> type = kind.toJavaClass();
             r.register2("addExact", type, type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new IntegerAddExactNode(x, y));
                     return true;
                 }
             });
             r.register2("subtractExact", type, type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new IntegerSubExactNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyExact", type, type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new IntegerMulExactNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyHigh", type, type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new IntegerMulHighNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyHighUnsigned", type, type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.addPush(kind, new UnsignedMulHighNode(x, y));
                     return true;
@@ -183,46 +189,54 @@ public class TruffleGraphBuilderPlugins {
     public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
                 return true;
             }
         });
         r.register0("inCompiledCode", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
                 return true;
             }
         });
         r.register0("transferToInterpreter", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
         r.register0("transferToInterpreterAndInvalidate", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
         r.register1("interpreterOnly", Runnable.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 return true;
             }
         });
         r.register1("interpreterOnly", Callable.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 return true;
             }
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
                 b.addPush(JavaKind.Boolean, new BranchProbabilityNode(probability, condition));
                 return true;
             }
         });
         r.register1("bailout", String.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (canDelayIntrinsification) {
                     /*
@@ -251,6 +265,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
@@ -261,6 +276,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         r.register1("isPartialEvaluationConstant", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
@@ -273,18 +289,21 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.add(new ForceMaterializeNode(value));
                 return true;
             }
         });
         r.register1("ensureVirtualized", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, false));
                 return true;
             }
         });
         r.register1("ensureVirtualizedHere", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, true));
                 return true;
@@ -295,6 +314,7 @@ public class TruffleGraphBuilderPlugins {
     public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, CompilerAsserts.class);
         r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ValueNode curValue = value;
                 if (curValue instanceof BoxNode) {
@@ -323,12 +343,14 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         r.register0("neverPartOfCompilation", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NeverPartOfCompilationNode("CompilerAsserts.neverPartOfCompilation()"));
                 return true;
             }
         });
         r.register1("neverPartOfCompilation", String.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (message.isConstant()) {
                     String messageString = message.asConstant().toValueString();
@@ -344,6 +366,7 @@ public class TruffleGraphBuilderPlugins {
     public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode descriptor, ValueNode args) {
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
                 b.addPush(JavaKind.Object, new NewFrameNode(snippetReflection, StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(frameClass))), descriptor, args));
@@ -351,6 +374,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         r.register2("castArrayFixedLength", Object[].class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode length) {
                 b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp()));
                 return true;
@@ -374,6 +398,7 @@ public class TruffleGraphBuilderPlugins {
 
     private static void registerMaterialize(Registration r) {
         r.register1("materialize", Receiver.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
                 b.addPush(JavaKind.Object, new MaterializeFrameNode(frame.get()));
                 return true;
@@ -383,6 +408,7 @@ public class TruffleGraphBuilderPlugins {
 
     public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
                 if (clazz.isConstant() && nonNull.isConstant()) {
                     ConstantReflectionProvider constantReflection = b.getConstantReflection();
@@ -444,6 +470,7 @@ public class TruffleGraphBuilderPlugins {
             this.returnKind = returnKind;
         }
 
+        @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode offset, ValueNode condition, ValueNode location) {
             if (location.isConstant()) {
                 LocationIdentity locationIdentity;
@@ -469,6 +496,7 @@ public class TruffleGraphBuilderPlugins {
             this.kind = kind;
         }
 
+        @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode offset, ValueNode value, ValueNode location) {
             ValueNode locationArgument = location;
             if (locationArgument.isConstant()) {

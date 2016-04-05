@@ -83,6 +83,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
         public abstract AbstractBlockBase<?> getCurrentBlock();
 
+        @Override
         public abstract void close();
 
     }

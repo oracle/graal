@@ -42,10 +42,12 @@ public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode impl
         this.y = y;
     }
 
+    @Override
     public ValueNode getX() {
         return x;
     }
 
+    @Override
     public ValueNode getY() {
         return y;
     }

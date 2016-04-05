@@ -184,6 +184,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         this.constantReflection = constantReflection;
     }
 
+    @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         super.initialize(providers, providers.getSnippetReflection());
 

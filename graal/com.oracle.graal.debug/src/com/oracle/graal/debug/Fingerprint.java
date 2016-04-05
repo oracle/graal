@@ -101,6 +101,7 @@ public class Fingerprint implements AutoCloseable {
     /**
      * Finishes fingerprint recording or verification for the current thread.
      */
+    @Override
     public void close() {
         if (ENABLED) {
             assert current.get() == this;

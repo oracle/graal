@@ -99,6 +99,7 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
         return weakDependencies;
     }
 
+    @Override
     public void virtualize(VirtualizerTool tool) {
         // InstrumentationNode allows non-materialized inputs. During the inlining of the
         // InstrumentationNode, non-materialized inputs will be replaced by null.
@@ -147,6 +148,7 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
         final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(position);
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
+            @Override
             public Node replacement(Node replacement) {
                 if (replacement instanceof ParameterNode) {
                     ValueNode value = getWeakDependencies().get(((ParameterNode) replacement).index());
@@ -223,6 +225,7 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
         }
     }
 
+    @Override
     public boolean canDeoptimize() {
         return true;
     }

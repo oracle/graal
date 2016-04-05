@@ -57,6 +57,7 @@ public abstract class NodePredicates {
             return true;
         }
 
+        @Override
         public NodePredicate and(NodePredicate np) {
             return np;
         }
@@ -69,6 +70,7 @@ public abstract class NodePredicates {
             return false;
         }
 
+        @Override
         public NodePredicate and(NodePredicate np) {
             return this;
         }

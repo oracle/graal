@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.spi.NodeWithState;
  */
 public interface StateSplit extends NodeWithState {
 
+    @Override
     FixedNode asNode();
 
     /**

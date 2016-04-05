@@ -146,23 +146,27 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         }
 
         private final InstructionValueConsumer outputConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 visitOutput(intervalData, op, operand, mode, flags, neverSpillConstants, spillMoveFactory);
             }
         };
 
         private final InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 visitTemp(intervalData, op, operand, mode, flags);
             }
         };
         private final InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 visitAlive(intervalData, op, operand, mode, flags);
             }
         };
 
         private final InstructionValueConsumer inputConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 visitInput(intervalData, op, operand, mode, flags);
             }
@@ -170,6 +174,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         };
 
         private final InstructionValueConsumer stateProc = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 visitState(intervalData, op, operand);
             }

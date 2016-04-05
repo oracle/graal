@@ -50,6 +50,7 @@ public class CompilerThreadFactory implements ThreadFactory {
         this.debugConfigAccess = debugConfigAccess;
     }
 
+    @Override
     public Thread newThread(Runnable r) {
         return new CompilerThread(r, threadNamePrefix, debugConfigAccess);
     }

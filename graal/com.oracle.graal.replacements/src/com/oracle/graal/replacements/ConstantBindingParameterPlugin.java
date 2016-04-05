@@ -51,6 +51,7 @@ public class ConstantBindingParameterPlugin implements ParameterPlugin {
         this.snippetReflection = snippetReflection;
     }
 
+    @Override
     public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
         Object arg = constantArgs[index];
         if (arg != null) {

@@ -141,42 +141,52 @@ public class GraalDebugConfig implements DebugConfig {
         this.output = output;
     }
 
+    @Override
     public int getLogLevel() {
         return getLevel(logFilter);
     }
 
+    @Override
     public boolean isLogEnabledForMethod() {
         return isEnabledForMethod(logFilter);
     }
 
+    @Override
     public boolean isMeterEnabled() {
         return isEnabled(meterFilter);
     }
 
+    @Override
     public boolean isMemUseTrackingEnabled() {
         return isEnabled(trackMemUseFilter);
     }
 
+    @Override
     public int getDumpLevel() {
         return getLevel(dumpFilter);
     }
 
+    @Override
     public boolean isDumpEnabledForMethod() {
         return isEnabledForMethod(dumpFilter);
     }
 
+    @Override
     public boolean isVerifyEnabled() {
         return isEnabled(verifyFilter);
     }
 
+    @Override
     public boolean isVerifyEnabledForMethod() {
         return isEnabledForMethod(verifyFilter);
     }
 
+    @Override
     public boolean isTimeEnabled() {
         return isEnabled(timerFilter);
     }
 
+    @Override
     public PrintStream output() {
         return output;
     }

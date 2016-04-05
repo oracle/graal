@@ -53,10 +53,12 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
             return valueToString(value);
         }
 
+        @Override
         public TimeUnit getTimeUnit() {
             return accm.getTimeUnit();
         }
 
+        @Override
         public DebugCloseable start() {
             return accm.start();
         }
@@ -87,6 +89,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
     }
 
+    @Override
     public DebugTimer getFlat() {
         return (FlatTimer) flat;
     }
@@ -96,6 +99,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         return valueToString(value);
     }
 
+    @Override
     public TimeUnit getTimeUnit() {
         return TimeUnit.NANOSECONDS;
     }

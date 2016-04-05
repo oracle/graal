@@ -44,6 +44,7 @@ public class NullBytecodeExceptionTest extends BytecodeExceptionTest {
     @Override
     protected void registerPlugin(InvocationPlugins plugins) {
         plugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return throwBytecodeException(b, NullPointerException.class);
             }

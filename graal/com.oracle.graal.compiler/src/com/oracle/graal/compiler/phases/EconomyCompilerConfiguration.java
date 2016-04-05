@@ -37,26 +37,32 @@ import com.oracle.graal.phases.tiers.MidTierContext;
 
 public class EconomyCompilerConfiguration implements CompilerConfiguration {
 
+    @Override
     public PhaseSuite<HighTierContext> createHighTier() {
         return new EconomyHighTier();
     }
 
+    @Override
     public PhaseSuite<MidTierContext> createMidTier() {
         return new EconomyMidTier();
     }
 
+    @Override
     public PhaseSuite<LowTierContext> createLowTier() {
         return new EconomyLowTier();
     }
 
+    @Override
     public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage() {
         return new EconomyPreAllocationOptimizationStage();
     }
 
+    @Override
     public LIRPhaseSuite<AllocationContext> createAllocationStage() {
         return new EconomyAllocationStage();
     }
 
+    @Override
     public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage() {
         return new EconomyPostAllocationOptimizationStage();
     }

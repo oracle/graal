@@ -101,6 +101,7 @@ public class InvocationPlugins {
             this.name = name;
         }
 
+        @Override
         public String getTypeName() {
             return name;
         }
@@ -134,6 +135,7 @@ public class InvocationPlugins {
         private final Type declaringType;
         private boolean allowOverwrite;
 
+        @Override
         public Class<?> getReceiverType() {
             return Receiver.class;
         }
@@ -292,6 +294,7 @@ public class InvocationPlugins {
          *            is non-static. Upon returning, element 0 will have been rewritten to
          *            {@code declaringClass}
          */
+        @Override
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Type... argumentTypes) {
             registerMethodSubstitution(substituteDeclaringClass, name, name, argumentTypes);
         }
@@ -307,6 +310,7 @@ public class InvocationPlugins {
          *            is non-static. Upon returning, element 0 will have been rewritten to
          *            {@code declaringClass}
          */
+        @Override
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
             MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, substituteName, argumentTypes);
             plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);

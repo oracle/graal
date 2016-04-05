@@ -467,6 +467,7 @@ public class BytecodeParser implements GraphBuilderContext {
             stateBefore = parser.frameState.create(parser.bci(), parser.getNonIntrinsicAncestor(), false, argSlotKinds, args);
         }
 
+        @Override
         public void close() {
             IntrinsicContext intrinsic = parser.intrinsicContext;
             if (intrinsic != null && intrinsic.isPostParseInlined()) {
@@ -1294,16 +1295,19 @@ public class BytecodeParser implements GraphBuilderContext {
     private final StampProvider stampProvider;
     protected final IntrinsicContext intrinsicContext;
 
+    @Override
     public InvokeKind getInvokeKind() {
         return currentInvokeKind;
     }
 
+    @Override
     public JavaType getInvokeReturnType() {
         return currentInvokeReturnType;
     }
 
     private boolean forceInliningEverything;
 
+    @Override
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
@@ -1541,6 +1545,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return null;
     }
 
+    @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
         boolean res = inline(targetMethod, substitute, true, args);
         assert res : "failed to inline " + substitute;
@@ -1862,6 +1867,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return added;
     }
 
+    @Override
     public <T extends ValueNode> T recursiveAppend(T v) {
         if (v.graph() != null) {
             return v;
@@ -2585,19 +2591,23 @@ public class BytecodeParser implements GraphBuilderContext {
         return currentBC == Bytecodes.IRETURN;
     }
 
+    @Override
     public StampProvider getStampProvider() {
         return stampProvider;
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public void push(JavaKind slotKind, ValueNode value) {
         assert value.isAlive();
         frameState.push(slotKind, value);
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
@@ -2605,14 +2615,17 @@ public class BytecodeParser implements GraphBuilderContext {
     /**
      * Gets the graph being processed by this builder.
      */
+    @Override
     public StructuredGraph getGraph() {
         return graph;
     }
 
+    @Override
     public BytecodeParser getParent() {
         return parent;
     }
 
+    @Override
     public IntrinsicContext getIntrinsic() {
         return intrinsicContext;
     }
@@ -2634,6 +2647,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return fmt.toString();
     }
 
+    @Override
     public BailoutException bailout(String string) {
         FrameState currentFrameState = createFrameState(bci(), null);
         StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
@@ -2648,6 +2662,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return frameState.create(bci, forStateSplit);
     }
 
+    @Override
     public void setStateAfter(StateSplit sideEffect) {
         assert sideEffect.hasSideEffect();
         FrameState stateAfter = createFrameState(stream.nextBCI(), sideEffect);
@@ -2666,6 +2681,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return stream;
     }
 
+    @Override
     public int bci() {
         return stream.currentBCI();
     }
@@ -3627,6 +3643,7 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(JavaKind.Int, append(genArrayLength(array)));
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
@@ -3660,10 +3677,12 @@ public class BytecodeParser implements GraphBuilderContext {
         Debug.log("%s", sb);
     }
 
+    @Override
     public boolean parsingIntrinsic() {
         return intrinsicContext != null;
     }
 
+    @Override
     public BytecodeParser getNonIntrinsicAncestor() {
         BytecodeParser ancestor = parent;
         while (ancestor != null && ancestor.parsingIntrinsic()) {

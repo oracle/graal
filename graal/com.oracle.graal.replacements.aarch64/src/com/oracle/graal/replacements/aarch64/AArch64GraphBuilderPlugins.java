@@ -39,6 +39,7 @@ public class AArch64GraphBuilderPlugins {
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
+            @Override
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int);
                 registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long);
@@ -52,6 +53,7 @@ public class AArch64GraphBuilderPlugins {
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
         r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ValueNode folded = AArch64CountLeadingZerosNode.tryFold(value);
                 if (folded != null) {
@@ -63,6 +65,7 @@ public class AArch64GraphBuilderPlugins {
             }
         });
         r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ValueNode folded = BitScanForwardNode.tryFold(value);
                 if (folded != null) {

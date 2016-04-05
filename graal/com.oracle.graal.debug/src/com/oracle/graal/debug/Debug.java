@@ -209,6 +209,7 @@ public class Debug {
      * via {@link #close()}.
      */
     public interface Scope extends AutoCloseable {
+        @Override
         void close();
     }
 
@@ -1218,6 +1219,7 @@ public class Debug {
                 return logLevel;
             }
 
+            @Override
             public boolean isLogEnabledForMethod() {
                 return logLevel > 0;
             }
@@ -1237,6 +1239,7 @@ public class Debug {
                 return dumpLevel;
             }
 
+            @Override
             public boolean isDumpEnabledForMethod() {
                 return dumpLevel > 0;
             }
@@ -1246,6 +1249,7 @@ public class Debug {
                 return isVerifyEnabled;
             }
 
+            @Override
             public boolean isVerifyEnabledForMethod() {
                 return isVerifyEnabled;
             }
@@ -1287,20 +1291,25 @@ public class Debug {
 
     private static final DebugMetric VOID_METRIC = new DebugMetric() {
 
+        @Override
         public void increment() {
         }
 
+        @Override
         public void add(long value) {
         }
 
+        @Override
         public void setConditional(boolean flag) {
             throw new InternalError("Cannot make void metric conditional");
         }
 
+        @Override
         public boolean isConditional() {
             return false;
         }
 
+        @Override
         public long getCurrentValue() {
             return 0L;
         }
@@ -1308,10 +1317,12 @@ public class Debug {
 
     private static final DebugMemUseTracker VOID_MEM_USE_TRACKER = new DebugMemUseTracker() {
 
+        @Override
         public DebugCloseable start() {
             return DebugCloseable.VOID_CLOSEABLE;
         }
 
+        @Override
         public long getCurrentValue() {
             return 0;
         }
@@ -1529,22 +1540,27 @@ public class Debug {
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {
 
+        @Override
         public DebugCloseable start() {
             return DebugCloseable.VOID_CLOSEABLE;
         }
 
+        @Override
         public void setConditional(boolean flag) {
             throw new InternalError("Cannot make void timer conditional");
         }
 
+        @Override
         public boolean isConditional() {
             return false;
         }
 
+        @Override
         public long getCurrentValue() {
             return 0L;
         }
 
+        @Override
         public TimeUnit getTimeUnit() {
             return null;
         }

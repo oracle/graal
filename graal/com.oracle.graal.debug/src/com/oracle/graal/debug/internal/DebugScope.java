@@ -170,6 +170,7 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
+    @Override
     public void close() {
         instanceTL.set(parent);
         configTL.set(parentConfig);

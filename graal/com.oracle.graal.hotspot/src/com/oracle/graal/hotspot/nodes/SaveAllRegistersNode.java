@@ -69,6 +69,7 @@ public final class SaveAllRegistersNode extends FixedWithNextNode implements LIR
     @NodeIntrinsic
     public static native long saveAllRegisters();
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.any();
     }

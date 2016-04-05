@@ -60,16 +60,19 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.any();
     }

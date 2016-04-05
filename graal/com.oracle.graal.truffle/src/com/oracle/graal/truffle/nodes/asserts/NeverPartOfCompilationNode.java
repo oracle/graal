@@ -50,16 +50,19 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
         return message;
     }
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }

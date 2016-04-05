@@ -152,6 +152,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
 
         Thread controlThread = new Thread(new Runnable() {
 
+            @Override
             public void run() {
                 try {
                     // wait for the main thread to start

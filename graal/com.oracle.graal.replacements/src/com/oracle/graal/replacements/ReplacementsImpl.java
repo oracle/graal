@@ -179,6 +179,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
 
+    @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args) {
         return getSnippet(method, null, args);
     }
@@ -209,11 +210,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         // No initialization needed as snippet graphs are created on demand in getSnippet
     }
 
+    @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         return plugin != null && (!plugin.inlineOnly() || invokeBci >= 0);
     }
 
+    @Override
     public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod method) {
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin instanceof MethodSubstitutionPlugin) {

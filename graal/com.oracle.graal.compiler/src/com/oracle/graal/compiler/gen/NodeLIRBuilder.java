@@ -179,6 +179,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return nodeOperands.get(node);
     }
 
+    @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
         for (Entry<Node, Value> entry : nodeOperands.entries()) {
@@ -319,6 +320,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
+    @Override
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
@@ -705,6 +707,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @Override
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;

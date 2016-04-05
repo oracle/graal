@@ -57,6 +57,7 @@ public final class ControlFlowAnchorNode extends FixedWithNextNode implements LI
         this();
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         // do nothing
     }

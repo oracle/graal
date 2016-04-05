@@ -33,18 +33,22 @@ import java.util.Set;
  */
 public class DefaultCollectionsProvider implements CollectionsProvider {
 
+    @Override
     public <E> Set<E> newIdentitySet() {
         return Collections.newSetFromMap(newIdentityMap());
     }
 
+    @Override
     public <K, V> Map<K, V> newIdentityMap() {
         return new IdentityHashMap<>();
     }
 
+    @Override
     public <K, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
         return new IdentityHashMap<>(expectedMaxSize);
     }
 
+    @Override
     public <K, V> Map<K, V> newIdentityMap(Map<K, V> initFrom) {
         return new IdentityHashMap<>(initFrom);
     }

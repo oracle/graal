@@ -67,10 +67,12 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         return super.toString(verbosity);
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.any();
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }

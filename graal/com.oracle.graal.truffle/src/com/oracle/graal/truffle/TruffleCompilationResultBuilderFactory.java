@@ -61,6 +61,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
         this.validAssumptions = validAssumptions;
     }
 
+    @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
         return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult) {

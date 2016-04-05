@@ -321,6 +321,7 @@ public class InliningUtil {
         final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
+            @Override
             public Node replacement(Node node) {
                 if (node instanceof ParameterNode) {
                     return parameters.get(((ParameterNode) node).index());

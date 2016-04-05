@@ -190,6 +190,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             block = allocator.blockForId(range.from);
         }
 
+        @Override
         public AbstractBlockBase<?> next() {
             AbstractBlockBase<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
@@ -209,6 +210,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             return currentBlock;
         }
 
+        @Override
         public boolean hasNext() {
             return block != null;
         }
@@ -216,6 +218,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
 
     private Iterable<AbstractBlockBase<?>> blocksForInterval(Interval interval) {
         return new Iterable<AbstractBlockBase<?>>() {
+            @Override
             public Iterator<AbstractBlockBase<?>> iterator() {
                 return new IntervalBlockIterator(interval);
             }

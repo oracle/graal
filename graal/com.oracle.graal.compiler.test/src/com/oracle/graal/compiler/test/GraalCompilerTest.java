@@ -954,12 +954,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
         }, GraalCompilerTest.class, "breakpoint");
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;

@@ -180,6 +180,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             this.isStub = isStub;
         }
 
+        @Override
         public boolean hasFrame() {
             return true;
         }

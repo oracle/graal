@@ -41,6 +41,7 @@ public final class ForeignCallPlugin implements InvocationPlugin {
         this.descriptor = descriptor;
     }
 
+    @Override
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, descriptor, args);
         foreignCall.setBci(b.bci());

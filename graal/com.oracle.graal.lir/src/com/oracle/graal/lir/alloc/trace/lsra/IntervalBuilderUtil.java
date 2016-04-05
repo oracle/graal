@@ -292,6 +292,7 @@ public final class IntervalBuilderUtil {
         if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
 
             ValueProcedure registerHintProc = new ValueProcedure() {
+                @Override
                 public Value doValue(Value registerHint, OperandMode valueMode, EnumSet<OperandFlag> valueFlags) {
                     if (TraceLinearScan.isVariableOrRegister(registerHint)) {
                         /*

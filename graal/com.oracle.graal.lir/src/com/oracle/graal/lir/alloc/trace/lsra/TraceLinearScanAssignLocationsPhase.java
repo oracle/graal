@@ -185,6 +185,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
         }
 
         private final InstructionValueProcedure assignProc = new InstructionValueProcedure() {
+            @Override
             public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
                     return colorLirOperand(instruction, (Variable) value, mode);
@@ -262,6 +263,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
 
         private final InstructionValueProcedure colorOutgoingIncomingValues = new InstructionValueProcedure() {
 
+            @Override
             public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
                     TraceInterval interval = allocator.intervalFor(value);

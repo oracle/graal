@@ -40,10 +40,12 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Input protected ValueNode x;
     @Input protected ValueNode y;
 
+    @Override
     public ValueNode getX() {
         return x;
     }
 
+    @Override
     public ValueNode getY() {
         return y;
     }

@@ -207,6 +207,7 @@ final class FixPointIntervalBuilder {
         }
 
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction inst, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
@@ -220,6 +221,7 @@ final class FixPointIntervalBuilder {
         };
 
         InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction inst, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
@@ -256,6 +258,7 @@ final class FixPointIntervalBuilder {
         void addRegisterHint(final LIRInstruction op, VirtualStackSlot targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
             if (flags.contains(OperandFlag.HINT)) {
                 InstructionValueProcedure proc = new InstructionValueProcedure() {
+                    @Override
                     public Value doValue(LIRInstruction instruction, Value registerHint, OperandMode vaueMode, EnumSet<OperandFlag> valueFlags) {
                         if (isVirtualStackSlot(registerHint)) {
                             StackInterval from = getOrCreateInterval((VirtualStackSlot) registerHint);

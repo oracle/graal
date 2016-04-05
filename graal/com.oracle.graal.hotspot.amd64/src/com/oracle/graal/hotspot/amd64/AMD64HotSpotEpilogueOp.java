@@ -64,6 +64,7 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction implements AMD
         crb.frameContext.leave(crb);
     }
 
+    @Override
     public void setSavedRbp(AllocatableValue value) {
         savedRbp = value;
     }

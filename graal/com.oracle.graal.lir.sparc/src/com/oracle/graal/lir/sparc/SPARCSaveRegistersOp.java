@@ -111,10 +111,12 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
         return slots;
     }
 
+    @Override
     public boolean supportsRemove() {
         return supportsRemove;
     }
 
+    @Override
     public int remove(Set<Register> doNotSave) {
         if (!supportsRemove) {
             throw new UnsupportedOperationException();
@@ -135,6 +137,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
         return pruned;
     }
 
+    @Override
     public RegisterSaveLayout getMap(FrameMap frameMap) {
         int total = 0;
         for (int i = 0; i < savedRegisters.length; i++) {

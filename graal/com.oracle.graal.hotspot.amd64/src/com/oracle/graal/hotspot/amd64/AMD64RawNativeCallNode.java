@@ -58,23 +58,28 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
 
     private static class PointerType implements JavaType {
 
+        @Override
         public String getName() {
             return "void*";
         }
 
+        @Override
         public JavaType getComponentType() {
             return null;
         }
 
+        @Override
         public JavaType getArrayClass() {
             return null;
         }
 
+        @Override
         public JavaKind getJavaKind() {
             // native pointers and java objects use the same registers in the calling convention
             return JavaKind.Object;
         }
 
+        @Override
         public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
             return null;
         }

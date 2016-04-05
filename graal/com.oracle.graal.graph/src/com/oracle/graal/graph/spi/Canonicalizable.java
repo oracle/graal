@@ -90,6 +90,7 @@ public interface Canonicalizable {
          */
         T getValue();
 
+        @Override
         default Node canonical(CanonicalizerTool tool) {
             return canonical(tool, getValue());
         }
@@ -126,6 +127,7 @@ public interface Canonicalizable {
          */
         T getY();
 
+        @Override
         default Node canonical(CanonicalizerTool tool) {
             return canonical(tool, getX(), getY());
         }

@@ -78,14 +78,17 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
         }
     }
 
+    @Override
     public int size() {
         return map.size();
     }
 
+    @Override
     public boolean isEmpty() {
         return map.isEmpty();
     }
 
+    @Override
     public boolean containsKey(Object key) {
         return map.containsKey(id(key));
     }
@@ -98,22 +101,27 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
         return new Id<>((K) key);
     }
 
+    @Override
     public boolean containsValue(Object value) {
         return map.containsValue(value);
     }
 
+    @Override
     public V get(Object key) {
         return map.get(id(key));
     }
 
+    @Override
     public V put(K key, V value) {
         return map.put(id(key), value);
     }
 
+    @Override
     public V remove(Object key) {
         return map.remove(id(key));
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public void putAll(Map<? extends K, ? extends V> m) {
         if (m == null) {
@@ -130,6 +138,7 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
         }
     }
 
+    @Override
     public void clear() {
         map.clear();
     }
@@ -150,14 +159,17 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
             return new Iterator<K>() {
                 final Iterator<Id<K>> i = map.keySet().iterator();
 
+                @Override
                 public boolean hasNext() {
                     return i.hasNext();
                 }
 
+                @Override
                 public K next() {
                     return i.next().object;
                 }
 
+                @Override
                 public void remove() {
                     i.remove();
                 }
@@ -174,19 +186,23 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
             return LinkedIdentityHashMap.this.remove(o) != null;
         }
 
+        @Override
         public Spliterator<K> spliterator() {
             return Spliterators.spliterator(this, Spliterator.SIZED | Spliterator.ORDERED | Spliterator.DISTINCT);
         }
 
+        @Override
         public void forEach(Consumer<? super K> action) {
             throw new UnsupportedOperationException();
         }
     }
 
+    @Override
     public Set<K> keySet() {
         return new KeySet();
     }
 
+    @Override
     public Collection<V> values() {
         return map.values();
     }
@@ -207,28 +223,34 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
             return new Iterator<Map.Entry<K, V>>() {
                 final Iterator<Map.Entry<Id<K>, V>> i = map.entrySet().iterator();
 
+                @Override
                 public boolean hasNext() {
                     return i.hasNext();
                 }
 
+                @Override
                 public Map.Entry<K, V> next() {
                     Map.Entry<Id<K>, V> e = i.next();
                     return new Map.Entry<K, V>() {
 
+                        @Override
                         public K getKey() {
                             return e.getKey().object;
                         }
 
+                        @Override
                         public V getValue() {
                             return e.getValue();
                         }
 
+                        @Override
                         public V setValue(V value) {
                             return e.setValue(value);
                         }
                     };
                 }
 
+                @Override
                 public void remove() {
                     i.remove();
                 }
@@ -245,15 +267,18 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public Spliterator<Map.Entry<K, V>> spliterator() {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public void forEach(Consumer<? super Map.Entry<K, V>> action) {
             throw new UnsupportedOperationException();
         }
     }
 
+    @Override
     public Set<Map.Entry<K, V>> entrySet() {
         return new EntrySet();
     }
