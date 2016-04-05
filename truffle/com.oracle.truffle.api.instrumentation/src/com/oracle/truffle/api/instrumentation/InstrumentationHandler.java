@@ -751,7 +751,7 @@ final class InstrumentationHandler {
         @Override
         protected void detachLanguageFromInstrumentation(Object vm, com.oracle.truffle.api.TruffleLanguage.Env env) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) ACCESSOR.getInstrumentationHandler(vm);
-            instrumentationHandler.detachLanguage(findContext(env));
+            instrumentationHandler.detachLanguage(languageSupport().findContext(env));
         }
 
         @Override

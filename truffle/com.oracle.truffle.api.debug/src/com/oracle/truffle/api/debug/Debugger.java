@@ -1060,15 +1060,19 @@ public final class Debugger {
      */
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         if (frameInstance == null) {
-            return ACCESSOR.evalInContext(engine, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
+            return AccessorDebug.langs().evalInContext(engine, ev, code, debugContext.haltedNode, debugContext.haltedFrame);
         } else {
-            return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+            return AccessorDebug.langs().evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
         }
     }
 
     static final class AccessorDebug extends Accessor {
         static Accessor.Nodes nodesAccess() {
             return ACCESSOR.nodes();
+        }
+
+        static Accessor.LanguageSupport langs() {
+            return ACCESSOR.languageSupport();
         }
 
         @Override
@@ -1103,11 +1107,6 @@ public final class Debugger {
         @Override
         protected void dispatchEvent(Object vm, Object event) {
             super.dispatchEvent(vm, event);
-        }
-
-        @Override
-        protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
-            return super.evalInContext(vm, ev, code, node, frame);
         }
 
         @SuppressWarnings("rawtypes")
