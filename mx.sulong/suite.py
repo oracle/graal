@@ -310,8 +310,6 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.parser",
-        "com.oracle.truffle.llvm.nodes",
         "com.oracle.truffle.llvm.nativeint"
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
