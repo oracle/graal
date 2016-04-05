@@ -578,24 +578,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     static final class AccessorNodes extends Accessor {
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return n.language;
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Node n) {
-            return n.getRootNode().language;
-        }
-
-        @Override
-        protected boolean isInstrumentable(RootNode rootNode) {
-            return rootNode.isInstrumentable();
-        }
-
         @Override
         protected void probeAST(RootNode rootNode) {
             super.probeAST(rootNode);
@@ -606,6 +588,23 @@ public abstract class Node implements NodeInterface, Cloneable {
             super.onLoopCount(source, iterations);
         }
 
+        @Override
+        protected Accessor.Nodes nodes() {
+            return new AccessNodes();
+        }
+
+        static final class AccessNodes extends Accessor.Nodes {
+            @SuppressWarnings("rawtypes")
+            @Override
+            public Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+                return n.language;
+            }
+
+            @Override
+            public boolean isInstrumentable(RootNode rootNode) {
+                return rootNode.isInstrumentable();
+            }
+        }
     }
 
     // registers into Accessor.NODES

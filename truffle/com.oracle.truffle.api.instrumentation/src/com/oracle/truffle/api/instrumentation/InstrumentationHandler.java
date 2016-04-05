@@ -649,7 +649,7 @@ final class InstrumentationHandler {
 
         @Override
         boolean isInstrumentable(Node node) {
-            if (ACCESSOR.findLanguage(node.getRootNode()) != language.getClass()) {
+            if (AccessorInstrumentHandler.nodesAccess().findLanguage(node.getRootNode()) != language.getClass()) {
                 return false;
             }
             // TODO (chumer) check for the context instance
@@ -705,11 +705,8 @@ final class InstrumentationHandler {
     static final AccessorInstrumentHandler ACCESSOR = new AccessorInstrumentHandler();
 
     static final class AccessorInstrumentHandler extends Accessor {
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return super.findLanguage(n);
+        static Accessor.Nodes nodesAccess() {
+            return ACCESSOR.nodes();
         }
 
         @SuppressWarnings("rawtypes")

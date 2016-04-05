@@ -592,7 +592,7 @@ public abstract class TruffleLanguage<C> {
         @Override
         protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();
-            Class<? extends TruffleLanguage> languageType = findLanguage(rootNode);
+            Class<? extends TruffleLanguage> languageType = nodes().findLanguage(rootNode);
             final Env env = findLanguage(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.fromText(code, "eval in context");

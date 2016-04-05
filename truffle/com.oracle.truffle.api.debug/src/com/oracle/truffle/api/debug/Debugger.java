@@ -1067,6 +1067,9 @@ public final class Debugger {
     }
 
     static final class AccessorDebug extends Accessor {
+        static Accessor.Nodes nodesAccess() {
+            return ACCESSOR.nodes();
+        }
 
         @Override
         protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
@@ -1095,12 +1098,6 @@ public final class Debugger {
                     }
                 }
             };
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Node node) {
-            return super.findLanguage(node);
         }
 
         @Override

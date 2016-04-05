@@ -369,7 +369,7 @@ public final class Instrumenter {
 
         final SourceSection sourceSection = wrapper.getChild().getSourceSection();
         final ProbeNode probeNode = new ProbeNode();
-        Class<? extends TruffleLanguage> l = ACCESSOR.findLanguage(wrapper.getChild().getRootNode());
+        Class<? extends TruffleLanguage> l = AccessorInstrument.nodesAccess().findLanguage(wrapper.getChild().getRootNode());
         final Probe probe = new Probe(this, l, probeNode, sourceSection);
         probes.add(new WeakReference<>(probe));
         probeNode.probe = probe;  // package private access
@@ -729,10 +729,8 @@ public final class Instrumenter {
             return super.createWrapperNode(vm, node);
         }
 
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return super.findLanguage(n);
+        static Accessor.Nodes nodesAccess() {
+            return ACCESSOR.nodes();
         }
 
         @SuppressWarnings("rawtypes")

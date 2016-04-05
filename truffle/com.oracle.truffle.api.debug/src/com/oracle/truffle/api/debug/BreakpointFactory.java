@@ -392,7 +392,7 @@ final class BreakpointFactory {
             assert conditionSource != null;
             final Node instrumentedNode = context.getInstrumentedNode();
             if (condLangClass == null) {
-                condLangClass = Debugger.ACCESSOR.findLanguage(instrumentedNode);
+                condLangClass = Debugger.AccessorDebug.nodesAccess().findLanguage(instrumentedNode.getRootNode());
                 if (condLangClass == null) {
                     warningLog.addWarning("Unable to find language for condition: \"" + conditionSource.getCode() + "\" at " + getLocationDescription());
                     return null;

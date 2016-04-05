@@ -54,9 +54,19 @@ import com.oracle.truffle.api.source.Source;
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
  */
 public abstract class Accessor {
+    /**
+     * Accessor provided by the {@link Node} class and package.
+     */
+    public abstract static class Nodes {
+        @SuppressWarnings("rawtypes")
+        public abstract Class<? extends TruffleLanguage> findLanguage(RootNode n);
+
+        public abstract boolean isInstrumentable(RootNode rootNode);
+    }
+
     private static Accessor API;
     private static Accessor SPI;
-    private static Accessor NODES;
+    private static Accessor.Nodes NODES;
     private static Accessor INSTRUMENT;
     static Accessor INSTRUMENTHANDLER;
     private static Accessor DEBUG;
@@ -131,7 +141,7 @@ public abstract class Accessor {
             if (NODES != null) {
                 throw new IllegalStateException();
             }
-            NODES = this;
+            NODES = this.nodes();
         } else if (this.getClass().getSimpleName().endsWith("Instrument")) {
             if (INSTRUMENT != null) {
                 throw new IllegalStateException();
@@ -158,6 +168,10 @@ public abstract class Accessor {
             }
             SPI = this;
         }
+    }
+
+    protected Accessor.Nodes nodes() {
+        return NODES;
     }
 
     protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Instrumenter instrumenter, Map<String, Object> config) {
@@ -190,7 +204,7 @@ public abstract class Accessor {
     @SuppressWarnings("rawtypes")
     protected boolean isInstrumentable(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
-        Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
+        Class<? extends TruffleLanguage> languageClazz = NODES.findLanguage(rootNode);
         TruffleLanguage language = findLanguageImpl(vm, languageClazz, null);
         return isInstrumentable(node, language);
     }
@@ -205,7 +219,7 @@ public abstract class Accessor {
     @SuppressWarnings("rawtypes")
     protected WrapperNode createWrapperNode(Object vm, Node node) {
         final RootNode rootNode = node.getRootNode();
-        Class<? extends TruffleLanguage> languageClazz = findLanguage(rootNode);
+        Class<? extends TruffleLanguage> languageClazz = NODES.findLanguage(rootNode);
         TruffleLanguage language = findLanguageImpl(vm, languageClazz, null);
         return createWrapperNode(node, language);
     }
@@ -219,18 +233,8 @@ public abstract class Accessor {
     }
 
     @SuppressWarnings("rawtypes")
-    protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-        return NODES.findLanguage(n);
-    }
-
-    @SuppressWarnings("rawtypes")
     protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
         return INSTRUMENT.findLanguage(probe);
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected Class<? extends TruffleLanguage> findLanguage(Node node) {
-        return NODES.findLanguage(node);
     }
 
     @SuppressWarnings("rawtypes")
