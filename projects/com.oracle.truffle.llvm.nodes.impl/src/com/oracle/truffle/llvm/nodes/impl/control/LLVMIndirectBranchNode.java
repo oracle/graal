@@ -33,9 +33,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 
-public class LLVMIndirectBranchNode extends LLVMStatementNode {
+public class LLVMIndirectBranchNode extends LLVMTerminatorNode {
 
     @Child private LLVMAddressNode address;
 

@@ -32,28 +32,33 @@ package com.oracle.truffle.llvm.nodes.impl.others;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
 
-public abstract class LLVMBlockNode extends LLVMNode {
+public abstract class LLVMBlockNode extends LLVMExpressionNode {
 
     public static class LLVMBlockControlFlowNode extends LLVMBlockNode {
 
-        @Children private final LLVMStatementNode[] bodyNodes;
+        @Children private final LLVMBasicBlockNode[] bodyNodes;
         @CompilationFinal private final LLVMStackFrameNuller[][] indexToSlotNuller;
+        private final FrameSlot returnSlot;
 
-        public LLVMBlockControlFlowNode(LLVMStatementNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
+        public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
             this.indexToSlotNuller = indexToSlotNuller;
+            this.returnSlot = returnSlot;
         }
 
         @Override
         @ExplodeLoop(merge = true)
-        public void executeVoid(VirtualFrame frame) {
+        public Object executeGeneric(VirtualFrame frame) {
             CompilerAsserts.compilationConstant(bodyNodes.length);
             int bci = 0;
             int loopCount = 0;
@@ -62,15 +67,15 @@ public abstract class LLVMBlockNode extends LLVMNode {
                     loopCount++;
                 }
                 CompilerAsserts.partialEvaluationConstant(bci);
-                LLVMStatementNode statement = bodyNodes[bci];
-                int successorSelection = statement.executeGetSuccessorIndex(frame);
+                LLVMBasicBlockNode bb = bodyNodes[bci];
+                int successorSelection = bb.executeGetSuccessorIndex(frame);
                 LLVMStackFrameNuller[] stackNuller = indexToSlotNuller[bci];
                 if (stackNuller != null) {
                     for (int j = 0; j < stackNuller.length; j++) {
                         stackNuller[j].nullifySlot(frame);
                     }
                 }
-                int[] successors = statement.getSuccessors();
+                int[] successors = bb.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
                     if (i == successorSelection) {
                         bci = successors[i];
@@ -86,24 +91,28 @@ public abstract class LLVMBlockNode extends LLVMNode {
                 throw new Error("No matching successor found");
             }
             LoopNode.reportLoopCount(this, loopCount);
+            return frame.getValue(returnSlot);
         }
     }
 
     public static class LLVMBlockNoControlFlowNode extends LLVMBlockNode {
 
         @Children private final LLVMNode[] bodyNodes;
+        private final FrameSlot returnSlot;
 
-        public LLVMBlockNoControlFlowNode(LLVMNode[] bodyNodes) {
+        public LLVMBlockNoControlFlowNode(LLVMNode[] bodyNodes, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
+            this.returnSlot = returnSlot;
         }
 
         @Override
         @ExplodeLoop
-        public void executeVoid(VirtualFrame frame) {
+        public Object executeGeneric(VirtualFrame frame) {
             CompilerAsserts.compilationConstant(bodyNodes.length);
             for (int i = 0; i < bodyNodes.length; i++) {
                 bodyNodes[i].executeVoid(frame);
             }
+            return frame.getValue(returnSlot);
         }
     }
 

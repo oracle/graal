@@ -33,11 +33,12 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 
 @NodeChild(type = LLVMI1Node.class)
-public class LLVMBrUnconditionalNode extends LLVMStatementNode {
+public class LLVMBrUnconditionalNode extends LLVMTerminatorNode {
 
     @Children private final LLVMNode[] phiWrites;
 
@@ -52,7 +53,7 @@ public class LLVMBrUnconditionalNode extends LLVMStatementNode {
         for (LLVMNode node : phiWrites) {
             node.executeVoid(frame);
         }
-        return DEFAULT_SUCCESSOR;
+        return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
     }
 
 }
