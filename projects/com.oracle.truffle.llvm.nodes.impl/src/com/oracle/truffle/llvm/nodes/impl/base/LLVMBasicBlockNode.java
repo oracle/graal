@@ -29,41 +29,49 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 
-public abstract class LLVMStatementNode extends LLVMNode {
+/**
+ * This node represents a basic block in LLVM. The node contains both sequential statements which do
+ * not change the control flow and terminator instructions which let the function return or continue
+ * with another basic block.
+ *
+ * @see <a href="http://llvm.org/docs/LangRef.html#functions">basic blocks in LLVM IR</a>
+ */
+public class LLVMBasicBlockNode extends LLVMNode {
 
     public static final int DEFAULT_SUCCESSOR = 0;
 
-    @CompilationFinal private final int[] successors;
-
-    public LLVMStatementNode(int trueSuccessor) {
-        successors = new int[]{trueSuccessor};
-    }
-
-    public LLVMStatementNode(int trueSuccessor, int falseSuccessor) {
-        successors = new int[]{trueSuccessor, falseSuccessor};
-    }
-
-    public LLVMStatementNode(int[] successors) {
-        this.successors = successors;
-    }
-
-    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
+    @Children private final LLVMNode[] statements;
+    @Child private LLVMTerminatorNode termInstruction;
 
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
     }
 
-    public final int nrSuccessors() {
-        return successors.length;
+    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction) {
+        this.statements = statements;
+        this.termInstruction = termInstruction;
     }
 
-    public final int[] getSuccessors() {
-        return successors;
+    @ExplodeLoop
+    public int executeGetSuccessorIndex(VirtualFrame frame) {
+        for (LLVMNode statement : statements) {
+            statement.executeVoid(frame);
+        }
+        return termInstruction.executeGetSuccessorIndex(frame);
     }
 
+    /**
+     * Gets an array containing the potential successor basic blocks. During execution,
+     * {@link #executeGetSuccessorIndex(VirtualFrame)} method returns an index into this array.
+     *
+     * @return the successors
+     */
+    public int[] getSuccessors() {
+        return termInstruction.getSuccessors();
+    }
 }

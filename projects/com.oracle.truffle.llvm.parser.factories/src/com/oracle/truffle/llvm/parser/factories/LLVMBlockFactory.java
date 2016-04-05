@@ -27,25 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.others;
+package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMStatementNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockControlFlowNode;
 
-public class LLVMWrappedStatementNode extends LLVMStatementNode {
+public class LLVMBlockFactory {
 
-    @Child private LLVMNode wrappedNode;
-
-    public LLVMWrappedStatementNode(LLVMNode wrappedNode, int defaultSuccessor) {
-        super(defaultSuccessor);
-        this.wrappedNode = wrappedNode;
+    public static LLVMNode createBasicBlock(LLVMNode[] statementNodes, LLVMTerminatorNode terminatorNode) {
+        return new LLVMBasicBlockNode(statementNodes, terminatorNode);
     }
 
-    @Override
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
-        wrappedNode.executeVoid(frame);
-        return DEFAULT_SUCCESSOR;
+    public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] indexToSlotNuller) {
+        return new LLVMBlockControlFlowNode(bbs, indexToSlotNuller, returnSlot);
     }
 
 }
