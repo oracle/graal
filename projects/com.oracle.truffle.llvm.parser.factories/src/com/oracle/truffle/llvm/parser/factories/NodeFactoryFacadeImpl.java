@@ -61,7 +61,6 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMMemCopyFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMPhiNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
@@ -328,12 +327,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMBlockFactory.createBasicBlock(statementNodes, (LLVMTerminatorNode) terminatorNode);
     }
 
-    public LLVMNode createFunctionBlockNode(List<LLVMNode> allFunctionNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
-        return LLVMBlockFactory.createFunctionBlock(allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), indexToSlotNuller);
-    }
-
-    public LLVMExpressionNode createFunctionBodyNode(LLVMNode block, FrameSlot retSlot) {
-        return LLVMBlockFactory.createFunctionBody((LLVMBlockNode) block, retSlot);
+    public LLVMExpressionNode createFunctionBlockNode(FrameSlot retSlot, List<LLVMNode> allFunctionNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
+        return LLVMBlockFactory.createFunctionBlock(retSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), indexToSlotNuller);
     }
 
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName) {

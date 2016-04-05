@@ -219,22 +219,15 @@ public interface NodeFactoryFacade {
     LLVMNode createBasicBlockNode(LLVMNode[] statementNodes, LLVMNode terminatorNode);
 
     /**
-     * Creates a node that groups together several basic blocks in a function.
+     * Creates a node that groups together several basic blocks in a function and returns the
+     * function's result.
      *
+     * @param returnSlot the frame slot for the return value
      * @param basicBlockNodes the basic blocks
      * @param indexToSlotNuller nuller node for nulling dead variables
      * @return the function block node
      */
-    LLVMNode createFunctionBlockNode(List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller);
-
-    /**
-     * Creates a function body node that returns the result of a basic block group.
-     *
-     * @param block the group of basic blocks
-     * @param retSlot the slot for the return value
-     * @return the return value
-     */
-    LLVMExpressionNode createFunctionBodyNode(LLVMNode block, FrameSlot retSlot);
+    LLVMExpressionNode createFunctionBlockNode(FrameSlot returnSlot, List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller);
 
     /**
      * Creates the entry point for a function.

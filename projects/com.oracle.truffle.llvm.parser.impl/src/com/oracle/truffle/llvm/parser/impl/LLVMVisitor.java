@@ -459,12 +459,11 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMAttributeVisitor.visitFunctionHeader(def.getHeader());
         labelList = getBlockLabelIndexMapping(def);
         List<LLVMNode> formalParameters = getFormalParametersInit(def);
-        LLVMNode block = getFunctionBlockStatements(def);
+        LLVMExpressionNode block = getFunctionBlockStatements(def);
         String functionName = def.getHeader().getName();
-        LLVMExpressionNode functionBodyNode = factoryFacade.createFunctionBodyNode(block, retSlot);
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        RootNode rootNode = factoryFacade.createFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionName);
+        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, frameDescriptor, functionName);
         if (LLVMOptions.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
@@ -474,7 +473,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return function;
     }
 
-    private LLVMNode getFunctionBlockStatements(FunctionDef def) {
+    private LLVMExpressionNode getFunctionBlockStatements(FunctionDef def) {
         List<LLVMNode> allFunctionNodes = new ArrayList<>();
         int currentIndex = 0;
         int[] basicBlockIndices = new int[def.getBasicBlocks().size()];
@@ -498,7 +497,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             LLVMParserAsserts.assertNoNullElement(deadSlots);
             indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
         }
-        return factoryFacade.createFunctionBlockNode(allFunctionNodes, indexToSlotNuller);
+        return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, indexToSlotNuller);
     }
 
     private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
