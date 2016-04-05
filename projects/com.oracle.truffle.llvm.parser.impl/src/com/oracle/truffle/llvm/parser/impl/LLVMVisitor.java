@@ -120,6 +120,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -131,8 +132,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMObjectNuller;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
@@ -174,7 +173,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private static final TypeResolver typeResolver = new TypeResolver();
     private FrameDescriptor frameDescriptor;
-    private LLVMContext currentContext;
     private FrameDescriptor globalFrameDescriptor;
     private List<LLVMNode> functionEpilogue;
     private Map<FunctionHeader, Map<String, Integer>> functionToLabelMapping;
@@ -190,21 +188,44 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private NativeLookup nativeLookup;
 
-    public LLVMVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration) {
-        currentContext = context;
+    private Object[] mainArgs;
+
+    private Source sourceFile;
+
+    public LLVMVisitor(LLVMOptimizationConfiguration optimizationConfiguration, Object[] mainArgs, Source sourceFile) {
         this.optimizationConfiguration = optimizationConfiguration;
+        this.mainArgs = mainArgs;
+        this.sourceFile = sourceFile;
         LLVMTypeHelper.setParserRuntime(this);
     }
 
-    public RootCallTarget getMain(Model model, NodeFactoryFacade facade) {
-        visit(model, facade);
-        currentContext.getFunctionRegistry();
+    public class ParserResult {
+
+        private final RootCallTarget mainFunction;
+        private final Map<LLVMFunction, RootCallTarget> parsedFunctions;
+
+        public ParserResult(RootCallTarget mainFunction, Map<LLVMFunction, RootCallTarget> parsedFunctions) {
+            this.mainFunction = mainFunction;
+            this.parsedFunctions = parsedFunctions;
+        }
+
+        public RootCallTarget getMainFunction() {
+            return mainFunction;
+        }
+
+        public Map<LLVMFunction, RootCallTarget> getParsedFunctions() {
+            return parsedFunctions;
+        }
+    }
+
+    public ParserResult getMain(Model model, NodeFactoryFacade facade) {
+        Map<LLVMFunction, RootCallTarget> parsedFunctions = visit(model, facade);
         LLVMFunction mainFunction = LLVMFunction.createFromName("@main");
-        RootCallTarget mainCallTarget = currentContext.getFunctionRegistry().lookup(mainFunction);
+        RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
         int argParamCount = mainFunction.getLlvmParamTypes().length;
         RootNode globalFunction;
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);
-        int argsCount = currentContext.getMainArguments().length + 1;
+        int argsCount = mainArgs.length + 1;
         if (argParamCount == 0) {
             globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations);
         } else {
@@ -212,8 +233,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations, argsCount);
             } else {
                 Object[] args = new Object[argsCount];
-                args[0] = currentContext.getSourceFile();
-                System.arraycopy(currentContext.getMainArguments(), 0, args, 1, currentContext.getMainArguments().length);
+                args[0] = sourceFile;
+                System.arraycopy(mainArgs, 0, args, 1, mainArgs.length);
                 LLVMParserAsserts.assertNoNullElement(args);
                 LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
                 // Checkstyle: stop magic number check
@@ -230,7 +251,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             }
         }
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(wrapMainFunction(Truffle.getRuntime().createCallTarget(globalFunction)));
-        return wrappedCallTarget;
+        return new ParserResult(wrappedCallTarget, parsedFunctions);
     }
 
     private RootNode wrapMainFunction(RootCallTarget mainCallTarget) {
@@ -264,7 +285,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return stringArgs;
     }
 
-    public List<LLVMFunction> visit(Model model, NodeFactoryFacade facade) {
+    public Map<LLVMFunction, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
         this.factoryFacade = facade;
         List<EObject> objects = model.eContents();
         List<LLVMFunction> functions = new ArrayList<>();
@@ -303,11 +324,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 throw new AssertionError(object);
             }
         }
-        currentContext.getFunctionRegistry().register(functionCallTargets);
         List<LLVMNode> globalVarNodes = addGlobalVars(this, staticVars);
         globalNodes.addAll(globalVarNodes);
         deallocations = globalDeallocations.toArray(new LLVMAddress[globalDeallocations.size()]);
-        return functions;
+        return functionCallTargets;
     }
 
     private static void setTargetInfo(List<EObject> objects) {
