@@ -370,7 +370,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                     LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
                     LLVMExpressionNode loadedFunction = factoryFacade.createLoad(functionType, functionLoadTarget);
                     LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot())};
-                    assert argNodes.length == LLVMCallNode.ARG_START_INDEX;
+                    assert argNodes.length == factoryFacade.getArgStartIndex();
                     LLVMNode functionCall = factoryFacade.createFunctionCall(loadedFunction, argNodes, LLVMBaseType.VOID);
                     globalVarNodes.add(functionCall);
                 }
@@ -563,7 +563,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         EList<Parameter> pars = functionHeader.getParameters().getParameters();
         LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
         formalParamInits.add(factoryFacade.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, getStackPointerSlot()));
-        int argIndex = LLVMCallNode.ARG_START_INDEX;
+        int argIndex = factoryFacade.getArgStartIndex();
         if (resolve(functionHeader.getRettype()).isStruct()) {
             LLVMExpressionNode functionRetParNode = factoryFacade.createFunctionArgNode(argIndex++, LLVMBaseType.STRUCT);
             LLVMNode retValue = createAssignment((String) retSlot.getIdentifier(), functionRetParNode, functionHeader.getRettype());

@@ -241,4 +241,11 @@ public interface NodeFactoryFacade {
      */
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName);
 
+    /**
+     * Returns the index of the first argument of the formal parameter list.
+     *
+     * @return the index
+     */
+    int getArgStartIndex();
+
 }
