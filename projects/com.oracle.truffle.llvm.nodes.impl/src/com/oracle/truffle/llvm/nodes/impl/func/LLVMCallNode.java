@@ -97,7 +97,7 @@ public abstract class LLVMCallNode {
         }
     }
 
-    public static abstract class LLVMAbstractCallNode extends LLVMExpressionNode {
+    public abstract static class LLVMAbstractCallNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] args;
 
