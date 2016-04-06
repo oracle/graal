@@ -871,7 +871,7 @@ public final class Debugger {
             try {
                 // Pass control to the debug client with current execution suspended
                 SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
-                ACCESSOR.dispatchEvent(engine, event);
+                AccessorDebug.engineAccess().dispatchEvent(engine, event);
                 if (event.isKillPrepared()) {
                     trace("KILL");
                     throw new KillException();
@@ -969,9 +969,9 @@ public final class Debugger {
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         try {
             if (frameInstance == null) {
-                return ACCESSOR.evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
+                return AccessorDebug.langs().evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
             } else {
-                return ACCESSOR.evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
+                return AccessorDebug.langs().evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
             }
         } catch (KillException kex) {
             throw new IOException("Evaluation was killed.", kex);
@@ -979,6 +979,17 @@ public final class Debugger {
     }
 
     static final class AccessorDebug extends Accessor {
+        static Accessor.Nodes nodesAccess() {
+            return ACCESSOR.nodes();
+        }
+
+        static Accessor.LanguageSupport langs() {
+            return ACCESSOR.languageSupport();
+        }
+
+        static Accessor.EngineSupport engineAccess() {
+            return ACCESSOR.engineSupport();
+        }
 
         @Override
         protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
@@ -986,9 +997,9 @@ public final class Debugger {
             final Debugger[] debugger = {find(engine, initializeDebugger)};
             if (debugger[0] != null) {
                 debugger[0].executionStarted(currentDepth, s);
-                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(debugger[0]));
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(debugger[0]));
             } else {
-                ACCESSOR.dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
                     @Override
                     public Debugger call() throws Exception {
                         if (debugger[0] == null) {
@@ -1010,25 +1021,9 @@ public final class Debugger {
         }
 
         @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Node node) {
-            return super.findLanguage(node);
-        }
-
-        @Override
-        protected void dispatchEvent(Object vm, Object event) {
-            super.dispatchEvent(vm, event);
-        }
-
-        @Override
-        protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
-            return super.evalInContext(vm, ev, code, node, frame);
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
         protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
-            return super.parse(languageClass, code, context, argumentNames);
+            final TruffleLanguage<?> truffleLanguage = engineSupport().findLanguageImpl(null, languageClass, code.getMimeType());
+            return languageSupport().parse(truffleLanguage, code, context, argumentNames);
         }
     }
 

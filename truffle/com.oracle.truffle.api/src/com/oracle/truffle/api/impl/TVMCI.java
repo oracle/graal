@@ -61,7 +61,7 @@ public abstract class TVMCI {
      * @since 0.12
      */
     protected void onFirstExecution(RootNode rootNode) {
-        final Accessor accessor = Accessor.SPI;
+        final Accessor.InstrumentSupport accessor = Accessor.instrumentAccess();
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
         }
@@ -76,7 +76,7 @@ public abstract class TVMCI {
      */
     @SuppressWarnings({"rawtypes"})
     protected Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
-        return Accessor.SPI.findLanguage(root);
+        return Accessor.nodesAccess().findLanguage(root);
     }
 
 }

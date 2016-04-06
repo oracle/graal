@@ -620,43 +620,39 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     static final class AccessorNodes extends Accessor {
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return n.language;
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Node n) {
-            return n.getRootNode().language;
-        }
-
-        @Override
-        protected boolean isInstrumentable(RootNode rootNode) {
-            return rootNode.isInstrumentable();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        protected void probeAST(RootNode rootNode) {
-            super.probeAST(rootNode);
-        }
-
-        @Override
-        protected boolean isTaggedWith(Node node, Class<?> tag) {
-            return node.isTaggedWith(tag);
-        }
-
-        @Override
-        protected void onFirstExecution(RootNode node) {
-            super.onFirstExecution(node);
+        void probeAST(RootNode rootNode) {
+            OldInstrumentSupport instrument = oldInstrumentSupport();
+            if (instrument != null) {
+                instrument.probeAST(rootNode);
+            }
         }
 
         @Override
         protected void onLoopCount(Node source, int iterations) {
             super.onLoopCount(source, iterations);
+        }
+
+        @Override
+        protected Accessor.Nodes nodes() {
+            return new AccessNodes();
+        }
+
+        static final class AccessNodes extends Accessor.Nodes {
+            @SuppressWarnings("rawtypes")
+            @Override
+            public Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+                return n.language;
+            }
+
+            @Override
+            public boolean isInstrumentable(RootNode rootNode) {
+                return rootNode.isInstrumentable();
+            }
+
+            @Override
+            public boolean isTaggedWith(Node node, Class<?> tag) {
+                return node.isTaggedWith(tag);
+            }
         }
     }
 
