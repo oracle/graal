@@ -72,7 +72,7 @@ gateStyle : ${common} {
 }
 
 benchSPECjvm2008 : ${common} {
-  downloads = ${java8Downloads.downloads} {
+  downloads : ${java8Downloads.downloads} {
     SPECJVM2008 : {name : specjvm2008, version : "1.01"}
   }
   run : [
@@ -81,13 +81,21 @@ benchSPECjvm2008 : ${common} {
   ]
 }
 
-benchDaCapo : ${common} ${java8Downloads.downloads} {
-  downloads = ${java8Downloads.downloads} {
+benchDaCapo : ${common} ${java8Downloads} {
+  downloads : {
     DACAPO : {name : dacapo, version : "9.12"}
   }
+  mx-benchmark : ["mx", "benchmark", "--path", "bench-results.json", "dacapo:*"]
+  teardown : [
+    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
+  ]
+}
+
+benchDaCapo_x52 : ${benchDaCapo} {
+  capabilities : [linux, x52, bench]
+  name : "bench-dacapo-linux-x52"
   run : [
-    ["mx", "bench", "--results", "results.json", "dacapo"]
-    ["upload-results", "results.json"]
+    ${benchDaCapo.mx-benchmark} ["--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "30"]
   ]
 }
 
@@ -99,5 +107,5 @@ builds = [
   ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
   ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
   ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
-  ${benchDaCapo}      {capabilities : [linux, amd64, bench],  name: "bench-dacapo-linux-amd64"}
+  ${benchDaCapo_x52}
 ]
