@@ -1468,18 +1468,22 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return globalVars.get(var);
     }
 
+    @Override
     public FrameSlot getStackPointerSlot() {
         return stackPointerSlot;
     }
 
+    @Override
     public LLVMOptimizationConfiguration getOptimizationConfiguration() {
         return optimizationConfiguration;
     }
 
+    @Override
     public int getBitAlignment(LLVMBaseType type) {
         return layoutConverter.getBitAlignment(type);
     }
 
+    @Override
     public FrameDescriptor getGlobalFrameDescriptor() {
         return globalFrameDescriptor;
     }

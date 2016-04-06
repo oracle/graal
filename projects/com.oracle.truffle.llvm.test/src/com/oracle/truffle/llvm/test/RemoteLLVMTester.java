@@ -69,6 +69,7 @@ public class RemoteLLVMTester {
                 File file = new File(command);
                 Runnable executeTruffleTask = new Runnable() {
 
+                    @Override
                     public void run() {
                         try {
                             result = LLVM.executeMain(file);

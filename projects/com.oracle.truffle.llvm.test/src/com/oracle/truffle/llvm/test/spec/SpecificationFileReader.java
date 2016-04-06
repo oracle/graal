@@ -51,6 +51,7 @@ public class SpecificationFileReader {
 
     private static final FilenameFilter FILE_NAME_INCLUDE_FILTER = new FilenameFilter() {
 
+        @Override
         public boolean accept(File dir, String name) {
             return name.endsWith(INCLUDE);
         }
@@ -58,6 +59,7 @@ public class SpecificationFileReader {
 
     private static final FilenameFilter FILE_NAME_EXCLUDE_FILTER = new FilenameFilter() {
 
+        @Override
         public boolean accept(File dir, String name) {
             return name.endsWith(EXCLUDE);
         }
