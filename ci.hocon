@@ -92,7 +92,7 @@ benchDaCapo : ${common} ${java8Downloads} {
 }
 
 benchDaCapo_x52 : ${benchDaCapo} {
-  capabilities : [linux, sunfire, bench]
+  capabilities : [linux, x52, bench]
   name : "bench-dacapo-linux-x52"
   run : [
     ${benchDaCapo.mx-benchmark} ["--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "30"]
