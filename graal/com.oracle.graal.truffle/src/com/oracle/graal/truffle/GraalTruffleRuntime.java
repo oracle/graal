@@ -406,10 +406,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     protected abstract BackgroundCompileQueue getCompileQueue();
 
-    public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
+    public Future<?> submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         BackgroundCompileQueue l = getCompileQueue();
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
-        Future<?> future = l.compileQueue.submit(new Runnable() {
+        return l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
@@ -418,7 +418,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                 }
             }
         });
-        optimizedCallTarget.setCompilationTask(future);
+    }
+
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
         getCompilationNotify().notifyCompilationQueued(optimizedCallTarget);
 
         if (!mayBeAsynchronous) {
@@ -439,7 +441,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         Future<?> codeTask = optimizedCallTarget.getCompilationTask();
         if (codeTask != null && isCompiling(optimizedCallTarget)) {
-            optimizedCallTarget.setCompilationTask(null);
+            optimizedCallTarget.resetCompilationTask();
             boolean result = codeTask.cancel(true);
             if (result) {
                 optimizedCallTarget.notifyCompilationFinished(false);
@@ -479,7 +481,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         Future<?> codeTask = optimizedCallTarget.getCompilationTask();
         if (codeTask != null) {
             if (codeTask.isCancelled() || codeTask.isDone()) {
-                optimizedCallTarget.setCompilationTask(null);
+                optimizedCallTarget.resetCompilationTask();
                 return false;
             }
             return true;
