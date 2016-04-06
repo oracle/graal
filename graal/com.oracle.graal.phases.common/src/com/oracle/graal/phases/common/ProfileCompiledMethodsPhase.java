@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 
@@ -106,7 +107,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         while (current.next() instanceof FixedWithNextNode) {
             current = (FixedWithNextNode) current.next();
         }
-        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), graph.getLastSchedule(), cfg);
+        addSectionCounters(current, Arrays.asList(cfg.getBlocks()), cfg.getLoops(), graph.getLastSchedule(), cfg);
 
         if (WITH_INVOKES) {
             for (Node node : graph.getNodes()) {

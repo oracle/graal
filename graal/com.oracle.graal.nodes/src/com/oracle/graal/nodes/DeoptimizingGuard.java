@@ -46,5 +46,6 @@ public interface DeoptimizingGuard extends NodeInterface {
 
     boolean isNegated();
 
+    @Override
     ValueNode asNode();
 }

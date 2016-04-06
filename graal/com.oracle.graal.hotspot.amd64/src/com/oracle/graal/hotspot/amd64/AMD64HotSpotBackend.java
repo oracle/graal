@@ -137,6 +137,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
             this.omitFrame = omitFrame;
         }
 
+        @Override
         public boolean hasFrame() {
             return !omitFrame;
         }

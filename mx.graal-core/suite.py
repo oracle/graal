@@ -31,7 +31,7 @@ def suites(l):
     return [s for s in l if not JDK9 or not s.get('name') == "jvmci"]
 
 suite = {
-  "mxversion" : "5.8.1",
+  "mxversion" : "5.14.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "6758183dd36be0bb56d947f439c8f21822d14ff5",
+               "version" : "13d0e0a9410e0884e203f9ebcb4f4043798acf01",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "7de96d3ba72f2d1a2a0ef39351a3db4764c74b9c",
+               "version" : "551e8475af2fc8769bc3ead07c9156fe0ccbe338",
                "urls" : [
                     {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -82,13 +82,6 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
       "bootClassPathAgent" : "true",
-    },
-
-    "JMH" : {
-      "sha1" : "7e1577cf6e1f1326b78a322d206fa9412fd41ae9",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2.jar"],
-      "sourceSha1" : "12a67f0dcdfe7e43218bf38c1d7fd766122a3dc7",
-      "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.11.2-sources.jar"],
     },
 
     # This is a library synthesized from the JVMCI classes in JDK9.
@@ -472,6 +465,18 @@ suite = {
       "workingSets" : "Graal,Assembler,SPARC",
     },
 
+    "com.oracle.graal.asm.sparc.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.asm.test",
+        "com.oracle.graal.asm.sparc",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Assembler,SPARC,Test",
+    },
+
     "com.oracle.graal.bytecode" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -778,10 +783,10 @@ suite = {
     "com.oracle.graal.virtual.bench" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JMH", "com.oracle.graal.microbenchmarks"],
+      "dependencies" : ["mx:JMH", "com.oracle.graal.microbenchmarks"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
-      "annotationProcessors" : ["JMH"],
+      "annotationProcessors" : ["mx:JMH"],
       "workingSets" : "Graal,Bench",
     },
 
@@ -789,14 +794,14 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "JMH",
+        "mx:JMH",
         "com.oracle.graal.api.test",
         "com.oracle.graal.java",
         "com.oracle.graal.runtime",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
-      "annotationProcessors" : ["JMH"],
+      "annotationProcessors" : ["mx:JMH"],
       "workingSets" : "Graal,Bench",
     },
 
@@ -1052,6 +1057,21 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Truffle",
       "jacoco" : "exclude",
+    },
+
+    "com.oracle.graal.truffle.bench" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JMH",
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : [
+        "mx:JMH",
+      ],
+      "workingSets" : "Graal,Truffle,Bench",
     },
 
     "com.oracle.graal.truffle.test" : {

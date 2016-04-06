@@ -75,10 +75,12 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
         return valueKind;
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }

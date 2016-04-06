@@ -83,6 +83,7 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.InfopointNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -299,13 +300,13 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, graph, actualString);
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
-            Debug.dump(expected, "Node count not matching - expected");
-            Debug.dump(graph, "Node count not matching - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "Node count not matching - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Node count not matching - actual");
             Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount() + "\n" + mismatchString);
         }
         if (!expectedString.equals(actualString)) {
-            Debug.dump(expected, "mismatching graphs - expected");
-            Debug.dump(graph, "mismatching graphs - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "mismatching graphs - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "mismatching graphs - actual");
             Assert.fail(mismatchString);
         }
     }
@@ -381,7 +382,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof InfopointNode)) {
                         if (node instanceof ConstantNode) {
                             String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                            String str = name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            String str = name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
                             constantsLines.add(str);
                         } else {
                             int id;
@@ -392,7 +393,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                                 canonicalId.set(node, id);
                             }
                             String name = node.getClass().getSimpleName();
-                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
                             result.append(str);
                         }
                     }
@@ -409,6 +410,41 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         return constantsLines.toString() + result.toString();
+    }
+
+    /**
+     * @return usage count excluding {@link FrameState} usages
+     */
+    private static int filteredUsageCount(Node node) {
+        return node.usages().filter(n -> !(n instanceof FrameState)).count();
+    }
+
+    /**
+     * @param graph
+     * @return a scheduled textual dump of {@code graph} .
+     */
+    protected static String getScheduledGraphString(StructuredGraph graph) {
+        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        schedule.apply(graph);
+        ScheduleResult scheduleResult = graph.getLastSchedule();
+
+        StringBuilder result = new StringBuilder();
+        Block[] blocks = scheduleResult.getCFG().getBlocks();
+        for (Block block : blocks) {
+            result.append("Block " + block + " ");
+            if (block == scheduleResult.getCFG().getStartBlock()) {
+                result.append("* ");
+            }
+            result.append("-> ");
+            for (Block succ : block.getSuccessors()) {
+                result.append(succ + " ");
+            }
+            result.append("\n");
+            for (Node node : scheduleResult.getBlockToNodesMap().get(block)) {
+                result.append(String.format("%1S\n", node));
+            }
+        }
+        return result.toString();
     }
 
     protected Backend getBackend() {
@@ -918,12 +954,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
         }, GraalCompilerTest.class, "breakpoint");
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;

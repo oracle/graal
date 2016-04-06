@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
+
 import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -36,14 +38,14 @@ import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TraceBuilderContext;
+import com.oracle.graal.lir.alloc.trace.lsra.IntervalData;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceIntervalMap;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.phases.AllocationStage;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
@@ -51,6 +53,7 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * An implementation of a Trace Register Allocator as described in <a
@@ -68,15 +71,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionValue<>(true);
+        @Option(help = "Cache stack slots globally (i.e. a variable always gets the same slot in every trace).", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> TraceRACacheStackSlots = new StableOptionValue<>(true);
         // @formatter:on
     }
 
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
-    private static final TraceBuilderPhase TRACE_BUILDER_PHASE = new TraceBuilderPhase();
-
-    public static final int TRACE_DUMP_LEVEL = 3;
-    private static final int TRACE_LOG_LEVEL = 1;
 
     private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
@@ -88,11 +89,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
-        TraceBuilderResult<B> resultTraces = builtTraces(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+        TraceBuilderResult<B> resultTraces = getTraces(context);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
+        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
-        Debug.dump(lir, "Before TraceRegisterAllocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
+        TraceIntervalMap intervalMap = getIntervalMap(context);
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
@@ -104,8 +107,10 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                         TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
                     } else {
-                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
+                                        cachedStackSlots);
+                        IntervalData intervalData = getAndDelete(intervalMap, trace);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig, intervalData);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
@@ -114,33 +119,32 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        Debug.dump(lir, "After trace allocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
     }
 
-    @SuppressWarnings("try")
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> builtTraces(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
-        try (Scope s = Debug.scope("TraceBuilding")) {
-            TraceBuilderContext traceBuilderContext = new TraceBuilderPhase.TraceBuilderContext();
-            TRACE_BUILDER_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceBuilderContext, false);
-
-            @SuppressWarnings("unchecked")
-            TraceBuilderResult<B> resultTraces = (TraceBuilderResult<B>) traceBuilderContext.traceBuilderResult;
-
-            assert TraceBuilderResult.verify(resultTraces, lirGenRes.getLIR().getControlFlowGraph().getBlocks().size());
-            if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
-                List<Trace<B>> traces = resultTraces.getTraces();
-                for (int i = 0; i < traces.size(); i++) {
-                    Trace<B> trace = traces.get(i);
-                    Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s%s", i, trace, isTrivialTrace(lirGenRes.getLIR(), trace) ? " (trivial)" : "");
-                }
-            }
-            TraceStatisticsPrinter.printTraceStatistics(resultTraces, lirGenRes.getCompilationUnitName());
-            Debug.dump(TRACE_DUMP_LEVEL, resultTraces, "After TraceBuilding");
-            return resultTraces;
+    private static <B extends AbstractBlockBase<B>> IntervalData getAndDelete(TraceIntervalMap intervalMap, Trace<B> trace) {
+        if (intervalMap == null) {
+            return null;
         }
+        IntervalData intervalData = intervalMap.get(trace);
+        // remove entry
+        intervalMap.put(trace, null);
+        return intervalData;
+    }
+
+    private static TraceIntervalMap getIntervalMap(AllocationContext context) {
+        if (!AllocationStage.Options.TraceRACombinedSSIConstruction.getValue()) {
+            return null;
+        }
+        return context.contextRemove(TraceIntervalMap.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
+        return context.contextLookup(TraceBuilderResult.class);
     }
 
     /**
@@ -161,22 +165,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                 SSIUtil.removeOutgoing(lir, block);
             }
         }
-    }
-
-    static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
-        if (trace.size() != 1) {
-            return false;
-        }
-        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks().iterator().next());
-        if (instructions.size() != 2) {
-            return false;
-        }
-        assert instructions.get(0) instanceof LabelOp : "First instruction not a LabelOp: " + instructions.get(0);
-        /*
-         * Now we need to check if the BlockEndOp has no special operand requirements (i.e.
-         * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
-         */
-        return instructions.get(1) instanceof JumpOp;
     }
 
     private static void unnumberInstructions(Collection<? extends AbstractBlockBase<?>> trace, LIR lir) {

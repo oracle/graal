@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.common.cfg;
 
-import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
@@ -31,7 +30,7 @@ import java.util.function.BiConsumer;
  */
 public interface PrintableCFG {
 
-    List<? extends AbstractBlockBase<?>> getBlocks();
+    AbstractBlockBase<?>[] getBlocks();
 
     /**
      * Applies {@code action} to all extra property pairs (name, value) of {@code block}.

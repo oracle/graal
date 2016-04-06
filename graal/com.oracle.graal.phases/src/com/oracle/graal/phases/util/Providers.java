@@ -66,14 +66,17 @@ public class Providers implements CodeGenProviders {
         this(copyFrom.getMetaAccess(), null, copyFrom.getConstantReflection(), null, copyFrom.getLowerer(), copyFrom.getReplacements(), copyFrom.getStampProvider());
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public CodeCacheProvider getCodeCache() {
         return codeCache;
     }
 
+    @Override
     public ForeignCallsProvider getForeignCalls() {
         return foreignCalls;
     }
@@ -82,6 +85,7 @@ public class Providers implements CodeGenProviders {
         return lowerer;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }

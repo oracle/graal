@@ -65,6 +65,7 @@ public class HashSetNodeEventListener implements NodeEventListener {
         return this;
     }
 
+    @Override
     public void event(NodeEvent e, Node node) {
         if (filter.contains(e)) {
             nodes.add(node);

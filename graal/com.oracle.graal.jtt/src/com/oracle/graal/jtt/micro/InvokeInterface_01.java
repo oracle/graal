@@ -38,6 +38,7 @@ public class InvokeInterface_01 extends JTTTest {
 
     abstract static class A implements I {
 
+        @Override
         public int plus(int a) {
             return a;
         }

@@ -83,6 +83,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
         return true;
     }
 
+    @Override
     public ValueNode length() {
         return dimension(0);
     }

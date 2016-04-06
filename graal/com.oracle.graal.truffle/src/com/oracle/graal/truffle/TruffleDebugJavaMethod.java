@@ -41,22 +41,27 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
 
     private static final JavaType declaringClass = new JavaType() {
 
+        @Override
         public String getName() {
             return "LTruffle;";
         }
 
+        @Override
         public JavaType getComponentType() {
             return null;
         }
 
+        @Override
         public JavaType getArrayClass() {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public JavaKind getJavaKind() {
             return JavaKind.Object;
         }
 
+        @Override
         public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
             throw new UnsupportedOperationException();
         }
@@ -108,14 +113,17 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
         return compilable.hashCode();
     }
 
+    @Override
     public Signature getSignature() {
         return signature;
     }
 
+    @Override
     public String getName() {
-        return compilable.toString().replace('.', '_').replace(' ', '_');
+        return (compilable.toString() + "").replace('.', '_').replace(' ', '_');
     }
 
+    @Override
     public JavaType getDeclaringClass() {
         return declaringClass;
     }
@@ -125,6 +133,7 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
         return format("Truffle<%n(%p)>");
     }
 
+    @Override
     public JavaMethod asJavaMethod() {
         return this;
     }

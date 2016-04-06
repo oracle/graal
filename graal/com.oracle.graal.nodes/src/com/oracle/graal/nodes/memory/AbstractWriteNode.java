@@ -46,16 +46,19 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
 
     protected final boolean initialization;
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }
@@ -95,10 +98,12 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return (MemoryNode) lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         Node newLla = ValueNodeUtil.asNode(lla);
         updateUsages(lastLocationAccess, newLla);

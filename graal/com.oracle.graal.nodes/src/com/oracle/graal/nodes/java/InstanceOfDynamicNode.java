@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,48 +22,56 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 /**
- * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
- * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
- * .
+ * The {@code TypeProfileNode} represents a type check where the type being checked is not known at
+ * compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)} .
  */
 @NodeInfo
-public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
+public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
     public static final NodeClass<InstanceOfDynamicNode> TYPE = NodeClass.create(InstanceOfDynamicNode.class);
 
-    @Input ValueNode object;
-    @Input ValueNode mirror;
+    private final boolean allowNull;
 
-    public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object) {
-        LogicNode synonym = findSynonym(assumptions, constantReflection, object, mirror);
+    public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object, boolean allowNull) {
+        LogicNode synonym = findSynonym(assumptions, constantReflection, mirror, object, allowNull);
         if (synonym != null) {
             return synonym;
         }
-        return new InstanceOfDynamicNode(mirror, object);
-
+        return new InstanceOfDynamicNode(mirror, object, allowNull);
     }
 
-    public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
-        super(TYPE);
-        this.mirror = mirror;
-        this.object = object;
-        assert mirror.getStackKind() == JavaKind.Object : mirror.getStackKind();
+    protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object, boolean allowNull) {
+        super(TYPE, mirror, object);
+        this.allowNull = allowNull;
+        assert mirror.getStackKind() == JavaKind.Object || mirror.getStackKind() == JavaKind.Illegal : mirror.getStackKind();
+    }
+
+    public boolean isMirror() {
+        return getMirrorOrHub().getStackKind() == JavaKind.Object;
+    }
+
+    public boolean isHub() {
+        return !isMirror();
     }
 
     @Override
@@ -71,45 +79,68 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         tool.getLowerer().lower(this, tool);
     }
 
-    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forObject, ValueNode forMirror) {
+    private static LogicNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode forMirror, ValueNode forObject,
+                    boolean allowNull) {
         if (forMirror.isConstant()) {
             ResolvedJavaType t = constantReflection.asJavaType(forMirror.asConstant());
             if (t != null) {
                 if (t.isPrimitive()) {
-                    return LogicConstantNode.contradiction();
+                    if (allowNull) {
+                        return new IsNullNode(forObject);
+                    } else {
+                        return LogicConstantNode.contradiction();
+                    }
                 } else {
-                    return InstanceOfNode.create(TypeReference.createTrusted(assumptions, t), forObject, null);
+                    TypeReference type = TypeReference.createTrusted(assumptions, t);
+                    if (allowNull) {
+                        return InstanceOfNode.createAllowNull(type, forObject, null);
+                    } else {
+                        return InstanceOfNode.create(type, forObject, null);
+                    }
                 }
             }
         }
         return null;
     }
 
-    public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
-        StructuredGraph graph = forObject.graph();
-        if (graph == null) {
-            graph = forMirror.graph();
+    public ValueNode getMirrorOrHub() {
+        return this.getX();
+    }
+
+    public ValueNode getObject() {
+        return this.getY();
+    }
+
+    @Override
+    public LogicNode canonical(CanonicalizerTool tool, ValueNode forMirror, ValueNode forObject) {
+        LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forMirror, forObject, allowNull);
+        if (result != null) {
+            return result;
         }
-        LogicNode res = findSynonym(graph.getAssumptions(), tool.getConstantReflection(), forObject, forMirror);
-        if (res == null) {
-            res = this;
-        }
-        return res;
+        return this;
     }
 
-    public ValueNode object() {
-        return object;
+    public void setMirror(ValueNode newObject) {
+        this.updateUsages(x, newObject);
+        this.x = newObject;
     }
 
-    public ValueNode mirror() {
-        return mirror;
+    public boolean allowsNull() {
+        return allowNull;
     }
 
-    public ValueNode getX() {
-        return object;
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        return null;
     }
 
-    public ValueNode getY() {
-        return mirror;
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public TriState tryFold(Stamp xStamp, Stamp yStamp) {
+        return TriState.UNKNOWN;
     }
 }

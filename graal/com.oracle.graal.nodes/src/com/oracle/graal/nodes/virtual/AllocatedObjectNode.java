@@ -67,6 +67,7 @@ public final class AllocatedObjectNode extends FloatingNode implements Virtualiz
         tool.replaceWithVirtual(getVirtualObject());
     }
 
+    @Override
     public ValueNode length() {
         if (virtualObject instanceof ArrayLengthProvider) {
             return ((ArrayLengthProvider) virtualObject).length();

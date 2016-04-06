@@ -114,7 +114,9 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             try (Indent indent = Debug.logAndIndent("ConstantLoadOptimization")) {
                 try (Scope s = Debug.scope("BuildDefUseTree")) {
                     // build DefUseTree
-                    lir.getControlFlowGraph().getBlocks().forEach(this::analyzeBlock);
+                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                        this.analyzeBlock(b);
+                    }
                     // remove all with only one use
                     map.filter(t -> {
                         if (t.usageCount() > 1) {
@@ -135,7 +137,9 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     map.forEach(this::createConstantTree);
 
                     // insert moves, delete null instructions and reset instruction ids
-                    lir.getControlFlowGraph().getBlocks().forEach(this::rewriteBlock);
+                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                        this.rewriteBlock(b);
+                    }
 
                     assert verifyStates();
                 } catch (Throwable e) {
@@ -211,7 +215,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                                     phiConstantsSkipped.increment();
                                 }
                                 phiConstants.set(var.index);
-                                Debug.log(3, "Removing phi variable: %s", var);
+                                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Removing phi variable: %s", var);
                             }
                         } else {
                             assert defined.get(var.index) : "phi but not defined? " + var;
@@ -288,7 +292,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 // no better solution found
                 materializeAtDefinitionSkipped.increment();
             }
-            Debug.dump(constTree, "ConstantTree for " + tree.getVariable());
+            Debug.dump(Debug.INFO_LOG_LEVEL, constTree, "ConstantTree for %s", tree.getVariable());
         }
 
         private void createLoads(DefUseTree tree, ConstantTree constTree, AbstractBlockBase<?> startBlock) {

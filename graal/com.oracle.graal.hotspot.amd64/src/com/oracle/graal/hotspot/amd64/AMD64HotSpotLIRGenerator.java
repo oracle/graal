@@ -268,16 +268,19 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }
 
+    @Override
     public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
         append(new AMD64HotSpotLeaveCurrentStackFrameOp(saveRegisterOp));
     }
 
+    @Override
     public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
         Variable frameSizeVariable = load(frameSize);
         Variable initialInfoVariable = load(initialInfo);
         append(new AMD64HotSpotLeaveDeoptimizedStackFrameOp(frameSizeVariable, initialInfoVariable));
     }
 
+    @Override
     public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
         Register threadRegister = getProviders().getRegisters().getThreadRegister();
         Variable framePcVariable = load(framePc);
@@ -287,6 +290,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                         senderSpVariable, senderFpVariable, saveRegisterOp));
     }
 
+    @Override
     public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
         Register threadRegister = getProviders().getRegisters().getThreadRegister();
         append(new AMD64HotSpotLeaveUnpackFramesStackFrameOp(threadRegister, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), saveRegisterOp));
@@ -533,10 +537,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             LIR lir = getResult().getLIR();
             List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
             instructions.add(1, op);
-            Debug.dump(lir, "created rescue dummy op");
+            Debug.dump(Debug.INFO_LOG_LEVEL, lir, "created rescue dummy op");
         }
     }
 
+    @Override
     public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
         Variable frameSizeVariable = load(frameSize);
         Variable framePcVariable = load(framePc);

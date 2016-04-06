@@ -38,6 +38,7 @@ public class DebugHistogramImpl implements DebugHistogram {
         this.name = name;
     }
 
+    @Override
     public void add(Object value) {
         CountedValue cv = map.get(value);
         if (cv == null) {
@@ -47,6 +48,7 @@ public class DebugHistogramImpl implements DebugHistogram {
         }
     }
 
+    @Override
     public void add(Object value, long count) {
         CountedValue cv = map.get(value);
         if (cv == null) {
@@ -61,6 +63,7 @@ public class DebugHistogramImpl implements DebugHistogram {
         return name;
     }
 
+    @Override
     public List<CountedValue> getValues() {
         ArrayList<CountedValue> res = new ArrayList<>(map.values());
         Collections.sort(res);

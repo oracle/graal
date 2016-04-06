@@ -30,6 +30,7 @@ import java.util.Iterator;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.SourceStackTrace;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -560,14 +561,17 @@ public class GraphUtil {
      */
     public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
         return new NodeIterable<FixedNode>() {
+            @Override
             public Iterator<FixedNode> iterator() {
                 return new Iterator<FixedNode>() {
                     public FixedNode current = start;
 
+                    @Override
                     public boolean hasNext() {
                         return current != null;
                     }
 
+                    @Override
                     public FixedNode next() {
                         try {
                             return current;
@@ -584,21 +588,26 @@ public class GraphUtil {
         private final MetaAccessProvider metaAccess;
         private final ConstantReflectionProvider constantReflection;
         private final boolean canonicalizeReads;
+        private final Assumptions assumptions;
 
-        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
+        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.canonicalizeReads = canonicalizeReads;
+            this.assumptions = assumptions;
         }
 
+        @Override
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
         }
 
+        @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
         }
 
+        @Override
         public boolean canonicalizeReads() {
             return canonicalizeReads;
         }
@@ -608,23 +617,32 @@ public class GraphUtil {
             return true;
         }
 
+        @Override
         public void deleteBranch(Node branch) {
             branch.predecessor().replaceFirstSuccessor(branch, null);
             GraphUtil.killCFG(branch, this);
         }
 
+        @Override
         public void removeIfUnused(Node node) {
             GraphUtil.tryKillUnused(node);
         }
 
+        @Override
         public void addToWorkList(Node node) {
         }
 
+        @Override
         public void addToWorkList(Iterable<? extends Node> nodes) {
+        }
+
+        @Override
+        public Assumptions getAssumptions() {
+            return assumptions;
         }
     }
 
-    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads);
+    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads, assumptions);
     }
 }

@@ -191,7 +191,7 @@ public class GraalCompiler {
                 }
                 new DeadCodeEliminationPhase(Optional).apply(graph);
             } else {
-                Debug.dump(graph, "initial state");
+                Debug.dump(Debug.INFO_LOG_LEVEL, graph, "initial state");
             }
 
             suites.getHighTier().apply(graph, highTierContext);
@@ -204,7 +204,7 @@ public class GraalCompiler {
             LowTierContext lowTierContext = new LowTierContext(providers, target);
             suites.getLowTier().apply(graph, lowTierContext);
 
-            Debug.dump(graph.getLastSchedule(), "Final HIR schedule");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph.getLastSchedule(), "Final HIR schedule");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -261,7 +261,7 @@ public class GraalCompiler {
                     T compilationResult) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
             ScheduleResult schedule = graph.getLastSchedule();
-            List<Block> blocks = schedule.getCFG().getBlocks();
+            Block[] blocks = schedule.getCFG().getBlocks();
             Block startBlock = schedule.getCFG().getStartBlock();
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
@@ -270,11 +270,11 @@ public class GraalCompiler {
             List<Block> codeEmittingOrder = null;
             List<Block> linearScanOrder = null;
             try (Scope s = Debug.scope("ComputeLinearScanOrder", lir)) {
-                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.size(), startBlock);
-                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.size(), startBlock);
+                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
                 lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder);
-                Debug.dump(lir, "After linear scan order");
+                Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After linear scan order");
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -293,9 +293,9 @@ public class GraalCompiler {
             }
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
-                Debug.dump(1, lir, "After LIR generation");
+                Debug.dump(Debug.BASIC_LOG_LEVEL, lir, "After LIR generation");
                 LIRGenerationResult result = emitLowLevel(backend.getTarget(), codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
-                Debug.dump(1, lir, "Before code generation");
+                Debug.dump(Debug.BASIC_LOG_LEVEL, lir, "Before code generation");
                 return result;
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -371,7 +371,7 @@ public class GraalCompiler {
                 Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
             }
 
-            Debug.dump(1, compilationResult, "After code generation");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, compilationResult, "After code generation");
         }
     }
 }

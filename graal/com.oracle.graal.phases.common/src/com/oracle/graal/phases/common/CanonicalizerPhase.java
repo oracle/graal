@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -173,7 +174,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (!wholeGraph) {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
-            tool = new Tool();
+            tool = new Tool(graph.getAssumptions());
             processWorkSet(graph);
         }
 
@@ -181,10 +182,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private void processWorkSet(StructuredGraph graph) {
             NodeEventListener listener = new NodeEventListener() {
 
+                @Override
                 public void nodeAdded(Node node) {
                     workList.add(node);
                 }
 
+                @Override
                 public void inputChanged(Node node) {
                     workList.add(node);
                     if (node instanceof IndirectCanonicalization) {
@@ -194,6 +197,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     }
                 }
 
+                @Override
                 public void usagesDroppedToZero(Node node) {
                     workList.add(node);
                 }
@@ -294,7 +298,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
 
             if (nodeClass.isSimplifiable() && simplify) {
-                Debug.log(3, "Canonicalizer: simplifying %s", node);
+                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 node.simplify(tool);
                 return node.isDeleted();
@@ -320,7 +324,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 // @formatter:on
         private boolean performReplacement(final Node node, Node newCanonical) {
             if (newCanonical == node) {
-                Debug.log(3, "Canonicalizer: work on %1s", node);
+                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: work on %1s", node);
                 return false;
             } else {
                 Node canonical = newCanonical;
@@ -398,6 +402,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         private final class Tool implements SimplifierTool {
 
+            private final Assumptions assumptions;
+
+            Tool(Assumptions assumptions) {
+                this.assumptions = assumptions;
+            }
+
             @Override
             public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
@@ -419,6 +429,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 workList.add(node);
             }
 
+            @Override
             public void addToWorkList(Iterable<? extends Node> nodes) {
                 workList.addAll(nodes);
             }
@@ -436,6 +447,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             @Override
             public boolean allUsagesAvailable() {
                 return true;
+            }
+
+            @Override
+            public Assumptions getAssumptions() {
+                return assumptions;
             }
         }
     }

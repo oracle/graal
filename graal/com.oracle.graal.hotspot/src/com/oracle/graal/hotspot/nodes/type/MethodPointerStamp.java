@@ -73,6 +73,15 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
+    public boolean isCompatible(Constant constant) {
+        if (constant instanceof HotSpotMetaspaceConstant) {
+            return ((HotSpotMetaspaceConstant) constant).asResolvedJavaMethod() != null;
+        } else {
+            return super.isCompatible(constant);
+        }
+    }
+
+    @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return METHOD_ALWAYS_NULL;

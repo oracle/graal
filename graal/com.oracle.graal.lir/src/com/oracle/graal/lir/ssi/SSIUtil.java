@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.ssi;
 
+import java.util.Arrays;
 import java.util.List;
 
 import jdk.vm.ci.meta.Value;
@@ -73,14 +74,14 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- *
+ * 
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- *
+ * 
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -99,12 +100,12 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
  *   TEST (x: v1|i, y: v1|i)
  *   BRANCH ~[v2|i, v0|j] condition: <, true: B1 false: B2
  * ________________________________________________
- *
+ * 
  * B1 <- B0
  *   [-, v0|j] = LABEL
  *   ...
  * ________________________________________________
- *
+ * 
  * B2 <- B0
  *   [v2|i, v0|j] = LABEL
  *   ...
@@ -147,10 +148,12 @@ public final class SSIUtil {
      * the incoming value to the merge block.
      */
     public static void forEachValuePair(LIR lir, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock, PhiValueVisitor visitor) {
-        assert toBlock.getPredecessors().contains(fromBlock) : String.format("%s not in predecessor list: %s", fromBlock, toBlock.getPredecessors());
+        assert Arrays.asList(toBlock.getPredecessors()).contains(fromBlock) : String.format("%s not in predecessor list: %s", fromBlock, Arrays.toString(toBlock.getPredecessors()));
         assert fromBlock.getSuccessorCount() == 1 || toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s has %d successors and %s has %d predecessors", fromBlock,
                         fromBlock.getSuccessorCount(), toBlock, toBlock.getPredecessorCount());
-        assert fromBlock.getSuccessors().contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock, fromBlock.getSuccessors(), toBlock);
+        assert Arrays.asList(fromBlock.getSuccessors()).contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock,
+                        Arrays.toString(fromBlock.getSuccessors()),
+                        toBlock);
 
         BlockEndOp blockEnd = outgoing(lir, fromBlock);
         LabelOp label = incoming(lir, toBlock);

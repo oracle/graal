@@ -90,10 +90,12 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             this.guard = guard;
         }
 
+        @Override
         public GuardingNode getGuard() {
             return guard;
         }
 
+        @Override
         public void setGuard(GuardingNode guard) {
             updateUsagesInterface(this.guard, guard);
             this.guard = guard;
@@ -154,6 +156,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return createGuard(before, condition, deoptReason, action, JavaConstant.NULL_POINTER, false);
         }
 
+        @Override
         public StampProvider getStampProvider() {
             return context.getStampProvider();
         }
@@ -185,6 +188,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
         }
 
+        @Override
         public FixedWithNextNode lastFixedNode() {
             return lastFixedNode;
         }

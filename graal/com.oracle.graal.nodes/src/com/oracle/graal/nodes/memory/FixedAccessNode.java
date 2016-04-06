@@ -49,6 +49,7 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     protected boolean nullCheck;
     protected BarrierType barrierType;
 
+    @Override
     public AddressNode getAddress() {
         return address;
     }
@@ -58,6 +59,7 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         this.address = address;
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return location;
     }

@@ -25,8 +25,6 @@ package com.oracle.graal.truffle;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import sun.misc.Unsafe;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -34,6 +32,8 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+
+import sun.misc.Unsafe;
 
 /**
  * More efficient implementation of the Truffle frame that has no safety checks for frame accesses
@@ -104,11 +104,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeCast(this.primitiveLocals, long[].class, true, true);
     }
 
-    private byte[] getTags() {
+    byte[] getTags() {
         return unsafeCast(tags, byte[].class, true, true);
     }
 
-    private Object getObjectUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    Object getObjectUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         return unsafeGetObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, condition, slot);
     }
 
@@ -130,7 +130,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getByteUnsafe(slotIndex, slot, condition);
     }
 
-    private byte getByteUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    byte getByteUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return (byte) unsafeGetInt(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -154,7 +154,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getBooleanUnsafe(slotIndex, slot, condition);
     }
 
-    private boolean getBooleanUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    boolean getBooleanUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return unsafeGetInt(getPrimitiveLocals(), offset, condition, slot) != 0;
     }
@@ -178,7 +178,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getFloatUnsafe(slotIndex, slot, condition);
     }
 
-    private float getFloatUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    float getFloatUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return unsafeGetFloat(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -202,7 +202,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getLongUnsafe(slotIndex, slot, condition);
     }
 
-    private long getLongUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    long getLongUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -226,7 +226,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getIntUnsafe(slotIndex, slot, condition);
     }
 
-    private int getIntUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    int getIntUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return unsafeGetInt(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -250,7 +250,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getDoubleUnsafe(slotIndex, slot, condition);
     }
 
-    private double getDoubleUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
+    double getDoubleUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
         long offset = getPrimitiveOffset(slotIndex);
         return unsafeGetDouble(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -350,7 +350,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return false;
     }
 
-    private byte getTag(FrameSlot slot) {
+    byte getTag(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         byte[] cachedTags = getTags();
         if (slotIndex < cachedTags.length) {

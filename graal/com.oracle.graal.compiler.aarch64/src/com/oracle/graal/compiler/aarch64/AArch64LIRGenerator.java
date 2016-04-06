@@ -128,11 +128,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitData(AllocatableValue dst, byte[] data) {
-        append(new AArch64Move.LoadDataOp(dst, data));
-    }
-
-    @Override
     public void emitMembar(int barriers) {
         int necessaryBarriers = target().arch.requiredBarriers(barriers);
         if (target().isMP && necessaryBarriers != 0) {

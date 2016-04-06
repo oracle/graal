@@ -45,7 +45,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable LSRA optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(false);
         @Option(help = "LSRA optimization: Only split but do not reassign", type = OptionType.Debug)
         public static final OptionValue<Boolean> LSRAOptSplitOnly = new OptionValue<>(false);
         // @formatter:on
@@ -148,7 +148,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert currentLocation != null : "active intervals must have a location assigned!";
 
         // get predecessor stuff
-        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors().get(0);
+        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors()[0];
         int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
         Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
         assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;

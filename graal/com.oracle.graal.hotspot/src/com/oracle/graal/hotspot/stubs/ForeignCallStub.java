@@ -98,14 +98,14 @@ public class ForeignCallStub extends Stub {
      */
     public ForeignCallStub(HotSpotJVMCIRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
-        super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), descriptor, 0L, PRESERVES_REGISTERS, JavaCall,
-                        JavaCallee, transition, reexecutable, killedLocations));
+        super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
+                        PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), targetSig, address, DESTROYS_REGISTERS, NativeCall, NativeCall,
-                        transition, reexecutable, killedLocations);
+        target = HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), targetSig, address,
+                        DESTROYS_REGISTERS, NativeCall, NativeCall, transition, reexecutable, killedLocations);
     }
 
     /**
@@ -132,10 +132,12 @@ public class ForeignCallStub extends Stub {
     }
 
     private class DebugScopeContext implements JavaMethod, JavaMethodContext {
+        @Override
         public JavaMethod asJavaMethod() {
             return this;
         }
 
+        @Override
         public Signature getSignature() {
             ForeignCallDescriptor d = linkage.getDescriptor();
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -147,10 +149,12 @@ public class ForeignCallStub extends Stub {
             return new HotSpotSignature(jvmciRuntime, metaAccess.lookupJavaType(d.getResultType()), parameters);
         }
 
+        @Override
         public String getName() {
             return linkage.getDescriptor().getName();
         }
 
+        @Override
         public JavaType getDeclaringClass() {
             return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
         }
@@ -232,14 +236,14 @@ public class ForeignCallStub extends Stub {
         }
         kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Initial stub graph");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Initial stub graph");
         }
 
         kit.inlineInvokes();
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Stub graph before compilation");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Stub graph before compilation");
         }
 
         return graph;

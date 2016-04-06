@@ -36,6 +36,7 @@ class LinearScanIntervalDumper implements IntervalDumper {
         this.intervals = intervals;
     }
 
+    @Override
     public void visitIntervals(IntervalVisitor visitor) {
         for (Interval interval : intervals) {
             if (interval != null) {

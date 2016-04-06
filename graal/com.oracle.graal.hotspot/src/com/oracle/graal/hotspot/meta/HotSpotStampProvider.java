@@ -30,10 +30,12 @@ import com.oracle.graal.nodes.spi.StampProvider;
 
 public class HotSpotStampProvider implements StampProvider {
 
+    @Override
     public Stamp createHubStamp(ObjectStamp object) {
         return KlassPointerStamp.klassNonNull();
     }
 
+    @Override
     public Stamp createMethodStamp() {
         return MethodPointerStamp.methodNonNull();
     }

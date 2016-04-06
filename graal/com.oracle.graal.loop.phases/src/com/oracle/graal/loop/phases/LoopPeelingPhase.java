@@ -42,7 +42,7 @@ public class LoopPeelingPhase extends ContextlessLoopPhase<LoopPolicies> {
                 if (getPolicies().shouldPeel(loop, data.getCFG())) {
                     Debug.log("Peeling %s", loop);
                     LoopTransformations.peel(loop);
-                    Debug.dump(graph, "Peeling %s", loop);
+                    Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Peeling %s", loop);
                 }
             }
             data.deleteUnusedNodes();

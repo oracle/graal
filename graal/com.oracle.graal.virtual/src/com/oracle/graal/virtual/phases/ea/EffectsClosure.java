@@ -140,7 +140,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             Debug.log(" ==== cfg kill effects");
             effects.apply(graph, obsoleteNodes, true);
         }
-        Debug.dump(4, graph, "After applying effects");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
         for (Node node : obsoleteNodes) {
             if (node.isAlive()) {
@@ -354,7 +354,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
 
         protected final Block getPredecessor(int index) {
-            return mergeBlock.getPredecessors().get(stateIndexes[index]);
+            return mergeBlock.getPredecessors()[stateIndexes[index]];
         }
 
         protected final NodeIterable<PhiNode> getPhis() {

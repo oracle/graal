@@ -153,7 +153,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
                 }
             }
             InliningUtil.inline(invoke, replacementGraph, false, null);
-            Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph(), "After inlining replacement %s", replacementGraph);
         } else {
             if (isPlaceholderBci(invoke.bci())) {
                 throw new JVMCIError("%s: cannot lower to invoke with placeholder BCI: %s", graph(), this);

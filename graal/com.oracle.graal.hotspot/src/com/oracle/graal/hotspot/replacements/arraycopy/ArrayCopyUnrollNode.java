@@ -134,10 +134,12 @@ public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCh
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;

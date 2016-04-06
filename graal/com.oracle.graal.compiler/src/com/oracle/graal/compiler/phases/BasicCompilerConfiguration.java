@@ -37,26 +37,32 @@ import com.oracle.graal.phases.tiers.MidTierContext;
 
 public class BasicCompilerConfiguration implements CompilerConfiguration {
 
+    @Override
     public PhaseSuite<HighTierContext> createHighTier() {
         return new HighTier();
     }
 
+    @Override
     public PhaseSuite<MidTierContext> createMidTier() {
         return new MidTier();
     }
 
+    @Override
     public PhaseSuite<LowTierContext> createLowTier() {
         return new LowTier();
     }
 
+    @Override
     public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage() {
         return new PreAllocationOptimizationStage();
     }
 
+    @Override
     public LIRPhaseSuite<AllocationContext> createAllocationStage() {
         return new AllocationStage();
     }
 
+    @Override
     public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage() {
         return new PostAllocationOptimizationStage();
     }

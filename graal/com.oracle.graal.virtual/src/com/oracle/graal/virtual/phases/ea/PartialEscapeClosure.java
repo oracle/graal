@@ -62,6 +62,7 @@ import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.ProxyNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
@@ -145,8 +146,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         super(schedule, schedule.getCFG());
-        this.hasVirtualInputs = schedule.getCFG().graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, this);
+        StructuredGraph graph = schedule.getCFG().graph;
+        this.hasVirtualInputs = graph.createNodeBitMap();
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, this, graph.getAssumptions());
     }
 
     /**

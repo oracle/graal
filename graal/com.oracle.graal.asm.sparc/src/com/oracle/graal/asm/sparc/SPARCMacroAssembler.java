@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     @Override
     public void jmp(Label l) {
-        bicc(Always, NOT_ANNUL, l);
+        BPCC.emit(this, Xcc, Always, NOT_ANNUL, PREDICT_NOT_TAKEN, l);
         nop();  // delay slot
     }
 
@@ -285,6 +285,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             return register;
         }
 
+        @Override
         public void close() {
             assert nextFreeScratchRegister > 0 : "Close called too often";
             nextFreeScratchRegister--;
@@ -301,10 +302,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             CBCOND.emit(this, cond, ccRegister == Xcc, rs1, rs2, label);
         } else {
             if (cond == Equal && rs1.equals(g0)) {
-                bpr(Rc_z, NOT_ANNUL, label, PREDICT_NOT_TAKEN, rs1);
+                BPR.emit(this, Rc_z, NOT_ANNUL, predict, rs1, label);
             } else {
                 cmp(rs1, rs2);
-                bpcc(cond, NOT_ANNUL, label, ccRegister, predict);
+                BPCC.emit(this, ccRegister, cond, NOT_ANNUL, predict, label);
             }
             if (delaySlotInstruction != null) {
                 int positionBefore = position();
@@ -327,10 +328,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             CBCOND.emit(this, cond, ccRegister == Xcc, rs1, simm, label);
         } else {
             if (cond == Equal && simm == 0) {
-                bpr(Rc_z, NOT_ANNUL, label, PREDICT_NOT_TAKEN, rs1);
+                BPR.emit(this, Rc_z, NOT_ANNUL, PREDICT_NOT_TAKEN, rs1, label);
             } else {
                 cmp(rs1, simm);
-                bpcc(cond, NOT_ANNUL, label, ccRegister, predict);
+                BPCC.emit(this, ccRegister, cond, NOT_ANNUL, predict, label);
             }
             if (delaySlotInstruction != null) {
                 int positionBefore = position();

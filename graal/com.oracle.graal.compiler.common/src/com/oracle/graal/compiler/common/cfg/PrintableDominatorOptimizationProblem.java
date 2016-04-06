@@ -33,6 +33,7 @@ public abstract class PrintableDominatorOptimizationProblem<E extends Enum<E>, C
         super(keyType, cfg);
     }
 
+    @Override
     public void forEachPropertyPair(AbstractBlockBase<?> block, BiConsumer<String, String> action) {
         // for each flag
         getFlags().forEach(flag -> ((BiConsumer<String, Boolean>) (name, value) -> action.accept(name, value ? "true" : "false")).accept(getName(flag), get(flag, block)));

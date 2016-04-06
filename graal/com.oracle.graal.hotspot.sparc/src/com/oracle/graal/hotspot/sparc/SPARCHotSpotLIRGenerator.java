@@ -277,6 +277,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 
+    @Override
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
@@ -286,6 +287,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
     }
 
+    @Override
     public void emitPrefetchAllocate(Value address) {
         SPARCAddressValue addr = asAddressValue(address);
         append(new SPARCPrefetchOp(addr, config.allocatePrefetchInstr));
@@ -385,6 +387,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return save;
     }
 
+    @Override
     public SaveRegistersOp emitSaveAllRegisters() {
         // We save all registers that were not saved by the save instruction.
         // @formatter:off
@@ -411,14 +414,17 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, false);
     }
 
+    @Override
     public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
         append(new SPARCHotSpotLeaveCurrentStackFrameOp());
     }
 
+    @Override
     public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
         append(new SPARCHotSpotLeaveDeoptimizedStackFrameOp());
     }
 
+    @Override
     public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
         Register thread = getProviders().getRegisters().getThreadRegister();
         Variable framePcVariable = load(framePc);
@@ -428,11 +434,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
                         target().arch.getWordKind()));
     }
 
+    @Override
     public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
         Register thread = getProviders().getRegisters().getThreadRegister();
         append(new SPARCHotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset()));
     }
 
+    @Override
     public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
         Variable frameSizeVariable = load(frameSize);
         Variable framePcVariable = load(framePc);

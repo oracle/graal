@@ -57,4 +57,8 @@ public class BC_iaload extends JTTTest {
         runTest("test", 4);
     }
 
+    @Test
+    public void run4() throws Throwable {
+        runTest("test", Integer.MIN_VALUE);
+    }
 }

@@ -172,6 +172,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         throw JVMCIError.shouldNotReachHere("unexpected ReadNode before PEA");
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
     }

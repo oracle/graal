@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.MaximumEscapeAnalysi
 
 import java.util.List;
 
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -45,11 +46,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final PartialEscapeClosure<?> closure;
+    private final Assumptions assumptions;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure, Assumptions assumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.closure = closure;
+        this.assumptions = assumptions;
     }
 
     private boolean deleted;
@@ -63,6 +66,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return metaAccess;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflectionProvider() {
         return constantReflection;
     }
@@ -84,6 +88,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return closure.getAliasAndResolve(state, value);
     }
 
+    @Override
     public ValueNode getEntry(VirtualObjectNode virtualObject, int index) {
         return state.getObjectState(virtualObject).getEntry(index);
     }
@@ -102,11 +107,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         state.setEntry(virtual.getObjectId(), index, newValue);
     }
 
+    @Override
     public void setEnsureVirtualized(VirtualObjectNode virtualObject, boolean ensureVirtualized) {
         int id = virtualObject.getObjectId();
         state.setEnsureVirtualized(id, ensureVirtualized);
     }
 
+    @Override
     public boolean getEnsureVirtualized(VirtualObjectNode virtualObject) {
         return state.getObjectState(virtualObject).getEnsureVirtualized();
     }
@@ -189,24 +196,29 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.METRIC_MATERIALIZATIONS_UNHANDLED);
     }
 
+    @Override
     public void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
         int id = virtualObject.getObjectId();
         state.addLock(id, monitorId);
     }
 
+    @Override
     public MonitorIdNode removeLock(VirtualObjectNode virtualObject) {
         int id = virtualObject.getObjectId();
         return state.removeLock(id);
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
 
+    @Override
     public boolean canonicalizeReads() {
         return false;
     }
@@ -214,5 +226,10 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public boolean allUsagesAvailable() {
         return true;
+    }
+
+    @Override
+    public Assumptions getAssumptions() {
+        return assumptions;
     }
 }

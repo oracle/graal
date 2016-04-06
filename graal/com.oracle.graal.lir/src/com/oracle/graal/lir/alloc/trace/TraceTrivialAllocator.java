@@ -24,7 +24,7 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.isTrivialTrace;
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
 import java.util.List;
 
@@ -60,7 +60,7 @@ final class TraceTrivialAllocator extends TraceAllocationPhase {
 
         AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
 
-        VariableVirtualStackValueMap<Variable, Value> variableMap = new VariableVirtualStackValueMap<>(lir.nextVariable(), 0);
+        VariableVirtualStackValueMap<Variable, Value> variableMap = new VariableVirtualStackValueMap<>(lir.numVariables(), 0);
         SSIUtil.forEachValuePair(lir, block, pred, (to, from) -> {
             if (isVariable(to)) {
                 variableMap.put(asVariable(to), from);

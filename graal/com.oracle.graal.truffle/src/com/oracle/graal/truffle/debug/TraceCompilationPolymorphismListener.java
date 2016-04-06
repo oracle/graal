@@ -55,7 +55,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractDebugCom
             props.put("simpleName", node.getClass().getSimpleName());
             props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
             String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-            log(target, 0, msg, node.toString(), props);
+            log(0, msg, node.toString(), props);
         });
     }
 

@@ -46,6 +46,7 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     protected JavaConstant speculation;
     protected boolean negated;
 
+    @Override
     public LogicNode getCondition() {
         return condition;
     }
@@ -54,6 +55,7 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
         return getCondition();
     }
 
+    @Override
     public void setCondition(LogicNode x, boolean negated) {
         updateUsages(condition, x);
         condition = x;
@@ -70,18 +72,22 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
         this.reason = deoptReason;
     }
 
+    @Override
     public DeoptimizationReason getReason() {
         return reason;
     }
 
+    @Override
     public DeoptimizationAction getAction() {
         return action;
     }
 
+    @Override
     public JavaConstant getSpeculation() {
         return speculation;
     }
 
+    @Override
     public boolean isNegated() {
         return negated;
     }

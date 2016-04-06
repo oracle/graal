@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
-import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
@@ -152,7 +151,7 @@ public class PartialEvaluator {
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
-            Debug.dump(callTarget, "%s", callTarget);
+            Debug.dump(Debug.INFO_LOG_LEVEL, callTarget, "%s", callTarget);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -189,6 +188,7 @@ public class PartialEvaluator {
             this.receiver = receiver;
         }
 
+        @Override
         public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
             if (index == 0) {
                 return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
@@ -309,10 +309,12 @@ public class PartialEvaluator {
 
     private class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
+        @Override
         public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
             return method.getAnnotation(ExplodeLoop.class) != null;
         }
 
+        @Override
         public boolean shouldMergeExplosions(ResolvedJavaMethod method) {
             ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
             if (explodeLoop != null) {
@@ -404,7 +406,7 @@ public class PartialEvaluator {
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         doGraphPE(callTarget, graph, tierContext);
-        Debug.dump(graph, "After FastPE");
+        Debug.dump(Debug.INFO_LOG_LEVEL, graph, "After FastPE");
 
         graph.maybeCompress();
 
@@ -459,7 +461,7 @@ public class PartialEvaluator {
 
         HashMap<String, ArrayList<ValueNode>> groupedByType;
         groupedByType = new HashMap<>();
-        for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
+        for (InstanceOfNode cast : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!cast.type().isExact()) {
                 warnings.add(cast);
                 groupedByType.putIfAbsent(cast.type().getType().getName(), new ArrayList<>());
@@ -484,7 +486,7 @@ public class PartialEvaluator {
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {
             try (Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
-                Debug.dump(graph, "performance warnings %s", warnings);
+                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "performance warnings %s", warnings);
             } catch (Throwable t) {
                 Debug.handle(t);
             }
@@ -552,6 +554,6 @@ public class PartialEvaluator {
     }
 
     private static void logPerformanceWarning(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
-        AbstractDebugCompilationListener.log(target, 0, msg, String.format("%-60s|%s", target, details), properties);
+        AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
     }
 }

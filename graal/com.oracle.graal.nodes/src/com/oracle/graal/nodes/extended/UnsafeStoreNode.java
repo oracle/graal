@@ -66,16 +66,19 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }

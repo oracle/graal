@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,7 +60,6 @@ import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ShortCircuitOrNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
@@ -79,7 +75,6 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
-import com.oracle.graal.nodes.java.CheckCastNode;
 import com.oracle.graal.nodes.java.TypeSwitchNode;
 import com.oracle.graal.nodes.spi.NodeWithState;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -122,7 +117,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 for (Block b : cfg.getBlocks()) {
                     ArrayList<FixedNode> curNodes = new ArrayList<>();
                     for (FixedNode node : b.getNodes()) {
-                        if (node instanceof AbstractBeginNode || node instanceof FixedGuardNode || node instanceof CheckCastNode || node instanceof ConditionAnchorNode || node instanceof IfNode) {
+                        if (node instanceof AbstractBeginNode || node instanceof FixedGuardNode || node instanceof ConditionAnchorNode || node instanceof IfNode) {
                             curNodes.add(node);
                         }
                     }
@@ -245,28 +240,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 });
             }
 
-            protected void processCheckCast(CheckCastNode node) {
-                for (InfoElement infoElement : getInfoElements(node.object())) {
-                    TriState result = node.tryFold(infoElement.getStamp());
-                    if (result.isKnown()) {
-                        if (rewireGuards(infoElement.getGuard(), result.toBoolean(), (guard, checkCastResult) -> {
-                            if (checkCastResult) {
-                                PiNode piNode = node.graph().unique(new PiNode(node.object(), node.stamp(), guard));
-                                GraphUtil.unlinkFixedNode(node);
-                                node.replaceAtUsagesAndDelete(piNode);
-                            } else {
-                                DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                                node.replaceAtPredecessor(deopt);
-                                GraphUtil.killCFG(node);
-                            }
-                            return true;
-                        })) {
-                            return;
-                        }
-                    }
-                }
-            }
-
             @Override
             public void preprocess() {
                 Debug.log("[Pre Processing block %s]", block);
@@ -308,8 +281,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     processFixedGuard((FixedGuardNode) node);
                 } else if (node instanceof GuardNode) {
                     processGuard((GuardNode) node);
-                } else if (node instanceof CheckCastNode) {
-                    processCheckCast((CheckCastNode) node);
                 } else if (node instanceof ConditionAnchorNode) {
                     processConditionAnchor((ConditionAnchorNode) node);
                 } else if (node instanceof IfNode) {
@@ -804,6 +775,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             this.ok = true;
         }
 
+        @Override
         public void accept(Node node, Node curNode) {
             if (!(curNode instanceof ValueNode)) {
                 ok = false;
@@ -877,7 +849,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         public void pushElement(InfoElement element) {
-            Debug.log(4, "Pushing an info element:%s   size %d", element, infos);
+            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Pushing an info element:%s   size %d", element, infos);
             infos.add(element);
         }
 

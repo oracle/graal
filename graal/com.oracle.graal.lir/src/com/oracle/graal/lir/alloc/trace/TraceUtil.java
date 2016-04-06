@@ -24,8 +24,15 @@ package com.oracle.graal.lir.alloc.trace;
 
 import jdk.vm.ci.meta.Value;
 
+import java.util.List;
+
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 
 public class TraceUtil {
 
@@ -50,5 +57,21 @@ public class TraceUtil {
     public static ShadowedRegisterValue asShadowedRegisterValue(Value value) {
         assert isShadowedRegisterValue(value);
         return (ShadowedRegisterValue) value;
+    }
+
+    public static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
+        if (trace.size() != 1) {
+            return false;
+        }
+        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks().iterator().next());
+        if (instructions.size() != 2) {
+            return false;
+        }
+        assert instructions.get(0) instanceof LabelOp : "First instruction not a LabelOp: " + instructions.get(0);
+        /*
+         * Now we need to check if the BlockEndOp has no special operand requirements (i.e.
+         * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
+         */
+        return instructions.get(1) instanceof JumpOp;
     }
 }

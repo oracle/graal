@@ -88,6 +88,7 @@ public final class GraalJarsOptionDescriptorsProvider implements OptionDescripto
         return jarFiles;
     }
 
+    @Override
     public OptionDescriptor get(String name) {
         // Look up loaded option descriptors first
         for (OptionDescriptors optionDescriptors : optionsDescriptorsList) {

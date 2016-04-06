@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -42,7 +43,7 @@ import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.GetClassNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
@@ -75,8 +76,11 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
         ResolvedJavaType type = tool.getConstantReflection().asJavaType(constant);
         if (type != null && nonConstant instanceof GetClassNode) {
+            GetClassNode getClassNode = (GetClassNode) nonConstant;
+            ValueNode object = getClassNode.getObject();
+            assert ((ObjectStamp) object.stamp()).nonNull();
             if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
-                return TypeCheckNode.create(type, ((GetClassNode) nonConstant).getObject());
+                return InstanceOfNode.create(TypeReference.createExactTrusted(type), object, null);
             }
             return LogicConstantNode.forBoolean(false);
         }
@@ -119,7 +123,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */

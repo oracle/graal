@@ -48,6 +48,7 @@ public class Monitor_notowner01 extends JTTTest {
 
         protected boolean caught = false;
 
+        @Override
         public void run() {
             try {
                 // we don't own this!

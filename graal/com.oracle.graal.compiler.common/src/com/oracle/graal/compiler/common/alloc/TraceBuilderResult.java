@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
@@ -39,6 +40,10 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
 
     public int getTraceForBlock(AbstractBlockBase<?> block) {
         return blockToTrace[block.getId()];
+    }
+
+    public Trace<T> traceForBlock(AbstractBlockBase<?> block) {
+        return getTraces().get(blockToTrace[block.getId()]);
     }
 
     public List<Trace<T>> getTraces() {
@@ -79,7 +84,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
             T last = null;
             int blockNumber = 0;
             for (T current : trace.getBlocks()) {
-                assert last == null || current.getPredecessors().contains(last) : "Last block (" + last + ") not a predecessor of " + current;
+                assert last == null || Arrays.asList(current.getPredecessors()).contains(last) : "Last block (" + last + ") not a predecessor of " + current;
                 assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
                 blockNumber++;

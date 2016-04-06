@@ -38,6 +38,7 @@ public abstract class UnaryNode extends FloatingNode implements Canonicalizable.
     public static final NodeClass<UnaryNode> TYPE = NodeClass.create(UnaryNode.class);
     @Input protected ValueNode value;
 
+    @Override
     public ValueNode getValue() {
         return value;
     }

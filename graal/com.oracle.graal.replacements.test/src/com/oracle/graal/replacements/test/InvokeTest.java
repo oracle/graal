@@ -45,6 +45,7 @@ public class InvokeTest extends GraalCompilerTest {
 
         final String name = "A";
 
+        @Override
         public String virtualMethod(String s) {
             return name + s;
         }

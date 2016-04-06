@@ -30,6 +30,7 @@ import jdk.vm.ci.meta.LIRKind;
 
 public class AArch64LIRKindTool implements LIRKindTool {
 
+    @Override
     public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
             return LIRKind.value(AArch64Kind.BYTE);
@@ -43,6 +44,7 @@ public class AArch64LIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
@@ -54,10 +56,12 @@ public class AArch64LIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getObjectKind() {
         return LIRKind.reference(AArch64Kind.QWORD);
     }
 
+    @Override
     public LIRKind getWordKind() {
         return LIRKind.value(AArch64Kind.QWORD);
     }

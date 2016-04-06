@@ -64,11 +64,11 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         ends.add(end);
     }
 
-    public int forwardEndCount() {
+    public final int forwardEndCount() {
         return ends.size();
     }
 
-    public EndNode forwardEndAt(int index) {
+    public final EndNode forwardEndAt(int index) {
         return ends.get(index);
     }
 

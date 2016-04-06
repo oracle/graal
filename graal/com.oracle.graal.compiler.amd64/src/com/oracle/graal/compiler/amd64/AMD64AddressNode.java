@@ -64,6 +64,7 @@ public class AMD64AddressNode extends AddressNode implements LIRLowerable {
         this.scale = Scale.Times1;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 

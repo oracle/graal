@@ -26,9 +26,11 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.LocationIdentity;
 
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -48,6 +50,8 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
+
+    @OptionalInput(InputType.Guard) protected GuardingNode storeCheckGuard;
 
     protected WriteNode(ValueNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         this((AddressNode) address, location, value, barrierType);
@@ -95,7 +99,13 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
         throw JVMCIError.shouldNotReachHere("unexpected WriteNode before PEA");
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
+    }
+
+    public void setStoreCheckGuard(GuardingNode newStoreCheckGuard) {
+        updateUsages((Node) this.storeCheckGuard, (Node) newStoreCheckGuard);
+        this.storeCheckGuard = newStoreCheckGuard;
     }
 }

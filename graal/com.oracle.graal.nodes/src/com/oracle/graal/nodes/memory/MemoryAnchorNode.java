@@ -43,6 +43,7 @@ public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowe
         super(TYPE, StampFactory.forVoid());
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         // Nothing to emit, since this node is used for structural purposes only.
     }

@@ -31,6 +31,7 @@ import com.oracle.graal.jtt.JTTTest;
 public class Thread_new02 extends JTTTest {
 
     private static class TestClass implements Runnable {
+        @Override
         public void run() {
             // do nothing.
         }

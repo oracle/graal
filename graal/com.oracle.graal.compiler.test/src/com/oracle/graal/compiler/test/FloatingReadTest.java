@@ -82,7 +82,7 @@ public class FloatingReadTest extends GraphScheduleTest {
                 }
             }
 
-            Debug.dump(graph, "After lowering");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After lowering");
 
             Assert.assertNotNull(returnNode);
             Assert.assertNotNull(monitorexit);

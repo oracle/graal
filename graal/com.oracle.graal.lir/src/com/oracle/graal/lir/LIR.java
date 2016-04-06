@@ -48,8 +48,6 @@ public class LIR {
      */
     private final List<? extends AbstractBlockBase<?>> codeEmittingOrder;
 
-    private int firstVariableNumber;
-
     private int numVariables;
 
     private final BlockMap<List<LIRInstruction>> lirInstructions;
@@ -111,11 +109,7 @@ public class LIR {
     }
 
     public int nextVariable() {
-        return firstVariableNumber + numVariables++;
-    }
-
-    public void setFirstVariableNumber(int num) {
-        firstVariableNumber = num;
+        return numVariables++;
     }
 
     public void setHasArgInCallerFrame() {

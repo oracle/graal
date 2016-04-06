@@ -30,6 +30,7 @@ import static com.oracle.graal.graph.Edges.Type.Successors;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -142,9 +143,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
         this.channel = channel;
     }
 
-    public void print(Graph graph, String title) throws IOException {
+    @Override
+    public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
+        writeProperties(properties);
         writeGraph(graph);
         flush();
     }
@@ -171,7 +174,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         ControlFlowGraph cfg = scheduleResult == null ? null : scheduleResult.getCFG();
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
-        List<Block> blocks = cfg == null ? null : cfg.getBlocks();
+        List<Block> blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());
         writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);
     }
@@ -493,17 +496,25 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
-            // properties
-            writeShort((char) props.size());
-            for (Entry<Object, Object> entry : props.entrySet()) {
-                String key = entry.getKey().toString();
-                writePoolObject(key);
-                writePropertyObject(entry.getValue());
-            }
+            writeProperties(props);
             writeEdges(node, Inputs);
             writeEdges(node, Successors);
 
             props.clear();
+        }
+    }
+
+    private void writeProperties(Map<Object, Object> props) throws IOException {
+        if (props == null) {
+            writeShort((char) 0);
+            return;
+        }
+        // properties
+        writeShort((char) props.size());
+        for (Entry<Object, Object> entry : props.entrySet()) {
+            String key = entry.getKey().toString();
+            writePoolObject(key);
+            writePropertyObject(entry.getValue());
         }
     }
 
@@ -568,7 +579,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 for (Node node : extraNodes) {
                     writeInt(getNodeId(node));
                 }
-                writeInt(block.getSuccessors().size());
+                writeInt(block.getSuccessors().length);
                 for (Block sux : block.getSuccessors()) {
                     writeInt(sux.getId());
                 }
@@ -578,14 +589,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) throws IOException {
+    @Override
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
         writePoolObject(method);
         writeInt(bci);
+        writeProperties(properties);
     }
 
+    @Override
     public void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
     }

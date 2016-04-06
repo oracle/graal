@@ -35,6 +35,8 @@ import java.util.zip.CRC32;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
@@ -46,7 +48,6 @@ import sun.reflect.Reflection;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.hotspot.nodes.ClassCastNode;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
 import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
@@ -64,6 +65,9 @@ import com.oracle.graal.hotspot.replacements.ThreadSubstitutions;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyNode;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DynamicPiNode;
+import com.oracle.graal.nodes.FixedGuardNode;
+import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -77,6 +81,7 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
+import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
@@ -124,6 +129,7 @@ public class HotSpotGraphBuilderPlugins {
 
         invocationPlugins.defer(new Runnable() {
 
+            @Override
             public void run() {
                 registerObjectPlugins(invocationPlugins);
                 registerClassPlugins(plugins);
@@ -149,12 +155,14 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
         r.register1("clone", Receiver.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.addPush(JavaKind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
@@ -176,17 +184,20 @@ public class HotSpotGraphBuilderPlugins {
         }
 
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode javaClass = receiver.get();
-                ValueNode folded = ClassCastNode.tryFold(GraphUtil.originalValue(javaClass), object, b.getConstantReflection());
-                if (folded != null) {
-                    b.addPush(JavaKind.Object, folded);
+                LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), javaClass, object, true));
+                if (condition.isTautology()) {
+                    b.addPush(JavaKind.Object, object);
                 } else {
-                    b.addPush(JavaKind.Object, new ClassCastNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), javaClass, object));
+                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
+                    b.addPush(JavaKind.Object, new DynamicPiNode(object, fixedGuard, javaClass));
                 }
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
@@ -195,6 +206,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerCallSitePlugins(InvocationPlugins plugins) {
         InvocationPlugin plugin = new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode callSite = receiver.get();
                 ValueNode folded = CallSiteTargetNode.tryFold(GraphUtil.originalValue(callSite), b.getMetaAccess(), b.getAssumptions());
@@ -206,6 +218,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
@@ -218,11 +231,13 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerReflectionPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Reflection.class);
         r.register0("getCallerClass", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions())));
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
@@ -273,6 +288,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, ConstantPool.class);
 
         r.register2("getSize0", Receiver.class, Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode constantPoolOop) {
                 boolean notCompressible = false;
                 ValueNode constants = getMetaspaceConstantPool(b, constantPoolOop, wordTypes, config);
@@ -284,21 +300,25 @@ public class HotSpotGraphBuilderPlugins {
         });
 
         r.register3("getIntAt0", Receiver.class, Object.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode constantPoolOop, ValueNode index) {
                 return readMetaspaceConstantPoolElement(b, constantPoolOop, index, JavaKind.Int, wordTypes, config);
             }
         });
         r.register3("getLongAt0", Receiver.class, Object.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode constantPoolOop, ValueNode index) {
                 return readMetaspaceConstantPoolElement(b, constantPoolOop, index, JavaKind.Long, wordTypes, config);
             }
         });
         r.register3("getFloatAt0", Receiver.class, Object.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode constantPoolOop, ValueNode index) {
                 return readMetaspaceConstantPoolElement(b, constantPoolOop, index, JavaKind.Float, wordTypes, config);
             }
         });
         r.register3("getDoubleAt0", Receiver.class, Object.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode constantPoolOop, ValueNode index) {
                 return readMetaspaceConstantPoolElement(b, constantPoolOop, index, JavaKind.Double, wordTypes, config);
             }
@@ -310,21 +330,25 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("currentTimeMillis", new ForeignCallPlugin(foreignCalls, JAVA_TIME_MILLIS));
         r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
         });
         r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
                 b.add(new ArrayCopyNode(b.bci(), src, srcPos, dst, dstPos, length));
                 return true;
             }
 
+            @Override
             public boolean inlineOnly() {
                 return true;
             }
@@ -334,6 +358,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, HotSpotVMConfig config) {
         Registration r = new Registration(plugins, Thread.class);
         r.register0("currentThread", new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(wordTypes.getWordKind()));
                 boolean compressible = false;
@@ -353,6 +378,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
                     StableOptionValue<?> option = snippetReflection.asObject(StableOptionValue.class, (JavaConstant) receiver.get().asConstant());

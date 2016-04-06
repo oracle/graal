@@ -141,42 +141,52 @@ public class GraalDebugConfig implements DebugConfig {
         this.output = output;
     }
 
+    @Override
     public int getLogLevel() {
         return getLevel(logFilter);
     }
 
+    @Override
     public boolean isLogEnabledForMethod() {
         return isEnabledForMethod(logFilter);
     }
 
+    @Override
     public boolean isMeterEnabled() {
         return isEnabled(meterFilter);
     }
 
+    @Override
     public boolean isMemUseTrackingEnabled() {
         return isEnabled(trackMemUseFilter);
     }
 
+    @Override
     public int getDumpLevel() {
         return getLevel(dumpFilter);
     }
 
+    @Override
     public boolean isDumpEnabledForMethod() {
         return isEnabledForMethod(dumpFilter);
     }
 
+    @Override
     public boolean isVerifyEnabled() {
         return isEnabled(verifyFilter);
     }
 
+    @Override
     public boolean isVerifyEnabledForMethod() {
         return isEnabledForMethod(verifyFilter);
     }
 
+    @Override
     public boolean isTimeEnabled() {
         return isEnabled(timerFilter);
     }
 
+    @Override
     public PrintStream output() {
         return output;
     }
@@ -277,14 +287,14 @@ public class GraalDebugConfig implements DebugConfig {
         if (e instanceof BailoutException && !Options.InterceptBailout.getValue()) {
             return null;
         }
-        Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
-        Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
+        Debug.setConfig(Debug.fixedConfig(Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
+        Debug.log("Exception occurred in scope: %s", Debug.currentScope());
         HashSet<Object> firstSeen = new HashSet<>();
         for (Object o : Debug.context()) {
             // Only dump a context object once.
             if (firstSeen.add(o)) {
                 if (Options.DumpOnError.getValue()) {
-                    Debug.dump(o, "Exception: " + e.toString());
+                    Debug.dump(Debug.BASIC_LOG_LEVEL, o, "Exception: %s", e);
                 } else {
                     Debug.log("Context obj %s", o);
                 }

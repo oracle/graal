@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
@@ -38,11 +39,19 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Spliterators;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.SpeculationLog;
 
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.truffle.api.Assumption;
@@ -50,14 +59,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.LoopCountReceiver;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -65,20 +72,14 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
-
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, LoopCountReceiver, ReplaceObserver {
-    private static final RootNode UNINITIALIZED = RootNode.createConstantNode(null);
+@SuppressWarnings("deprecation")
+public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
+    private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
 
-    protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
@@ -92,7 +93,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @CompilationFinal private Assumption profiledReturnTypeAssumption;
 
     private final RootNode rootNode;
-    private volatile RootNode uninitializedRootNode = UNINITIALIZED;
+    private volatile RootNode uninitializedRootNode;
 
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
@@ -104,18 +105,20 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
      * compiled methods that have this call target inlined are properly invalidated.
      */
-    private final CyclicAssumption nodeRewritingAssumption;
+    private volatile Assumption nodeRewritingAssumption;
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER =
+                    AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class, Assumption.class, "nodeRewritingAssumption");
 
     private volatile Future<?> compilationTask;
 
+    @Override
     public final RootNode getRootNode() {
         return rootNode;
     }
 
-    public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, GraalTruffleRuntime runtime, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
+    public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
         super(rootNode.toString());
         this.sourceCallTarget = sourceCallTarget;
-        this.runtime = runtime;
         this.speculationLog = speculationLog;
         this.rootNode = rootNode;
         this.compilationPolicy = compilationPolicy;
@@ -126,11 +129,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         } else {
             this.compilationProfile = new CompilationProfile();
         }
-        this.nodeRewritingAssumption = new CyclicAssumption("nodeRewritingAssumption of " + rootNode.toString());
     }
 
-    public final void log(String message) {
-        runtime.log(message);
+    private static GraalTruffleRuntime runtime() {
+        return (GraalTruffleRuntime) Truffle.getRuntime();
+    }
+
+    public static final void log(String message) {
+        runtime().log(message);
     }
 
     public final boolean isCompiling() {
@@ -138,29 +144,57 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private static RootNode cloneRootNode(RootNode root) {
-        if (root == null || !root.isCloningAllowed()) {
-            return null;
-        }
+        assert root.isCloningAllowed();
         return NodeUtil.cloneNode(root);
     }
 
     public Assumption getNodeRewritingAssumption() {
-        return nodeRewritingAssumption.getAssumption();
+        Assumption assumption = nodeRewritingAssumption;
+        if (assumption == null) {
+            assumption = initializeNodeRewritingAssumption();
+        }
+        return assumption;
+    }
+
+    /**
+     * @return an existing or the newly initialized node rewriting assumption.
+     */
+    private Assumption initializeNodeRewritingAssumption() {
+        Assumption newAssumption = runtime().createAssumption(!TraceTruffleAssumptions.getValue() ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+        if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
+            return newAssumption;
+        } else {
+            // if CAS failed, assumption is already initialized; cannot be null after that.
+            return Objects.requireNonNull(nodeRewritingAssumption);
+        }
+    }
+
+    /**
+     * Invalidate node rewriting assumption iff it has been initialized.
+     */
+    private void invalidateNodeRewritingAssumption() {
+        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, new UnaryOperator<Assumption>() {
+            @Override
+            public Assumption apply(Assumption prev) {
+                return prev == null ? null : runtime().createAssumption(prev.getName());
+            }
+        });
+        if (oldAssumption != null) {
+            oldAssumption.invalidate();
+        }
     }
 
     public int getCloneIndex() {
         return cloneIndex;
     }
 
-    public OptimizedCallTarget cloneUninitialized() {
+    OptimizedCallTarget cloneUninitialized() {
+        assert sourceCallTarget == null;
         if (!initialized) {
             initialize();
         }
         RootNode copiedRoot = cloneRootNode(uninitializedRootNode);
-        if (copiedRoot == null) {
-            return null;
-        }
-        OptimizedCallTarget splitTarget = (OptimizedCallTarget) runtime.createClonedCallTarget(this, copiedRoot);
+        OptimizedCallTarget splitTarget = (OptimizedCallTarget) runtime().createClonedCallTarget(this, copiedRoot);
         splitTarget.cloneIndex = cloneIndex++;
         return splitTarget;
     }
@@ -168,16 +202,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private void initialize() {
         synchronized (this) {
             if (!initialized) {
-                ensureCloned();
-                ACCESSOR.initializeCallTarget(this);
+                if (sourceCallTarget == null && rootNode.isCloningAllowed()) {
+                    // We are the source CallTarget, so make a copy.
+                    this.uninitializedRootNode = cloneRootNode(rootNode);
+                }
+                runtime().getTvmci().onFirstExecution(this);
                 initialized = true;
             }
-        }
-    }
-
-    private void ensureCloned() {
-        if (uninitializedRootNode == UNINITIALIZED) {
-            this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
         }
     }
 
@@ -343,7 +374,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     protected void invalidate(Object source, CharSequence reason) {
         if (isValid()) {
-            this.runtime.invalidateInstalledCode(this, source, reason);
+            runtime().invalidateInstalledCode(this, source, reason);
         }
         cachedNonTrivialNodeCount = -1;
     }
@@ -357,13 +388,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private boolean cancelInstalledTask(Node source, CharSequence reason) {
-        return this.runtime.cancelInstalledTask(this, source, reason);
+        return runtime().cancelInstalledTask(this, source, reason);
     }
 
     private void interpreterCall() {
         if (isValid()) {
             // Stubs were deoptimized => reinstall.
-            this.runtime.reinstallStubs();
+            runtime().reinstallStubs();
         } else {
             if (!initialized) {
                 initialize();
@@ -380,7 +411,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (!initialized) {
                 initialize();
             }
-            runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
+            runtime().compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
     }
 
@@ -397,16 +428,23 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
-            if (TruffleCompilationExceptionsArePrinted.getValue() || TruffleCompilationExceptionsAreFatal.getValue()) {
+            /*
+             * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
+             * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+             */
+            boolean truffleCompilationExceptionsAreFatal = TruffleCompilationExceptionsAreFatal.getValue();
+            assert TruffleCompilationExceptionsAreFatal.hasBeenSet() || (truffleCompilationExceptionsAreFatal = true) == true;
+
+            if (TruffleCompilationExceptionsArePrinted.getValue() || truffleCompilationExceptionsAreFatal) {
                 printException(t);
-                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                if (truffleCompilationExceptionsAreFatal) {
                     System.exit(-1);
                 }
             }
         }
     }
 
-    private void printException(Throwable e) {
+    private static void printException(Throwable e) {
         StringWriter string = new StringWriter();
         e.printStackTrace(new PrintWriter(string));
         log(string.toString());
@@ -481,7 +519,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return castArguments;
     }
 
-    private static Object castArrayFixedLength(Object[] args, @SuppressWarnings("unused") int length) {
+    /**
+     * @param length avoid warning
+     */
+    private static Object castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -496,6 +537,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public List<OptimizedDirectCallNode> getCallNodes() {
         final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
         getRootNode().accept(new NodeVisitor() {
+            @Override
             public boolean visit(Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
                     callNodes.add((OptimizedDirectCallNode) node);
@@ -506,6 +548,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return callNodes;
     }
 
+    final void onLoopCount(int count) {
+        compilationProfile.reportLoopCount(count);
+    }
+
+    /*
+     * For compatibility of Graal runtime with older Truffle runtime. Remove after 0.12.
+     */
     @Override
     public void reportLoopCount(int count) {
         compilationProfile.reportLoopCount(count);
@@ -518,7 +567,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             invalidate(newNode, reason);
         }
         /* Notify compiled method that have inlined this call target that the tree changed. */
-        nodeRewritingAssumption.invalidate();
+        invalidateNodeRewritingAssumption();
 
         compilationProfile.reportNodeReplaced();
         if (cancelInstalledTask(newNode, reason)) {
@@ -591,7 +640,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return DefaultCompilerOptions.INSTANCE;
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
+    /**
+     * @param type avoid warning
+     * @param condition avoid warning
+     * @param nonNull avoid warning
+     */
+    @SuppressWarnings({"unchecked"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
     }
@@ -599,6 +653,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
         public int nodeCount;
 
+        @Override
         public boolean visit(Node node) {
             if (!node.getCost().isTrivial()) {
                 nodeCount++;
@@ -623,15 +678,5 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     void setCompilationTask(Future<?> compilationTask) {
         this.compilationTask = compilationTask;
-    }
-
-    private static final AccessorOptimizedCallTarget ACCESSOR = new AccessorOptimizedCallTarget();
-
-    static final class AccessorOptimizedCallTarget extends Accessor {
-
-        @Override
-        protected void initializeCallTarget(RootCallTarget target) {
-            super.initializeCallTarget(target);
-        }
     }
 }

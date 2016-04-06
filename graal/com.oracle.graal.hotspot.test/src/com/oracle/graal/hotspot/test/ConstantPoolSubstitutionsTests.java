@@ -43,7 +43,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             compile(graph.method(), graph);
             assertNotInGraph(graph, Invoke.class);
-            Debug.dump(graph, snippet);
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, snippet);
             return graph;
         } catch (Throwable e) {
             throw Debug.handle(e);

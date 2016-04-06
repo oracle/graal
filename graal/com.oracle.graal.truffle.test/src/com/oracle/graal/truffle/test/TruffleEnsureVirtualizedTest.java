@@ -24,9 +24,7 @@ package com.oracle.graal.truffle.test;
 
 import jdk.vm.ci.code.BailoutException;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
@@ -64,18 +62,6 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
     public static int intField;
     public static boolean booleanField;
     public static Object field;
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @Override
-    @After
-    public void after() {
-        super.after();
-        InstrumentationTestMode.set(false);
-    }
 
     @Test
     public void test1() {

@@ -80,6 +80,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
     }
 
+    @Override
     public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer) {
         for (int i = 0; i < numberOfMethods(); i++) {
             Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context, canonicalizer);
@@ -87,6 +88,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
     }
 
+    @Override
     public final int determineNodeCount() {
         int nodes = 0;
         for (int i = 0; i < numberOfMethods(); i++) {

@@ -45,6 +45,7 @@ public interface ValueProcedure extends InstructionValueProcedure {
      */
     Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 
+    @Override
     default Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         return doValue(value, mode, flags);
     }

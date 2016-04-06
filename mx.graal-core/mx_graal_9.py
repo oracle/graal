@@ -38,6 +38,7 @@ from mx_unittest import unittest
 from mx_graal_bench import dacapo
 import mx_gate
 import mx_unittest
+import mx_microbench
 
 _suite = mx.suite('graal-core')
 
@@ -108,60 +109,18 @@ def add_boot_classpath_dist(dist):
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
-# This is different than the 'jmh' commmand in that it
-# looks for internal JMH benchmarks (i.e. those that
-# depend on the JMH library).
-def microbench(args):
-    """run JMH microbenchmark projects"""
-    parser = ArgumentParser(prog='mx microbench', description=microbench.__doc__,
-                            usage="%(prog)s [command options|VM options] [-- [JMH options]]")
-    parser.add_argument('--jar', help='Explicitly specify micro-benchmark location')
-    known_args, args = parser.parse_known_args(args)
 
-    vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
+class JVMCI9MicrobenchExecutor(mx_microbench.MicrobenchExecutor):
 
-    # look for -f in JMH arguments
-    forking = True
-    for i in range(len(jmhArgs)):
-        arg = jmhArgs[i]
-        if arg.startswith('-f'):
-            if arg == '-f' and (i+1) < len(jmhArgs):
-                arg += jmhArgs[i+1]
-            try:
-                if int(arg[2:]) == 0:
-                    forking = False
-            except ValueError:
-                pass
-
-    if known_args.jar:
-        # use the specified jar
-        args = ['-jar', known_args.jar]
-        if not forking:
-            args += vmArgs
-    else:
-        # find all projects with a direct JMH dependency
-        jmhProjects = []
-        for p in mx.projects_opt_limit_to_suites():
-            if 'JMH' in [x.name for x in p.deps]:
-                jmhProjects.append(p.name)
-        cp = mx.classpath(jmhProjects)
-
-        # execute JMH runner
-        args = ['-cp', cp]
-        if not forking:
-            args += vmArgs
-        args += ['org.openjdk.jmh.Main']
-
-    if forking:
+    def parseForkedVmArgs(self, vmArgs):
         jvm = get_vm()
-        def quoteSpace(s):
-            if " " in s:
-                return '"' + s + '"'
-            return s
+        return ['-' + jvm] + _parseVmArgs(_jdk, vmArgs)
 
-        forkedVmArgs = map(quoteSpace, _parseVmArgs(_jdk, vmArgs))
-        args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
-    run_vm(args + jmhArgs)
+    def run_java(self, args):
+        run_vm(args)
+
+mx_microbench.set_microbenchmark_executor(JVMCI9MicrobenchExecutor())
+
 
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
@@ -236,7 +195,7 @@ class MicrobenchRun:
 
     def run(self, tasks, extraVMarguments=None):
         with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
-            if t: microbench(_noneAsEmptyList(extraVMarguments) + ['--'] + self.args)
+            if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
     test = 'test'
@@ -298,7 +257,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.compiler=graal-economy', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.Compiler=graal-economy', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-G:+TraceRA', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
@@ -361,7 +320,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
-    args = ['-Djvmci.compiler=' + jvmciCompiler] + args
+    args = ['-Djvmci.Compiler=' + jvmciCompiler] + args
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
@@ -435,7 +394,6 @@ class GraalArchiveParticipant:
 mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
-    'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
 })
 
 mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes.viewkeys()), help='the JVM variant type to build/run (default: ' + _vm.jvmciMode + ')')

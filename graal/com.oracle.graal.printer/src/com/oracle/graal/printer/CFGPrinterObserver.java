@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -197,7 +198,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 StructuredGraph graph = (StructuredGraph) object;
                 cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             }
-            cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
+            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()), true);
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
@@ -264,6 +265,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
             if (selected == null) {
                 selected = new DisassemblerProvider() {
+                    @Override
                     public String getName() {
                         return "nop";
                     }

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isGlobalRegister;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
@@ -179,6 +180,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             this.isStub = isStub;
         }
 
+        @Override
         public boolean hasFrame() {
             return true;
         }
@@ -335,7 +337,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     masm.ldx(src, scratch);
                     masm.cmp(scratch, inlineCacheKlass);
                 }
-                masm.bpcc(NotEqual, NOT_ANNUL, unverifiedStub, Xcc, PREDICT_NOT_TAKEN);
+                BPCC.emit(masm, Xcc, NotEqual, NOT_ANNUL, PREDICT_NOT_TAKEN, unverifiedStub);
                 masm.nop();  // delay slot
             }
 

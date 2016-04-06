@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,7 +78,6 @@ import com.oracle.graal.lir.sparc.SPARCFloatCompareOp;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
 import com.oracle.graal.lir.sparc.SPARCJumpOp;
 import com.oracle.graal.lir.sparc.SPARCLoadConstantTableBaseOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadDataAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
@@ -151,11 +150,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 return kind;
         }
-    }
-
-    @Override
-    public void emitData(AllocatableValue dst, byte[] data) {
-        append(new LoadDataAddressOp(dst, data));
     }
 
     public SPARCAddressValue asAddressValue(Value address) {
@@ -431,6 +425,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         PlatformKind kind = address.getPlatformKind();
         assert kind == XWORD : address + " - " + kind + " not an object!";

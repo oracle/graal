@@ -35,18 +35,22 @@ import com.oracle.graal.api.collections.DefaultCollectionsProvider;
  */
 public class DefaultNodeCollectionsProvider extends DefaultCollectionsProvider implements NodeCollectionsProvider {
 
+    @Override
     public <E extends Node> Set<E> newNodeIdentitySet() {
         return Collections.newSetFromMap(newNodeIdentityMap());
     }
 
+    @Override
     public <K extends Node, V> Map<K, V> newNodeIdentityMap() {
         return new IdentityHashMap<>();
     }
 
+    @Override
     public <K extends Node, V> Map<K, V> newNodeIdentityMap(int expectedMaxSize) {
         return new IdentityHashMap<>(expectedMaxSize);
     }
 
+    @Override
     public <K extends Node, V> Map<K, V> newNodeIdentityMap(Map<K, V> initFrom) {
         return new IdentityHashMap<>(initFrom);
     }

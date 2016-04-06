@@ -88,7 +88,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-        Debug.dump(graph, "after parsing");
+        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "after parsing");
 
         GuardNode myGuardNode = null;
         for (Node n : graph.getNodes()) {
@@ -109,7 +109,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
         AbstractBeginNode prevBegin = BeginNode.prevBegin((FixedNode) myBegin.predecessor());
         myGuardNode.setAnchor(prevBegin);
 
-        Debug.dump(graph, "after manual modification");
+        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "after manual modification");
         graph.reverseUsageOrder();
         new DominatorConditionalEliminationPhase(true).apply(graph);
         new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST).apply(graph);

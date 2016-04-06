@@ -59,10 +59,12 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode, Pro
         return (value == null ? null : value.asNode());
     }
 
+    @Override
     public Node getOriginalNode() {
         return (value == null ? null : value.asNode());
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (value == null) {
             return null;

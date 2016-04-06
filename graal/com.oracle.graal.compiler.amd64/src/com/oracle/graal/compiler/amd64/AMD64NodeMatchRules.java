@@ -133,6 +133,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         // ok.
         Condition finalCondition = GraphUtil.unproxify(compare.getX()) == access ? cond.mirror() : cond;
         return new ComplexMatchResult() {
+            @Override
             public Value evaluate(NodeLIRBuilder builder) {
                 LabelRef trueLabel = getLIRBlock(ifNode.trueSuccessor());
                 LabelRef falseLabel = getLIRBlock(ifNode.falseSuccessor());

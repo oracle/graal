@@ -51,6 +51,7 @@ public class SPARCIndexedAddressNode extends AddressNode implements LIRLowerable
         this.index = index;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         SPARCLIRGenerator tool = (SPARCLIRGenerator) gen.getLIRGeneratorTool();
 

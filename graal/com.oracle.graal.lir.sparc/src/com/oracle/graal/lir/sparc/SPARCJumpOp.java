@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
@@ -44,10 +47,11 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         this.store = new SPARCLIRInstructionMixinStore(SIZE);
     }
 
+    @Override
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         assert !emitDone;
         if (!crb.isSuccessorEdge(destination())) {
-            masm.bicc(ConditionFlag.Always, NOT_ANNUL, destination().label());
+            BPCC.emit(masm, Xcc, Always, NOT_ANNUL, PREDICT_TAKEN, destination().label());
             delaySlotPosition = masm.position();
         }
         emitDone = true;
@@ -58,8 +62,7 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         if (!crb.isSuccessorEdge(destination())) {
             if (!emitDone) {
                 SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-                masm.bicc(ConditionFlag.Always, NOT_ANNUL, destination().label());
-                masm.nop();
+                masm.jmp(destination().label());
             } else {
                 int disp = crb.asm.position() - delaySlotPosition;
                 assert disp == 4 : disp;
@@ -67,11 +70,13 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         }
     }
 
+    @Override
     public void resetState() {
         delaySlotPosition = -1;
         emitDone = false;
     }
 
+    @Override
     public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
         return store;
     }

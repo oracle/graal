@@ -34,6 +34,7 @@ class StackIntervalDumper implements IntervalDumper {
         this.intervals = intervals;
     }
 
+    @Override
     public void visitIntervals(IntervalVisitor visitor) {
         for (StackInterval interval : intervals) {
             if (interval != null) {

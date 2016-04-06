@@ -30,6 +30,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
+import com.oracle.graal.hotspot.nodes.type.SymbolPointerStamp;
 import com.oracle.graal.word.WordTypes;
 
 /**
@@ -52,11 +53,17 @@ public class HotSpotWordTypes extends WordTypes {
      */
     private final ResolvedJavaType methodPointerType;
 
+    /**
+     * Resolved type for {@link SymbolPointer}.
+     */
+    private final ResolvedJavaType symbolPointerType;
+
     public HotSpotWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         super(metaAccess, wordKind);
         this.metaspacePointerType = metaAccess.lookupJavaType(MetaspacePointer.class);
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
+        this.symbolPointerType = metaAccess.lookupJavaType(SymbolPointer.class);
     }
 
     @Override
@@ -69,7 +76,7 @@ public class HotSpotWordTypes extends WordTypes {
 
     @Override
     public JavaKind asKind(JavaType type) {
-        if (klassPointerType.equals(type) || methodPointerType.equals(type)) {
+        if (klassPointerType.equals(type) || methodPointerType.equals(type) || symbolPointerType.equals(type)) {
             return getWordKind();
         }
         return super.asKind(type);
@@ -81,6 +88,8 @@ public class HotSpotWordTypes extends WordTypes {
             return KlassPointerStamp.klass();
         } else if (type.equals(methodPointerType)) {
             return MethodPointerStamp.method();
+        } else if (type.equals(symbolPointerType)) {
+            return SymbolPointerStamp.symbol();
         }
         return super.getWordStamp(type);
     }

@@ -164,7 +164,7 @@ public abstract class TruffleCompiler {
     @SuppressWarnings("try")
     public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
-            Debug.dump(1, graph, "After TruffleTier");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After TruffleTier");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

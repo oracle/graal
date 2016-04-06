@@ -1,0 +1,103 @@
+java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
+java9  : {name : oraclejdk, version : "9",    platformspecific: true}
+
+common : {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
+    gcc-build-essentials : ">=4.9.1" # GCC 4.9.0 fails on cluster
+  }
+  environment : {
+    DEFAULT_VM : "jvmci"
+  }
+  timelimit : "30:00"
+}
+
+gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+
+java8Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8}
+  }
+}
+
+java9Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+      ${java8}
+    ]}
+    JAVA_HOME : ${java9}
+  }
+}
+
+gateTest : ${common} {
+  run : [
+    ${gateCmd} ["build,test"]
+  ]
+}
+
+gateBootstrap : ${common} {
+  run : [
+    ${gateCmd} ["build,bootstrap"]
+  ]
+}
+
+gateTest8 : ${gateTest} ${java8Downloads}
+gateTest9  : ${gateTest} ${java9Downloads}
+gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
+gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
+
+gateStyle : ${common} {
+  # need pyhocon fix
+  downloads : {
+    JAVA_HOME : ${java8Downloads.downloads.JAVA_HOME}
+    EXTRA_JAVA_HOMES : ${java8Downloads.downloads.EXTRA_JAVA_HOMES}
+    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    ECLIPSE : {name: eclipse, version: "4.3.0", platformspecific: true}
+  }
+  environment : ${common.environment} {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+  }
+  run : [
+    ${gateCmd} ["style,fullbuild"]
+  ]
+}
+
+benchSPECjvm2008 : ${common} {
+  downloads = ${java8Downloads.downloads} {
+    SPECJVM2008 : {name : specjvm2008, version : "1.01"}
+  }
+  run : [
+    ["mx", "bench", "--results", "results.json", "specjvm2008"]
+    ["upload-results", "results.json"]
+  ]
+}
+
+benchDaCapo : ${common} ${java8Downloads.downloads} {
+  downloads = ${java8Downloads.downloads} {
+    DACAPO : {name : dacapo, version : "9.12"}
+  }
+  run : [
+    ["mx", "bench", "--results", "results.json", "dacapo"]
+    ["upload-results", "results.json"]
+  ]
+}
+
+builds = [
+  ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}        {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
+  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
+  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+  ${benchDaCapo}      {capabilities : [linux, amd64, bench],  name: "bench-dacapo-linux-amd64"}
+]

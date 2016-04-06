@@ -24,6 +24,7 @@ package com.oracle.graal.printer;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -35,13 +36,13 @@ interface GraphPrinter extends Closeable {
      * Starts a new group of graphs with the given name, short name and method byte code index (BCI)
      * as properties.
      */
-    void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) throws IOException;
+    void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException;
 
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for
      * nodes.
      */
-    void print(Graph graph, String title) throws IOException;
+    void print(Graph graph, String title, Map<Object, Object> properties) throws IOException;
 
     /**
      * Ends the current group.

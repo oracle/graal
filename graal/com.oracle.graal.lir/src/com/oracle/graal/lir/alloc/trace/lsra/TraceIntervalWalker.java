@@ -85,15 +85,15 @@ class TraceIntervalWalker {
         }
     }
 
-    private void logList(FixedInterval i) {
+    private static void logList(FixedInterval i) {
         for (FixedInterval interval = i; interval != FixedInterval.EndMarker; interval = interval.next) {
-            Debug.log("%s", interval.logString(allocator));
+            Debug.log("%s", interval.logString());
         }
     }
 
-    private void logList(TraceInterval i) {
+    private static void logList(TraceInterval i) {
         for (TraceInterval interval = i; interval != TraceInterval.EndMarker; interval = interval.next) {
-            Debug.log("%s", interval.logString(allocator));
+            Debug.log("%s", interval.logString());
         }
     }
 
@@ -313,11 +313,11 @@ class TraceIntervalWalker {
         }
     }
 
-    private void intervalMoved(IntervalHint interval, State from, State to) {
+    private static void intervalMoved(IntervalHint interval, State from, State to) {
         // intervalMoved() is called whenever an interval moves from one interval list to another.
         // In the implementation of this method it is prohibited to move the interval to any list.
         if (Debug.isLogEnabled()) {
-            Debug.log("interval moved from %s to %s: %s", from, to, interval.logString(allocator));
+            Debug.log("interval moved from %s to %s: %s", from, to, interval.logString());
         }
     }
 }

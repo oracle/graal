@@ -37,5 +37,6 @@ public interface Lowerable extends NodeInterface {
      */
     void lower(LoweringTool tool);
 
+    @Override
     ValueNode asNode();
 }

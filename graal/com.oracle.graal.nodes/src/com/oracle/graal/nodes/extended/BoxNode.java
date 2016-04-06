@@ -64,6 +64,7 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
         return boxingKind;
     }
 
+    @Override
     public ValueNode getValue() {
         return value;
     }

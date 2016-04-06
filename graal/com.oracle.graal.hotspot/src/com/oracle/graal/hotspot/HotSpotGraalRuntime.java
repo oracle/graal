@@ -180,6 +180,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return backend;
     }
 
+    @Override
     public HotSpotProviders getHostProviders() {
         return getHostBackend().getProviders();
     }
@@ -208,10 +209,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return null;
     }
 
+    @Override
     public HotSpotBackend getHostBackend() {
         return hostBackend;
     }
 
+    @Override
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
         assert arch != Architecture.class;
         return backends.get(arch);

@@ -736,6 +736,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
 
+            @Override
             public Node replacement(Node node, Edges.Type type) {
                 Node target = newNodes.get(node);
                 if (target == null) {

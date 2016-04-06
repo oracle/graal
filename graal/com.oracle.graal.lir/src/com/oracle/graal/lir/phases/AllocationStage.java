@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.lir.phases;
 
-import static com.oracle.graal.compiler.common.BackendOptions.EnableSSIConstruction;
-import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.TraceRA;
+import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.lir.alloc.AllocationStageVerifier;
 import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
+import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
+import com.oracle.graal.lir.alloc.trace.lsra.SSIConstructionAndIntervalBuildingPhase;
 import com.oracle.graal.lir.dfa.LocationMarkerPhase;
 import com.oracle.graal.lir.dfa.MarkBasePointersPhase;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.ssi.FastSSIConstructionPhase;
 import com.oracle.graal.lir.ssi.SSIConstructionPhase;
 import com.oracle.graal.lir.stackslotalloc.LSStackSlotAllocator;
 import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
@@ -44,21 +44,20 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Use fast SSI construction.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> LIROptFastSSIConstruction = new StableOptionValue<>(true);
+        @Option(help = "Construct SSI and lifetime intervals in a single combined pass.", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> TraceRACombinedSSIConstruction = new StableOptionValue<>(false);
         // @formatter:on
     }
 
     public AllocationStage() {
         appendPhase(new MarkBasePointersPhase());
-        if (EnableSSIConstruction.getValue()) {
-            if (Options.LIROptFastSSIConstruction.getValue()) {
-                appendPhase(new FastSSIConstructionPhase());
+        if (TraceRA.getValue()) {
+            appendPhase(new TraceBuilderPhase());
+            if (Options.TraceRACombinedSSIConstruction.getValue()) {
+                appendPhase(new SSIConstructionAndIntervalBuildingPhase());
             } else {
                 appendPhase(new SSIConstructionPhase());
             }
-        }
-        if (TraceRA.getValue()) {
             appendPhase(new TraceRegisterAllocationPhase());
         } else {
             appendPhase(new LinearScanPhase());

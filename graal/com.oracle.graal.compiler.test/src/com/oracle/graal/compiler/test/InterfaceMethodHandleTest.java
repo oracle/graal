@@ -49,10 +49,12 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
     }
 
     static class A implements I {
+        @Override
         public int m() {
             return 0;
         }
 
+        @Override
         public int m2(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
             return 1;
         }
@@ -60,10 +62,12 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
     }
 
     static class M2Thrower implements I {
+        @Override
         public int m() {
             return 0;
         }
 
+        @Override
         public int m2(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
             throw new InternalError();
         }

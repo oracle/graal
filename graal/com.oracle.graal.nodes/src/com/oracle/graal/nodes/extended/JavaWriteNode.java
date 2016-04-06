@@ -53,10 +53,12 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
         this.compressible = compressible;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
     }

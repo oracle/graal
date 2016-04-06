@@ -25,9 +25,7 @@ package com.oracle.graal.truffle.test;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.SourceStackTrace;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.replacements.PEGraphDecoder;
@@ -55,18 +53,6 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
         return 42;
-    }
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @Override
-    @After
-    public void after() {
-        super.after();
-        InstrumentationTestMode.set(false);
     }
 
     @Test
@@ -112,7 +98,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void twoMergesLoopExplosion() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new AddTestNode(new TwoMergesExplodedLoopTestNode(5), new ConstantTestNode(37));
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "nestedLoopExplosion", result));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "twoMergesLoopExplosion", result));
     }
 
     @Test

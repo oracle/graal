@@ -24,6 +24,7 @@ package com.oracle.graal.printer;
 
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
@@ -539,6 +540,7 @@ class CFGPrinter extends CompilationPrinter {
 
     IntervalVisitor intervalVisitor = new IntervalVisitor() {
 
+        @Override
         public void visitIntervalStart(Object parentOperand, Object splitOperand, Object location, Object hint, String typeName, char typeChar) {
             out.printf("%s %s ", splitOperand, typeName);
             if (location != null) {
@@ -549,14 +551,17 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("%s %s ", parentOperand, hint != null ? hint : -1);
         }
 
+        @Override
         public void visitRange(int from, int to) {
             out.printf("[%d, %d[", from, to);
         }
 
+        @Override
         public void visitUsePos(int usePos, Object registerPriority) {
             out.printf("%d %s ", usePos, registerPriority);
         }
 
+        @Override
         public void visitIntervalEnd(Object spillState) {
             out.printf(" \"%s\"", spillState);
             out.println();
@@ -689,12 +694,12 @@ class CFGPrinter extends CompilationPrinter {
 
         if (block.getPredecessorCount() > 0) {
             out.print("<- ");
-            printBlockListWithTrace(block.getPredecessors(), traceBuilderResult);
+            printBlockListWithTrace(Arrays.asList(block.getPredecessors()), traceBuilderResult);
             out.print(" ");
         }
         if (block.getSuccessorCount() > 0) {
             out.print("-> ");
-            printBlockListWithTrace(block.getSuccessors(), traceBuilderResult);
+            printBlockListWithTrace(Arrays.asList(block.getSuccessors()), traceBuilderResult);
         }
 
         out.print(COLUMN_END);
@@ -719,11 +724,18 @@ class CFGPrinter extends CompilationPrinter {
         end("block");
     }
 
+    private static boolean isLoopBackEdge(AbstractBlockBase<?> src, AbstractBlockBase<?> dst) {
+        return dst.isLoopHeader() && dst.getLoop().equals(src.getLoop());
+    }
+
     private static List<Trace<?>> getSuccessors(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> s : block.getSuccessors()) {
-                bs.set(traceBuilderResult.getTraceForBlock(s));
+                int otherTraceId = traceBuilderResult.getTraceForBlock(s);
+                if (trace.getId() != otherTraceId || isLoopBackEdge(block, s)) {
+                    bs.set(otherTraceId);
+                }
             }
         }
         List<Trace<?>> succ = new ArrayList<>();
@@ -737,7 +749,10 @@ class CFGPrinter extends CompilationPrinter {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> p : block.getPredecessors()) {
-                bs.set(traceBuilderResult.getTraceForBlock(p));
+                int otherTraceId = traceBuilderResult.getTraceForBlock(p);
+                if (trace.getId() != otherTraceId || isLoopBackEdge(p, block)) {
+                    bs.set(traceBuilderResult.getTraceForBlock(p));
+                }
             }
         }
         List<Trace<?>> pred = new ArrayList<>();

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.common.alloc;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Deque;
@@ -144,7 +145,7 @@ public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
     }
 
     private boolean isBackEdge(T from, T to) {
-        assert from.getSuccessors().contains(to) : "No edge from " + from + " to " + to;
+        assert Arrays.asList(from.getSuccessors()).contains(to) : "No edge from " + from + " to " + to;
         return from.isLoopEnd() && to.isLoopHeader() && from.getLoop().equals(to.getLoop());
     }
 

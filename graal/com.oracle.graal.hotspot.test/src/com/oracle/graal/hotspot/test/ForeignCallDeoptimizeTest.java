@@ -49,6 +49,7 @@ public class ForeignCallDeoptimizeTest extends GraalCompilerTest {
         Plugins ret = super.getDefaultGraphBuilderPlugins();
         ret.getInvocationPlugins().register(new InvocationPlugin() {
 
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(foreignCalls, HotSpotForeignCallsProviderImpl.TEST_DEOPTIMIZE_CALL_INT, arg);
                 b.addPush(JavaKind.Int, node);

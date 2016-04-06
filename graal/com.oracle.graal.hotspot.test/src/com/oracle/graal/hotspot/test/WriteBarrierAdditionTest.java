@@ -267,7 +267,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             new GuardLoweringPhase().apply(graph, midContext);
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
             new WriteBarrierAdditionPhase(config).apply(graph);
-            Debug.dump(graph, "After Write Barrier Addition");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After Write Barrier Addition");
 
             int barriers = 0;
             if (config.useG1GC) {
@@ -277,7 +277,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                 barriers = graph.getNodes().filter(SerialWriteBarrier.class).count();
             }
             if (expectedBarriers != barriers) {
-                Assert.assertEquals("UseG1GC = " + config.useG1GC + " " + getCanonicalGraphString(graph, false, false), expectedBarriers, barriers);
+                Assert.assertEquals(getScheduledGraphString(graph), expectedBarriers, barriers);
             }
             for (WriteNode write : graph.getNodes().filter(WriteNode.class)) {
                 if (config.useG1GC) {

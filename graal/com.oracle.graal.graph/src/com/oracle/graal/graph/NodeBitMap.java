@@ -32,13 +32,13 @@ public final class NodeBitMap implements NodeIterable<Node> {
 
     private long[] bits;
     private int nodeCount;
-    private final NodeIdAccessor nodeIdAccessor;
     private int counter;
+    private final Graph graph;
 
     public NodeBitMap(Graph graph) {
-        nodeCount = graph.nodeIdCount();
-        bits = new long[sizeForNodeCount(nodeCount)];
-        this.nodeIdAccessor = new NodeIdAccessor(graph);
+        this.nodeCount = graph.nodeIdCount();
+        this.bits = new long[sizeForNodeCount(nodeCount)];
+        this.graph = graph;
     }
 
     private static int sizeForNodeCount(int nodeCount) {
@@ -52,21 +52,20 @@ public final class NodeBitMap implements NodeIterable<Node> {
     private NodeBitMap(NodeBitMap other) {
         this.bits = other.bits.clone();
         this.nodeCount = other.nodeCount;
-        this.nodeIdAccessor = other.nodeIdAccessor;
+        this.graph = other.graph;
     }
 
     public Graph graph() {
-        return nodeIdAccessor.getGraph();
+        return graph;
     }
 
     public boolean isNew(Node node) {
-        return nodeIdAccessor.getNodeId(node) >= nodeCount;
+        return node.id() >= nodeCount;
     }
 
     public boolean isMarked(Node node) {
         assert check(node, false);
-        int id = nodeIdAccessor.getNodeId(node);
-        return isMarked(id);
+        return isMarked(node.id());
     }
 
     public boolean checkAndMarkInc(Node node) {
@@ -85,33 +84,33 @@ public final class NodeBitMap implements NodeIterable<Node> {
 
     public boolean isMarkedAndGrow(Node node) {
         assert check(node, true);
-        int id = nodeIdAccessor.getNodeId(node);
+        int id = node.id();
         checkGrow(id);
         return isMarked(id);
     }
 
     public void mark(Node node) {
         assert check(node, false);
-        int id = nodeIdAccessor.getNodeId(node);
+        int id = node.id();
         bits[id >> SHIFT] |= (1L << id);
     }
 
     public void markAndGrow(Node node) {
         assert check(node, true);
-        int id = nodeIdAccessor.getNodeId(node);
+        int id = node.id();
         checkGrow(id);
         bits[id >> SHIFT] |= (1L << id);
     }
 
     public void clear(Node node) {
         assert check(node, false);
-        int id = nodeIdAccessor.getNodeId(node);
+        int id = node.id();
         bits[id >> SHIFT] &= ~(1L << id);
     }
 
     public void clearAndGrow(Node node) {
         assert check(node, true);
-        int id = nodeIdAccessor.getNodeId(node);
+        int id = node.id();
         checkGrow(id);
         bits[id >> SHIFT] &= ~(1L << id);
     }

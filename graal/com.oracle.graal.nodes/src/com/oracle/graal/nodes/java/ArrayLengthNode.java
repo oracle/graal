@@ -54,6 +54,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         return array;
     }
 
+    @Override
     public ValueNode getValue() {
         return array;
     }
@@ -76,6 +77,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         return new ArrayLengthNode(forValue);
     }
 
+    @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         ValueNode length = readArrayLength(forValue, tool.getConstantReflection());
         if (length != null) {

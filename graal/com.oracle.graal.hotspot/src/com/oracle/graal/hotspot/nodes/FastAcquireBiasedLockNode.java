@@ -49,6 +49,7 @@ public final class FastAcquireBiasedLockNode extends FixedWithNextNode implement
         return object;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         // This is just a marker node so it generates nothing
     }

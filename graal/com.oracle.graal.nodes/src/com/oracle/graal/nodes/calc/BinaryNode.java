@@ -38,10 +38,12 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
     @Input protected ValueNode x;
     @Input protected ValueNode y;
 
+    @Override
     public ValueNode getX() {
         return x;
     }
 
+    @Override
     public ValueNode getY() {
         return y;
     }

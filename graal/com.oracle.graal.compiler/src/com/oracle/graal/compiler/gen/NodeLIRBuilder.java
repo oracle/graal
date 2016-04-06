@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import static com.oracle.graal.compiler.common.BackendOptions.ConstructionSSAlirDuringLirBuilding;
 import static com.oracle.graal.compiler.common.GraalOptions.MatchExpressions;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
 import static com.oracle.graal.lir.LIR.verifyBlock;
@@ -36,22 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.match.ComplexMatchValue;
@@ -78,7 +64,6 @@ import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.BlockScope;
-import com.oracle.graal.lir.gen.PhiResolver;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
@@ -113,6 +98,20 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -180,6 +179,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return nodeOperands.get(node);
     }
 
+    @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
         for (Entry<Node, Value> entry : nodeOperands.entries()) {
@@ -220,11 +220,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public LabelRef getLIRBlock(FixedNode b) {
         assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
         Block result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
-        int suxIndex = gen.getCurrentBlock().getSuccessors().indexOf(result);
-        assert suxIndex != -1 : "Block not in successor list of current block";
-
-        assert gen.getCurrentBlock() instanceof Block;
-        return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
+        int suxIndex = 0;
+        for (AbstractBlockBase<?> succ : gen.getCurrentBlock().getSuccessors()) {
+            if (succ == result) {
+                assert gen.getCurrentBlock() instanceof Block;
+                return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
+            }
+            suxIndex++;
+        }
+        throw JVMCIError.shouldNotReachHere("Block not in successor list of current block");
     }
 
     public final void append(LIRInstruction op) {
@@ -316,6 +320,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
+    @Override
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
@@ -326,17 +331,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 emitPrologue(graph);
             } else {
                 assert block.getPredecessorCount() > 0;
-                if (ConstructionSSAlirDuringLirBuilding.getValue()) {
-                    // create phi-in value array
-                    AbstractBeginNode begin = block.getBeginNode();
-                    if (begin instanceof AbstractMergeNode) {
-                        AbstractMergeNode merge = (AbstractMergeNode) begin;
-                        LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
-                        label.setIncomingValues(createPhiIn(merge));
-                        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
-                            TTY.println("Created PhiIn: " + label);
+                // create phi-in value array
+                AbstractBeginNode begin = block.getBeginNode();
+                if (begin instanceof AbstractMergeNode) {
+                    AbstractMergeNode merge = (AbstractMergeNode) begin;
+                    LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
+                    label.setIncomingValues(createPhiIn(merge));
+                    if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
+                        TTY.println("Created PhiIn: " + label);
 
-                        }
                     }
                 }
             }
@@ -493,11 +496,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void visitEndNode(AbstractEndNode end) {
         AbstractMergeNode merge = end.merge();
         JumpOp jump = newJumpOp(getLIRBlock(merge));
-        if (ConstructionSSAlirDuringLirBuilding.getValue()) {
-            jump.setOutgoingValues(createPhiOut(merge, end));
-        } else {
-            moveToPhi(merge, end);
-        }
+        jump.setOutgoingValues(createPhiOut(merge, end));
         append(jump);
     }
 
@@ -508,38 +507,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(AbstractMergeNode merge, AbstractEndNode pred) {
-        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
-            TTY.println("MOVE TO PHI from " + pred + " to " + merge);
-        }
-        PhiResolver resolver = PhiResolver.create(gen);
-        for (PhiNode phi : merge.phis()) {
-            if (phi instanceof ValuePhiNode) {
-                ValueNode curVal = phi.valueAt(pred);
-                resolver.move(operandForPhi((ValuePhiNode) phi), operand(curVal));
-            }
-        }
-        resolver.dispose();
-    }
-
     protected JumpOp newJumpOp(LabelRef ref) {
         return new JumpOp(ref);
     }
 
     protected LIRKind getPhiKind(PhiNode phi) {
         return gen.getLIRKind(phi.stamp());
-    }
-
-    private Value operandForPhi(ValuePhiNode phi) {
-        Value result = getOperand(phi);
-        if (result == null) {
-            // allocate a variable for this phi
-            Variable newOperand = gen.newVariable(getPhiKind(phi));
-            setResult(phi, newOperand);
-            return newOperand;
-        } else {
-            return result;
-        }
     }
 
     @Override
@@ -734,6 +707,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @Override
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;

@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.truffle.test;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -41,18 +40,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationTest {
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @Override
-    @After
-    public void after() {
-        super.after();
-        InstrumentationTestMode.set(false);
-    }
 
     public static class Bytecode {
         public static final byte CONST = 0;
@@ -83,10 +70,18 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                     CompilerDirectives.transferToInterpreter();
                 }
             }
+            if (result > 100) {
+                /* Dead branch, just to have exception-throwing calls during partial evaluation. */
+                boundary();
+            }
             return result;
         } else {
             return x;
         }
+    }
+
+    @TruffleBoundary(throwsControlFlowException = true)
+    static void boundary() {
     }
 
     public static class Program extends RootNode {

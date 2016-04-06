@@ -81,6 +81,7 @@ public abstract class DebugValue implements Comparable<DebugValue> {
         return name;
     }
 
+    @Override
     public int compareTo(DebugValue o) {
         return name.compareTo(o.name);
     }

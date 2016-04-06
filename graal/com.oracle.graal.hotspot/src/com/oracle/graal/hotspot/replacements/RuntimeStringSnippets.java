@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.CStringNode;
 import com.oracle.graal.nodes.debug.RuntimeStringNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.nodes.java.NewInstanceNode;
@@ -41,6 +40,7 @@ import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
+import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -75,7 +75,7 @@ public class RuntimeStringSnippets implements Snippets {
     public static String create(@ConstantParameter String compilationTimeString) {
         int i = compilationTimeString.length();
         char[] array = (char[]) NewArrayNode.newUninitializedArray(char.class, i);
-        Word cArray = CStringNode.cstring(compilationTimeString);
+        Word cArray = CStringConstant.cstring(compilationTimeString);
         while (i-- > 0) {
             // assuming it is ASCII string
             // array[i] = (char) cArray.readByte(i);

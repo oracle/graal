@@ -68,6 +68,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -118,9 +119,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected CallMethods callMethods;
 
     private final Supplier<GraalRuntime> graalRuntime;
+    private final GraalTVMCI tvmci = new GraalTVMCI();
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
+    }
+
+    GraalTVMCI getTvmci() {
+        return tvmci;
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
@@ -250,8 +256,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
         private final FrameInstanceVisitor<T> visitor;
-        private final ResolvedJavaMethod callTargetMethod;
-        private final ResolvedJavaMethod callNodeMethod;
+        private final CallMethods methods;
 
         private boolean first = true;
         private int skipFrames;
@@ -260,13 +265,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
         FrameVisitor(FrameInstanceVisitor<T> visitor, CallMethods methods, int skip) {
             this.visitor = visitor;
-            this.callTargetMethod = methods.callTargetMethod;
-            this.callNodeMethod = methods.callNodeMethod;
+            this.methods = methods;
             this.skipFrames = skip;
         }
 
+        @Override
         public T visitFrame(InspectedFrame frame) {
-            if (frame.isMethod(callTargetMethod)) {
+            if (frame.isMethod(methods.callOSRMethod)) {
+                // we ignore OSR frames.
+                skipFrames++;
+                return null;
+            } else if (frame.isMethod(methods.callTargetMethod)) {
                 try {
                     if (skipFrames == 0) {
                         return visitor.visitFrame(new GraalFrameInstance(first, frame, callNodeFrame));
@@ -277,7 +286,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                     callNodeFrame = null;
                     first = false;
                 }
-            } else if (frame.isMethod(callNodeMethod)) {
+            } else if (frame.isMethod(methods.callNodeMethod)) {
                 callNodeFrame = frame;
             }
             return null;
@@ -303,7 +312,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return iterateImpl(frame -> frame, 0);
     }
 
+    @Override
     public <T> T getCapability(Class<T> capability) {
+        if (capability.isAssignableFrom(TVMCI.class)) {
+            return capability.cast(tvmci);
+        }
         return null;
     }
 
@@ -492,72 +505,84 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     // cached field access to make it fast in the interpreter
     private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.TruffleProfilingEnabled.getValue();
 
+    @Override
     public final boolean isProfilingEnabled() {
         return PROFILING_ENABLED;
     }
 
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 
+        @Override
         public void notifyCompilationQueued(OptimizedCallTarget target) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationQueued(target);
             }
         }
 
+        @Override
         public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationInvalidated(target, source, reason);
             }
         }
 
+        @Override
         public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationDequeued(target, source, reason);
             }
         }
 
+        @Override
         public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationFailed(target, graph, t);
             }
         }
 
+        @Override
         public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationSplit(callNode);
             }
         }
 
+        @Override
         public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationGraalTierFinished(target, graph);
             }
         }
 
+        @Override
         public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationSuccess(target, graph, result);
             }
         }
 
+        @Override
         public void notifyCompilationStarted(OptimizedCallTarget target) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationStarted(target);
             }
         }
 
+        @Override
         public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationTruffleTierFinished(target, graph);
             }
         }
 
+        @Override
         public void notifyShutdown(GraalTruffleRuntime runtime) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyShutdown(runtime);
             }
         }
 
+        @Override
         public void notifyStartup(GraalTruffleRuntime runtime) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyStartup(runtime);
@@ -569,12 +594,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected static final class CallMethods {
         public final ResolvedJavaMethod callNodeMethod;
         public final ResolvedJavaMethod callTargetMethod;
+        public final ResolvedJavaMethod callOSRMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         private CallMethods(MetaAccessProvider metaAccess) {
             this.callNodeMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod};
+            this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callNodeMethod, callTargetMethod, callOSRMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {

@@ -266,15 +266,15 @@ public class StampFactory {
         return objectAlwaysNullStamp;
     }
 
-    public static Stamp object(TypeReference type) {
+    public static ObjectStamp object(TypeReference type) {
         return object(type, false);
     }
 
-    public static Stamp objectNonNull(TypeReference type) {
+    public static ObjectStamp objectNonNull(TypeReference type) {
         return object(type, true);
     }
 
-    public static Stamp object(TypeReference type, boolean nonNull) {
+    public static ObjectStamp object(TypeReference type, boolean nonNull) {
         if (type == null) {
             return new ObjectStamp(null, false, nonNull, false);
         } else {

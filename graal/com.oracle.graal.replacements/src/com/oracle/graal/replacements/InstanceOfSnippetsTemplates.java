@@ -46,8 +46,8 @@ import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.java.ClassIsAssignableFromNode;
 import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
+import com.oracle.graal.nodes.java.TypeProfileNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
-import com.oracle.graal.nodes.java.TypeCheckNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.util.Providers;
@@ -80,7 +80,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     protected abstract Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
 
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
-        assert instanceOf instanceof InstanceOfNode || instanceOf instanceof TypeCheckNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
+        assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
         List<Node> usages = instanceOf.usages().snapshot();
 
         Instantiation instantiation = new Instantiation();
@@ -205,7 +205,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     }
 
     /**
-     * Replaces a usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode}.
+     * Replaces a usage of an {@link InstanceOfNode} or {@link TypeProfileNode}.
      */
     public abstract static class InstanceOfUsageReplacer implements UsageReplacer {
 
@@ -215,7 +215,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public final ValueNode falseValue;
 
         public InstanceOfUsageReplacer(Instantiation instantiation, FloatingNode instanceOf, ValueNode trueValue, ValueNode falseValue) {
-            assert instanceOf instanceof InstanceOfNode || instanceOf instanceof TypeCheckNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
+            assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
             this.instantiation = instantiation;
             this.instanceOf = instanceOf;
             this.trueValue = trueValue;
@@ -229,8 +229,8 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     }
 
     /**
-     * Replaces the usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode} that does
-     * not materialize the result of the type test.
+     * Replaces the usage of an {@link InstanceOfNode} or {@link TypeProfileNode} that does not
+     * materialize the result of the type test.
      */
     public static class NonMaterializationUsageReplacer extends InstanceOfUsageReplacer {
 
@@ -257,7 +257,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     }
 
     /**
-     * Replaces the usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode} that does
+     * Replaces the usage of an {@link InstanceOfNode} or {@link TypeProfileNode} that does
      * materializes the result of the type test.
      */
     public static class MaterializationUsageReplacer extends InstanceOfUsageReplacer {

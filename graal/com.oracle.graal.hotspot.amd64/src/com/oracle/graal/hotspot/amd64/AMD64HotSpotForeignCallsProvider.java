@@ -52,14 +52,15 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.word.WordTypes;
 
 public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 
     private final Value[] nativeABICallerSaveRegisters;
 
     public AMD64HotSpotForeignCallsProvider(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
-                    Value[] nativeABICallerSaveRegisters) {
-        super(jvmciRuntime, runtime, metaAccess, codeCache);
+                    WordTypes wordTypes, Value[] nativeABICallerSaveRegisters) {
+        super(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes);
         this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }
 

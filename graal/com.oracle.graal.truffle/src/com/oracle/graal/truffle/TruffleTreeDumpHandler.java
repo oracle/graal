@@ -85,6 +85,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 this.inlining = inlining;
             }
 
+            @Override
             public void visit(Object node, GraphPrintAdapter g) {
                 if (g.visited(node)) {
                     return;
@@ -110,6 +111,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         printer.endGraph();
     }
 
+    @Override
     public void close() {
         // nothing to do
     }

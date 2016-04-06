@@ -267,6 +267,7 @@ public final class BciBlockMapping {
          */
         public Iterable<Integer> loopIdIterable() {
             return new Iterable<Integer>() {
+                @Override
                 public Iterator<Integer> iterator() {
                     return idIterator(loops);
                 }
@@ -280,6 +281,7 @@ public final class BciBlockMapping {
                 int pos = 0;
                 int lMask = 1;
 
+                @Override
                 public Integer next() {
                     for (; (l & lMask) == 0; lMask = lMask << 1) {
                         pos++;
@@ -288,6 +290,7 @@ public final class BciBlockMapping {
                     return pos;
                 }
 
+                @Override
                 public boolean hasNext() {
                     return l != 0;
                 }
@@ -1042,8 +1045,8 @@ public final class BciBlockMapping {
     public static BciBlockMapping create(BytecodeStream stream, ResolvedJavaMethod method) {
         BciBlockMapping map = new BciBlockMapping(method);
         map.build(stream);
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(map, method.format("After block building %f %R %H.%n(%P)"));
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, map, method.format("After block building %f %R %H.%n(%P)"));
         }
 
         return map;

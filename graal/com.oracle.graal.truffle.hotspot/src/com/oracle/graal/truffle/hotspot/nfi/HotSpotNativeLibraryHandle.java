@@ -34,6 +34,7 @@ public class HotSpotNativeLibraryHandle implements NativeLibraryHandle {
         this.value = handle;
     }
 
+    @Override
     public String getName() {
         return name;
     }

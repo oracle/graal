@@ -79,6 +79,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         exceptionEdge = x;
     }
 
+    @Override
     public AbstractBeginNode next() {
         return next;
     }
@@ -88,6 +89,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         next = x;
     }
 
+    @Override
     public CallTargetNode callTarget() {
         return callTarget;
     }
@@ -132,6 +134,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         }
     }
 
+    @Override
     public int bci() {
         return bci;
     }
@@ -155,15 +158,18 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         gen.emitInvoke(this);
     }
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState stateAfter) {
         updateUsages(this.stateAfter, stateAfter);
         this.stateAfter = stateAfter;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }
@@ -256,6 +262,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         return this.next();
     }
 
+    @Override
     public Stamp uncheckedStamp() {
         return this.callTarget.returnStamp().getUncheckedStamp();
     }

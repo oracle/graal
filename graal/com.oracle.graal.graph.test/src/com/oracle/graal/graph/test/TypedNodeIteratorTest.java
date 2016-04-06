@@ -51,6 +51,7 @@ public class TypedNodeIteratorTest {
             this.name = name;
         }
 
+        @Override
         public String getName() {
             return name;
         }

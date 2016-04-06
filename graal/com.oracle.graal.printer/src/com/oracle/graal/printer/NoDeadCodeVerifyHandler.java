@@ -61,6 +61,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
      */
     private static final Map<String, Boolean> discovered = new ConcurrentHashMap<>();
 
+    @Override
     public void verify(Object object, String message) {
         if (Options.NDCV.getValue() != OFF && object instanceof StructuredGraph) {
             StructuredGraph graph = (StructuredGraph) object;

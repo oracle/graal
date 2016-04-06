@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.ssa;
 
+import java.util.Arrays;
 import java.util.List;
 
 import jdk.vm.ci.meta.Value;
@@ -88,9 +89,9 @@ public final class SSAUtil {
         if (merge.getPredecessorCount() < 2) {
             return;
         }
-        assert merge.getPredecessors().contains(pred) : String.format("%s not in predecessor list: %s", pred, merge.getPredecessors());
-        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, pred.getSuccessors());
-        assert pred.getSuccessors().get(0) == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessors().get(0), merge);
+        assert Arrays.asList(merge.getPredecessors()).contains(pred) : String.format("%s not in predecessor list: %s", pred, Arrays.toString(merge.getPredecessors()));
+        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, Arrays.toString(pred.getSuccessors()));
+        assert pred.getSuccessors()[0] == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessors()[0], merge);
 
         JumpOp jump = phiOut(lir, pred);
         LabelOp label = phiIn(lir, merge);

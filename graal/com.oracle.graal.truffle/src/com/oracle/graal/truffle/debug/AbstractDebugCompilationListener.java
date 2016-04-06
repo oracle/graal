@@ -34,40 +34,51 @@ import com.oracle.graal.truffle.TruffleInlining;
 
 public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
 
+    @Override
     public void notifyCompilationQueued(OptimizedCallTarget target) {
     }
 
+    @Override
     public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
 
+    @Override
     public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
     }
 
+    @Override
     public void notifyCompilationStarted(OptimizedCallTarget target) {
     }
 
+    @Override
     public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
+    @Override
     public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
+    @Override
     public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
     }
 
+    @Override
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
     }
 
+    @Override
     public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
 
+    @Override
     public void notifyShutdown(GraalTruffleRuntime runtime) {
     }
 
+    @Override
     public void notifyStartup(GraalTruffleRuntime runtime) {
     }
 
-    public static void log(OptimizedCallTarget target, int indent, String msg, String details, Map<String, Object> properties) {
+    public static void log(int indent, String msg, String details, Map<String, Object> properties) {
         int spaceIndent = indent * 2;
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));
@@ -97,7 +108,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
                 sb.append(String.format(" %" + length + "s ", propertyBuilder.toString()));
             }
         }
-        target.log(sb.toString());
+        OptimizedCallTarget.log(sb.toString());
     }
 
     public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {

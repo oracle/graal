@@ -54,6 +54,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         return disassemble(codeCache, compResult, null);
     }
 
+    @Override
     public String getName() {
         return "hcf";
     }

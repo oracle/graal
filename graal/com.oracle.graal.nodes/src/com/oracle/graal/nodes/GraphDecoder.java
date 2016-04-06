@@ -696,6 +696,23 @@ public class GraphDecoder {
         FixedNode loopExitSuccessor = loopExit.next();
         loopExit.replaceAtPredecessor(begin);
 
+        MergeNode loopExitPlaceholder = null;
+        if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE && loopScope.loopDepth == 1) {
+            /*
+             * This exit might end up as a loop exit of a loop detected after partial evaluation. We
+             * need to be able to create a FrameState and the necessary proxy nodes in this case.
+             */
+            loopExitPlaceholder = methodScope.graph.add(new MergeNode());
+            methodScope.loopExplosionMerges.markAndGrow(loopExitPlaceholder);
+
+            EndNode end = methodScope.graph.add(new EndNode());
+            begin.setNext(end);
+            loopExitPlaceholder.addForwardEnd(end);
+
+            begin = methodScope.graph.add(new BeginNode());
+            loopExitPlaceholder.setNext(begin);
+        }
+
         /*
          * In the original graph, the loop exit is not a merge node. Multiple exploded loop
          * iterations now take the same loop exit, so we have to introduce a new merge node to
@@ -740,8 +757,15 @@ public class GraphDecoder {
             int proxyOrderId = readOrderId(methodScope);
             ProxyNode proxy = (ProxyNode) ensureNodeCreated(methodScope, loopScope, proxyOrderId);
             ValueNode phiInput = proxy.value();
-            ValueNode replacement;
 
+            if (loopExitPlaceholder != null) {
+                if (!phiInput.isConstant()) {
+                    phiInput = methodScope.graph.unique(new ProxyPlaceholder(phiInput, loopExitPlaceholder));
+                }
+                registerNode(loopScope, proxyOrderId, phiInput, true, false);
+            }
+
+            ValueNode replacement;
             ValueNode existing = (ValueNode) outerScope.createdNodes[proxyOrderId];
             if (existing == null || existing == phiInput) {
                 /*
@@ -772,6 +796,11 @@ public class GraphDecoder {
             }
 
             proxy.replaceAtUsagesAndDelete(replacement);
+        }
+
+        if (loopExitPlaceholder != null) {
+            registerNode(loopScope, stateAfterOrderId, null, true, true);
+            loopExitPlaceholder.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, stateAfterOrderId));
         }
 
         if (merge != null && (merge.stateAfter() == null || phiCreated)) {
@@ -1131,13 +1160,13 @@ public class GraphDecoder {
     }
 
     protected void detectLoops(MethodScope methodScope, FixedNode startInstruction) {
-        Debug.dump(1, methodScope.graph, "Before detectLoops");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "Before detectLoops");
         Set<LoopBeginNode> newLoopBegins = insertLoopBegins(methodScope, startInstruction);
 
-        Debug.dump(1, methodScope.graph, "Before insertLoopExits");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "Before insertLoopExits");
 
         insertLoopExits(methodScope, startInstruction, newLoopBegins);
-        Debug.dump(1, methodScope.graph, "After detectLoops");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "After detectLoops");
     }
 
     private static Set<LoopBeginNode> insertLoopBegins(MethodScope methodScope, FixedNode startInstruction) {
@@ -1298,7 +1327,7 @@ public class GraphDecoder {
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 * 
+                 *
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does
@@ -1320,13 +1349,14 @@ public class GraphDecoder {
 
     private static void assignLoopExitState(MethodScope methodScope, LoopExitNode loopExit, AbstractMergeNode loopExplosionMerge, AbstractEndNode loopExplosionEnd) {
         FrameState oldState = loopExplosionMerge.stateAfter();
-        JVMCIError.guarantee(loopExit.loopBegin().stateAfter().outerFrameState() == oldState.outerFrameState(), "LoopBegin and LoopExit must have the same outer frame state");
 
         /* Collect all nodes that are in the FrameState at the LoopBegin. */
         NodeBitMap loopBeginValues = new NodeBitMap(methodScope.graph);
-        for (ValueNode value : loopExit.loopBegin().stateAfter().values()) {
-            if (value != null && !value.isConstant() && !loopExit.loopBegin().isPhiAtMerge(value)) {
-                loopBeginValues.mark(ProxyPlaceholder.unwrap(value));
+        for (FrameState state = loopExit.loopBegin().stateAfter(); state != null; state = state.outerFrameState()) {
+            for (ValueNode value : state.values()) {
+                if (value != null && !value.isConstant() && !loopExit.loopBegin().isPhiAtMerge(value)) {
+                    loopBeginValues.mark(ProxyPlaceholder.unwrap(value));
+                }
             }
         }
 
