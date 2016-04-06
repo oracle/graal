@@ -206,7 +206,8 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             env.getMessager().printMessage(
                             Kind.ERROR,
                             String.format("The return type of the substitution method '%s' must match with the return type of the original method '%s'.", signatureReturnType,
-                                            originalMethod.getReturnType()), substitutionMethod, substitutionAnnotation);
+                                            originalMethod.getReturnType()),
+                            substitutionMethod, substitutionAnnotation);
             return null;
         }
 

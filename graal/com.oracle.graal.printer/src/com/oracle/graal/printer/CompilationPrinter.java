@@ -47,8 +47,8 @@ import com.oracle.graal.lir.util.IndexedValueMap;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The
- * output format is such that it can then be fed to the <a
- * href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
+ * output format is such that it can then be fed to the
+ * <a href="https://c1visualizer.dev.java.net/">C1 Visualizer</a>.
  */
 public class CompilationPrinter implements Closeable {
 

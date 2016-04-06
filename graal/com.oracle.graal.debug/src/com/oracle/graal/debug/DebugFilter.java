@@ -38,10 +38,9 @@ import com.oracle.graal.debug.internal.DebugScope;
  * set. The {@link Options#Meter} and {@link Options#Time} options don't have a level, for them
  * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
- * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}.
- * {@code  <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character.
- * Otherwise, it is interpreted as a substring. If {@code <pattern>} is empty, it matches every
- * scope. If {@code :
+ * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}. {@code  
+ * <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character. Otherwise, it
+ * is interpreted as a substring. If {@code <pattern>} is empty, it matches every scope. If {@code :
  * <level>} is omitted, it defaults to {@link Debug#BASIC_LOG_LEVEL}. The term {@code ~<pattern>} is
  * a shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
  * <p>

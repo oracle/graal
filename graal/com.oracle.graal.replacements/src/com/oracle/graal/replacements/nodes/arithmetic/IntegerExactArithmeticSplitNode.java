@@ -51,7 +51,8 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     @Input ValueNode x;
     @Input ValueNode y;
 
-    protected IntegerExactArithmeticSplitNode(NodeClass<? extends IntegerExactArithmeticSplitNode> c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+    protected IntegerExactArithmeticSplitNode(NodeClass<? extends IntegerExactArithmeticSplitNode> c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next,
+                    AbstractBeginNode overflowSuccessor) {
         super(c, stamp);
         this.x = x;
         this.y = y;

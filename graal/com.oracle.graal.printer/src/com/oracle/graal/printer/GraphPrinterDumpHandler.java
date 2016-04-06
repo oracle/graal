@@ -67,8 +67,8 @@ import com.oracle.graal.graph.Graph;
 
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
- * that can be inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph
- * Visualizer</a>.
+ * that can be inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>
+ * .
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
 

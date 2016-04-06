@@ -98,7 +98,7 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
     private boolean verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
         assert field.getAnnotation(Child.class) == null || constant.isNull() ||
                         metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : "@Child field value must be a Node: " + field +
-                        ", but was: " + constant;
+                                        ", but was: " + constant;
         assert field.getAnnotation(Children.class) == null || constant.isNull() || metaAccess.lookupJavaType(constant).isArray() : "@Children field value must be an array: " + field + ", but was: " +
                         constant;
         return true;

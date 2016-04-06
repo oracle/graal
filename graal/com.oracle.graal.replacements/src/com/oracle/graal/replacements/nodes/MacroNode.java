@@ -166,8 +166,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
                     // no longer needs a MacroNode. For example, Class.getComponentType()
                     // only needs a MacroNode prior to JDK9 as it was given a non-native
                     // implementation in JDK9.
-                    throw new JVMCIError("%s macro created for call to %s in %s must be lowerable to a snippet or intrinsic graph. "
-                                    + "Maybe a macro node is not needed for this method in the current JDK?", getClass().getSimpleName(), targetMethod.format("%h.%n(%p)"), graph());
+                    throw new JVMCIError("%s macro created for call to %s in %s must be lowerable to a snippet or intrinsic graph. " +
+                                    "Maybe a macro node is not needed for this method in the current JDK?", getClass().getSimpleName(), targetMethod.format("%h.%n(%p)"), graph());
                 }
                 throw new JVMCIError("%s: cannot lower to invoke without state: %s", graph(), this);
             }

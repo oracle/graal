@@ -148,7 +148,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             }
 
             if (defBlock.probability() <= spillBlock.probability()) {
-                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock, spillBlock.probability());
+                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock,
+                                spillBlock.probability());
                 // better spill block has the same probability -> do nothing
                 interval.setSpillState(SpillState.StoreAtDefinition);
                 return;

@@ -336,8 +336,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     canonical = graph.addOrUniqueWithInputs(canonical);
                 }
                 if (node instanceof FloatingNode) {
-                    assert canonical == null || !(canonical instanceof FixedNode) || (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node +
-                                    " -> " + canonical + " : replacement should be floating or fixed and connected";
+                    assert canonical == null || !(canonical instanceof FixedNode) ||
+                                    (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node +
+                                                    " -> " + canonical + " : replacement should be floating or fixed and connected";
                     node.replaceAtUsagesAndDelete(canonical);
                 } else {
                     assert node instanceof FixedNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";

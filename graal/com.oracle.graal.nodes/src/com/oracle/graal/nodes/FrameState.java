@@ -377,7 +377,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Perform a few sanity checks on the transformation of the stack state. The current expectation
      * is that a stateAfter is being transformed into a stateDuring, so the stack depth may change.
      */
-    private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall, boolean newRethrowException) {
+    private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall,
+                    boolean newRethrowException) {
         if (BytecodeFrame.isPlaceholderBci(oldBci)) {
             return true;
         }
@@ -424,8 +425,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     /**
-     * Gets the number of locked monitors in this frame state and all
-     * {@linkplain #outerFrameState() outer} frame states.
+     * Gets the number of locked monitors in this frame state and all {@linkplain #outerFrameState()
+     * outer} frame states.
      */
     public int nestedLockDepth() {
         int depth = locksSize();

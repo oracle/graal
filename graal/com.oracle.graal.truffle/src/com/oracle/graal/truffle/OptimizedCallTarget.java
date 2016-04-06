@@ -112,8 +112,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      * compiled methods that have this call target inlined are properly invalidated.
      */
     private volatile Assumption nodeRewritingAssumption;
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER =
-                    AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class, Assumption.class, "nodeRewritingAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    Assumption.class, "nodeRewritingAssumption");
 
     private volatile Future<?> compilationTask;
 

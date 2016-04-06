@@ -30,8 +30,8 @@ public interface NativeFunctionHandle {
     /**
      * Calls the native function.
      * <p>
-     * The caller is responsible for ensuring {@code args} comply with the platform ABI (e.g. <a
-     * href="http://www.uclibc.org/docs/psABI-x86_64.pdf"> Unix AMD64 ABI</a>). If the library
+     * The caller is responsible for ensuring {@code args} comply with the platform ABI (e.g.
+     * <a href="http://www.uclibc.org/docs/psABI-x86_64.pdf"> Unix AMD64 ABI</a>). If the library
      * function has struct parameters, the fields of the struct must be passed as individual
      * arguments.
      *

@@ -178,8 +178,8 @@ public interface GraphBuilderContext {
     GraphBuilderContext getParent();
 
     /**
-     * Gets the first ancestor parsing context that is not parsing a
-     * {@linkplain #parsingIntrinsic() intrinsic}.
+     * Gets the first ancestor parsing context that is not parsing a {@linkplain #parsingIntrinsic()
+     * intrinsic}.
      */
     default GraphBuilderContext getNonIntrinsicAncestor() {
         GraphBuilderContext ancestor = getParent();

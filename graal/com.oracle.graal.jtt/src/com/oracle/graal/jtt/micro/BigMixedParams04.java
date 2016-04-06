@@ -98,7 +98,7 @@ public class BigMixedParams04 extends JTTTest {
                     float  af15,
                     float  af16
     // @formatter:on
-                    ) {
+    ) {
 
         // now do something with the locals to make sure the locals don't get optimized away.
         for (int i = 0; i < i1; i++) {

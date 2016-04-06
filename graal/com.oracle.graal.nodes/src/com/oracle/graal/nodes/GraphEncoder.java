@@ -101,8 +101,8 @@ import com.oracle.graal.nodes.java.ExceptionObjectNode;
  * length -1) and empty lists (encoded as length 0). No reverse edges are written (predecessors,
  * usages) since that information can be easily restored during decoding.
  *
- * Some nodes have additional information written after the properties, successors, and inputs: <li>
- * <item>{@link AbstractEndNode}: the orderId of the merge node and then all {@link PhiNode phi
+ * Some nodes have additional information written after the properties, successors, and inputs:
+ * <li><item>{@link AbstractEndNode}: the orderId of the merge node and then all {@link PhiNode phi
  * mappings} from this end to the merge node are written. <item>{@link LoopExitNode}: the orderId of
  * all {@link ProxyNode proxy nodes} of the loop exit is written.</li>
  */
