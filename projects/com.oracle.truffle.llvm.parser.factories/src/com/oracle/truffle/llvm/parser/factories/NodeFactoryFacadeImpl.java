@@ -342,6 +342,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionName);
     }
 
+    @Override
     public int getArgStartIndex() {
         return LLVMCallNode.ARG_START_INDEX;
     }
