@@ -1195,7 +1195,6 @@ gcc.c-torture/execute/va-arg-26.c
 gcc.c-torture/execute/va-arg-9.c
 gcc.c-torture/execute/920726-1.c
 gcc.c-torture/execute/20041214-1.c
-gcc.c-torture/execute/920501-8.c
 gcc.c-torture/execute/va-arg-2.c
 gcc.c-torture/execute/va-arg-20.c
 gcc.c-torture/execute/pr38051.c
