@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
+import com.oracle.truffle.llvm.parser.impl.LLVMVisitor.ParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -73,14 +74,15 @@ public class LLVM {
             public CallTarget parse(Source code, Node context, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
-                CallTarget parseFile = parseFile(code.getPath(), llvmContext);
-                return parseFile;
+                ParserResult parserResult = parseFile(code.getPath(), llvmContext);
+                llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                return parserResult.getMainFunction();
             }
 
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacadeImpl facade = new NodeFactoryFacadeImpl();
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
-                LLVMVisitor runtime = new LLVMVisitor(context, OPTIMIZATION_CONFIGURATION);
+                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
                 facade.setParserRuntime(runtime);
                 context.setMainArguments((Object[]) env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY));
                 context.setSourceFile((Source) env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY));
@@ -100,7 +102,7 @@ public class LLVM {
         System.exit(status);
     }
 
-    public static CallTarget parseFile(String filePath, LLVMContext context) {
+    public static ParserResult parseFile(String filePath, LLVMContext context) {
         LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
         Injector injector = setup.createInjectorAndDoEMFRegistration();
         XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
@@ -111,7 +113,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(context, OPTIMIZATION_CONFIGURATION);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
