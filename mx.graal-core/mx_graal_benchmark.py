@@ -63,9 +63,12 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.vmAndRunArgs(bmSuiteArgs)[1]
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            raise RuntimeError(
+                "Suite runs only a single benchmark.")
         if len(benchmarks) != 1:
             raise RuntimeError(
-                "Suite supports only single benchmark, got: {0}".format(benchmarks))
+                "Suite runs only a single benchmark, got: {0}".format(benchmarks))
         return (
             self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.dacapoPath()] +
             [benchmarks[0]] + self.runArgs(bmSuiteArgs))
@@ -74,7 +77,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return [
             "avrora",
             "batik",
-            "eclipse",
             "fop",
             "h2",
             "jython",
@@ -84,7 +86,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             "sunflow",
             "tomcat",
             "tradebeans",
-            "tradesoap",
             "xalan"
         ]
 
@@ -100,6 +101,16 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             re.compile(
                 r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) FAILED (warmup|) =====",
                 re.MULTILINE)
+        ]
+
+    def flakySuccessPatterns(self):
+        return [
+            re.compile(
+                r"^javax.ejb.FinderException: Cannot find account for",
+                re.MULTILINE),
+            re.compile(
+                r"^java.lang.Exception: TradeDirect:Login failure for user:",
+                re.MULTILINE),
         ]
 
     def rules(self, out):
