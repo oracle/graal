@@ -138,7 +138,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.type": "numeric",
               "metric.score-function": "id",
               "metric.better": "lower",
-              "metric.iteration": "$iteration"
+              "metric.iteration": ("$iteration", int)
             }
           )
         ]
