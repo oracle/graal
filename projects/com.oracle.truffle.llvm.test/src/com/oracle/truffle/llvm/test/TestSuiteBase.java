@@ -152,10 +152,12 @@ public abstract class TestSuiteBase {
 
     static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
+        @Override
         public TestCaseFiles getBitCodeTestCaseFiles(File bitCodeFile) {
             return TestCaseFiles.createFromBitCodeFile(bitCodeFile);
         }
 
+        @Override
         public List<TestCaseFiles> getCompiledTestCaseFiles(File toBeCompiled) {
             List<TestCaseFiles> files = new ArrayList<>();
             File dest = TestHelper.getTempLLFile(toBeCompiled, "_main");
@@ -191,6 +193,7 @@ public abstract class TestSuiteBase {
             return optimize;
         }
 
+        @Override
         public ProgrammingLanguage[] getSupportedLanguages() {
             return GCC.getSupportedLanguages();
         }

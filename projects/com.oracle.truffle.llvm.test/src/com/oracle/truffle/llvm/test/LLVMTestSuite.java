@@ -75,6 +75,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
         File testSuite = LLVMPaths.LLVM_TEST_SUITE;
         return getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGenerator() {
 
+            @Override
             public List<TestCaseFiles> getCompiledTestCaseFiles(File toBeCompiled) {
                 String expectedOutputName = PathUtil.replaceExtension(toBeCompiled.getAbsolutePath(), LLVM_REFERENCE_OUTPUT_EXTENSION);
                 File expectedOutputFile = new File(expectedOutputName);
@@ -88,6 +89,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
             }
 
+            @Override
             public TestCaseFiles getBitCodeTestCaseFiles(File bitCodeFile) {
                 String expectedOutputName = PathUtil.replaceExtension(bitCodeFile.getAbsolutePath(), LLVM_REFERENCE_OUTPUT_EXTENSION);
                 File expectedOutputFile = new File(expectedOutputName);
@@ -100,6 +102,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
                 return testCaseFiles;
             }
 
+            @Override
             public ProgrammingLanguage[] getSupportedLanguages() {
                 return Clang.getSupportedLanguages();
             }

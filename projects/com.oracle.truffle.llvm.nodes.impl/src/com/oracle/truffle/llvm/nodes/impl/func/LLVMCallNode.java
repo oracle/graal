@@ -203,6 +203,7 @@ public abstract class LLVMCallNode {
             functionHandle = nativeFunctionHandle;
         }
 
+        @Override
         public Object call(Object... arguments) {
             return functionHandle.call(arguments);
         }
