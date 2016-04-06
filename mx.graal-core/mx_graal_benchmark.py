@@ -48,7 +48,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def validateEnvironment(self):
         if not self.dacapoPath():
             raise RuntimeError(
-                "Neither DACAPO_CP variable or DACAPO library specified.")
+                "Neither DACAPO_CP variable nor DACAPO library specified.")
 
     def validateReturnCode(self, retcode):
         return retcode == 0
