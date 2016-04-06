@@ -24,9 +24,9 @@ suite = {
       ],
       "sha1" : "4850cba64ecac914427329591886819446562e62",
       "maven" : {
-      	"groupId" : "parser",
-    	"artifactId" : "parser",
-    	"version" : "1.0.6",
+        "groupId" : "parser",
+        "artifactId" : "parser",
+        "version" : "1.0.6",
       }
     },
     "EMF_COMMON" : {
@@ -36,9 +36,9 @@ suite = {
       ],
       "sha1" : "2ee408923125830711b2817095010bce18ee8bb7",
       "maven" : {
-      	"groupId" : "emf",
-    	"artifactId" : "emfcommon",
-    	"version" : "2.11.0.v20150512-0501",
+        "groupId" : "emf",
+        "artifactId" : "emfcommon",
+        "version" : "2.11.0.v20150512-0501",
       }
     },
     "ECORE" : {
@@ -48,9 +48,9 @@ suite = {
       ],
       "sha1" : "4dc95540c73cce54846ad976fbbe997a7f11aa9b",
       "maven" : {
-      	"groupId" : "emf",
-    	"artifactId" : "emf",
-    	"version" : "2.11.0.v20150512-0501.jar",
+        "groupId" : "emf",
+        "artifactId" : "emf",
+        "version" : "2.11.0.v20150512-0501.jar",
       }
     },
     "INJECT" : {
@@ -60,9 +60,9 @@ suite = {
       ],
       "sha1" : "2f5301dcdccf1a88b0022b932b6363825918d9a1",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "inject",
-    	"version" : "2.11.0.v20150512-0501.jar",
+        "groupId" : "xtext",
+        "artifactId" : "inject",
+        "version" : "2.11.0.v20150512-0501.jar",
       }
     },
     "XTEXT" : {
@@ -72,9 +72,9 @@ suite = {
       ],
       "sha1" : "04541b8101d779abb52c27de974b5d9c56b047e9",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "xtext",
-    	"version" : "2.8.4.v201508050135.jar",
+        "groupId" : "xtext",
+        "artifactId" : "xtext",
+        "version" : "2.8.4.v201508050135.jar",
       }
     },
     "EMF_ECORE_XMI" : {
@@ -84,9 +84,9 @@ suite = {
       ],
       "sha1" : "14711c456be51f16102bfd94cc5ad144b5dad4a3",
       "maven" : {
-      	"groupId" : "emf",
-    	"artifactId" : "emf",
-    	"version" : "2.11.0.v20150512-0501.jar",
+        "groupId" : "emf",
+        "artifactId" : "emf",
+        "version" : "2.11.0.v20150512-0501.jar",
       }
     },
     "XTEXT_TYPES" : {
@@ -96,9 +96,9 @@ suite = {
       ],
       "sha1" : "61dfb0e684ecf3a89392d151c440bafd99ff4711",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "2.8.4.v201508050135.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "2.8.4.v201508050135.jar",
       }
     },
     "XTEXT_JAVAX_INJECT" : {
@@ -108,9 +108,9 @@ suite = {
       ],
       "sha1" : "38623235627d561c3eb9a558de9a5535a1c30e29",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "javax.inject_1.0.0.v20091030.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "javax.inject_1.0.0.v20091030.jar",
       }
     },
     "XTEXT_LOG4J" : {
@@ -120,9 +120,9 @@ suite = {
       ],
       "sha1" : "c8ec3aac571c457e84a039722a6b471a107c25bf",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "1.2.15.v201012070815.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "1.2.15.v201012070815.jar",
       }
     },
     "XTEXT_GOOGLE_GUAVA" : {
@@ -132,9 +132,9 @@ suite = {
       ],
       "sha1" : "6bc5d67ff18f033093fb493c0127a4219b1613a3",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "15.0.0.v201403281430.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "15.0.0.v201403281430.jar",
       }
     },
     "XTEXT_ANTLR_RUNTIME" : {
@@ -144,9 +144,9 @@ suite = {
       ],
       "sha1" : "94105115603f6e3276da3be15fc8d3186ed9e92e",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "3.2.0.v201101311130.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "3.2.0.v201101311130.jar",
       }
     },
     "XTEXT_UTIL" : {
@@ -156,9 +156,9 @@ suite = {
       ],
       "sha1" : "70616b797177f2e2b1b844f02a188e2837d648cb",
       "maven" : {
-      	"groupId" : "xtext",
-    	"artifactId" : "text",
-    	"version" : "2.8.4.v201508050135.jar",
+        "groupId" : "xtext",
+        "artifactId" : "text",
+        "version" : "2.8.4.v201508050135.jar",
       }
     },
     "ECLIPSE_EQUINOX" : {
@@ -168,9 +168,9 @@ suite = {
       ],
       "sha1" : "550778d95ea4d5f2fee765e85eb799cec21067e0",
       "maven" : {
-      	"groupId" : "eclipse",
-    	"artifactId" : "eclipse",
-    	"version" : "3.6.200.v20130402-1505.jar",
+        "groupId" : "eclipse",
+        "artifactId" : "eclipse",
+        "version" : "3.6.200.v20130402-1505.jar",
       }
     },
   },
@@ -257,7 +257,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-		"truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
       "javaCompliance" : "1.8",
@@ -310,7 +310,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nodes.impl",
+        "com.oracle.truffle.llvm.nativeint"
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
