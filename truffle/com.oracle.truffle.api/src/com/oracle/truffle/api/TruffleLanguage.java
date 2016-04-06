@@ -31,10 +31,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -42,6 +40,7 @@ import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.LinkedHashSet;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing an
@@ -331,8 +330,6 @@ public abstract class TruffleLanguage<C> {
 
         LangCtx(TruffleLanguage<C> lang, Env env) {
             this.lang = lang;
-            // following call verifies that Accessor.CURRENT_VM is provided
-            assert API.findLanguage(null, null) == null;
             this.ctx = lang.createContext(env);
         }
 
@@ -382,7 +379,7 @@ public abstract class TruffleLanguage<C> {
             this.lang = lang;
             this.instrumenter = (com.oracle.truffle.api.instrument.Instrumenter) instrumenter;
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
-            API.collectEnvServices(collectedServices, vm, lang, this);
+            AccessAPI.instrumentAccess().collectEnvServices(collectedServices, vm, lang, this);
             this.services = collectedServices.toArray();
             this.config = config;
             this.langCtx = new LangCtx<>(lang, this);
@@ -399,7 +396,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.8 or earlier
          */
         public Object importSymbol(String globalName) {
-            return API.importSymbol(vm, lang, globalName);
+            return AccessAPI.engineAccess().importSymbol(vm, lang, globalName);
         }
 
         /**
@@ -413,7 +410,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.11
          */
         public boolean isMimeTypeSupported(String mimeType) {
-            return API.isMimeTypeSupported(vm, mimeType);
+            return AccessAPI.engineAccess().isMimeTypeSupported(vm, mimeType);
         }
 
         /**
@@ -432,7 +429,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.8 or earlier
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage<?> language = API.findLanguageImpl(vm, null, source.getMimeType());
+            TruffleLanguage<?> language = AccessAPI.engineAccess().findLanguageImpl(vm, null, source.getMimeType());
             return language.parse(source, null, argumentNames);
         }
 
@@ -533,32 +530,39 @@ public abstract class TruffleLanguage<C> {
 
     static final AccessAPI API = new AccessAPI();
 
-    @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
+        static Nodes nodesAccess() {
+            return API.nodes();
+        }
+
+        static EngineSupport engineAccess() {
+            return API.engineSupport();
+        }
+
+        static InstrumentSupport instrumentAccess() {
+            return API.instrumentSupport();
+        }
+
         @Override
-        protected Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn,
-                        Object instrumenter, Map<String, Object> config) {
+        protected LanguageSupport languageSupport() {
+            return new LanguageImpl();
+        }
+    }
+
+    static final class LanguageImpl extends Accessor.LanguageSupport {
+        @Override
+        public Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Object instrumenter, Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, instrumenter, config);
             return env;
         }
 
         @Override
-        protected void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context) {
-            super.collectEnvServices(collectTo, vm, impl, context);
-        }
-
-        @Override
-        protected Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName) {
-            return super.importSymbol(vm, queryingLang, globalName);
-        }
-
-        @Override
-        protected CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
+        public CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
             return truffleLanguage.parse(code, context, argumentNames);
         }
 
         @Override
-        protected Object eval(TruffleLanguage<?> language, Source source, Map<Source, CallTarget> cache) throws IOException {
+        public Object eval(TruffleLanguage<?> language, Source source, Map<Source, CallTarget> cache) throws IOException {
             CallTarget target = cache.get(source);
             if (target == null) {
                 target = language.parse(source, null);
@@ -577,72 +581,57 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        protected Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
+        @SuppressWarnings("rawtypes")
+        public Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();
-            Class<? extends TruffleLanguage> languageType = findLanguage(rootNode);
-            final Env env = findLanguage(vm, languageType);
+            Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
+            final Env env = AccessAPI.engineAccess().findEnv(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.fromText(code, "eval in context");
             return lang.evalInContext(source, node, frame);
         }
 
         @Override
-        protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
+        public Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
         }
 
         @Override
-        protected boolean isMimeTypeSupported(Object vm, String mimeType) {
-            return super.isMimeTypeSupported(vm, mimeType);
-        }
-
-        @Override
-        protected Env findLanguage(Object vm, Class<? extends TruffleLanguage> languageClass) {
-            return super.findLanguage(vm, languageClass);
-        }
-
-        @Override
-        protected TruffleLanguage<?> findLanguage(Env env) {
+        public TruffleLanguage<?> findLanguage(Env env) {
             return env.lang;
         }
 
         @Override
-        protected TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType) {
-            return super.findLanguageImpl(known, languageClass, mimeType);
-        }
-
-        @Override
-        protected Object languageGlobal(TruffleLanguage.Env env) {
+        public Object languageGlobal(TruffleLanguage.Env env) {
             return env.langCtx.getLanguageGlobal();
         }
 
         @Override
-        protected Object findContext(Env env) {
+        public Object findContext(Env env) {
             return env.langCtx.ctx;
         }
 
-        @SuppressWarnings("deprecation")
         @Deprecated
         @Override
-        protected boolean isInstrumentable(Node node, TruffleLanguage language) {
+        public boolean isInstrumentable(Node node, TruffleLanguage<?> language) {
             return language.isInstrumentable(node);
         }
 
         @SuppressWarnings("deprecation")
         @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node, TruffleLanguage language) {
+        public com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node, TruffleLanguage<?> language) {
             return language.createWrapperNode(node);
         }
 
         @Override
-        protected void dispose(TruffleLanguage<?> impl, Env env) {
+        public void dispose(TruffleLanguage<?> impl, Env env) {
             assert impl == env.langCtx.lang;
             env.langCtx.dispose();
         }
 
         @Override
-        protected String toString(TruffleLanguage<?> language, Env env, Object obj) {
+        public String toString(TruffleLanguage<?> language, Env env, Object obj) {
             return env.langCtx.toString(language, obj);
         }
     }
