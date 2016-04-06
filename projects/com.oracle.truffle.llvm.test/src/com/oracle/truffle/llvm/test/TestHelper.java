@@ -65,6 +65,7 @@ public class TestHelper {
         }
         File[] files = folder.listFiles(new FilenameFilter() {
 
+            @Override
             public boolean accept(File dir, String name) {
                 File fileWithDir = new File(dir, name);
                 for (ProgrammingLanguage lang : languages) {
@@ -78,6 +79,7 @@ public class TestHelper {
 
         File[] subDirectories = folder.listFiles(new FileFilter() {
 
+            @Override
             public boolean accept(File pathname) {
                 return pathname.isDirectory() && !pathname.getName().endsWith(LLVMPaths.IGNORE_FOLDER_NAME);
             }

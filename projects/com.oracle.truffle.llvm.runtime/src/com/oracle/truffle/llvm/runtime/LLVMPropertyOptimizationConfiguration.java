@@ -34,22 +34,27 @@ package com.oracle.truffle.llvm.runtime;
  */
 public class LLVMPropertyOptimizationConfiguration implements LLVMOptimizationConfiguration {
 
+    @Override
     public boolean specializeForExpectIntrinsic() {
         return LLVMOptions.specializeForExpectIntrinsic();
     }
 
+    @Override
     public boolean valueProfileMemoryReads() {
         return LLVMOptions.valueProfileMemoryReads();
     }
 
+    @Override
     public boolean injectBranchProbabilitiesForSelect() {
         return LLVMOptions.injectBranchProbabilitiesForSelect();
     }
 
+    @Override
     public boolean intrinsifyCLibraryFunctions() {
         return LLVMOptions.intrinsifyCLibraryFunctions();
     }
 
+    @Override
     public boolean injectBranchProbabilitiesForConditionalBranch() {
         return LLVMOptions.injectBranchProbabilitiesForConditionalBranch();
     }
