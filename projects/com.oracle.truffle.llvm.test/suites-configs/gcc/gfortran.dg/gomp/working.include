@@ -6,7 +6,6 @@ gfortran.dg/gomp/pr29759.f90
 gfortran.dg/gomp/proc_ptr_1.f90
 gfortran.dg/gomp/pr59488-1.f90
 gfortran.dg/gomp/pr48794.f90
-gfortran.dg/gomp/workshare3.f90
 gfortran.dg/gomp/sharing-2.f90
 gfortran.dg/gomp/block-1.f90
 gfortran.dg/gomp/associate1.f90
