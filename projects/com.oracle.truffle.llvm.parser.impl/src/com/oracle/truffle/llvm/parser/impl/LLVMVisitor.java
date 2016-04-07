@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -627,14 +628,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
         } else if (instr instanceof MiddleInstruction) {
             return visitMiddleInstruction((MiddleInstruction) instr);
         } else if (instr instanceof StartingInstruction) {
-            return Arrays.asList(visitStartingInstruction((StartingInstruction) instr));
+            return Collections.emptyList();
         } else {
             throw new AssertionError(instr);
         }
-    }
-
-    private LLVMNode visitStartingInstruction(@SuppressWarnings("unused") StartingInstruction instr) {
-        return factoryFacade.createPhiNode();
     }
 
     private List<LLVMNode> visitMiddleInstruction(MiddleInstruction middleInstr) {
