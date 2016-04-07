@@ -55,9 +55,9 @@ public class LLVMAllocFactory {
         }
     }
 
-    public static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int size, int alignment) {
+    public static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int byteSize, int alignment) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        return LLVMAllocaInstructionNodeGen.create(size, alignment, context, runtime.getStackPointerSlot());
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, context, runtime.getStackPointerSlot());
     }
 
 }
