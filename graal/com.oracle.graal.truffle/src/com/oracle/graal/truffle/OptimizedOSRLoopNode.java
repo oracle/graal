@@ -53,7 +53,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      * We disable profiling if its very unlikely that this loop is ever going to get OSR compiled.
      * For example if the parent call target or a parent loop is already hot or compiling.
      */
-    private boolean profilingEnabled = true;
+    private volatile boolean profilingEnabled = true;
 
     /**
      * If an OSR compilation is scheduled the corresponding call target is stored here.
