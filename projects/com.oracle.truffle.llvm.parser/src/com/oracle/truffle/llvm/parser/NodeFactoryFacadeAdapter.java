@@ -231,12 +231,7 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment) {
-        return null;
-    }
-
-    @Override
-    public LLVMExpressionNode createAlloc(int size, int alignment) {
+    public LLVMExpressionNode createAlloc(ResolvedType type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
         return null;
     }
 
@@ -271,7 +266,7 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createStructureConstantNode(boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants) {
+    public LLVMExpressionNode createStructureConstantNode(ResolvedType structType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants) {
         return null;
     }
 
