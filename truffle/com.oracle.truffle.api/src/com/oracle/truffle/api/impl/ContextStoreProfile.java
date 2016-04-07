@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -44,7 +45,7 @@ final class ContextStoreProfile {
     private final ThreadLocal<ContextStore> threadStore = new ThreadLocal<>();
 
     ContextStoreProfile(ContextStore initialStore) {
-        this.constantStore = initialStore;
+        this.constantStore = initialStore == null ? UNINTIALIZED_STORE : initialStore;
     }
 
     ContextStore get() {
@@ -67,6 +68,12 @@ final class ContextStoreProfile {
         assert store != null;
         // fast path
         if (constantStore == store) {
+            return;
+        }
+
+        if (constantStore == UNINTIALIZED_STORE) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            constantStore = store;
             return;
         }
 
