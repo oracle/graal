@@ -903,7 +903,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     private LLVMNode getWriteNode(LLVMExpressionNode result, FrameSlot slot, EObject type) {
         LLVMBaseType baseType = getLLVMType(type);
-        FrameSlotKind frameSlotKind = factoryFacade.getFrameSlotKind(baseType);
+        FrameSlotKind frameSlotKind = factoryFacade.getFrameSlotKind(resolve(type));
         slot.setKind(frameSlotKind);
         return factoryFacade.createFrameWrite(baseType, result, slot);
     }

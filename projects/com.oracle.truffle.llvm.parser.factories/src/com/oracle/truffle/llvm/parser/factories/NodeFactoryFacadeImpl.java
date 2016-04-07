@@ -180,11 +180,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public FrameSlotKind getFrameSlotKind(LLVMBaseType llvmType) {
-        return LLVMFrameReadWriteFactory.getFrameSlotKind(llvmType);
-    }
-
-    @Override
     public LLVMI1Node createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType type) {
         return LLVMComparisonFactory.createIntegerComparison(left, right, llvmType, type);
     }
