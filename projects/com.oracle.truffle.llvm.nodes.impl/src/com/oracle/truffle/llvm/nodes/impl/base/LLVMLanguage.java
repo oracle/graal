@@ -34,7 +34,6 @@ import java.io.IOException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -89,16 +88,6 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public Node createFindContextNode0() {
         return createFindContextNode();
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        return false;
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        throw new AssertionError();
     }
 
     @Override
