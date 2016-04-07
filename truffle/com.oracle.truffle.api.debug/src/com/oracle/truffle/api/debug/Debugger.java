@@ -871,7 +871,7 @@ public final class Debugger {
             try {
                 // Pass control to the debug client with current execution suspended
                 SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
-                AccessorDebug.engineAccess().dispatchEvent(engine, event);
+                AccessorDebug.engineAccess().dispatchEvent(engine, event, 2);
                 if (event.isKillPrepared()) {
                     trace("KILL");
                     throw new KillException();
@@ -997,7 +997,7 @@ public final class Debugger {
             final Debugger[] debugger = {find(engine, initializeDebugger)};
             if (debugger[0] != null) {
                 debugger[0].executionStarted(currentDepth, s);
-                engineAccess().dispatchEvent(engine, new ExecutionEvent(debugger[0]));
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(debugger[0]), 1);
             } else {
                 engineAccess().dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
                     @Override
@@ -1008,7 +1008,7 @@ public final class Debugger {
                         }
                         return debugger[0];
                     }
-                }));
+                }), 1);
             }
             return new Closeable() {
                 @Override

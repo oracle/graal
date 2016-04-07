@@ -651,15 +651,15 @@ public class PolyglotEngine {
     }
 
     @SuppressWarnings("unchecked")
-    void dispatch(Object ev) {
-        Class type = ev.getClass();
-        if (type.getSimpleName().equals("SuspendedEvent")) {
-            dispatchSuspendedEvent(ev);
-        }
-        if (type.getSimpleName().equals("ExecutionEvent")) {
+    void dispatch(Object ev, int type) {
+        if (type == 1) {
             dispatchExecutionEvent(ev);
         }
-        dispatch(type, ev);
+        if (type == 2) {
+            dispatchSuspendedEvent(ev);
+        }
+        Class clazz = ev.getClass();
+        dispatch(clazz, ev);
     }
 
     /**
@@ -1163,9 +1163,9 @@ public class PolyglotEngine {
             }
 
             @Override
-            public void dispatchEvent(Object obj, Object event) {
+            public void dispatchEvent(Object obj, Object event, int type) {
                 PolyglotEngine vm = (PolyglotEngine) obj;
-                vm.dispatch(event);
+                vm.dispatch(event, type);
             }
 
             @Override

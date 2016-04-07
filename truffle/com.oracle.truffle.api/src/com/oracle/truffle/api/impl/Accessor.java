@@ -78,7 +78,7 @@ public abstract class Accessor {
 
         public abstract Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName);
 
-        public abstract void dispatchEvent(Object vm, Object event);
+        public abstract void dispatchEvent(Object vm, Object event, int type);
 
         public abstract boolean isMimeTypeSupported(Object vm, String mimeType);
     }
