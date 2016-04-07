@@ -49,5 +49,11 @@ public class GraalDebugInitializationParticipant implements DebugInitializationP
         if ("".equals(GraalDebugConfig.Options.TrackMemUse.getValue())) {
             params.enableUnscopedMemUseTrackers = true;
         }
+        // unscoped metrics/timers should respect method filter semantics
+        if (!params.enable && (params.enableUnscopedMemUseTrackers || params.enableUnscopedMetrics || params.enableUnscopedTimers) &&
+                        GraalDebugConfig.Options.MethodFilter.getValue() != null) {
+            params.enable = true;
+            params.enableMethodFilter = true;
+        }
     }
 }
