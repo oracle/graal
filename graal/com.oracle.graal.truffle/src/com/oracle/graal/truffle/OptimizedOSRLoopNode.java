@@ -70,7 +70,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     private int osrThreshold;
 
     private OptimizedOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold) {
-        Objects.nonNull(repeatableNode);
+        Objects.requireNonNull(repeatableNode);
         if (osrThreshold < 0) {
             throw new IllegalArgumentException("Invalid OSR threshold.");
         }
