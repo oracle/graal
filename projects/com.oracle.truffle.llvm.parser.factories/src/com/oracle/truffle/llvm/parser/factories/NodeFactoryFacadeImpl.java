@@ -62,7 +62,6 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMMemCopyFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMPhiNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -320,11 +319,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
                     LLVMExpressionNode isVolatileNode) {
         return LLVMMemI32CopyFactory.create((LLVMAddressNode) globalVarAddress, (LLVMAddressNode) constant, (LLVMI32Node) lengthNode, (LLVMI32Node) alignNode,
                         (LLVMI1Node) isVolatileNode);
-    }
-
-    @Override
-    public LLVMNode createPhiNode() {
-        return new LLVMPhiNode();
     }
 
     @Override
