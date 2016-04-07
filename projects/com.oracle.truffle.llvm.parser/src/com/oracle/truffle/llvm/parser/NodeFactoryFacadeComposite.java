@@ -48,7 +48,7 @@ public abstract class NodeFactoryFacadeComposite implements NodeFactoryFacade {
      * This method implements this pattern for every call:
      *
      * <pre>
-     * &#64;Override
+     * &#064;Override
      * public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index) {
      *     LLVMExpressionNode firstNode = first.createInsertElement(resultType, vector, vectorType, element, index);
      *     if (firstNode == null) {
