@@ -174,7 +174,7 @@ public final class LLVMFrameReadWriteFactory {
         return LLVMFrameReadWriteFactory.getFrameSlotKind(llvmType);
     }
 
-    public static FrameSlotKind getFrameSlotKind(LLVMBaseType llvmType) {
+    private static FrameSlotKind getFrameSlotKind(LLVMBaseType llvmType) {
         switch (llvmType) {
             case I1:
                 return FrameSlotKind.Boolean;
