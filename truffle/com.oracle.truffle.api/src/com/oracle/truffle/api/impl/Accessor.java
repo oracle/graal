@@ -270,11 +270,11 @@ public abstract class Accessor {
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
     @TruffleBoundary
-    protected Closeable executionStart(Object vm, @SuppressWarnings("unused") int currentDepth, boolean debugger, Source s) {
+    protected Closeable executionStart(Object vm, @SuppressWarnings("unused") int currentDepth, Object[] debuggerHolder, Source s) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
-        final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debugger, s);
+        final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debuggerHolder, s);
         if (!(vm == previousVM.get())) {
             previousVM = new WeakReference<>(vm);
             oneVM.invalidate();
