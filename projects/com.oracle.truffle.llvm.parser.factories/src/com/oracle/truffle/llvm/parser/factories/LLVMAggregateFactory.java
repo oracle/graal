@@ -69,7 +69,6 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLV
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public final class LLVMAggregateFactory {
 
@@ -114,13 +113,13 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static LLVMExpressionNode createStructConstantNode(LLVMParserRuntime runtime, boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants) {
+    public static LLVMExpressionNode createStructConstantNode(LLVMParserRuntime runtime, ResolvedType structType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants) {
         int[] offsets = new int[types.length];
         LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[types.length];
         int currentOffset = 0;
-        // FIXME we need to find a test case where alignment of structure constants matters and then
-        // supply the right alignment
-        LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(structSize, LLVMStack.NO_ALIGNMENT_REQUIREMENTS);
+        int structSize = LLVMTypeHelper.getByteSize(structType);
+        int structAlignment = LLVMTypeHelper.getAlignmentByte(structType);
+        LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(structType, structSize, structAlignment);
         for (int i = 0; i < types.length; i++) {
             ResolvedType resolvedType = types[i];
             if (!packed) {

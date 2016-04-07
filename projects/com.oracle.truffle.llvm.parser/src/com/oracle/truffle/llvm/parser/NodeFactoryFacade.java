@@ -154,9 +154,19 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
 
-    LLVMExpressionNode createAlloc(LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment);
-
-    LLVMExpressionNode createAlloc(int size, int alignment);
+    /**
+     * Creates an <code>alloca</code> node with a certain number of elements.
+     *
+     * @param numElementsType the type of <code>numElements</code>
+     * @param byteSize the size of an element
+     * @param alignment the alignment requirement
+     * @param numElements how many elements to allocate, may be <code>null</code> if only one
+     *            element should be allocated
+     * @param type the type of an element, may be <code>null</code> if only one element should be
+     *            allocated
+     * @return a node that allocates the specified number of elements
+     */
+    LLVMExpressionNode createAlloc(ResolvedType type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements);
 
     LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert, LLVMBaseType llvmType);
 
@@ -189,14 +199,14 @@ public interface NodeFactoryFacade {
     /**
      * Creates a structure literal node.
      *
+     * @param structureType type of the structure
      * @param packed whether the struct is packed (alignment of the struct is one byte and there is
      *            no padding between the elements)
-     * @param structSize the size of the structure
      * @param types the types of the structure members
      * @param constants the structure members
      * @return the constructed structure literal
      */
-    LLVMExpressionNode createStructureConstantNode(boolean packed, int structSize, ResolvedType[] types, LLVMExpressionNode[] constants);
+    LLVMExpressionNode createStructureConstantNode(ResolvedType structureType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants);
 
     LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode, LLVMExpressionNode isVolatileNode);
 
