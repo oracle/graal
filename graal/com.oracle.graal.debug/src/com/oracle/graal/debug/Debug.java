@@ -74,8 +74,8 @@ public class Debug {
      * The parameters for configuring the initialization of {@link Debug} class.
      */
     public static class Params {
-
         public boolean enable;
+        public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
         public boolean enableUnscopedMetrics;
         public boolean enableUnscopedMemUseTrackers;
@@ -1369,10 +1369,10 @@ public class Debug {
         parseMetricAndTimerSystemProperties(metrics, timers, enabledMetricsSubstrings, enabledTimersSubstrings);
         metrics = metrics.isEmpty() && enabledMetricsSubstrings.isEmpty() ? null : metrics;
         timers = timers.isEmpty() && enabledTimersSubstrings.isEmpty() ? null : timers;
-        if (metrics == null && params.enableUnscopedMetrics) {
+        if (metrics == null && params.enableUnscopedMetrics && !params.enableMethodFilter) {
             metrics = Collections.emptySet();
         }
-        if (timers == null && params.enableUnscopedTimers) {
+        if (timers == null && params.enableUnscopedTimers && !params.enableMethodFilter) {
             timers = Collections.emptySet();
         }
         enabledMetrics = metrics;
@@ -1404,6 +1404,10 @@ public class Debug {
 
     public static boolean areUnconditionalMetricsEnabled() {
         return enabledMetrics != null;
+    }
+
+    public static boolean isMethodFilteringEnabled() {
+        return params.enableMethodFilter;
     }
 
     protected static void parseMetricAndTimerSystemProperties(Set<String> metrics, Set<String> timers, Set<String> metricsSubstrings, Set<String> timersSubstrings) {
