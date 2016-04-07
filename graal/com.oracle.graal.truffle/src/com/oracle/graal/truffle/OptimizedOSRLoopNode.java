@@ -49,22 +49,22 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     @Child private RepeatingNode repeatableNode;
 
-    /*
+    /**
      * We disable profiling if its very unlikely that this loop is ever going to get OSR compiled.
      * For example if the parent call target or a parent loop is already hot or compiling.
      */
     private boolean profilingEnabled = true;
 
-    /*
+    /**
      * If an OSR compilation is scheduled the corresponding call target is stored here.
      */
     private OptimizedCallTarget compiledOSRLoop;
 
-    /*
+    /**
      * The current loop count. Not for condition probabilities use as it might stop profiling.
      */
     private int loopCount;
-    /*
+    /**
      * The current loop threshold. Might get increased with each invalidation.
      */
     private int osrThreshold;
