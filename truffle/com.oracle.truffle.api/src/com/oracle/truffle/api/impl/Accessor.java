@@ -24,18 +24,10 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.Objects;
-
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -44,6 +36,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.io.Closeable;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,6 +44,7 @@ import java.util.Set;
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
  */
 public abstract class Accessor {
+
     public abstract static class Nodes {
         @SuppressWarnings("rawtypes")
         public abstract Class<? extends TruffleLanguage> findLanguage(RootNode n);
@@ -60,17 +54,22 @@ public abstract class Accessor {
         public abstract boolean isTaggedWith(Node node, Class<?> tag);
     }
 
+    public abstract static class DebugSupport {
+        public abstract Closeable executionStart(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
+    }
+
+    public abstract static class ExecSupport {
+        public abstract Closeable executionStart(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
+
+        public abstract Object findVM();
+    }
+
     public abstract static class EngineSupport {
         @SuppressWarnings("rawtypes")
         public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
 
         @SuppressWarnings("rawtypes")
         public abstract TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType);
-
-        @SuppressWarnings("static-method")
-        protected final Object findVM() {
-            return CURRENT_VM.get();
-        }
 
         public abstract Object getInstrumentationHandler(Object vm);
 
@@ -134,7 +133,8 @@ public abstract class Accessor {
     private static Accessor.Nodes NODES;
     private static Accessor.OldInstrumentSupport INSTRUMENT;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
-    private static Accessor DEBUG;
+    private static Accessor.ExecSupport EXEC;
+    private static Accessor.DebugSupport DEBUG;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -194,6 +194,7 @@ public abstract class Accessor {
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
+        EXEC = new ExecutionImpl();
     }
 
     protected Accessor() {
@@ -224,7 +225,7 @@ public abstract class Accessor {
             if (DEBUG != null) {
                 throw new IllegalStateException();
             }
-            DEBUG = this;
+            DEBUG = this.debugSupport();
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -245,6 +246,14 @@ public abstract class Accessor {
         return API;
     }
 
+    protected ExecSupport execSupport() {
+        return EXEC;
+    }
+
+    protected DebugSupport debugSupport() {
+        return DEBUG;
+    }
+
     protected EngineSupport engineSupport() {
         return SPI;
     }
@@ -257,52 +266,20 @@ public abstract class Accessor {
         return INSTRUMENTHANDLER;
     }
 
+    static LanguageSupport languageAccess() {
+        return API;
+    }
+
+    static EngineSupport engineAccess() {
+        return SPI;
+    }
+
+    static DebugSupport debugAccess() {
+        return DEBUG;
+    }
+
     static Accessor.Nodes nodesAccess() {
         return NODES;
-    }
-
-    //
-    // execution
-    //
-
-    private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
-    private static Reference<Object> previousVM = new WeakReference<>(null);
-    private static Assumption oneVM = Truffle.getRuntime().createAssumption();
-
-    @TruffleBoundary
-    protected Closeable executionStart(Object vm, @SuppressWarnings("unused") int currentDepth, Object[] debuggerHolder, Source s) {
-        CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
-        Objects.requireNonNull(vm);
-        final Object prev = CURRENT_VM.get();
-        final Closeable debugClose = DEBUG == null ? null : DEBUG.executionStart(vm, prev == null ? 0 : -1, debuggerHolder, s);
-        if (!(vm == previousVM.get())) {
-            previousVM = new WeakReference<>(vm);
-            oneVM.invalidate();
-            oneVM = Truffle.getRuntime().createAssumption();
-
-        }
-        CURRENT_VM.set(vm);
-        class ContextCloseable implements Closeable {
-            @TruffleBoundary
-            @Override
-            public void close() throws IOException {
-                CURRENT_VM.set(prev);
-                if (debugClose != null) {
-                    debugClose.close();
-                }
-            }
-        }
-        return new ContextCloseable();
-    }
-
-    static Assumption oneVMAssumption() {
-        return oneVM;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static <C> C findContext(Class<? extends TruffleLanguage> type) {
-        Env env = SPI.findEnv(CURRENT_VM.get(), type);
-        return (C) API.findContext(env);
     }
 
     /**

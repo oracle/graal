@@ -7,6 +7,7 @@ import java.util.Map;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
+@SuppressWarnings("all")
 public class PolyglotEngine {
 
     private final ContextStore contextStore;

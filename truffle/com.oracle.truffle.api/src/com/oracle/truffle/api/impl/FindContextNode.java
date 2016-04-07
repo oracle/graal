@@ -43,8 +43,8 @@ public final class FindContextNode<C> extends Node {
             return context;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        oneVM = Accessor.oneVMAssumption();
-        return context = Accessor.findContext(languageClass);
+        oneVM = ExecutionImpl.oneVMAssumption();
+        return context = ExecutionImpl.findContext(languageClass);
     }
 
     public Class<? extends TruffleLanguage<C>> getLanguageClass() {

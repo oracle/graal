@@ -991,21 +991,28 @@ public final class Debugger {
         }
 
         @Override
-        protected Closeable executionStart(Object vm, final int currentDepth, final Object[] debugger, final Source s) {
-            final PolyglotEngine engine = (PolyglotEngine) vm;
-            if (debugger[0] != null) {
-                final Debugger dbg = (Debugger) debugger[0];
-                dbg.executionStarted(currentDepth, s);
-            }
-            engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), 1);
-            return new Closeable() {
-                @Override
-                public void close() throws IOException {
-                    if (debugger[0] != null) {
-                        ((Debugger)debugger[0]).executionEnded();
-                    }
+        protected DebugSupport debugSupport() {
+            return new DebugImpl();
+        }
+
+        private static final class DebugImpl extends DebugSupport {
+            @Override
+            public Closeable executionStart(Object vm, final int currentDepth, final Object[] debugger, final Source s) {
+                final PolyglotEngine engine = (PolyglotEngine) vm;
+                if (debugger[0] != null) {
+                    final Debugger dbg = (Debugger) debugger[0];
+                    dbg.executionStarted(currentDepth, s);
                 }
-            };
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), 1);
+                return new Closeable() {
+                    @Override
+                    public void close() throws IOException {
+                        if (debugger[0] != null) {
+                            ((Debugger) debugger[0]).executionEnded();
+                        }
+                    }
+                };
+            }
         }
 
         @SuppressWarnings("rawtypes")

@@ -116,7 +116,7 @@ public class PolyglotEngine {
     private final Object instrumentationHandler; // new instrumentation
     private final Map<String, Instrument> instruments;
     private final List<Object[]> config;
-    private final Object[] debugger = { null };
+    private final Object[] debugger = {null};
     private boolean disposed;
 
     static {
@@ -525,7 +525,7 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     private Object evalImpl(TruffleLanguage<?>[] fillLang, Source s, Language l) throws IOException {
-        try (Closeable d = SPI.executionStart(this, -1, debugger, s)) {
+        try (Closeable d = SPIAccessor.execAccess().executionStart(this, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
             return SPIAccessor.langs().eval(langImpl, s, l.cache);
@@ -538,7 +538,7 @@ public class PolyglotEngine {
         Object res;
         CompilerAsserts.neverPartOfCompilation();
         if (executor == null) {
-            try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+            try (final Closeable c = SPIAccessor.execAccess().executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
                 res = ForeignAccess.execute(foreignNode, frame, receiver, args);
             }
@@ -563,7 +563,7 @@ public class PolyglotEngine {
             @SuppressWarnings("try")
             @Override
             protected Object compute() throws IOException {
-                try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                try (final Closeable c = SPIAccessor.execAccess().executionStart(PolyglotEngine.this, -1, debugger, null)) {
                     final Object[] args = ForeignAccess.getArguments(materialized).toArray();
                     RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
                     final CallTarget target = Truffle.getRuntime().createCallTarget(node);
@@ -825,7 +825,7 @@ public class PolyglotEngine {
                 @SuppressWarnings("try")
                 @Override
                 protected Object compute() throws IOException {
-                    try (final Closeable c = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+                    try (final Closeable c = SPIAccessor.execAccess().executionStart(PolyglotEngine.this, -1, debugger, null)) {
                         for (;;) {
                             try {
                                 if (target == null) {
@@ -1049,7 +1049,7 @@ public class PolyglotEngine {
         @SuppressWarnings("try")
         public Value getGlobalObject() {
             checkThread();
-            try (Closeable d = SPI.executionStart(PolyglotEngine.this, -1, debugger, null)) {
+            try (Closeable d = SPIAccessor.execAccess().executionStart(PolyglotEngine.this, -1, debugger, null)) {
                 Object res = SPIAccessor.langs().languageGlobal(getEnv(true));
                 return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
             } catch (IOException ex) {
@@ -1134,10 +1134,8 @@ public class PolyglotEngine {
             return SPI.instrumentSupport();
         }
 
-        @Override
-        protected Closeable executionStart(Object obj, int currentDepth, Object[] debuggerHolder, Source s) {
-            PolyglotEngine vm = (PolyglotEngine) obj;
-            return super.executionStart(vm, -1, debuggerHolder, s);
+        static ExecSupport execAccess() {
+            return SPI.execSupport();
         }
 
         @Override
@@ -1167,7 +1165,7 @@ public class PolyglotEngine {
 
             @Override
             public TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz, String mimeType) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? findVM() : obj);
+                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? SPI.execSupport().findVM() : obj);
                 if (vm == null) {
                     throw new IllegalStateException("Accessor.findLanguageImpl access to vm");
                 }
@@ -1186,13 +1184,13 @@ public class PolyglotEngine {
 
             @Override
             public Object getInstrumenter(Object obj) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? findVM() : obj);
+                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? SPI.execSupport().findVM() : obj);
                 return vm == null ? null : vm.instrumenter;
             }
 
             @Override
             public Object getInstrumentationHandler(Object obj) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? findVM() : obj);
+                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? SPI.execSupport().findVM() : obj);
                 return vm == null ? null : vm.instrumentationHandler;
             }
 
