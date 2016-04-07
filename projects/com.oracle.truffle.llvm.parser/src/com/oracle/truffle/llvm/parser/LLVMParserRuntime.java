@@ -54,7 +54,7 @@ public interface LLVMParserRuntime {
      * @param size the bytes to be allocated
      * @return a node that allocates the requested memory.
      */
-    LLVMExpressionNode allocateFunctionLifetime(int size, int alignment);
+    LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment);
 
     /**
      * Gets the return slot where the function return value is stored.
