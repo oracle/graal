@@ -95,7 +95,7 @@ benchDaCapo_x52 : ${benchDaCapo} {
   capabilities : [linux, x52, bench]
   name : "bench-dacapo-linux-x52"
   run : [
-    ${benchDaCapo.mx-benchmark} ["--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "30"]
+    ${benchDaCapo.mx-benchmark} ["--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "20"]
   ]
 }
 
