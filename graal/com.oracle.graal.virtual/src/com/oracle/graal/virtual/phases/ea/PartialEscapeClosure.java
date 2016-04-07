@@ -468,7 +468,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private static void processVirtualAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, int object, ObjectState exitObjState, ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
+    private static void processVirtualAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, int object, ObjectState exitObjState, ObjectState initialObjState,
+                    PartialEscapeBlockState<?> exitState) {
         for (int i = 0; i < exitObjState.getEntries().length; i++) {
             ValueNode value = exitState.getObjectState(object).getEntry(i);
             if (!(value instanceof VirtualObjectNode || value.isConstant())) {

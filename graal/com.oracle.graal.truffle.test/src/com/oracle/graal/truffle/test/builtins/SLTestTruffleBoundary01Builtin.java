@@ -32,8 +32,8 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * Just used in TestTruffleBoundary01.sl. Verifies that all intrinsics have no effect inside of a @TruffleBoundary
- * annotated method.
+ * Just used in TestTruffleBoundary01.sl. Verifies that all intrinsics have no effect inside of
+ * a @TruffleBoundary annotated method.
  */
 @NodeInfo(shortName = "testTruffleBoundary01")
 public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuiltin {

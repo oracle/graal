@@ -213,9 +213,9 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                          * processed in live sets. Process them only in debug mode so that this can
                          * be checked
                          */
-                                verifyTemp(liveKill, operand);
-                            }
-                        };
+                        verifyTemp(liveKill, operand);
+                    }
+                };
 
                 // iterate all instructions of the block
                 for (int j = 0; j < numInst; j++) {
@@ -303,7 +303,9 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
                         changeOccurredInBlock = false;
 
-                        /* liveOut(block) is the union of liveIn(sux), for successors sux of block. */
+                        /*
+                         * liveOut(block) is the union of liveIn(sux), for successors sux of block.
+                         */
                         int n = block.getSuccessorCount();
                         if (n > 0) {
                             liveOut.clear();
@@ -587,19 +589,19 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
                     /* hints always point from def to use */
-                            if (hintAtDef) {
-                                to.setLocationHint(from);
-                            } else {
-                                from.setLocationHint(to);
-                            }
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
-                            }
+                    if (hintAtDef) {
+                        to.setLocationHint(from);
+                    } else {
+                        from.setLocationHint(to);
+                    }
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
+                    }
 
-                            return registerHint;
-                        }
-                        return null;
-                    });
+                    return registerHint;
+                }
+                return null;
+            });
         }
     }
 

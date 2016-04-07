@@ -190,7 +190,8 @@ public class InlineableGraph implements Inlineable {
     /**
      * This method builds the IR nodes for the given <code>method</code> and canonicalizes them.
      * Provided profiling info is mature, the resulting graph is cached. The caller is responsible
-     * for cloning before modification. </p>
+     * for cloning before modification.
+     * </p>
      */
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {

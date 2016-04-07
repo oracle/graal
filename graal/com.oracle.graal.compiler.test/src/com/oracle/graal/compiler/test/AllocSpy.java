@@ -39,10 +39,11 @@ import com.google.monitoring.runtime.instrumentation.AllocationRecorder;
 import com.google.monitoring.runtime.instrumentation.Sampler;
 
 /**
- * Tool for analyzing allocations within a scope using the <a
- * href="https://code.google.com/p/java-allocation-instrumenter/">Java Allocation Instrumenter</a>.
- * Allocation records are aggregated per stack trace at an allocation site. The size of the stack
- * trace is governed by the value of the "AllocSpy.ContextSize" system property (default is 5).
+ * Tool for analyzing allocations within a scope using the
+ * <a href="https://code.google.com/p/java-allocation-instrumenter/">Java Allocation
+ * Instrumenter</a>. Allocation records are aggregated per stack trace at an allocation site. The
+ * size of the stack trace is governed by the value of the "AllocSpy.ContextSize" system property
+ * (default is 5).
  * <p>
  * Using this facility requires using -javaagent on the command line. For example:
  *

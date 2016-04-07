@@ -54,7 +54,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final AllowAssumptions allowAssumptions;
     private final Map<ResolvedJavaMethod, EncodedGraph> graphCache;
 
-    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions, Architecture architecture) {
+    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions,
+                    Architecture architecture) {
         super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), architecture);
 
         this.providers = providers;

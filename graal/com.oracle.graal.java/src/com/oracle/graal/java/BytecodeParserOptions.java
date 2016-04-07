@@ -30,8 +30,8 @@ import com.oracle.graal.options.StableOptionValue;
 /**
  * Options related to {@link BytecodeParser}.
  *
- * Note: This must be a top level class to work around for <a
- * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
+ * Note: This must be a top level class to work around for
+ * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
 public class BytecodeParserOptions {
     // @formatter:off

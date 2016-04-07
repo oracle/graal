@@ -49,14 +49,14 @@ public final class TraceCompilationPolymorphismListener extends AbstractDebugCom
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
         super.notifyCompilationSuccess(target, graph, result);
         target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)).//
-        forEach(node -> {
-            NodeCost cost = node.getCost();
-            Map<String, Object> props = new LinkedHashMap<>();
-            props.put("simpleName", node.getClass().getSimpleName());
-            props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
-            String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-            log(0, msg, node.toString(), props);
-        });
+                        forEach(node -> {
+                            NodeCost cost = node.getCost();
+                            Map<String, Object> props = new LinkedHashMap<>();
+                            props.put("simpleName", node.getClass().getSimpleName());
+                            props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
+                            String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
+                            log(0, msg, node.toString(), props);
+                        });
     }
 
 }

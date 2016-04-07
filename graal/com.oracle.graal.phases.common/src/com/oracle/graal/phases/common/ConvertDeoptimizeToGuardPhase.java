@@ -62,9 +62,8 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
  * {@link ControlSplitNode ControlSplitNodes} with {@link FixedGuardNode FixedGuardNodes}.
  *
- * This is useful because {@link FixedGuardNode FixedGuardNodes} will be lowered to
- * {@link GuardNode GuardNodes} which can later be optimized more aggressively than control-flow
- * constructs.
+ * This is useful because {@link FixedGuardNode FixedGuardNodes} will be lowered to {@link GuardNode
+ * GuardNodes} which can later be optimized more aggressively than control-flow constructs.
  *
  * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
@@ -155,7 +154,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
 
     private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, JavaConstant speculation, StructuredGraph graph) {
         if (deoptBegin.predecessor() instanceof AbstractBeginNode) {
-            /* Walk up chains of LoopExitNodes to the "real" BeginNode that leads to deoptimization. */
+            /*
+             * Walk up chains of LoopExitNodes to the "real" BeginNode that leads to deoptimization.
+             */
             visitDeoptBegin((AbstractBeginNode) deoptBegin.predecessor(), deoptAction, deoptReason, speculation, graph);
             return;
         }

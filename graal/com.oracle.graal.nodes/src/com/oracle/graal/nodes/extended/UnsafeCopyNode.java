@@ -45,5 +45,6 @@ public final class UnsafeCopyNode {
     }
 
     @NodeIntrinsic
-    public static native void copy(Object srcObject, long srcOffset, Object destObject, long destOffset, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+    public static native void copy(Object srcObject, long srcOffset, Object destObject, long destOffset, @ConstantNodeParameter JavaKind kind,
+                    @ConstantNodeParameter LocationIdentity locationIdentity);
 }

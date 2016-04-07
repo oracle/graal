@@ -38,9 +38,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 /**
- * Definitions of the standard Java bytecodes defined by <a href=
- * "http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html"> Java Virtual
- * Machine Specification</a>.
+ * Definitions of the standard Java bytecodes defined by
+ * <a href= "http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html"> Java
+ * Virtual Machine Specification</a>.
  */
 public class Bytecodes {
 
@@ -759,7 +759,7 @@ public class Bytecodes {
     public static String operator(int op) {
         // Checkstyle: stop
         switch (op) {
-        // arithmetic ops
+            // arithmetic ops
             case IADD: // fall through
             case LADD: // fall through
             case FADD: // fall through
@@ -785,7 +785,7 @@ public class Bytecodes {
             case FREM: // fall through
             case DREM:
                 return "%";
-                // shift ops
+            // shift ops
             case ISHL: // fall through
             case LSHL:
                 return "<<";
@@ -795,7 +795,7 @@ public class Bytecodes {
             case IUSHR: // fall through
             case LUSHR:
                 return ">>>";
-                // logic ops
+            // logic ops
             case IAND: // fall through
             case LAND:
                 return "&";

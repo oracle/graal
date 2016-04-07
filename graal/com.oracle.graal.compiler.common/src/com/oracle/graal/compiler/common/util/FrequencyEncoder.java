@@ -33,8 +33,8 @@ import java.util.Map;
  * frequently used object is the first one, the least frequently used the last one. If {@code null}
  * is added, it is always the first element.
  *
- * Either object {@link #createIdentityEncoder() identity} or object
- * {@link #createEqualityEncoder() equality} can be used to build the array and count the frequency.
+ * Either object {@link #createIdentityEncoder() identity} or object {@link #createEqualityEncoder()
+ * equality} can be used to build the array and count the frequency.
  */
 public class FrequencyEncoder<T> {
 

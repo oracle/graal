@@ -236,7 +236,8 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static <T extends CompilationResult> LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites, T compilationResult) {
+    public static <T extends CompilationResult> LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
+                    T compilationResult) {
         OverrideScope overrideScope = null;
         LIRSuites lirSuites0 = lirSuites;
         while (true) {
