@@ -167,7 +167,7 @@ public class PolyglotEngine {
         this.config = config;
         // this.debugger = SPI.createDebugger(this, this.instrumenter);
         // new instrumentation
-        this.instrumentationHandler = SPIAccessor.instrumentAccess().createInstrumentationHandler(this, out, err, in);
+        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
         Set<LanguageCache> uniqueCaches = new HashSet<>(LanguageCache.languages().values());
@@ -179,7 +179,7 @@ public class PolyglotEngine {
         }
         this.langs = map;
         this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
-        this.context = SPIAccessor.execAccess().createStore(this);
+        this.context = Access.EXEC.createStore(this);
     }
 
     private Map<String, Instrument> createAndAutostartDescriptors(List<InstrumentCache> instrumentCaches) {
@@ -479,7 +479,7 @@ public class PolyglotEngine {
                     TruffleLanguage<?> impl = language.getImpl(false);
                     if (impl != null) {
                         try {
-                            SPIAccessor.langs().dispose(impl, language.getEnv(true));
+                            Access.LANGS.dispose(impl, language.getEnv(true));
                         } catch (Exception | Error ex) {
                             LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
                         }
@@ -529,10 +529,10 @@ public class PolyglotEngine {
 
     @SuppressWarnings("try")
     private Object evalImpl(TruffleLanguage<?>[] fillLang, Source s, Language l) throws IOException {
-        try (Closeable d = SPIAccessor.execAccess().executionStart(context, -1, debugger, s)) {
+        try (Closeable d = Access.EXEC.executionStart(context, -1, debugger, s)) {
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
-            return SPIAccessor.langs().eval(langImpl, s, l.cache);
+            return Access.LANGS.eval(langImpl, s, l.cache);
         }
     }
 
@@ -542,7 +542,7 @@ public class PolyglotEngine {
         Object res;
         CompilerAsserts.neverPartOfCompilation();
         if (executor == null) {
-            try (final Closeable c = SPIAccessor.execAccess().executionStart(context, -1, debugger, null)) {
+            try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
                 res = ForeignAccess.execute(foreignNode, frame, receiver, args);
             }
@@ -567,7 +567,7 @@ public class PolyglotEngine {
             @SuppressWarnings("try")
             @Override
             protected Object compute() throws IOException {
-                try (final Closeable c = SPIAccessor.execAccess().executionStart(context, -1, debugger, null)) {
+                try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
                     final Object[] args = ForeignAccess.getArguments(materialized).toArray();
                     RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
                     final CallTarget target = Truffle.getRuntime().createCallTarget(node);
@@ -610,7 +610,7 @@ public class PolyglotEngine {
                         if (env == null) {
                             continue;
                         }
-                        obj = SPIAccessor.langs().findExportedSymbol(env, globalName, true);
+                        obj = Access.LANGS.findExportedSymbol(env, globalName, true);
                         if (obj != null) {
                             lang[0] = dl.getImpl(true);
                             break;
@@ -623,7 +623,7 @@ public class PolyglotEngine {
                         if (env == null) {
                             continue;
                         }
-                        obj = SPIAccessor.langs().findExportedSymbol(env, globalName, true);
+                        obj = Access.LANGS.findExportedSymbol(env, globalName, true);
                         if (obj != null) {
                             lang[0] = dl.getImpl(true);
                             break;
@@ -774,7 +774,7 @@ public class PolyglotEngine {
                 while (unwrapped instanceof EngineTruffleObject) {
                     unwrapped = ((EngineTruffleObject) obj).getDelegate();
                 }
-                return representation.cast(SPIAccessor.langs().toString(language[0], findEnv(clazz), unwrapped));
+                return representation.cast(Access.LANGS.toString(language[0], findEnv(clazz), unwrapped));
             }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
@@ -829,7 +829,7 @@ public class PolyglotEngine {
                 @SuppressWarnings("try")
                 @Override
                 protected Object compute() throws IOException {
-                    try (final Closeable c = SPIAccessor.execAccess().executionStart(context, -1, debugger, null)) {
+                    try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
                         for (;;) {
                             try {
                                 if (target == null) {
@@ -926,7 +926,7 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
-            return SPIAccessor.instrumentAccess().getInstrumentationHandlerService(instrumentationHandler, this, type);
+            return Access.INSTRUMENT.getInstrumentationHandlerService(instrumentationHandler, this, type);
         }
 
         /**
@@ -957,9 +957,9 @@ public class PolyglotEngine {
         void setEnabledImpl(final boolean enabled, boolean cleanup) {
             if (this.enabled != enabled) { // check again for thread safety
                 if (enabled) {
-                    SPIAccessor.instrumentAccess().addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
+                    Access.INSTRUMENT.addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
                 } else {
-                    SPIAccessor.instrumentAccess().disposeInstrument(instrumentationHandler, this, cleanup);
+                    Access.INSTRUMENT.disposeInstrument(instrumentationHandler, this, cleanup);
                 }
                 this.enabled = enabled;
             }
@@ -1053,8 +1053,8 @@ public class PolyglotEngine {
         @SuppressWarnings("try")
         public Value getGlobalObject() {
             checkThread();
-            try (Closeable d = SPIAccessor.execAccess().executionStart(context, -1, debugger, null)) {
-                Object res = SPIAccessor.langs().languageGlobal(getEnv(true));
+            try (Closeable d = Access.EXEC.executionStart(context, -1, debugger, null)) {
+                Object res = Access.LANGS.languageGlobal(getEnv(true));
                 return res == null ? null : new Value(new TruffleLanguage[]{info.getImpl(true)}, res);
             } catch (IOException ex) {
                 throw new IllegalStateException(ex);
@@ -1083,7 +1083,7 @@ public class PolyglotEngine {
 
         TruffleLanguage.Env getEnv(boolean create) {
             if (env == null && create) {
-                env = SPIAccessor.langs().attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
+                env = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
             }
             return env;
         }
@@ -1127,6 +1127,12 @@ public class PolyglotEngine {
             }
         }
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+    }
+
+    private static class Access {
+        static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
+        static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
+        static final Accessor.ExecSupport EXEC = SPIAccessor.execAccess();
     }
 
     private static class SPIAccessor extends Accessor {
@@ -1212,7 +1218,7 @@ public class PolyglotEngine {
                     if (l == ownLang || l == null || env == null) {
                         continue;
                     }
-                    Object obj = langs().findExportedSymbol(env, globalName, true);
+                    Object obj = Access.LANGS.findExportedSymbol(env, globalName, true);
                     if (obj != null) {
                         return obj;
                     }
@@ -1223,7 +1229,7 @@ public class PolyglotEngine {
                     if (l == ownLang || l == null || env == null) {
                         continue;
                     }
-                    Object obj = langs().findExportedSymbol(env, globalName, false);
+                    Object obj = Access.LANGS.findExportedSymbol(env, globalName, false);
                     if (obj != null) {
                         return obj;
                     }
