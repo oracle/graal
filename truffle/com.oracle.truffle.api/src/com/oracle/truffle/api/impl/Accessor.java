@@ -36,7 +36,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.io.Closeable;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,7 +60,8 @@ public abstract class Accessor {
 
     public abstract static class ExecSupport {
         public abstract ContextStore createStore(Object vm);
-        public abstract Closeable executionStart(ContextStore context, int currentDepth, Object[] debuggerHolder, Source s);
+        public abstract ContextStore executionStarted(ContextStore context);
+        public abstract void executionEnded(ContextStore prev);
 
         public abstract Object findVM();
     }

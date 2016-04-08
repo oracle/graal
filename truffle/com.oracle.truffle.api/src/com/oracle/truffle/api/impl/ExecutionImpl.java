@@ -27,9 +27,6 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.source.Source;
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Objects;
 
 final class ExecutionImpl extends Accessor.ExecSupport {
@@ -50,21 +47,18 @@ final class ExecutionImpl extends Accessor.ExecSupport {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public Closeable executionStart(ContextStore context, int currentDepth, Object[] debuggerHolder, Source s) {
+    public ContextStore executionStarted(ContextStore context) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Object vm = context.vm;
         Objects.requireNonNull(vm);
         final ContextStore prev = CURRENT_VM.get();
         CURRENT_VM.enter(context);
-        class ContextCloseable implements Closeable {
+        return prev;
+    }
 
-            @CompilerDirectives.TruffleBoundary
-            @Override
-            public void close() throws IOException {
-                CURRENT_VM.enter(prev);
-            }
-        }
-        return new ContextCloseable();
+    @Override
+    public void executionEnded(ContextStore prev) {
+        CURRENT_VM.enter(prev);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
