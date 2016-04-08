@@ -824,27 +824,37 @@ public class PolyglotEngine {
          */
         public Value execute(final Object... args) throws IOException {
             assertNoTruffle();
+            if (executor == null) {
+                Object ret = executeDirect(args);
+                return new Value(language, ret);
+            }
+
             get();
             ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor) {
                 @SuppressWarnings("try")
                 @Override
                 protected Object compute() throws IOException {
-                    try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
-                        for (;;) {
-                            try {
-                                if (target == null) {
-                                    target = SymbolInvokerImpl.createCallTarget(language[0], compute.get(), args);
-                                }
-                                return target.call(args);
-                            } catch (ArgumentsMishmashException ex) {
-                                target = null;
-                            }
-                        }
-                    }
+                    return executeDirect(args);
                 }
             };
             invokeCompute.perform();
             return new Value(language, invokeCompute);
+        }
+
+        @SuppressWarnings("try")
+        private Object executeDirect(Object[] args) throws IOException {
+            try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
+                for (;;) {
+                    try {
+                        if (target == null) {
+                            target = SymbolInvokerImpl.createCallTarget(language[0], compute.get(), args);
+                        }
+                        return target.call(args);
+                    } catch (ArgumentsMishmashException ex) {
+                        target = null;
+                    }
+                }
+            }
         }
 
         private Object waitForSymbol() throws IOException {
