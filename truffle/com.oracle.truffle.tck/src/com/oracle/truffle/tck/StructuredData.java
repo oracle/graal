@@ -38,7 +38,7 @@ final class StructuredData implements TruffleObject {
     }
 
     public ForeignAccess getForeignAccess() {
-        return StructuredDataForeign.ACCESS;
+        return StructuredDataMessageResolutionForeign.createAccess();
     }
 
     public static boolean isInstance(TruffleObject obj) {
