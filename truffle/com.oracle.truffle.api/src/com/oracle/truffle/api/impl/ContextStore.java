@@ -47,7 +47,7 @@ public final class ContextStore {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             storeStable = Truffle.getRuntime().createAssumption();
         }
-        return store[index];
+        return index < store.length ? store[index] : null;
     }
 
     void setContext(int languageId, Object context) {
