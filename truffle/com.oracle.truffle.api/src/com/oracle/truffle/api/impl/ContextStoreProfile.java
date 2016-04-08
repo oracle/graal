@@ -40,7 +40,7 @@ final class ContextStoreProfile {
     @CompilationFinal private ContextStore constantStore;
 
     private volatile ContextStore dynamicStore = UNINTIALIZED_STORE;
-    private volatile Thread dynamicStoreThread;
+    private volatile Thread singleThread;
 
     private volatile ThreadLocal<ContextStore> threadStore;
 
@@ -71,14 +71,8 @@ final class ContextStoreProfile {
             return;
         }
 
-        if (constantStore == UNINTIALIZED_STORE) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            constantStore = store;
-            return;
-        }
-
         // fast path single thread
-        if (Thread.currentThread() == dynamicStoreThread) {
+        if (Thread.currentThread() == singleThread && dynamicStore != UNINTIALIZED_STORE) {
             dynamicStore = store;
             return;
         }
@@ -99,44 +93,42 @@ final class ContextStoreProfile {
 
     @TruffleBoundary
     private synchronized void slowPathProfile(ContextStore store) {
+
         if (constantStoreAssumption.isValid()) {
             if (constantStore == UNINTIALIZED_STORE) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 constantStore = store;
+                singleThread = Thread.currentThread();
                 return;
             } else {
-                assert constantStore != store;
-                constantStore = null;
                 constantStoreAssumption.invalidate();
             }
         }
         if (dynamicStoreAssumption.isValid()) {
             Thread currentThread = Thread.currentThread();
-            assert currentThread != dynamicStoreThread;
-            if (dynamicStore == UNINTIALIZED_STORE) {
-                dynamicStoreThread = currentThread;
+            if (dynamicStore == UNINTIALIZED_STORE && singleThread == currentThread) {
                 dynamicStore = store;
                 return;
             } else {
-                final ContextStore initialStore = dynamicStore;
+                final ContextStore initialStore = dynamicStore == UNINTIALIZED_STORE ? constantStore : dynamicStore;
                 threadStore = new ThreadLocal<ContextStore>() {
                     @Override
                     protected ContextStore initialValue() {
                         return initialStore;
                     }
                 };
-                dynamicStore = null;
-                dynamicStoreThread = null;
+                threadStore.set(store);
                 dynamicStoreAssumption.invalidate();
             }
         }
+        constantStore = null;
+        dynamicStore = null;
+        singleThread = null;
 
         assert !constantStoreAssumption.isValid();
         assert !dynamicStoreAssumption.isValid();
 
         // ensure cleaned up speculation
-        assert dynamicStoreThread == null;
-        assert constantStore == null;
-        assert dynamicStore == null;
         assert threadStore != null;
     }
 
