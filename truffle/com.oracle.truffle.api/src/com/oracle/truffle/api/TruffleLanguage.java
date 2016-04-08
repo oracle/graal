@@ -297,8 +297,7 @@ public abstract class TruffleLanguage<C> {
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected final Node createFindContextNode() {
-        final Class<? extends TruffleLanguage<?>> c = (Class<? extends TruffleLanguage<?>>) getClass();
-        return new FindContextNode(c);
+        return new FindContextNode(this);
     }
 
     /**
@@ -318,7 +317,7 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected final C findContext(Node n) {
         FindContextNode fcn = (FindContextNode) n;
-        if (fcn.getLanguageClass() != getClass()) {
+        if (fcn.getTruffleLanguage() != this) {
             throw new ClassCastException();
         }
         return (C) fcn.executeFindContext();

@@ -39,6 +39,10 @@ final class ExecutionImpl extends Accessor.ExecSupport {
 
     private static final ContextStoreProfile CURRENT_VM = new ContextStoreProfile(null);
 
+    static ContextStoreProfile sharedProfile() {
+        return CURRENT_VM;
+    }
+
     @Override
     public ContextStore createStore(Object vm) {
         return new ContextStore(vm, 4);

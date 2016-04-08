@@ -24,12 +24,16 @@
  */
 package com.oracle.truffle.api.impl;
 
-final class ContextReference<C> {
+import com.oracle.truffle.api.TruffleLanguage;
+import java.util.HashMap;
+import java.util.Map;
 
+final class ContextReference<C> {
+    private static Map<TruffleLanguage<?>,Integer> ids = new HashMap<>();
     private final ContextStoreProfile profile;
     private final int languageId;
 
-    ContextReference(ContextStoreProfile profile, int languageId) {
+    private ContextReference(ContextStoreProfile profile, int languageId) {
         this.profile = profile;
         this.languageId = languageId; // index
     }
@@ -39,4 +43,11 @@ final class ContextReference<C> {
         return (C) profile.get().getContext(languageId);
     }
 
+    public static synchronized <C> ContextReference<C> create(TruffleLanguage<C> language) {
+        Integer id = ids.get(language);
+        if (id == null) {
+            ids.put(language, id = ids.size());
+        }
+        return new ContextReference<>(ExecutionImpl.sharedProfile(), id);
+    }
 }
