@@ -97,18 +97,39 @@ public abstract class LLVMCallNode {
         }
     }
 
+    public abstract static class LLVMAbstractCallNode extends LLVMExpressionNode {
+
+        @Children private final LLVMExpressionNode[] args;
+
+        public LLVMAbstractCallNode(LLVMExpressionNode[] args) {
+            this.args = args;
+        }
+
+        @ExplodeLoop
+        Object[] evaluateArgs(VirtualFrame frame) {
+            Object[] argValues = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                argValues[i] = args[i].executeGeneric(frame);
+            }
+            return argValues;
+        }
+
+        public LLVMExpressionNode[] getArgs() {
+            return args;
+        }
+    }
+
     /**
      * Call node for a Sulong or native function where the target function is still unresolved.
      */
-    public static class LLVMUnresolvedCallNode extends LLVMExpressionNode {
+    public static class LLVMUnresolvedCallNode extends LLVMAbstractCallNode {
 
         @Child private LLVMFunctionNode functionNode;
-        @Children private final LLVMExpressionNode[] args;
         private final LLVMContext context;
 
         public LLVMUnresolvedCallNode(LLVMFunctionNode functionNode, LLVMExpressionNode[] args, LLVMContext context) {
+            super(args);
             this.functionNode = functionNode;
-            this.args = args;
             this.context = context;
         }
 
@@ -119,17 +140,17 @@ public abstract class LLVMCallNode {
                 LLVMFunction function = functionNode.executeFunction(frame);
                 CallTarget callTarget = context.getFunction(function);
                 if (callTarget == null) {
-                    NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(args, context));
+                    NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(getArgs(), context));
                     if (nativeHandle == null) {
                         throw new IllegalStateException("could not find function " + function.getName());
                     }
-                    return replace(getResolvedNativeCall(function, nativeHandle, args, context)).executeGeneric(frame);
+                    return replace(getResolvedNativeCall(function, nativeHandle, getArgs(), context)).executeGeneric(frame);
                 } else {
-                    return replace(new LLVMResolvedDirectCallNode(callTarget, args)).executeGeneric(frame);
+                    return replace(new LLVMResolvedDirectCallNode(callTarget, getArgs())).executeGeneric(frame);
                 }
             } else {
-                LLVMFunctionCallChain rootNode = LLVMFunctionCallChainNodeGen.create(context, args);
-                return replace(new LLVMFunctionCallChainStartNode(functionNode, rootNode, args)).executeGeneric(frame);
+                LLVMFunctionCallChain rootNode = LLVMFunctionCallChainNodeGen.create(context, getArgs());
+                return replace(new LLVMFunctionCallChainStartNode(functionNode, rootNode, getArgs())).executeGeneric(frame);
             }
         }
 
@@ -138,24 +159,18 @@ public abstract class LLVMCallNode {
     /**
      * Call node for a Sulong function where the function is constant.
      */
-    public static class LLVMResolvedDirectCallNode extends LLVMExpressionNode {
+    public static class LLVMResolvedDirectCallNode extends LLVMAbstractCallNode {
 
-        @Children private final LLVMExpressionNode[] args;
         @Child protected DirectCallNode callNode;
 
         public LLVMResolvedDirectCallNode(CallTarget callTarget, LLVMExpressionNode[] args) {
+            super(args);
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
-            this.args = args;
         }
 
         @Override
-        @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object[] argValues = new Object[args.length];
-            for (int i = 0; i < args.length; i++) {
-                argValues[i] = args[i].executeGeneric(frame);
-            }
-            return callNode.call(frame, argValues);
+            return callNode.call(frame, evaluateArgs(frame));
         }
 
     }
@@ -163,24 +178,18 @@ public abstract class LLVMCallNode {
     /**
      * Call node for a native function where the function is constant.
      */
-    public static class LLVMResolvedDirectNativeCallNode extends LLVMExpressionNode {
+    public static class LLVMResolvedDirectNativeCallNode extends LLVMAbstractCallNode {
 
         private final NativeFunctionHandle functionHandle;
-        @Children private final LLVMExpressionNode[] args;
 
         public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
+            super(prepareForNative(args, context));
             functionHandle = nativeFunctionHandle;
-            this.args = prepareForNative(args, context);
         }
 
         @Override
-        @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object[] argValues = new Object[args.length];
-            for (int i = 0; i < args.length; i++) {
-                argValues[i] = args[i].executeGeneric(frame);
-            }
-            return functionHandle.call(argValues);
+            return functionHandle.call(evaluateArgs(frame));
         }
 
     }
@@ -210,27 +219,22 @@ public abstract class LLVMCallNode {
 
     }
 
-    public static class LLVMFunctionCallChainStartNode extends LLVMExpressionNode {
+    public static class LLVMFunctionCallChainStartNode extends LLVMAbstractCallNode {
 
         @Child private LLVMFunctionCallChain chain;
-        @Children private final LLVMExpressionNode[] args;
         @Child private LLVMFunctionNode functionCallNode;
 
         public LLVMFunctionCallChainStartNode(LLVMFunctionNode functionCallNode, LLVMFunctionCallChain chain, LLVMExpressionNode[] args) {
+            super(args);
             this.functionCallNode = functionCallNode;
             this.chain = chain;
-            this.args = args;
         }
 
         @Override
-        @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object[] argValues = new Object[args.length];
-            for (int i = 0; i < args.length; i++) {
-                argValues[i] = args[i].executeGeneric(frame);
-            }
+            Object[] args = evaluateArgs(frame);
             LLVMFunction function = functionCallNode.executeFunction(frame);
-            return chain.executeDispatch(frame, function, argValues);
+            return chain.executeDispatch(frame, function, args);
         }
 
     }
