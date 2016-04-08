@@ -41,7 +41,7 @@ final class ExecutionImpl extends Accessor.ExecSupport {
     // execution
     //
 
-    private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
+    private static final ThreadLocal<ContextStore> CURRENT_VM = new ThreadLocal<>();
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
@@ -56,7 +56,7 @@ final class ExecutionImpl extends Accessor.ExecSupport {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Object vm = context.vm;
         Objects.requireNonNull(vm);
-        final Object prev = CURRENT_VM.get();
+        final ContextStore prev = CURRENT_VM.get();
         Accessor.DebugSupport debug = Accessor.debugAccess();
         final Closeable debugClose = debug == null ? null : debug.executionStart(vm, prev == null ? 0 : -1, debuggerHolder, s);
         if (!(vm == previousVM.get())) {
@@ -65,7 +65,7 @@ final class ExecutionImpl extends Accessor.ExecSupport {
             oneVM = Truffle.getRuntime().createAssumption();
 
         }
-        CURRENT_VM.set(vm);
+        CURRENT_VM.set(context);
         class ContextCloseable implements Closeable {
 
             @CompilerDirectives.TruffleBoundary
@@ -86,13 +86,18 @@ final class ExecutionImpl extends Accessor.ExecSupport {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     static <C> C findContext(Class<? extends TruffleLanguage> type) {
-        TruffleLanguage.Env env = Accessor.engineAccess().findEnv(CURRENT_VM.get(), type);
+        TruffleLanguage.Env env = Accessor.engineAccess().findEnv(currentVM(), type);
         return (C) Accessor.languageAccess().findContext(env);
     }
 
     @Override
     public Object findVM() {
-        return CURRENT_VM.get();
+        return currentVM();
+    }
+
+    private static Object currentVM() {
+        ContextStore current = CURRENT_VM.get();
+        return current == null ? null : current.vm;
     }
 
 }
