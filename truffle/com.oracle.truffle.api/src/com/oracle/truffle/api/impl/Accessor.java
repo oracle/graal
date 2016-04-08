@@ -59,7 +59,8 @@ public abstract class Accessor {
     }
 
     public abstract static class ExecSupport {
-        public abstract Closeable executionStart(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
+        public abstract ContextStore createStore(Object vm);
+        public abstract Closeable executionStart(ContextStore context, int currentDepth, Object[] debuggerHolder, Source s);
 
         public abstract Object findVM();
     }

@@ -32,7 +32,7 @@ import com.oracle.truffle.api.Truffle;
 
 final class ContextStoreProfile {
 
-    private static final ContextStore UNINTIALIZED_STORE = new ContextStore(0);
+    private static final ContextStore UNINTIALIZED_STORE = new ContextStore(null, 0);
 
     private final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
     private final Assumption constantStoreAssumption = Truffle.getRuntime().createAssumption("dynamic context store");

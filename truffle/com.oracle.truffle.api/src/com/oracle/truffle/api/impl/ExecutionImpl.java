@@ -46,9 +46,15 @@ final class ExecutionImpl extends Accessor.ExecSupport {
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
     @Override
+    public ContextStore createStore(Object vm) {
+        return new ContextStore(vm, 4);
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
-    public Closeable executionStart(Object vm, int currentDepth, Object[] debuggerHolder, Source s) {
+    public Closeable executionStart(ContextStore context, int currentDepth, Object[] debuggerHolder, Source s) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
+        Object vm = context.vm;
         Objects.requireNonNull(vm);
         final Object prev = CURRENT_VM.get();
         Accessor.DebugSupport debug = Accessor.debugAccess();
