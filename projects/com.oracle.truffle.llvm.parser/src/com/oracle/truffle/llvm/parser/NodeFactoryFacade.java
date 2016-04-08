@@ -249,4 +249,15 @@ public interface NodeFactoryFacade {
      */
     int getArgStartIndex();
 
+    /**
+     * Creates an inline assembler instruction.
+     *
+     * @param asmExpression
+     * @param asmFlags
+     * @param args
+     * @param retType the type the inline assembler instruction produces
+     * @return an inline assembler node
+     */
+    LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType);
+
 }
