@@ -41,7 +41,7 @@ final class ExecutionImpl extends Accessor.ExecSupport {
     // execution
     //
 
-    private static final ThreadLocal<ContextStore> CURRENT_VM = new ThreadLocal<>();
+    private static final ContextStoreProfile CURRENT_VM = new ContextStoreProfile(null);
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
@@ -65,13 +65,13 @@ final class ExecutionImpl extends Accessor.ExecSupport {
             oneVM = Truffle.getRuntime().createAssumption();
 
         }
-        CURRENT_VM.set(context);
+        CURRENT_VM.enter(context);
         class ContextCloseable implements Closeable {
 
             @CompilerDirectives.TruffleBoundary
             @Override
             public void close() throws IOException {
-                CURRENT_VM.set(prev);
+                CURRENT_VM.enter(prev);
                 if (debugClose != null) {
                     debugClose.close();
                 }
