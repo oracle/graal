@@ -58,12 +58,11 @@ final class ExecutionImpl extends Accessor.ExecSupport {
 
     @Override
     public void executionEnded(ContextStore prev) {
-        CURRENT_VM.enter(prev);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static <C> C findContext(Class<? extends TruffleLanguage> type) {
-        TruffleLanguage.Env env = Accessor.engineAccess().findEnv(currentVM(), type);
+    static <C> C findContext(Object currentVM, Class<? extends TruffleLanguage> type) {
+        TruffleLanguage.Env env = Accessor.engineAccess().findEnv(currentVM, type);
         return (C) Accessor.languageAccess().findContext(env);
     }
 

@@ -48,7 +48,7 @@ final class ContextReference<C> {
             return null;
         }
         if (context == null) {
-            context = ExecutionImpl.findContext(language.getClass());
+            context = ExecutionImpl.findContext(store.vm, language.getClass());
             store.setContext(languageId, context == null ? this : context);
         }
         return (C) context;
