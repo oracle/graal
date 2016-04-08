@@ -650,9 +650,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
     }
 
     private LLVMNode visitFunctionCall(Callee callee, EList<Argument> args, ResolvedType retType) throws AssertionError {
-        if (callee instanceof InlineAssembler) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
-        }
         List<LLVMExpressionNode> argNodes = new ArrayList<>(args.size());
         LLVMExpressionNode stackPointerRead = factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot());
         argNodes.add(stackPointerRead);
@@ -669,6 +666,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
             if (functionName.startsWith("@llvm.")) {
                 return factoryFacade.createLLVMIntrinsic(functionName, finalArgs, containingFunctionDef);
             }
+        } else if (callee instanceof InlineAssembler) {
+            String asmSnippet = ((InlineAssembler) callee).getAssembler();
+            String asmFlags = ((InlineAssembler) callee).getFlags();
+            return factoryFacade.createInlineAssemblerExpression(asmSnippet, asmFlags, finalArgs, LLVMTypeHelper.getLLVMType(retType));
         }
         LLVMExpressionNode func = visitValueRef((ValueRef) callee, null);
         return factoryFacade.createFunctionCall(func, finalArgs, LLVMTypeHelper.getLLVMType(retType));

@@ -296,4 +296,9 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
         return 0;
     }
 
+    @Override
+    public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] finalArgs, LLVMBaseType retType) {
+        return null;
+    }
+
 }
