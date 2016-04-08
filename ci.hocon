@@ -92,7 +92,7 @@ benchDaCapo : ${common} ${java8Downloads} {
 }
 
 benchDaCapo_x52 : ${benchDaCapo} {
-  capabilities : [linux, x52, bench]
+  capabilities : [linux, x52, bench, post-merge]
   name : "bench-dacapo-linux-x52"
   run : [
     ${benchDaCapo.mx-benchmark} ["--machine_name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "20"]
@@ -106,6 +106,6 @@ builds = [
 # ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name : "gate-bootstrap-9-linux-amd64"}
   ${gateStyle}        {capabilities : [linux, amd64, gate],   name : "gate-style-linux-amd64"}
   ${gateTest8}        {capabilities : [linux, sparcv9, gate], name : "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
-  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name : "bench-specjvm2008-linux-amd64"}
+# ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name : "bench-specjvm2008-linux-amd64"}
   ${benchDaCapo_x52}
 ]
