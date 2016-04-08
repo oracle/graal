@@ -6,7 +6,7 @@ suite = {
     "suites" : [
         {
            "name" : "graal-core",
-           "version" : "95ff8c420850dc4f02bc11599505244bbea771ec",
+           "version" : "eceec7d96ebcfa037cb1d7fc04435fc4e128c1a0",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
             ]

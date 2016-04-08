@@ -70,6 +70,8 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
@@ -333,6 +335,11 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public int getArgStartIndex() {
         return LLVMCallNode.ARG_START_INDEX;
+    }
+
+    @Override
+    public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType) {
+        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
     }
 
 }
