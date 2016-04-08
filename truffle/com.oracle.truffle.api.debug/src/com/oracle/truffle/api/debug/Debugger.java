@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -997,21 +996,19 @@ public final class Debugger {
 
         private static final class DebugImpl extends DebugSupport {
             @Override
-            public Closeable executionStart(Object vm, final int currentDepth, final Object[] debugger, final Source s) {
+            public void executionStarted(Object vm, final int currentDepth, final Object[] debugger, final Source s) {
                 final PolyglotEngine engine = (PolyglotEngine) vm;
                 if (debugger[0] != null) {
                     final Debugger dbg = (Debugger) debugger[0];
                     dbg.executionStarted(currentDepth, s);
                 }
                 engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), 1);
-                return new Closeable() {
-                    @Override
-                    public void close() throws IOException {
-                        if (debugger[0] != null) {
-                            ((Debugger) debugger[0]).executionEnded();
-                        }
-                    }
-                };
+            }
+
+            public void executionEnded(Object vm, Object[] debugger) {
+                if (debugger[0] != null) {
+                    ((Debugger) debugger[0]).executionEnded();
+                }
             }
         }
 

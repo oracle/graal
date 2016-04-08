@@ -530,9 +530,12 @@ public class PolyglotEngine {
     @SuppressWarnings("try")
     private Object evalImpl(TruffleLanguage<?>[] fillLang, Source s, Language l) throws IOException {
         try (Closeable d = Access.EXEC.executionStart(context, -1, debugger, s)) {
+            Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, s);
             TruffleLanguage<?> langImpl = l.getImpl(true);
             fillLang[0] = langImpl;
             return Access.LANGS.eval(langImpl, s, l.cache);
+        } finally {
+            Access.DEBUG.executionEnded(PolyglotEngine.this, debugger);
         }
     }
 
@@ -543,8 +546,11 @@ public class PolyglotEngine {
         CompilerAsserts.neverPartOfCompilation();
         if (executor == null) {
             try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
+                Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, null);
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
                 res = ForeignAccess.execute(foreignNode, frame, receiver, args);
+            } finally {
+                Access.DEBUG.executionEnded(PolyglotEngine.this, debugger);
             }
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
@@ -568,10 +574,13 @@ public class PolyglotEngine {
             @Override
             protected Object compute() throws IOException {
                 try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
+                    Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, null);
                     final Object[] args = ForeignAccess.getArguments(materialized).toArray();
                     RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
                     final CallTarget target = Truffle.getRuntime().createCallTarget(node);
                     return target.call(args);
+                } finally {
+                    Access.DEBUG.executionEnded(PolyglotEngine.this, debugger);
                 }
             }
         };
@@ -844,6 +853,7 @@ public class PolyglotEngine {
         @SuppressWarnings("try")
         private Object executeDirect(Object[] args) throws IOException {
             try (final Closeable c = Access.EXEC.executionStart(context, -1, debugger, null)) {
+                Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, null);
                 for (;;) {
                     try {
                         if (target == null) {
@@ -854,6 +864,8 @@ public class PolyglotEngine {
                         target = null;
                     }
                 }
+            } finally {
+                Access.DEBUG.executionEnded(PolyglotEngine.this, debugger);
             }
         }
 
@@ -1143,6 +1155,7 @@ public class PolyglotEngine {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.ExecSupport EXEC = SPIAccessor.execAccess();
+        static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
     }
 
     private static class SPIAccessor extends Accessor {
@@ -1156,6 +1169,10 @@ public class PolyglotEngine {
 
         static ExecSupport execAccess() {
             return SPI.execSupport();
+        }
+
+        static DebugSupport debugAccess() {
+            return SPI.debugSupport();
         }
 
         @Override
