@@ -85,7 +85,7 @@ benchDaCapo : ${common} ${java8Downloads} {
   downloads : {
     DACAPO : {name : dacapo, version : "9.12"}
   }
-  mx-benchmark : ["mx", "benchmark", "--path", "bench-results.json", "dacapo:*"]
+  mx-benchmark : ["mx", "benchmark", "--results-file", "bench-results.json", "dacapo:*"]
   teardown : [
     ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
   ]
