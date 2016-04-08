@@ -25,10 +25,11 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import join, exists, abspath
+from os.path import join, exists
 from argparse import ArgumentParser
 import sanitycheck
 import re
+import hashlib
 
 import mx
 from mx_gate import Task
@@ -309,14 +310,25 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if _jvmciModes[_vm.jvmciMode]:
         bcp.extend([d.get_classpath_repr() for d in _bootClasspathDists])
 
-    args = ['-Xbootclasspath/p:' + os.pathsep.join(bcp)] + args
+    # Create com.oracle.graal module
+    graalModuleName = 'com.oracle.graal'
+    modulesDir = mx.ensure_dir_exists(join(_suite.get_output_root(), 'modules'))
+    graalModuleDir = mx.ensure_dir_exists(join(modulesDir, graalModuleName))
+    graalModuleJar = join(modulesDir, graalModuleName + '.jar')
+    if not exists(graalModuleJar):
+        moduleSource = join(graalModuleDir, 'module-info.java')
+        with open(moduleSource, 'w') as fp:
+            fp.write('module ' + graalModuleName + ' { requires jdk.vm.ci; }')
+        with open('source', 'w') as fp:
+            print >> fp, os.pathsep.join(bcp)
+        mx.run([_jdk.javac, '-d', graalModuleDir, moduleSource])
+        with open(join(graalModuleDir, 'module-info.class'), 'rb') as fp:
+            graalModuleClass = fp.read()
+        with mx.Archiver(graalModuleJar) as arc:
+            arc.zf.writestr('module-info.class', graalModuleClass)
 
-    # Remove JVMCI from class path. It's only there to support compilation.
-    cpIndex, cp = mx.find_classpath_arg(args)
-    if cp:
-        jvmciLib = mx.library('JVMCI').path
-        cp = os.pathsep.join([e for e in cp.split(os.pathsep) if e != jvmciLib])
-        args[cpIndex] = cp
+#    args = ['-XaddExports:jdk.vm.ci/com.oracle.graal.replacements=ALL-UNNAMED', '-Xpatch:jdk.vm.ci=' + os.pathsep.join(bcp)] + args
+    args = ['-mp' , graalModuleJar, '-Xpatch:' + graalModuleName + '=' + os.pathsep.join(bcp), '-XaddExports:java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED', '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED'] + args
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
@@ -403,79 +415,3 @@ def mx_post_parse_cmd_line(opts):
         _vm.update(opts.jvmci_mode)
     for dist in [d.dist() for d in _bootClasspathDists]:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
-
-def _update_JVMCI_library():
-    """
-    Updates the "path" and "sha1" attributes of the "JVMCI" library to
-    refer to a jvmci.jar created from the JVMCI classes in JDK9.
-    """
-    suiteDict = _suite.suiteDict
-    jvmciLib = suiteDict['libraries']['JVMCI']
-    d = join(_suite.get_output_root(), abspath(_jdk.home)[1:])
-    path = join(d, 'jvmci.jar')
-
-    explodedModule = join(_jdk.home, 'modules', 'jdk.vm.ci')
-    if exists(explodedModule):
-        jarInputs = {}
-        newestJarInput = None
-        for root, _, files in os.walk(explodedModule):
-            relpath = root[len(explodedModule) + 1:]
-            for f in files:
-                arcname = join(relpath, f).replace(os.sep, '/')
-                jarInput = join(root, f)
-                jarInputs[arcname] = jarInput
-                t = mx.TimeStampFile(jarInput)
-                if newestJarInput is None or t.isNewerThan(newestJarInput):
-                    newestJarInput = t
-        if not exists(path) or newestJarInput.isNewerThan(path):
-            with mx.Archiver(path, kind='zip') as arc:
-                for arcname, jarInput in jarInputs.iteritems():
-                    with open(jarInput, 'rb') as fp:
-                        contents = fp.read()
-                        arc.zf.writestr(arcname, contents)
-    else:
-        # Use the jdk.internal.jimage utility since it's the only way
-        # to partially read .jimage files as the JDK9 jimage tool
-        # does not support partial extraction.
-        bootmodules = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
-        if not exists(bootmodules):
-            mx.abort('Could not find JVMCI classes at ' + bootmodules + ' or ' + explodedModule)
-        if not exists(path) or mx.TimeStampFile(bootmodules).isNewerThan(path):
-            mx.ensure_dir_exists(d)
-            javaSource = join(d, 'ExtractJVMCI.java')
-            with open(javaSource, 'w') as fp:
-                print >> fp, """import java.io.FileOutputStream;
-    import java.util.jar.JarEntry;
-    import java.util.jar.JarOutputStream;
-    import jdk.internal.jimage.BasicImageReader;
-
-    public class ExtractJVMCI {
-    public static void main(String[] args) throws Exception {
-        BasicImageReader image = BasicImageReader.open(args[0]);
-        String[] names = image.getEntryNames();
-        if (names.length == 0) {
-            return;
-        }
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(args[1]))) {
-            for (String name : names) {
-                if (name.startsWith("/jdk.vm.ci/")) {
-                    String ename = name.substring("/jdk.vm.ci/".length());
-                    JarEntry je = new JarEntry(ename);
-                    jos.putNextEntry(je);
-                    jos.write(image.getResource(name));
-                    jos.closeEntry();
-                }
-            }
-        }
-    }
-    }
-    """
-            mx.run([_jdk.javac, '-d', d, javaSource])
-            mx.run([_jdk.java, '-cp', d, 'ExtractJVMCI', bootmodules, path])
-            if not exists(path):
-                mx.abort('Could not find the JVMCI classes in ' + bootmodules)
-
-    jvmciLib['path'] = path
-    jvmciLib['sha1'] = mx.sha1OfFile(path)
-
-_update_JVMCI_library()

@@ -36,7 +36,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
-import sun.misc.Launcher;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
@@ -66,9 +65,10 @@ public class AESCryptSubstitutions {
 
     static {
         try {
-            // Need to use launcher class path as com.sun.crypto.provider.AESCrypt
-            // is normally not on the boot class path
-            ClassLoader cl = Launcher.getLauncher().getClassLoader();
+            // Need to use the system class loader as com.sun.crypto.provider.AESCrypt
+            // is normally loaded by the extension class loader which is not delegated
+            // to by the JVMCI class loader.
+            ClassLoader cl = ClassLoader.getSystemClassLoader();
             AESCryptClass = Class.forName("com.sun.crypto.provider.AESCrypt", true, cl);
             kOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("K"));
             lastKeyOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("lastKey"));

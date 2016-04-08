@@ -27,11 +27,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import jdk.vm.ci.services.Services;
-
 /**
- * Annotates a service provider than can be loaded via {@linkplain Services#load(Class)} or
- * {@link Services#loadSingle(Class, boolean)}.
+ * Annotates a service provider than can be loaded via
+ * {@code jdk.vm.ci.services.Services.load(Class)} or
+ * {@code jdk.vm.ci.services.Services.loadSingle(Class, boolean)}.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
