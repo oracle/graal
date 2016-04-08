@@ -88,7 +88,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             "pmd",
             "sunflow",
             "tomcat",
-            "tradebeans",
             "xalan"
         ]
 
