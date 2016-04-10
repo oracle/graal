@@ -80,6 +80,10 @@ Now, Sulong is ready to start. You can for example compile a C file named
     mx su-clang -S -emit-llvm -o test.ll test.c
     mx su-run test.ll
 
+Libraries to load can be specified using the `-l` flag, as in a compiler:
+
+    mx su-run -lz test.ll
+
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
 for other IDEs):
