@@ -620,7 +620,7 @@ def standardLinkerCommands(args=None):
 import subprocess
 import re
 
-titleWithEndingPunct = re.compile('^(.*)[\.!?]$')
+titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
 pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
 
 def logCheck(args=None):
