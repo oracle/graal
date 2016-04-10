@@ -33,6 +33,7 @@ branches:
   only:
     - master
 env:
+  - TEST_COMMAND='mx/mx su-gitlogcheck'
   - TEST_COMMAND='mx/mx pylint'
   - TEST_COMMAND='mx/mx checkstyle'
   - TEST_COMMAND='mx/mx checkoverlap'
