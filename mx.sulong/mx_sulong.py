@@ -617,6 +617,31 @@ def gccBench(args=None):
 def standardLinkerCommands(args=None):
     return ['-lm', '-lgmp']
 
+import subprocess
+import re
+
+titleWithEndingPunct = re.compile('^(.*)[\.!?]$')
+pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
+
+def logCheck(args=None):
+    error = False
+    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"'])
+    for s in output.splitlines():
+        withoutQuotes = s[1:-1]
+        if withoutQuotes[0].islower():
+            error = True
+            print s, 'starts with a lower case character'
+        if titleWithEndingPunct.match(withoutQuotes):
+            error = True
+            print s, 'ends with period, question mark, or exclamation mark'
+        for pastTenseWord in pastTenseWords:
+            if pastTenseWord in withoutQuotes.lower().split():
+                error = True
+                print s, 'contains past tense word', pastTenseWord
+    if error:
+        print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
+        exit(-1)
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -648,5 +673,6 @@ mx.update_commands(_suite, {
     'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
-    'su-travis2' : [travis2, '']
+    'su-travis2' : [travis2, ''],
+    'su-gitlogcheck' : [logCheck, '']
 })
