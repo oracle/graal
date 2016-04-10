@@ -17,6 +17,7 @@ addons:
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
 install:
+  - gem install mdl
   - sudo pip install astroid==1.1.0
   - sudo pip install pylint==1.1.0
   - git clone https://github.com/graalvm/mx
@@ -33,6 +34,7 @@ branches:
   only:
     - master
 env:
+  - TEST_COMMAND='mdl .'
   - TEST_COMMAND='mx/mx su-gitlogcheck'
   - TEST_COMMAND='mx/mx pylint'
   - TEST_COMMAND='mx/mx checkstyle'
