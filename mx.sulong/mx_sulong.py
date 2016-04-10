@@ -455,7 +455,12 @@ def runTypeTestCases(args=None):
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
 def getCommonOptions(lib_args=None):
-    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', '-Dsulong.IntrinsifyCFunctions=false', getSearchPathOption(lib_args)]
+    return [
+        '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
+        '-Dgraal.ExitVMOnException=true',
+        '-Dsulong.IntrinsifyCFunctions=false',
+        getSearchPathOption(lib_args)
+    ]
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
@@ -476,7 +481,11 @@ def getSearchPathOption(lib_args=None):
         print osStr, "not supported!"
 
     for lib_arg in ['-lc', '-lstdc++'] + lib_args:
-        lib_names.append(lib_aliases[lib_arg][index])
+        if lib_arg in lib_aliases:
+            lib_arg = lib_aliases[lib_arg][index]
+        else:
+            lib_arg = lib_arg[2:]
+        lib_names.append(lib_arg)
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
