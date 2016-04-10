@@ -2,6 +2,7 @@ import tarfile
 import os
 from os.path import join
 import shutil
+import zipfile
 
 import mx
 import mx_findbugs
@@ -520,6 +521,24 @@ def opt(args=None):
     optPath = _toolDir + 'tools/llvm/bin/opt'
     return mx.run([optPath] + args)
 
+def link(args=None):
+    """Links LLVM bitcode into an su file."""
+    modules = []
+    libraries = []
+    if args is None:
+        out = 'out.su'
+    else:
+        out = args.pop(0)
+        for arg in args:
+            if arg.startswith('-l'):
+                libraries += [arg[2:]]
+            else:
+                modules += [arg]
+    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+        for module in modules:
+            z.write(module)
+        z.writestr('libs', '\n'.join(libraries))
+
 def compileWithClangPP(args=None):
     """runs Clang++"""
     ensureLLVMBinariesExist()
@@ -671,6 +690,7 @@ mx.update_commands(_suite, {
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
+    'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],
