@@ -93,6 +93,35 @@ for other IDEs):
 If you want to inspect the command line that mx generates for a mx
 command you can use the -v flag.
 
+Sulong Library Files
+--------------------
+
+You can package LLVM bitcode and a list of library dependencies using the
+`su-link` linker command to create a `.su` file which is easy to manage and
+distribute. You can also specify other libraries to load when this library
+is loaded using the `-l` flag:
+
+    mx su-link test.su -lz test.ll
+
+You can run this `.su` file directly and it will know to load dependencies that
+you specified at link-time:
+
+   mx su-run test.su
+
+These `.su` files can be loaded wherever Sulong can load a native library.
+For example we could create our own library `libhelper` and then load it when
+running a program:
+
+    mx su-link libhelper.su helper.ll
+    mx su-run -lhelper main.ll
+  
+We can also reference our `.su` library when creating another `.su` library.
+Our `libhelper` will then be loaded automatically as a dependency of
+`libanotherhelper`, just as with native dynamic libraries.
+
+    mx su-link libanotherhelper.su -lhelper anotherhelper.ll
+    mx su-run -lanotherhelper main.ll
+
 From where does the project name originate?
 -------------------------------------------
 
