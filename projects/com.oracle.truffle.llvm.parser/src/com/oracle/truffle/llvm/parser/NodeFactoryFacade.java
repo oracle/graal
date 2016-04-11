@@ -247,7 +247,7 @@ public interface NodeFactoryFacade {
      *
      * @return the index
      */
-    int getArgStartIndex();
+    Integer getArgStartIndex();
 
     /**
      * Creates an inline assembler instruction.

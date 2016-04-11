@@ -333,7 +333,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public int getArgStartIndex() {
+    public Integer getArgStartIndex() {
         return LLVMCallNode.ARG_START_INDEX;
     }
 

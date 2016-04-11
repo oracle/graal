@@ -55,8 +55,8 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
 
 /**
- * This class implements an abstract adapter that returns a default value (mostly <code>null</code>)
- * for each implemented method.
+ * This class implements an abstract adapter that returns <code>null</code> for each implemented
+ * method.
  */
 public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
@@ -292,8 +292,8 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public int getArgStartIndex() {
-        return 0;
+    public Integer getArgStartIndex() {
+        return null;
     }
 
     @Override
