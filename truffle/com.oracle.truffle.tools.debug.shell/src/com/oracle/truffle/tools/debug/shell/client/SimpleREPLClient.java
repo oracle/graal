@@ -613,7 +613,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
                         assert false; // Should not happen.
                     }
                 } catch (ThreadDeath ex) {
-                    if (killPending) {
+                    if (ex.getClass() != ThreadDeath.class && killPending) {
                         // If the previous context was killed by REPL command, then
                         // assume this exception is the result and the REPL should
                         // continue debugging in this context.
