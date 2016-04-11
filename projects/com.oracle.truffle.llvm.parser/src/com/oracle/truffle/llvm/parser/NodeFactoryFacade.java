@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -101,6 +102,22 @@ public interface NodeFactoryFacade {
     LLVMNode createNonVoidRet(LLVMExpressionNode retValue, ResolvedType resolvedType);
 
     LLVMExpressionNode createFunctionArgNode(int argIndex, LLVMBaseType paramType);
+
+    /**
+     * Creates a function argument read node.
+     *
+     * @param argIndex the index from where to read the argument
+     * @param clazz the expected class of the argument
+     * @return an argument node
+     */
+    LLVMNode createFunctionArgNode(int argIndex, Class<? extends Node> clazz);
+
+    /**
+     * Returns the index of the first argument of the formal parameter list.
+     *
+     * @return the index
+     */
+    int getArgStartIndex();
 
     LLVMNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, LLVMBaseType llvmType);
 
@@ -244,13 +261,6 @@ public interface NodeFactoryFacade {
      * @return a function root node
      */
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName);
-
-    /**
-     * Returns the index of the first argument of the formal parameter list.
-     *
-     * @return the index
-     */
-    int getArgStartIndex();
 
     /**
      * Creates an inline assembler instruction.

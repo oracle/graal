@@ -45,8 +45,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicAddressNodeGen;
@@ -66,8 +64,10 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
 public class LLVMFunctionRegistry {
 
     private final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
+    private NodeFactoryFacade facade;
 
     public LLVMFunctionRegistry(LLVMOptimizationConfiguration optimizationConfig, NodeFactoryFacade facade) {
+        this.facade = facade;
         this.intrinsics = facade.getFunctionSubstitutionFactories(optimizationConfig);
     }
 
@@ -109,35 +109,13 @@ public class LLVMFunctionRegistry {
             int nrArguments = executionSignature.size();
             LLVMNode[] args = new LLVMNode[nrArguments];
             for (int i = 0; i < nrArguments; i++) {
-                args[i] = getArgReadNode(executionSignature, i);
+                args[i] = facade.createFunctionArgNode(i, executionSignature.get(i));
             }
             LLVMNode intrinsicNode = nodeFactory.createNode((Object[]) args);
             RootNode functionRoot = getRootNode(intrinsicNode);
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(functionRoot);
             addToFunctionMap(function, callTarget);
         }
-    }
-
-    private static LLVMNode getArgReadNode(List<Class<? extends Node>> executionSignature, int i) {
-        Class<? extends Node> clazz = executionSignature.get(i);
-        int realIndex = LLVMCallNode.ARG_START_INDEX + i;
-        LLVMNode argNode;
-        if (clazz.equals(LLVMI32Node.class)) {
-            argNode = LLVMArgNodeFactory.LLVMI32ArgNodeGen.create(realIndex);
-        } else if (clazz.equals(LLVMI64Node.class)) {
-            argNode = LLVMArgNodeFactory.LLVMI64ArgNodeGen.create(realIndex);
-        } else if (clazz.equals(LLVMFloatNode.class)) {
-            argNode = LLVMArgNodeFactory.LLVMFloatArgNodeGen.create(realIndex);
-        } else if (clazz.equals(LLVMDoubleNode.class)) {
-            argNode = LLVMArgNodeFactory.LLVMDoubleArgNodeGen.create(realIndex);
-        } else if (clazz.equals(LLVMAddressNode.class)) {
-            argNode = LLVMArgNodeFactory.LLVMAddressArgNodeGen.create(realIndex);
-        } else if (clazz.equals(LLVMFunctionNode.class)) {
-            argNode = LLVMArgNodeFactory.LLVMFunctionArgNodeGen.create(realIndex);
-        } else {
-            throw new AssertionError(clazz);
-        }
-        return argNode;
     }
 
     private static RootNode getRootNode(LLVMNode intrinsicNode) throws AssertionError {

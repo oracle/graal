@@ -33,6 +33,7 @@ import com.intel.llvm.ireditor.types.ResolvedStructType;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -65,6 +66,8 @@ import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMIVarBit
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMStructRetNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVM80BitFloatArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMAddressArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMDoubleArgNodeGen;
@@ -267,6 +270,27 @@ public final class LLVMFunctionFactory {
             default:
                 throw new AssertionError(returnType);
         }
+    }
+
+    public static LLVMNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
+        int realIndex = LLVMCallNode.ARG_START_INDEX + i;
+        LLVMNode argNode;
+        if (clazz.equals(LLVMI32Node.class)) {
+            argNode = LLVMArgNodeFactory.LLVMI32ArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMI64Node.class)) {
+            argNode = LLVMArgNodeFactory.LLVMI64ArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMFloatNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMFloatArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMDoubleNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMDoubleArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMAddressNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMAddressArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMFunctionNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMFunctionArgNodeGen.create(realIndex);
+        } else {
+            throw new AssertionError(clazz);
+        }
+        return argNode;
     }
 
 }

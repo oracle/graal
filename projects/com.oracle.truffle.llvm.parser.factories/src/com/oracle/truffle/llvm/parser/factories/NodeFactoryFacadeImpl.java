@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -348,6 +349,11 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optConfig) {
         return LLVMRuntimeIntrinsicFactory.getFunctionSubstitutionFactories(optConfig);
+    }
+
+    @Override
+    public LLVMNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
+        return LLVMFunctionFactory.createFunctionArgNode(i, clazz);
     }
 
 }
