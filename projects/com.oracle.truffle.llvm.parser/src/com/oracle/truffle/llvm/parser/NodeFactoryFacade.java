@@ -282,4 +282,14 @@ public interface NodeFactoryFacade {
      */
     Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optimizationConfig);
 
+    /**
+     * Creates a function substitution root node from an already existing function substitution
+     * node.
+     *
+     * @param intrinsicNode the existing function substitution node, created from
+     *            {@link #getFunctionSubstitutionFactories(LLVMOptimizationConfiguration)}
+     * @return the root node for the intrinsic
+     */
+    RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode);
+
 }

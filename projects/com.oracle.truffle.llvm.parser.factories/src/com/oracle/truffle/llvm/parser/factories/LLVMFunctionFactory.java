@@ -101,6 +101,15 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMI8Ca
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMStructCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMVarBitCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMVectorCallUnboxNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicAddressNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicDoubleNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI16NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI32NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI64NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI8NodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
@@ -291,6 +300,30 @@ public final class LLVMFunctionFactory {
             throw new AssertionError(clazz);
         }
         return argNode;
+    }
+
+    public static RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode) {
+        RootNode functionRoot;
+        if (intrinsicNode instanceof LLVMI8Node) {
+            functionRoot = LLVMIntrinsicI8NodeGen.create((LLVMI8Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMI16Node) {
+            functionRoot = LLVMIntrinsicI16NodeGen.create((LLVMI16Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMI32Node) {
+            functionRoot = LLVMIntrinsicI32NodeGen.create((LLVMI32Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMI64Node) {
+            functionRoot = LLVMIntrinsicI64NodeGen.create((LLVMI64Node) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMFloatNode) {
+            functionRoot = LLVMIntrinsicFloatNodeGen.create((LLVMFloatNode) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMDoubleNode) {
+            functionRoot = LLVMIntrinsicDoubleNodeGen.create((LLVMDoubleNode) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMAddressNode) {
+            functionRoot = LLVMIntrinsicAddressNodeGen.create((LLVMAddressNode) intrinsicNode);
+        } else if (intrinsicNode instanceof LLVMVoidIntrinsic) {
+            functionRoot = new LLVMIntrinsicVoidNode(intrinsicNode);
+        } else {
+            throw new AssertionError(intrinsicNode.getClass());
+        }
+        return functionRoot;
     }
 
 }

@@ -356,4 +356,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMFunctionFactory.createFunctionArgNode(i, clazz);
     }
 
+    @Override
+    public RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode) {
+        return LLVMFunctionFactory.createFunctionSubstitutionRootNode(intrinsicNode);
+    }
+
 }

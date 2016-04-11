@@ -315,4 +315,9 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
         return null;
     }
 
+    @Override
+    public RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode) {
+        return null;
+    }
+
 }

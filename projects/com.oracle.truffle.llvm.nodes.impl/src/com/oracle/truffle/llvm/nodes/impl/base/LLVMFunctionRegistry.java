@@ -39,21 +39,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicDoubleNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicFloatNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI16NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI32NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI64NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicI8NodeGen;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -112,34 +97,10 @@ public class LLVMFunctionRegistry {
                 args[i] = facade.createFunctionArgNode(i, executionSignature.get(i));
             }
             LLVMNode intrinsicNode = nodeFactory.createNode((Object[]) args);
-            RootNode functionRoot = getRootNode(intrinsicNode);
+            RootNode functionRoot = facade.createFunctionSubstitutionRootNode(intrinsicNode);
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(functionRoot);
             addToFunctionMap(function, callTarget);
         }
-    }
-
-    private static RootNode getRootNode(LLVMNode intrinsicNode) throws AssertionError {
-        RootNode functionRoot;
-        if (intrinsicNode instanceof LLVMI8Node) {
-            functionRoot = LLVMIntrinsicI8NodeGen.create((LLVMI8Node) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMI16Node) {
-            functionRoot = LLVMIntrinsicI16NodeGen.create((LLVMI16Node) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMI32Node) {
-            functionRoot = LLVMIntrinsicI32NodeGen.create((LLVMI32Node) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMI64Node) {
-            functionRoot = LLVMIntrinsicI64NodeGen.create((LLVMI64Node) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMFloatNode) {
-            functionRoot = LLVMIntrinsicFloatNodeGen.create((LLVMFloatNode) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMDoubleNode) {
-            functionRoot = LLVMIntrinsicDoubleNodeGen.create((LLVMDoubleNode) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMAddressNode) {
-            functionRoot = LLVMIntrinsicAddressNodeGen.create((LLVMAddressNode) intrinsicNode);
-        } else if (intrinsicNode instanceof LLVMVoidIntrinsic) {
-            functionRoot = new LLVMIntrinsicVoidNode(intrinsicNode);
-        } else {
-            throw new AssertionError(intrinsicNode.getClass());
-        }
-        return functionRoot;
     }
 
     private void addToFunctionMap(LLVMFunction function, RootCallTarget callTarget) {
