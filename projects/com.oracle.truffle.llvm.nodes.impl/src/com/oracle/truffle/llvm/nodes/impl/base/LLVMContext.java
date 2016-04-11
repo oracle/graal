@@ -57,7 +57,7 @@ public class LLVMContext extends ExecutionContext {
 
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         nativeLookup = new NativeLookup(facade);
-        this.registry = new LLVMFunctionRegistry(optimizationConfig);
+        this.registry = new LLVMFunctionRegistry(optimizationConfig, facade);
 
     }
 

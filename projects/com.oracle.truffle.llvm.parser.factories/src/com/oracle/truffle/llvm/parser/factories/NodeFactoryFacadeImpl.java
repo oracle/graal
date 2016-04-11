@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
@@ -40,9 +41,11 @@ import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -71,6 +74,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -341,6 +345,21 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType) {
         throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+    }
+
+    @Override
+    public Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optConfig) {
+        return LLVMRuntimeIntrinsicFactory.getFunctionSubstitutionFactories(optConfig);
+    }
+
+    @Override
+    public LLVMNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
+        return LLVMFunctionFactory.createFunctionArgNode(i, clazz);
+    }
+
+    @Override
+    public RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode) {
+        return LLVMFunctionFactory.createFunctionSubstitutionRootNode(intrinsicNode);
     }
 
 }
