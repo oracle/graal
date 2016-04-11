@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
@@ -247,7 +248,7 @@ public interface NodeFactoryFacade {
      *
      * @return the index
      */
-    Integer getArgStartIndex();
+    Optional<Integer> getArgStartIndex();
 
     /**
      * Creates an inline assembler instruction.
