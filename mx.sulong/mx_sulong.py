@@ -389,11 +389,6 @@ def extract_compiler_args(args, useDoubleDash=False):
                 remainder += [arg]
     return compilerArgs, remainder
 
-
-def runDebugLLVM(args=None):
-    """uses Sulong to execute a LLVM IR file and starts debugging on port 5005"""
-    return runLLVM(['-Xdebug', '-Xrunjdwp:server=y,transport=dt_socket,address=5005,suspend=y'] + args)
-
 def runLLVM(args=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgsWithLibs = truffle_extract_VM_args(args)
@@ -665,7 +660,6 @@ mx.update_commands(_suite, {
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
-    'su-debug' : [runDebugLLVM, ''],
     'su-tests' : [runTests, ''],
     'su-tests-bench' : [runBenchmarkTestCases, ''],
     'su-tests-gcc' : [runGCCTestCases, ''],
