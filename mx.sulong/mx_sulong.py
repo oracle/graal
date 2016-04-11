@@ -625,7 +625,7 @@ pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'si
 
 def logCheck(args=None):
     error = False
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--since="2016-04-07"'])
+    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--after="2016-04-08"'])
     for s in output.splitlines():
         withoutQuotes = s[1:-1]
         if withoutQuotes[0].islower():
@@ -641,6 +641,14 @@ def logCheck(args=None):
     if error:
         print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
         exit(-1)
+
+def mdlCheck(args=None):
+    """runs mdl on all .md files in the projects and root directory"""
+    for path, _, files in os.walk('.'):
+        for f in files:
+            if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
+                absPath = path + '/' + f
+                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032', absPath])
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
@@ -674,5 +682,6 @@ mx.update_commands(_suite, {
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
-    'su-gitlogcheck' : [logCheck, '']
+    'su-gitlogcheck' : [logCheck, ''],
+    'su-mdlcheck' : [mdlCheck, '']
 })

@@ -3,5 +3,5 @@ Currently there are three different checkstyle files:
  numbers and System.out.println/System.err.println
 * com.oracle.truffle.llvm: allows System.out.println/System.err.println
  but no magic numbers
-* com.oracle.truffle.llvm.nodes: the most restrictive which does not 
+* com.oracle.truffle.llvm.nodes: the most restrictive which does not
  magic numbers, nor System.out.println/System.err.println
