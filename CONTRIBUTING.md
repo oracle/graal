@@ -18,10 +18,12 @@ requests:
 
 Commit messages
 ================
+
 - Each commit (message) should contain (and describe) one logical change.
 
 PR request:
 ===========
+
 - You should only address one feature or change per PR request.
 - You do not need to explain self-explanatory changes such as updates of
 the Graal version.
@@ -32,6 +34,7 @@ request description field or the commit message.
 
 Both PR request titles and commit messages:
 ===========================================
+
 - Write the summary line and description of what you have done in the
 imperative mode, that is as if you were commanding someone. Start the
 line with "Fix", "Add", "Change" instead of "Fixed", "Added", "Changed".
@@ -41,6 +44,7 @@ don't end with a period.
 
 Links:
 ======
-- https://github.com/erlang/otp/wiki/writing-good-commit-messages
-- http://who-t.blogspot.co.at/2009/12/on-commit-messages.html
-- http://chris.beams.io/posts/git-commit/
+
+- [https://github.com/erlang/otp/wiki/writing-good-commit-messages](https://github.com/erlang/otp/wiki/writing-good-commit-messages)
+- [http://who-t.blogspot.co.at/2009/12/on-commit-messages.html](http://who-t.blogspot.co.at/2009/12/on-commit-messages.html)
+- [http://chris.beams.io/posts/git-commit/](http://chris.beams.io/posts/git-commit/)
