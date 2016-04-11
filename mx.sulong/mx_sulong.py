@@ -625,7 +625,7 @@ pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'si
 
 def logCheck(args=None):
     error = False
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--since="2016-04-07"'])
+    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--after="2016-04-08"'])
     for s in output.splitlines():
         withoutQuotes = s[1:-1]
         if withoutQuotes[0].islower():
