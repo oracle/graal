@@ -418,6 +418,7 @@ suite = {
         "graal-core:GRAAL_COMPILER",
         "graal-core:GRAAL_HOTSPOT",
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "sulong:SULONG"
       ]
   },
  }
