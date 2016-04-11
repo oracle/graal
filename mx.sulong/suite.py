@@ -394,7 +394,6 @@ suite = {
       "path" : "build/sulong_test.jar",
       "subDir" : "graal",
       "sourcesPath" : "build/sulong_test.src.zip",
-      "mainClass" : "com.oracle.truffle.llvm.LLVM",
       "dependencies" : ["com.oracle.truffle.llvm.test"],
       "exclude" : [
        "EMF_COMMON",
