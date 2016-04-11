@@ -188,7 +188,7 @@ public class TestHelper {
         return files;
     }
 
-    static void removeFilesTestCases(List<TestCaseFiles[]> collectedSpecificationFiles, List<TestCaseFiles[]> filesRecursively) {
+    public static void removeFilesTestCases(List<TestCaseFiles[]> collectedSpecificationFiles, List<TestCaseFiles[]> filesRecursively) {
         for (TestCaseFiles[] alreadyCanExecute : collectedSpecificationFiles) {
             for (TestCaseFiles[] allFilesFile : filesRecursively) {
                 if (alreadyCanExecute[0].getOriginalFile().equals(allFilesFile[0].getOriginalFile())) {
@@ -202,7 +202,7 @@ public class TestHelper {
         }
     }
 
-    static void removeFilesFromTestCases(List<File> excludedFiles, List<TestCaseFiles[]> filesRecursively) {
+    public static void removeFilesFromTestCases(List<File> excludedFiles, List<TestCaseFiles[]> filesRecursively) {
         for (File excludedFile : excludedFiles) {
             List<TestCaseFiles[]> filesToRemove = new ArrayList<>();
             for (TestCaseFiles[] allFilesFile : filesRecursively) {
