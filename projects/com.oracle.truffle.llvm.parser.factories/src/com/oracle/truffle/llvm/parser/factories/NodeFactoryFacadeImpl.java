@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
@@ -338,8 +339,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public int getArgStartIndex() {
-        return LLVMCallNode.ARG_START_INDEX;
+    public Optional<Integer> getArgStartIndex() {
+        return Optional.of(LLVMCallNode.ARG_START_INDEX);
     }
 
     @Override
