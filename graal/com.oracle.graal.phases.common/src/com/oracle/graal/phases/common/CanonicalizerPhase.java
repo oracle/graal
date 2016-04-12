@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.Mark;
@@ -285,9 +286,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 Node canonical;
                 try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
-                    canonical = ((Canonicalizable) node).canonical(tool);
-                    if (canonical == node && nodeClass.isCommutative()) {
-                        canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
+                    try (DebugCloseable position = node.graph().withNodeSourcePosition(node)) {
+                        canonical = ((Canonicalizable) node).canonical(tool);
+                        if (canonical == node && nodeClass.isCommutative()) {
+                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
+                        }
                     }
                 } catch (Throwable e) {
                     throw new RuntimeException(e);

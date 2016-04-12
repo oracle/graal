@@ -170,7 +170,7 @@ public class GraphEncoder {
             nodeClasses.addObject(node.getNodeClass());
 
             NodeClass<?> nodeClass = node.getNodeClass();
-            objects.addObject(node.getRawNodeContext());
+            objects.addObject(node.getNodeSourcePosition());
             for (int i = 0; i < nodeClass.getData().getCount(); i++) {
                 if (!nodeClass.getData().getType(i).isPrimitive()) {
                     objects.addObject(nodeClass.getData().get(node, i));
@@ -350,7 +350,7 @@ public class GraphEncoder {
     }
 
     protected void writeProperties(Node node, Fields fields) {
-        writeObjectId(node.getRawNodeContext());
+        writeObjectId(node.getNodeSourcePosition());
         for (int idx = 0; idx < fields.getCount(); idx++) {
             if (fields.getType(idx).isPrimitive()) {
                 long primitive = fields.getRawPrimitive(node, idx);

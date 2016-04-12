@@ -432,6 +432,9 @@ public class CompilationResultBuilder {
     private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
         try {
             op.emitCode(crb);
+            if (op.getPosition() != null) {
+                crb.recordInfopoint(crb.asm.position(), new DebugInfo(op.getPosition()), InfopointReason.BYTECODE_POSITION);
+            }
         } catch (AssertionError t) {
             throw new JVMCIError(t);
         } catch (RuntimeException t) {

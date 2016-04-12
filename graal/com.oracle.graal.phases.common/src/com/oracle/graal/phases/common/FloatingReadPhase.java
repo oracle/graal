@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -359,20 +360,23 @@ public class FloatingReadPhase extends Phase {
             state.lastMemorySnapshot.put(identity, checkpoint);
         }
 
+        @SuppressWarnings("try")
         private static void processFloatable(FloatableAccessNode accessNode, MemoryMapImpl state) {
             StructuredGraph graph = accessNode.graph();
             LocationIdentity locationIdentity = accessNode.getLocationIdentity();
             if (accessNode.canFloat()) {
                 assert accessNode.getNullCheck() == false;
                 MemoryNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
-                FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
-                ValueAnchorNode anchor = null;
-                GuardingNode guard = accessNode.getGuard();
-                if (guard != null) {
-                    anchor = graph.add(new ValueAnchorNode(guard.asNode()));
-                    graph.addAfterFixed(accessNode, anchor);
+                try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
+                    FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
+                    ValueAnchorNode anchor = null;
+                    GuardingNode guard = accessNode.getGuard();
+                    if (guard != null) {
+                        anchor = graph.add(new ValueAnchorNode(guard.asNode()));
+                        graph.addAfterFixed(accessNode, anchor);
+                    }
+                    graph.replaceFixedWithFloating(accessNode, floatingNode);
                 }
-                graph.replaceFixedWithFloating(accessNode, floatingNode);
             }
         }
 

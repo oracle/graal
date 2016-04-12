@@ -386,7 +386,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     Collection<Node> unscheduledUsages = null;
                     assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
                     Mark preLoweringMark = node.graph().getMark();
-                    try (DebugCloseable s = node.graph().withNodeContext(node)) {
+                    try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
                         ((Lowerable) node).lower(loweringTool);
                     }
                     if (loweringTool.guardAnchor.asNode().isDeleted()) {
@@ -464,7 +464,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     *
+     * 
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

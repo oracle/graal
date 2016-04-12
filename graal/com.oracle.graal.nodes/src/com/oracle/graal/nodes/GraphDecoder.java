@@ -51,6 +51,7 @@ import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeList;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.NodeSuccessorList;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -898,7 +899,7 @@ public class GraphDecoder {
     }
 
     protected void readProperties(MethodScope methodScope, Node node) {
-        node.setNodeContext(readObject(methodScope));
+        node.setNodeSourcePosition((NodeSourcePosition) readObject(methodScope));
         Fields fields = node.getNodeClass().getData();
         for (int pos = 0; pos < fields.getCount(); pos++) {
             if (fields.getType(pos).isPrimitive()) {
