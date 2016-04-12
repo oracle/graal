@@ -150,7 +150,7 @@ public abstract class TestSuiteBase {
         List<TestCaseFiles> getCompiledTestCaseFiles(File toBeCompiled);
     }
 
-    protected static class TestCaseGeneratorImpl implements TestCaseGenerator {
+    public static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
         @Override
         public TestCaseFiles getBitCodeTestCaseFiles(File bitCodeFile) {
@@ -253,7 +253,7 @@ public abstract class TestSuiteBase {
         return files;
     }
 
-    private static List<File> getFilesRecursively(File currentFolder, TestCaseGenerator gen) {
+    public static List<File> getFilesRecursively(File currentFolder, TestCaseGenerator gen) {
         List<File> allBitcodeFiles = new ArrayList<>(1000);
         List<File> cFiles = TestHelper.collectFilesWithExtension(currentFolder, gen.getSupportedLanguages());
         allBitcodeFiles.addAll(cFiles);

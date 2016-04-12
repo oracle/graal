@@ -33,7 +33,7 @@ import java.io.File;
 
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 
-final class TestCaseFiles {
+public final class TestCaseFiles {
 
     private final File originalFile;
     private final File bitCodeFile;
