@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.base;
 import java.util.Map;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
@@ -59,6 +60,7 @@ public class LLVMContext extends ExecutionContext {
         nativeLookup = new NativeLookup(facade);
         this.registry = new LLVMFunctionRegistry(optimizationConfig, facade);
 
+        lastContext = this;
     }
 
     public RootCallTarget getFunction(LLVMFunction function) {
@@ -100,6 +102,18 @@ public class LLVMContext extends ExecutionContext {
 
     public Source getSourceFile() {
         return sourceFile;
+    }
+
+    // TODO No static access to this class from LLVMFunction at the moment
+
+    private static LLVMContext lastContext;
+
+    public static CallTarget getCallTarget(LLVMFunction function) {
+        return lastContext.registry.lookup(function);
+    }
+
+    public static LLVMStack getStaticStack() {
+        return lastContext.stack;
     }
 
 }
