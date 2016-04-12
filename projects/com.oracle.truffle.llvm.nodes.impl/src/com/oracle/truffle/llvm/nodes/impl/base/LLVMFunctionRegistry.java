@@ -54,7 +54,7 @@ public class LLVMFunctionRegistry {
     private final NodeFactoryFacade facade;
 
     /**
-     * The function index assigned to the next function descriptor
+     * The function index assigned to the next function descriptor.
      */
     private int currentFunctionIndex;
 
@@ -119,14 +119,23 @@ public class LLVMFunctionRegistry {
         }
     }
 
-    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs) {
+    /**
+     * Creates an unique function descriptor identified by the given <code>name</code>.
+     *
+     * @param name the function's name
+     * @param returnType the function's return type
+     * @param paramTypes the function's
+     * @param varArgs
+     * @return the function descriptor
+     */
+    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType returnType, LLVMRuntimeType[] paramTypes, boolean varArgs) {
         CompilerAsserts.neverPartOfCompilation();
         for (int i = 0; i < functionDescriptors.length; i++) {
             if (functionDescriptors[i].getName().equals(name)) {
                 return functionDescriptors[i];
             }
         }
-        LLVMFunctionDescriptor function = LLVMFunctionDescriptor.create(name, convertType, convertTypes, varArgs, currentFunctionIndex++);
+        LLVMFunctionDescriptor function = LLVMFunctionDescriptor.create(name, returnType, paramTypes, varArgs, currentFunctionIndex++);
         LLVMFunctionDescriptor[] newFunctions = new LLVMFunctionDescriptor[functionDescriptors.length + 1];
         System.arraycopy(functionDescriptors, 0, newFunctions, 0, functionDescriptors.length);
         newFunctions[function.getFunctionIndex()] = function;
