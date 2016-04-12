@@ -34,16 +34,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 
 /**
  * This class is the entry point for every intrinsified (substituted) function.
@@ -81,68 +74,13 @@ public abstract class LLVMIntrinsicRootNode extends RootNode {
         }
     }
 
-    @NodeChild(type = LLVMI8Node.class, value = "node")
-    public abstract static class LLVMIntrinsicI8Node extends LLVMIntrinsicRootNode {
+    @NodeChild(type = LLVMExpressionNode.class, value = "node")
+    public abstract static class LLVMIntrinsicExpressionNode extends LLVMIntrinsicRootNode {
 
         @Specialization
-        public Object execute(byte val) {
+        public Object execute(Object val) {
             return val;
         }
-    }
-
-    @NodeChild(type = LLVMI16Node.class, value = "node")
-    public abstract static class LLVMIntrinsicI16Node extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(short val) {
-            return val;
-        }
-    }
-
-    @NodeChild(type = LLVMI32Node.class, value = "node")
-    public abstract static class LLVMIntrinsicI32Node extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(int val) {
-            return val;
-        }
-    }
-
-    @NodeChild(type = LLVMI64Node.class, value = "node")
-    public abstract static class LLVMIntrinsicI64Node extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(long value) {
-            return value;
-        }
-    }
-
-    @NodeChild(type = LLVMFloatNode.class, value = "node")
-    public abstract static class LLVMIntrinsicFloatNode extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(float val) {
-            return val;
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class, value = "node")
-    public abstract static class LLVMIntrinsicDoubleNode extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(double val) {
-            return val;
-        }
-    }
-
-    @NodeChild(type = LLVMAddressNode.class, value = "node")
-    public abstract static class LLVMIntrinsicAddressNode extends LLVMIntrinsicRootNode {
-
-        @Specialization
-        public Object execute(LLVMAddress value) {
-            return value;
-        }
-
     }
 
 }
