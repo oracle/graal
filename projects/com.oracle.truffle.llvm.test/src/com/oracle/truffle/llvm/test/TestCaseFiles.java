@@ -33,7 +33,7 @@ import java.io.File;
 
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 
-final class TestCaseFiles {
+public final class TestCaseFiles {
 
     private final File originalFile;
     private final File bitCodeFile;
@@ -66,19 +66,19 @@ final class TestCaseFiles {
         return expectedResult;
     }
 
-    static TestCaseFiles createFromCompiledFile(File originalFile, File bitCodeFile, File expectedResult) {
+    public static TestCaseFiles createFromCompiledFile(File originalFile, File bitCodeFile, File expectedResult) {
         return new TestCaseFiles(originalFile, bitCodeFile, expectedResult);
     }
 
-    static TestCaseFiles createFromCompiledFile(File originalFile, File bitCodeFile) {
+    public static TestCaseFiles createFromCompiledFile(File originalFile, File bitCodeFile) {
         return new TestCaseFiles(originalFile, bitCodeFile);
     }
 
-    static TestCaseFiles createFromBitCodeFile(File bitCodeFile) {
+    public static TestCaseFiles createFromBitCodeFile(File bitCodeFile) {
         return new TestCaseFiles(bitCodeFile);
     }
 
-    static TestCaseFiles createFromBitCodeFile(File bitCodeFile, File expectedResult) {
+    public static TestCaseFiles createFromBitCodeFile(File bitCodeFile, File expectedResult) {
         return new TestCaseFiles(bitCodeFile, bitCodeFile, expectedResult);
     }
 
