@@ -158,8 +158,8 @@ public class NativeLookup {
     }
 
     private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
-        Class<?> retType = getJavaClass(function.getLlvmReturnType());
-        Class<?>[] paramTypes = getJavaClassses(args, function.getLlvmParamTypes());
+        Class<?> retType = getJavaClass(function.getReturnType());
+        Class<?>[] paramTypes = getJavaClassses(args, function.getParameterTypes());
         String functionName = function.getName().substring(1);
         NativeFunctionHandle functionHandle;
         if (functionName.equals("fork") || functionName.equals("pthread_create") || functionName.equals("pipe")) {

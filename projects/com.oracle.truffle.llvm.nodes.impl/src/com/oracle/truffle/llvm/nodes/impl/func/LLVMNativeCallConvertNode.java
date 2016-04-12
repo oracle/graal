@@ -49,7 +49,7 @@ public abstract class LLVMNativeCallConvertNode {
 
         public LLVMResolvedNativeAddressCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             super(function, nativeFunctionHandle, args, context);
-            assert function.getLlvmReturnType() == LLVMRuntimeType.ADDRESS;
+            assert function.getReturnType() == LLVMRuntimeType.ADDRESS;
         }
 
         @Override
@@ -63,7 +63,7 @@ public abstract class LLVMNativeCallConvertNode {
 
         public LLVMResolvedNative80BitFloatCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             super(function, nativeFunctionHandle, args, context);
-            assert function.getLlvmReturnType() == LLVMRuntimeType.X86_FP80;
+            assert function.getReturnType() == LLVMRuntimeType.X86_FP80;
         }
 
         @Override

@@ -195,9 +195,9 @@ public abstract class LLVMCallNode {
     }
 
     public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunctionDescriptor function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args, LLVMContext context) {
-        if (function.getLlvmReturnType() == LLVMRuntimeType.ADDRESS || function.getLlvmReturnType() == LLVMRuntimeType.STRUCT) {
+        if (function.getReturnType() == LLVMRuntimeType.ADDRESS || function.getReturnType() == LLVMRuntimeType.STRUCT) {
             return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args, context);
-        } else if (function.getLlvmReturnType() == LLVMRuntimeType.X86_FP80) {
+        } else if (function.getReturnType() == LLVMRuntimeType.X86_FP80) {
             return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args, context);
         } else {
             return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args, context);

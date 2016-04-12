@@ -39,8 +39,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<LLVMFunctionDescriptor> {
 
-    public static final int FRAME_START_INDEX = 2;
-
     public enum LLVMRuntimeType {
         I1,
         I8,
@@ -63,13 +61,12 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         I64_VECTOR,
         FLOAT_VECTOR,
         DOUBLE_VECTOR,
-        VOID;
+        VOID,
+        ILLEGAL;
     }
 
     private static final Map<String, LLVMFunctionDescriptor> referenceMap = new HashMap<>();
     @CompilationFinal private static LLVMFunctionDescriptor[] functions = new LLVMFunctionDescriptor[0];
-    private static final LLVMFunctionDescriptor ZERO_FUNCTION = createFromName("<zero function>");
-    private static final LLVMFunctionDescriptor UNDEFINED_FUNCTION = createFromName("<undefined function>");
 
     // arbitrary number
     public static final int FUNCTION_START_ADDR = 1000;
@@ -77,10 +74,10 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     // cache function headers for identity comparison
 
-    private final String name;
-    private final LLVMRuntimeType llvmReturnType;
-    private final LLVMRuntimeType[] llvmParamTypes;
-    private final boolean varArgs;
+    private final String functionName;
+    private final LLVMRuntimeType returnType;
+    private final LLVMRuntimeType[] parameterTypes;
+    private final boolean hasVarArgs;
     private final LLVMAddress functionAddress;
 
     public static void reset() {
@@ -88,10 +85,10 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     private LLVMFunctionDescriptor(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs) {
-        this.name = name;
-        this.llvmReturnType = llvmReturnType;
-        this.llvmParamTypes = llvmParamTypes;
-        this.varArgs = varArgs;
+        this.functionName = name;
+        this.returnType = llvmReturnType;
+        this.parameterTypes = llvmParamTypes;
+        this.hasVarArgs = varArgs;
         this.functionAddress = LLVMAddress.fromLong(FUNCTION_START_ADDR + functionCounter++);
     }
 
@@ -114,31 +111,31 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     public static LLVMFunctionDescriptor createFromName(String name) {
-        return create(name, null, null, false);
+        return create(name, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
     }
 
     public static LLVMFunctionDescriptor createUndefinedFunction() {
-        return UNDEFINED_FUNCTION;
+        return createFromName("<undefined function>");
     }
 
     public static LLVMFunctionDescriptor createZeroFunction() {
-        return ZERO_FUNCTION;
+        return createFromName("<zero function>");
     }
 
     public String getName() {
-        return name;
+        return functionName;
     }
 
-    public LLVMRuntimeType getLlvmReturnType() {
-        return llvmReturnType;
+    public LLVMRuntimeType getReturnType() {
+        return returnType;
     }
 
-    public LLVMRuntimeType[] getLlvmParamTypes() {
-        return llvmParamTypes;
+    public LLVMRuntimeType[] getParameterTypes() {
+        return parameterTypes;
     }
 
     public boolean isVarArgs() {
-        return varArgs;
+        return hasVarArgs;
     }
 
     /**
@@ -148,10 +145,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
      */
     public int getFunctionIndex() {
         return getFunctionIndex(getFunctionAddress());
-    }
-
-    public static LLVMFunctionDescriptor createFromFunctionIndex(int index) {
-        return functions[index];
     }
 
     public LLVMAddress getFunctionAddress() {
@@ -190,7 +183,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + 11 * getLlvmReturnType().hashCode();
+        return getName().hashCode() + 11 * getReturnType().hashCode();
     }
 
     @Override
@@ -201,13 +194,13 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
             LLVMFunctionDescriptor other = (LLVMFunctionDescriptor) obj;
             if (!getName().equals(other.getName())) {
                 return false;
-            } else if (!getLlvmReturnType().equals(other.getLlvmReturnType())) {
+            } else if (!getReturnType().equals(other.getReturnType())) {
                 return false;
-            } else if (getLlvmParamTypes().length != other.getLlvmParamTypes().length) {
+            } else if (getParameterTypes().length != other.getParameterTypes().length) {
                 return false;
             } else {
-                for (int i = 0; i < getLlvmParamTypes().length; i++) {
-                    if (!getLlvmParamTypes()[i].equals(other.getLlvmParamTypes()[i])) {
+                for (int i = 0; i < getParameterTypes().length; i++) {
+                    if (!getParameterTypes()[i].equals(other.getParameterTypes()[i])) {
                         return false;
                     }
                 }
