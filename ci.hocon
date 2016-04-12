@@ -55,11 +55,8 @@ gateTest9  : ${gateTest} ${java9Downloads}
 gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
 gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
 
-gateStyle : ${common} {
-  # need pyhocon fix
+gateStyle : ${common} ${java8Downloads} {
   downloads : {
-    JAVA_HOME : ${java8Downloads.downloads.JAVA_HOME}
-    EXTRA_JAVA_HOMES : ${java8Downloads.downloads.EXTRA_JAVA_HOMES}
     JDT : {name: ecj, version: "4.5.1", platformspecific: false}
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
   }
