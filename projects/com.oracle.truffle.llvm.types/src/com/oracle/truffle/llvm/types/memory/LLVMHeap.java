@@ -101,12 +101,12 @@ public class LLVMHeap extends LLVMMemory {
     // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
     public static final int FUNCTION_PTR_SIZE_BYTE = 8;
 
-    public static void putFunctionIndex(LLVMAddress address, long functionIndex) {
-        UNSAFE.putLong(LLVMMemory.extractAddr(address), functionIndex);
+    public static void putFunctionIndex(LLVMAddress address, int functionIndex) {
+        UNSAFE.putInt(LLVMMemory.extractAddr(address), functionIndex);
     }
 
-    public static long getFunctionIndex(LLVMAddress addr) {
-        long functionIndex = UNSAFE.getLong(LLVMMemory.extractAddr(addr));
+    public static int getFunctionIndex(LLVMAddress addr) {
+        int functionIndex = UNSAFE.getInt(LLVMMemory.extractAddr(addr));
         return functionIndex;
     }
 

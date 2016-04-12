@@ -289,7 +289,7 @@ public abstract class LLVMCallNode {
             }
         }
 
-        @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function.getFunctionAddress() == cachedFunction.getFunctionAddress()")
+        @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function.getFunctionIndex() == cachedFunction.getFunctionIndex()")
         protected Object doDirect(VirtualFrame frame, @SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments, //
                         @SuppressWarnings("unused") @Cached("function") LLVMFunctionDescriptor cachedFunction, //
                         @Cached("create(getIndirectCallTarget(getContext(), cachedFunction, getNodes()))") DirectCallNode callNode) {

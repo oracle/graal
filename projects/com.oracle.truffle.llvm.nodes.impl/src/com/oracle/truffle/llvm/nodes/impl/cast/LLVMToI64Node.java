@@ -189,7 +189,7 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
 
         @Specialization
         public long executeI64(LLVMFunctionDescriptor from) {
-            return from.getFunctionAddress().getVal();
+            return from.getFunctionIndex();
         }
     }
 }

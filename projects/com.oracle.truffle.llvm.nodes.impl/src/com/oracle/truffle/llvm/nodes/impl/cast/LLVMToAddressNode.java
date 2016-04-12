@@ -73,7 +73,7 @@ public abstract class LLVMToAddressNode extends LLVMAddressNode {
 
         @Specialization
         public LLVMAddress executeI64(LLVMFunctionDescriptor from) {
-            return LLVMAddress.fromLong(from.getFunctionAddress().getVal());
+            return LLVMAddress.fromLong(from.getFunctionIndex());
         }
     }
 

@@ -150,8 +150,8 @@ public class LLVMFunctionRegistry {
      * @param index the function index
      * @return the function descriptor
      */
-    public LLVMFunctionDescriptor createFromIndex(long index) {
-        LLVMFunctionDescriptor llvmFunction = functionDescriptors[(int) index];
+    public LLVMFunctionDescriptor createFromIndex(int index) {
+        LLVMFunctionDescriptor llvmFunction = functionDescriptors[index];
         assert llvmFunction != null;
         return llvmFunction;
     }
