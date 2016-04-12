@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -50,8 +51,7 @@ final class SymbolInvokerImpl {
         if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
             symbolNode = RootNode.createConstantNode(symbol);
         } else {
-            Node executeMain = Message.createExecute(arr.length).createNode();
-            symbolNode = createTemporaryRoot(type, executeMain, (TruffleObject) symbol, arr.length);
+            symbolNode = new ExecuteRoot(type, (TruffleObject) symbol);
         }
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
@@ -79,16 +79,49 @@ final class SymbolInvokerImpl {
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            if (args.length != argumentLength) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new ArgumentsMishmashException();
-            }
             try {
                 Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
                 return convert.convert(frame, tmp);
             } catch (InteropException e) {
                 throw new AssertionError(e);
             }
+        }
+    }
+
+    static class ExecuteRoot extends RootNode {
+        private final TruffleObject function;
+
+        @Child private ConvertNode convert;
+        @Child private Node foreignAccess;
+        @CompilerDirectives.CompilationFinal
+        private int argumentLength;
+
+        @SuppressWarnings("rawtypes")
+        ExecuteRoot(Class<? extends TruffleLanguage> lang, TruffleObject function) {
+            super(lang, null, null);
+            this.function = function;
+            this.convert = new ConvertNode();
+            this.argumentLength = -1;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            final Object[] args = frame.getArguments();
+            for (int i = 0; i < 2; i++) {
+                try {
+                    if (args.length != argumentLength) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        foreignAccess = insert(Message.createExecute(argumentLength = args.length).createNode());
+                    }
+                    Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
+                    return convert.convert(frame, tmp);
+                } catch (ArityException e) {
+                    argumentLength = -1;
+                } catch (InteropException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            throw new IllegalStateException();
         }
     }
 

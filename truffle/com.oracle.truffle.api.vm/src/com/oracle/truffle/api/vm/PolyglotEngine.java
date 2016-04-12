@@ -858,16 +858,10 @@ public class PolyglotEngine {
             ContextStore prev = Access.EXEC.executionStarted(context);
             try {
                 Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, null);
-                for (;;) {
-                    try {
-                        if (target == null) {
-                            target = SymbolInvokerImpl.createCallTarget(language[0], compute == null ? value : compute.get(), args);
-                        }
-                        return target.call(args);
-                    } catch (ArgumentsMishmashException ex) {
-                        target = null;
-                    }
+                if (target == null) {
+                    target = SymbolInvokerImpl.createCallTarget(language[0], compute == null ? value : compute.get(), args);
                 }
+                return target.call(args);
             } finally {
                 Access.EXEC.executionEnded(prev);
                 Access.DEBUG.executionEnded(PolyglotEngine.this, debugger);
