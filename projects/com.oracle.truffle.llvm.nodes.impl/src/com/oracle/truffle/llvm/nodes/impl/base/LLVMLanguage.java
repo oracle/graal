@@ -41,6 +41,19 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
 @TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.SULONG_LIBRARY_MIME_TYPE})
 public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
+    /*
+     * The LLVM class has static initializers with side effects that we rely on, but we have no
+     * dependency on it here, and no way to statically reference it even.
+     */
+
+    static {
+        try {
+            Class.forName("com.oracle.truffle.llvm.LLVM", true, ClassLoader.getSystemClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static final String LLVM_MIME_TYPE = "application/x-llvm-ir-text";
     public static final String LLVM_BITCODE_EXTENSION = "ll";
 
