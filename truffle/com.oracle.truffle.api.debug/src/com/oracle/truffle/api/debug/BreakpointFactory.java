@@ -157,7 +157,7 @@ final class BreakpointFactory {
         if (breakpoint == null) {
             final SourceSectionFilter query = SourceSectionFilter.newBuilder().sourceIs(lineLocation.getSource()).lineStartsIn(IndexRange.byLength(lineLocation.getLineNumber(), 1)).tagIs(
                             StandardTags.StatementTag.class).build();
-            breakpoint = new BreakpointImpl(lineLocation, query, ignoreCount, oneShot);
+            breakpoint = createBreakpoint(lineLocation, query, ignoreCount, oneShot);
             if (TRACE) {
                 trace("NEW " + breakpoint.getShortDescription());
             }
@@ -192,7 +192,7 @@ final class BreakpointFactory {
         BreakpointImpl breakpoint = breakpoints.get(tag);
         if (breakpoint == null) {
             final SourceSectionFilter query = SourceSectionFilter.newBuilder().tagIs(tag).build();
-            breakpoint = new BreakpointImpl(tag, query, ignoreCount, oneShot);
+            breakpoint = createBreakpoint(tag, query, ignoreCount, oneShot);
             if (TRACE) {
                 trace("NEW " + breakpoint.getShortDescription());
             }
@@ -253,6 +253,16 @@ final class BreakpointFactory {
         breakpoints.remove(breakpoint.getKey());
     }
 
+    BreakpointImpl createBreakpoint(Object key, SourceSectionFilter query, int ignoreCount, boolean isOneShot) {
+        BreakpointImpl breakpoint = new BreakpointImpl(key, query, ignoreCount, isOneShot);
+        // Register listener after breakpoint has been constructed and JMM
+        // allows for safe publication. Otherwise, we can't be sure that the
+        // assumption fields are visible by other threads, which would lead to
+        // a race with object initialization.
+        breakpoint.binding = instrumenter.attachListener(breakpoint.locationQuery, new BreakpointListener(breakpoint));
+        return breakpoint;
+    }
+
     private final class BreakpointImpl extends Breakpoint implements ExecutionEventNodeFactory {
 
         private static final String SHOULD_NOT_HAPPEN = "BreakpointImpl:  should not happen";
@@ -266,24 +276,24 @@ final class BreakpointFactory {
         @SuppressWarnings("rawtypes") private EventBinding binding;
 
         // Cached assumption that the global status of line breakpoint activity has not changed.
-        private Assumption breakpointsActiveAssumption;
+        @CompilationFinal private Assumption breakpointsActiveAssumption;
 
         // Whether this breakpoint is enable/disabled
         @CompilationFinal private boolean isEnabled;
-        private Assumption enabledUnchangedAssumption;
+        @CompilationFinal private Assumption enabledUnchangedAssumption;
 
         private Source conditionSource;
         @SuppressWarnings("rawtypes") private Class<? extends TruffleLanguage> condLangClass;
 
-        BreakpointImpl(Object key, SourceSectionFilter query, int ignoreCount, boolean isOneShot) {
+        private BreakpointImpl(Object key, SourceSectionFilter query, int ignoreCount, boolean isOneShot) {
             super();
             this.ignoreCount = ignoreCount;
             this.isOneShot = isOneShot;
             this.locationKey = key;
             this.locationQuery = query;
-            this.binding = instrumenter.attachListener(locationQuery, new BreakpointListener());
-            this.breakpointsActiveAssumption = BreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
             this.isEnabled = true;
+
+            this.breakpointsActiveAssumption = BreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
             this.enabledUnchangedAssumption = Truffle.getRuntime().createAssumption("Breakpoint enabled state unchanged");
         }
 
@@ -347,7 +357,7 @@ final class BreakpointFactory {
             binding.dispose();
             if (expr == null) {
                 conditionSource = null;
-                binding = instrumenter.attachListener(locationQuery, new BreakpointListener());
+                binding = instrumenter.attachListener(locationQuery, new BreakpointListener(this));
             } else {
                 conditionSource = Source.fromText(expr, "breakpoint condition from text: " + expr);
                 binding = instrumenter.attachFactory(locationQuery, this);
@@ -482,31 +492,6 @@ final class BreakpointFactory {
             warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
         }
 
-        /** Attached to implement an unconditional breakpoint. */
-        private final class BreakpointListener implements ExecutionEventListener {
-
-            @Override
-            public void onEnter(EventContext context, VirtualFrame frame) {
-                if (TRACE) {
-                    trace("hit breakpoint " + getShortDescription());
-                }
-                BreakpointImpl.this.nodeEnter(context, frame);
-            }
-
-            @Override
-            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-            }
-
-            @Override
-            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-            }
-
-            @Override
-            public String toString() {
-                return getShortDescription();
-            }
-        }
-
         /** Attached to implement a conditional breakpoint. */
         private class BreakpointConditionEventNode extends ExecutionEventNode {
             @Child DirectCallNode callNode;
@@ -549,6 +534,37 @@ final class BreakpointFactory {
                 sb.append(", condition=\"" + getCondition() + "\"");
             }
             return sb.toString();
+        }
+    }
+
+    /** Attached to implement an unconditional breakpoint. */
+    private static final class BreakpointListener implements ExecutionEventListener {
+
+        private final BreakpointImpl breakpoint;
+
+        BreakpointListener(BreakpointImpl breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            if (TRACE) {
+                trace("hit breakpoint " + breakpoint.getShortDescription());
+            }
+            breakpoint.nodeEnter(context, frame);
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+
+        @Override
+        public String toString() {
+            return breakpoint.getShortDescription();
         }
     }
 }
