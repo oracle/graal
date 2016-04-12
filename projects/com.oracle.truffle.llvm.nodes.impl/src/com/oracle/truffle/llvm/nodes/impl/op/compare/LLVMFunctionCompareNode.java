@@ -34,21 +34,21 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 @NodeChildren({@NodeChild(type = LLVMFunctionNode.class), @NodeChild(type = LLVMFunctionNode.class)})
 public abstract class LLVMFunctionCompareNode extends LLVMI1Node {
 
     public abstract static class LLVMFunctionEqNode extends LLVMFunctionCompareNode {
         @Specialization
-        public boolean executeI1(LLVMFunction val1, LLVMFunction val2) {
+        public boolean executeI1(LLVMFunctionDescriptor val1, LLVMFunctionDescriptor val2) {
             return val1.getFunctionAddress() == val2.getFunctionAddress();
         }
     }
 
     public abstract static class LLVMFunctionNeNode extends LLVMFunctionCompareNode {
         @Specialization
-        public boolean executeI1(LLVMFunction val1, LLVMFunction val2) {
+        public boolean executeI1(LLVMFunctionDescriptor val1, LLVMFunctionDescriptor val2) {
             return val1.getFunctionAddress() != val2.getFunctionAddress();
         }
     }

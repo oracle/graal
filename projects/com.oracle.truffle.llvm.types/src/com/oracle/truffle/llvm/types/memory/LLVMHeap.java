@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.types.memory;
 
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public class LLVMHeap extends LLVMMemory {
 
@@ -102,14 +102,14 @@ public class LLVMHeap extends LLVMMemory {
     // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
     public static final int FUNCTION_PTR_SIZE_BYTE = 8;
 
-    public static void putFunction(LLVMAddress address, LLVMFunction function) {
+    public static void putFunction(LLVMAddress address, LLVMFunctionDescriptor function) {
         LLVMAddress functionIndex = function.getFunctionAddress();
         UNSAFE.putLong(LLVMMemory.extractAddr(address), functionIndex.getVal());
     }
 
-    public static LLVMFunction getFunction(LLVMAddress addr) {
+    public static LLVMFunctionDescriptor getFunction(LLVMAddress addr) {
         long functionIndex = UNSAFE.getLong(LLVMMemory.extractAddr(addr));
-        return LLVMFunction.createFromAddress(LLVMAddress.fromLong(functionIndex));
+        return LLVMFunctionDescriptor.createFromAddress(LLVMAddress.fromLong(functionIndex));
     }
 
 }

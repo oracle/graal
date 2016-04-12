@@ -32,15 +32,15 @@ package com.oracle.truffle.llvm.nodes.impl.literals;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
-@NodeField(type = LLVMFunction.class, name = "function")
+@NodeField(type = LLVMFunctionDescriptor.class, name = "function")
 public abstract class LLVMFunctionLiteralNode extends LLVMFunctionNode {
 
-    public abstract LLVMFunction getFunction();
+    public abstract LLVMFunctionDescriptor getFunction();
 
     @Specialization
-    public LLVMFunction executeFunction() {
+    public LLVMFunctionDescriptor executeFunction() {
         return getFunction();
     }
 

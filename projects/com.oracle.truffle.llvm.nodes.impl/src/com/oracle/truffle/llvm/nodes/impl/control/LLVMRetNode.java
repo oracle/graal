@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -181,7 +181,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
 
         @Specialization
-        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMFunction retResult) {
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMFunctionDescriptor retResult) {
             frame.setObject(getRetSlot(), retResult);
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
         }

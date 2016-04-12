@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor.ParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 /**
  * This is the main LLVM execution class.
@@ -148,7 +148,7 @@ public class LLVM {
             throw new AssertionError(e);
         } finally {
             // FIXME w
-            LLVMFunction.reset();
+            LLVMFunctionDescriptor.reset();
         }
     }
 

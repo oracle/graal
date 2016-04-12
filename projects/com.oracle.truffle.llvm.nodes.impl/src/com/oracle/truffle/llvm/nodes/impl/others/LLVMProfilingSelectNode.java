@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public class LLVMProfilingSelectNode {
@@ -199,7 +199,7 @@ public class LLVMProfilingSelectNode {
         private final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
         @Specialization
-        public LLVMFunction execute(boolean cond, LLVMFunction trueBranch, LLVMFunction elseBranch) {
+        public LLVMFunctionDescriptor execute(boolean cond, LLVMFunctionDescriptor trueBranch, LLVMFunctionDescriptor elseBranch) {
             if (conditionProfile.profile(cond)) {
                 return trueBranch;
             } else {

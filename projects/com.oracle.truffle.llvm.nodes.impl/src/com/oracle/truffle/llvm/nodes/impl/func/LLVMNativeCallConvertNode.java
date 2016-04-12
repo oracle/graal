@@ -35,8 +35,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode.LLVMResolvedDirectNativeCallNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
  * This node converts the results of native functions to primitives or objects, that other Sulong
@@ -47,7 +47,7 @@ public abstract class LLVMNativeCallConvertNode {
     // FIXME: do not use inheritance
     public static class LLVMResolvedNativeAddressCallNode extends LLVMResolvedDirectNativeCallNode {
 
-        public LLVMResolvedNativeAddressCallNode(LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
+        public LLVMResolvedNativeAddressCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             super(function, nativeFunctionHandle, args, context);
             assert function.getLlvmReturnType() == LLVMRuntimeType.ADDRESS;
         }
@@ -61,7 +61,7 @@ public abstract class LLVMNativeCallConvertNode {
 
     public static class LLVMResolvedNative80BitFloatCallNode extends LLVMResolvedDirectNativeCallNode {
 
-        public LLVMResolvedNative80BitFloatCallNode(LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
+        public LLVMResolvedNative80BitFloatCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             super(function, nativeFunctionHandle, args, context);
             assert function.getLlvmReturnType() == LLVMRuntimeType.X86_FP80;
         }

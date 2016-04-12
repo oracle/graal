@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 /**
@@ -117,13 +117,13 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @TruffleBoundary
     private static void printNativeCallStats(LLVMContext context) {
-        Map<LLVMFunction, Integer> nativeFunctionCallSites = context.getNativeFunctionLookupStats();
+        Map<LLVMFunctionDescriptor, Integer> nativeFunctionCallSites = context.getNativeFunctionLookupStats();
         // Checkstyle: stop
         if (!nativeFunctionCallSites.isEmpty()) {
             System.out.println("==========================");
             System.out.println("native function sites:");
             System.out.println("==========================");
-            for (LLVMFunction function : nativeFunctionCallSites.keySet()) {
+            for (LLVMFunctionDescriptor function : nativeFunctionCallSites.keySet()) {
                 String output = String.format("%15s: %3d", function.getName(), nativeFunctionCallSites.get(function));
                 System.out.println(output);
             }

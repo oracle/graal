@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -70,7 +70,7 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMFunctionNode {
 
         @Specialization
-        public LLVMFunction executeAddress(LLVMAddress addr) {
+        public LLVMFunctionDescriptor executeAddress(LLVMAddress addr) {
             return LLVMHeap.getFunction(addr);
         }
     }

@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.nodes.impl.base;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public abstract class LLVMFunctionNode extends LLVMExpressionNode {
 
-    public abstract LLVMFunction executeFunction(VirtualFrame frame);
+    public abstract LLVMFunctionDescriptor executeFunction(VirtualFrame frame);
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {

@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMSelectNode {
@@ -140,7 +140,7 @@ public abstract class LLVMSelectNode {
     public abstract static class LLVMFunctionSelectNode extends LLVMFunctionNode {
 
         @Specialization
-        public LLVMFunction execute(boolean cond, LLVMFunction trueBranch, LLVMFunction elseBranch) {
+        public LLVMFunctionDescriptor execute(boolean cond, LLVMFunctionDescriptor trueBranch, LLVMFunctionDescriptor elseBranch) {
             return cond ? trueBranch : elseBranch;
         }
 

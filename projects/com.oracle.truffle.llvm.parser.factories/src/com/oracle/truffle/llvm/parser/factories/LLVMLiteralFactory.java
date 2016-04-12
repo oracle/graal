@@ -80,7 +80,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
@@ -139,7 +139,7 @@ public final class LLVMLiteralFactory {
             case ADDRESS:
                 return new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             case FUNCTION_ADDRESS:
-                return LLVMFunctionLiteralNodeGen.create(LLVMFunction.createUndefinedFunction());
+                return LLVMFunctionLiteralNodeGen.create(LLVMFunctionDescriptor.createUndefinedFunction());
             default:
                 throw new AssertionError(type);
         }
@@ -192,7 +192,7 @@ public final class LLVMLiteralFactory {
                 }
             case FUNCTION_ADDRESS:
                 if (stringValue.equals("null")) {
-                    return LLVMFunctionLiteralNodeGen.create(LLVMFunction.createZeroFunction());
+                    return LLVMFunctionLiteralNodeGen.create(LLVMFunctionDescriptor.createZeroFunction());
                 } else {
                     throw new AssertionError(stringValue);
                 }
@@ -206,7 +206,7 @@ public final class LLVMLiteralFactory {
         return bigInteger.longValue();
     }
 
-    public static LLVMFunctionNode[] createFunctionLiteralNodes(int nrElements, LLVMFunction value) {
+    public static LLVMFunctionNode[] createFunctionLiteralNodes(int nrElements, LLVMFunctionDescriptor value) {
         LLVMFunctionNode[] functionZeroInits = new LLVMFunctionNode[nrElements];
         for (int i = 0; i < nrElements; i++) {
             functionZeroInits[i] = LLVMFunctionLiteralNodeGen.create(value);
@@ -353,7 +353,7 @@ public final class LLVMLiteralFactory {
             case ADDRESS:
                 return new LLVMAddressLiteralNode((LLVMAddress) value);
             case FUNCTION_ADDRESS:
-                return LLVMFunctionLiteralNodeGen.create((LLVMFunction) value);
+                return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) value);
             default:
                 throw new AssertionError(value + " " + type);
         }
