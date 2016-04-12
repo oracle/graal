@@ -156,7 +156,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -219,9 +218,18 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
+    private static LLVMFunctionDescriptor searchFunction(Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions, String toSearch) {
+        for (LLVMFunctionDescriptor func : parsedFunctions.keySet()) {
+            if (func.getName().equals(toSearch)) {
+                return func;
+            }
+        }
+        return null;
+    }
+
     public ParserResult getMain(Model model, NodeFactoryFacade facade) {
         Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions = visit(model, facade);
-        LLVMFunctionDescriptor mainFunction = LLVMFunctionDescriptor.createFromName("@main");
+        LLVMFunctionDescriptor mainFunction = searchFunction(parsedFunctions, "@main");
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
         int argParamCount = mainFunction.getLlvmParamTypes().length;
         RootNode globalFunction;
@@ -251,14 +259,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 // Checkstyle: resume magic number check
             }
         }
-        RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(wrapMainFunction(Truffle.getRuntime().createCallTarget(globalFunction)));
+        RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
+        RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getLlvmReturnType());
+        RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
         return new ParserResult(wrappedCallTarget, parsedFunctions);
-    }
-
-    private RootNode wrapMainFunction(RootCallTarget mainCallTarget) {
-        LLVMFunctionDescriptor mainSignature = LLVMFunctionDescriptor.createFromName("@main");
-        LLVMRuntimeType returnType = mainSignature.getLlvmReturnType();
-        return factoryFacade.createGlobalRootNodeWrapping(mainCallTarget, returnType);
     }
 
     private static LLVMAddress getArgsAsStringArray(Object... args) {
