@@ -51,6 +51,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
     protected UnsafeAccessNode(NodeClass<? extends UnsafeAccessNode> c, Stamp stamp, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         super(c, stamp);
         assert accessKind != null;
+        assert locationIdentity != null;
         this.object = object;
         this.offset = offset;
         this.accessKind = accessKind;
