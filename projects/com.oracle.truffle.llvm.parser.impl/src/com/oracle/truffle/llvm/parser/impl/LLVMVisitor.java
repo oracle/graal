@@ -220,6 +220,16 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     public ParserResult getMain(Model model, NodeFactoryFacade facade) {
         Map<LLVMFunction, RootCallTarget> parsedFunctions = visit(model, facade);
+        boolean foundMain = false;
+        for (LLVMFunction function : parsedFunctions.keySet()) {
+            if (function.getName().equals("@main")) {
+                foundMain = true;
+                break;
+            }
+        }
+        if (!foundMain) {
+            return new ParserResult(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null)), parsedFunctions);
+        }
         LLVMFunction mainFunction = LLVMFunction.createFromName("@main");
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
         RootNode globalFunction;
