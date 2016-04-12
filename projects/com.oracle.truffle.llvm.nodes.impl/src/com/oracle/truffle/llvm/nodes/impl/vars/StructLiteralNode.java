@@ -248,7 +248,7 @@ public class StructLiteralNode extends LLVMAddressNode {
         @Override
         public void executeWrite(VirtualFrame frame, LLVMAddress address) {
             LLVMFunctionDescriptor value = valueNode.executeFunction(frame);
-            LLVMHeap.putFunction(address, value);
+            LLVMHeap.putFunctionIndex(address, value.getFunctionIndex());
         }
 
     }

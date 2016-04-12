@@ -1247,7 +1247,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         for (int i = 0; i < params.size(); i++) {
             llvmParamTypes[i] = getLLVMType(params.get(i).getType().getType());
         }
-        return LLVMFunctionDescriptor.create(header.getName(), LLVMTypeHelper.convertType(llvmReturnType), LLVMTypeHelper.convertTypes(llvmParamTypes), varArgs);
+        return factoryFacade.createFunctionDescriptor(header.getName(), LLVMTypeHelper.convertType(llvmReturnType), LLVMTypeHelper.convertTypes(llvmParamTypes), varArgs);
     }
 
     private LLVMExpressionNode parseSimpleConstant(EObject type, SimpleConstant simpleConst) {

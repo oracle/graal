@@ -42,14 +42,14 @@ public abstract class LLVMFunctionCompareNode extends LLVMI1Node {
     public abstract static class LLVMFunctionEqNode extends LLVMFunctionCompareNode {
         @Specialization
         public boolean executeI1(LLVMFunctionDescriptor val1, LLVMFunctionDescriptor val2) {
-            return val1.getFunctionAddress() == val2.getFunctionAddress();
+            return val1.getFunctionIndex() == val2.getFunctionIndex();
         }
     }
 
     public abstract static class LLVMFunctionNeNode extends LLVMFunctionCompareNode {
         @Specialization
         public boolean executeI1(LLVMFunctionDescriptor val1, LLVMFunctionDescriptor val2) {
-            return val1.getFunctionAddress() != val2.getFunctionAddress();
+            return val1.getFunctionIndex() != val2.getFunctionIndex();
         }
     }
 
