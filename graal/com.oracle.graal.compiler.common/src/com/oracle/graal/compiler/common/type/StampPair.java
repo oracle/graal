@@ -32,6 +32,7 @@ public final class StampPair {
     private final Stamp uncheckedStamp;
 
     private StampPair(Stamp trustedStamp, Stamp uncheckedStamp) {
+        assert trustedStamp != null;
         this.trustedStamp = trustedStamp;
         this.uncheckedStamp = uncheckedStamp;
     }
@@ -50,5 +51,14 @@ public final class StampPair {
 
     public Stamp getTrustedStamp() {
         return trustedStamp;
+    }
+
+    @Override
+    public String toString() {
+        if (uncheckedStamp == null) {
+            return trustedStamp.toString();
+        } else {
+            return trustedStamp + " (unchecked=" + uncheckedStamp + ")";
+        }
     }
 }
