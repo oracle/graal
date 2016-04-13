@@ -27,25 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
 
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import org.junit.Test;
 
-public class LLVMFileDetector extends FileTypeDetector {
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith("." + LLVMLanguage.LLVM_BITCODE_EXTENSION)) {
-            return LLVMLanguage.LLVM_MIME_TYPE;
+public class TestPolyglotEngine {
+
+    @Test
+    public void testExecute() throws IOException {
+        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        try {
+            engine.eval(Source.fromFileName(new File(LLVMPaths.LOCAL_TESTS, "llvmir/simple/1.ll").getPath()));
+        } finally {
+            engine.dispose();
         }
-        if (path.getFileName().toString().endsWith("." + LLVMLanguage.SULONG_LIBRARY_EXTENSION)) {
-            return LLVMLanguage.SULONG_LIBRARY_MIME_TYPE;
+    }
+
+    @Test
+    public void testExecuteFunction() throws IOException {
+        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        try {
+            engine.eval(Source.fromFileName(new File(LLVMPaths.LOCAL_TESTS, "llvmir/micro/ret/i32ret.ll").getPath()));
+            final Value main = engine.findGlobalSymbol("@main");
+            assertEquals(5, (int) main.execute().as(Integer.class));
+        } finally {
+            engine.dispose();
         }
-        return null;
     }
 
 }

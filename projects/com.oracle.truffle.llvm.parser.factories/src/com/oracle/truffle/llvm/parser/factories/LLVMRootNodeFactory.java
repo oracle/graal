@@ -53,7 +53,12 @@ public class LLVMRootNodeFactory {
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, LLVMRuntimeType[] llvmRuntimeTypes) {
-        int argsCount = mainArgs.length + 1;
+        int argsCount;
+        if (mainArgs == null) {
+            argsCount = 1;
+        } else {
+            argsCount = mainArgs.length + 1;
+        }
         if (llvmRuntimeTypes.length == 0) {
             return new Object[0];
         } else if (llvmRuntimeTypes.length == 1) {
