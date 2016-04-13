@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.junit.Test;
@@ -45,7 +46,7 @@ public class TestPolyglotEngine {
     public void testExecute() throws IOException {
         final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         try {
-            engine.eval(Source.fromFileName("projects/com.oracle.truffle.llvm.test/tests/llvmir/simple/1.ll"));
+            engine.eval(Source.fromFileName(new File(LLVMPaths.LOCAL_TESTS, "llvmir/simple/1.ll").getPath()));
         } finally {
             engine.dispose();
         }
@@ -55,7 +56,7 @@ public class TestPolyglotEngine {
     public void testExecuteFunction() throws IOException {
         final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         try {
-            engine.eval(Source.fromFileName("projects/com.oracle.truffle.llvm.test/tests/llvmir/micro/ret/i32ret.ll"));
+            engine.eval(Source.fromFileName(new File(LLVMPaths.LOCAL_TESTS, "llvmir/micro/ret/i32ret.ll").getPath()));
             final Value main = engine.findGlobalSymbol("@main");
             assertEquals(5, (int) main.execute().as(Integer.class));
         } finally {
