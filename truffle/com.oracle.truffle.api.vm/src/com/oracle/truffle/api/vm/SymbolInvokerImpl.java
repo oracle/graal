@@ -40,7 +40,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 final class SymbolInvokerImpl {
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) {
+    static CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol) {
         Class<? extends TruffleLanguage<?>> type;
         if (lang != null) {
             type = (Class) lang.getClass();
@@ -93,15 +93,12 @@ final class SymbolInvokerImpl {
 
         @Child private ConvertNode convert;
         @Child private Node foreignAccess;
-        @CompilerDirectives.CompilationFinal
-        private int argumentLength;
 
         @SuppressWarnings("rawtypes")
         ExecuteRoot(Class<? extends TruffleLanguage> lang, TruffleObject function) {
             super(lang, null, null);
             this.function = function;
             this.convert = new ConvertNode();
-            this.argumentLength = -1;
         }
 
         @Override
@@ -109,14 +106,15 @@ final class SymbolInvokerImpl {
             final Object[] args = frame.getArguments();
             for (int i = 0; i < 2; i++) {
                 try {
-                    if (args.length != argumentLength) {
+                    if (foreignAccess == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        foreignAccess = insert(Message.createExecute(argumentLength = args.length).createNode());
+                        foreignAccess = insert(Message.createExecute(args.length).createNode());
                     }
                     Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
                     return convert.convert(frame, tmp);
                 } catch (ArityException e) {
-                    argumentLength = -1;
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignAccess = insert(Message.createExecute(args.length).createNode());
                 } catch (InteropException e) {
                     throw new AssertionError(e);
                 }
