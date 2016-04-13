@@ -36,6 +36,9 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def name(self):
         return "dacapo"
 
+    def group(self):
+        return "graal"
+
     def dacapoPath(self):
         dacapo = mx.get_env("DACAPO_CP")
         if dacapo:
@@ -85,7 +88,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             "pmd",
             "sunflow",
             "tomcat",
-            "tradebeans",
             "xalan"
         ]
 
