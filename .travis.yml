@@ -34,6 +34,7 @@ branches:
   only:
     - master
 env:
+  - TEST_COMMAND='mx/mx eclipseformat --primary'
   - TEST_COMMAND='mx/mx su-mdlcheck'
   - TEST_COMMAND='mx/mx su-gitlogcheck'
   - TEST_COMMAND='mx/mx pylint'
