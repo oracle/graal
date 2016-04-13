@@ -51,6 +51,9 @@ def executeGate():
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
     with VM('server', 'product'):
+        with Task('TestPolglot', tasks) as t:
+            if t: runPolyglotTestCases()
+    with VM('server', 'product'):
         with Task('TestSulong', tasks) as t:
             if t: runTruffleTestCases()
     with VM('server', 'product'):
@@ -409,6 +412,7 @@ def runTests(args=None):
     runLLVMTestCases()
     runTruffleTestCases()
     runTypeTestCases()
+    runPolyglotTestCases()
     runBenchmarkTestCases()
 
 def runBenchmarkTestCases(args=None):
@@ -453,6 +457,11 @@ def runTypeTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
+
+def runPolyglotTestCases(args=None):
+    """runs the type test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
 
 def getCommonOptions(lib_args=None):
     return [
@@ -699,6 +708,7 @@ mx.update_commands(_suite, {
     'su-tests-sulong' : [runTruffleTestCases, ''],
     'su-tests-nwcc' : [runNWCCTestCases, ''],
     'su-tests-types' : [runTypeTestCases, ''],
+    'su-tests-polyglot' : [runPolyglotTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
