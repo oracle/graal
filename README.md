@@ -106,7 +106,7 @@ is loaded using the `-l` flag:
 You can run this `.su` file directly and it will know to load dependencies that
 you specified at link-time:
 
-   mx su-run test.su
+    mx su-run test.su
 
 From where does the project name originate?
 -------------------------------------------
