@@ -1133,8 +1133,12 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
-    protected ValueNode createInstanceOf(TypeReference type, ValueNode object, TypeProfileNode anchor) {
+    protected LogicNode createInstanceOf(TypeReference type, ValueNode object, TypeProfileNode anchor) {
         return InstanceOfNode.create(type, object, anchor);
+    }
+
+    protected LogicNode createInstanceOfAllowNull(TypeReference type, ValueNode object, TypeProfileNode anchor) {
+        return InstanceOfNode.createAllowNull(type, object, anchor);
     }
 
     protected ValueNode genConditional(ValueNode x) {
@@ -2493,8 +2497,9 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    /* Hook for subclasses of BytecodeParser to generate custom nodes before an IfNode. */
-
+    /**
+     * Hook for subclasses to generate custom nodes before an IfNode.
+     */
     @SuppressWarnings("unused")
     protected void postProcessIfNode(ValueNode node) {
     }
@@ -3009,7 +3014,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (anchor != null) {
                 append(anchor);
             }
-            LogicNode condition = genUnique(InstanceOfNode.createAllowNull(checkedType, object, anchor));
+            LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, anchor));
             if (condition.isTautology()) {
                 castNode = object;
             } else {
@@ -3051,7 +3056,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        ValueNode instanceOfNode = null;
+        LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
