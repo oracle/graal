@@ -108,20 +108,6 @@ you specified at link-time:
 
    mx su-run test.su
 
-These `.su` files can be loaded wherever Sulong can load a native library.
-For example we could create our own library `libhelper` and then load it when
-running a program:
-
-    mx su-link -o libhelper.su helper.ll
-    mx su-run -lhelper main.ll
-  
-We can also reference our `.su` library when creating another `.su` library.
-Our `libhelper` will then be loaded automatically as a dependency of
-`libanotherhelper`, just as with native dynamic libraries.
-
-    mx su-link -o libanotherhelper.su -lhelper anotherhelper.ll
-    mx su-run -lanotherhelper main.ll
-
 From where does the project name originate?
 -------------------------------------------
 
