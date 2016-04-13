@@ -534,15 +534,19 @@ def link(args=None):
     """Links LLVM bitcode into an su file."""
     modules = []
     libraries = []
-    if args is None:
+    n = 0
+    while n < len(args):
+        arg = args[n]
+        if arg == '-o':
+            out = args[n + 1]
+            n += 1
+        elif arg.startswith('-l'):
+            libraries += [arg[2:]]
+        else:
+            modules += [arg]
+        n += 1
+    if out is None:
         out = 'out.su'
-    else:
-        out = args.pop(0)
-        for arg in args:
-            if arg.startswith('-l'):
-                libraries += [arg[2:]]
-            else:
-                modules += [arg]
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for module in modules:
             z.write(module)
