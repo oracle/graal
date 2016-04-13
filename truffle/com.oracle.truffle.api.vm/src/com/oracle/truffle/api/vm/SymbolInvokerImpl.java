@@ -58,23 +58,21 @@ final class SymbolInvokerImpl {
     }
 
     @SuppressWarnings("rawtypes")
-    public static RootNode createTemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
-        return new TemporaryRoot(lang, foreignAccess, function, argumentLength);
+    public static RootNode createTemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
+        return new TemporaryRoot(lang, foreignAccess, function);
     }
 
     static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
-        private final int argumentLength;
         private final TruffleObject function;
 
         @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();
             this.function = function;
-            this.argumentLength = argumentLength;
         }
 
         @Override

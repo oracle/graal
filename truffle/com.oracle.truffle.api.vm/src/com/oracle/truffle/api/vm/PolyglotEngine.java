@@ -585,7 +585,7 @@ public class PolyglotEngine {
                 try {
                     Access.DEBUG.executionStarted(PolyglotEngine.this, -1, debugger, null);
                     final Object[] args = ForeignAccess.getArguments(materialized).toArray();
-                    RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver, args.length);
+                    RootNode node = SymbolInvokerImpl.createTemporaryRoot(TruffleLanguage.class, foreignNode, receiver);
                     final CallTarget target = Truffle.getRuntime().createCallTarget(node);
                     return target.call(args);
                 } finally {
