@@ -78,14 +78,22 @@ benchSPECjvm2008 : ${common} {
   ]
 }
 
-benchDaCapo : ${common} ${java8Downloads} {
-  downloads : {
-    DACAPO : {name : dacapo, version : "9.12"}
-  }
-  mx-benchmark : ["mx", "benchmark", "--results-file", "bench-results.json", "dacapo:*"]
+bench-jvmci : ${common} ${java8Downloads} {
+  mx-settings : ["mx", "--vm=jvmci", "--vmbuild=product"]
+  setup: [
+    ${bench-jvmci.mx-settings} ["build"]
+  ]
+  mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
   teardown : [
     ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
   ]
+}
+
+benchDaCapo : ${bench-jvmci} {
+  downloads : {
+    DACAPO : {name : dacapo, version : "9.12"}
+  }
+  mx-benchmark : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
 }
 
 benchDaCapo_x52 : ${benchDaCapo} {
@@ -97,12 +105,13 @@ benchDaCapo_x52 : ${benchDaCapo} {
 }
 
 builds = [
-  ${gateTest8}        {capabilities : [linux, amd64, gate],   name : "gate-test-8-linux-amd64"}
-  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name : "gate-bootstrap-8-linux-amd64"}
-# ${gateTest9}        {capabilities : [linux, amd64, gate],   name : "gate-test-9-linux-amd64"}
-# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name : "gate-bootstrap-9-linux-amd64"}
-  ${gateStyle}        {capabilities : [linux, amd64, gate],   name : "gate-style-linux-amd64"}
-  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name : "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
-# ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name : "bench-specjvm2008-linux-amd64"}
+  ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}        {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
+# The linux-sparc gate machine throws OOME when running `javac -X -J-Xms64M -J-Xint` too often.
+#  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
+#  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
   ${benchDaCapo_x52}
 ]
