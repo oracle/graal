@@ -100,7 +100,7 @@ bench-dacapo-x52 : ${bench-dacapo} {
   capabilities : [linux, x52, bench, post-merge]
   name : "bench-dacapo-linux-x52"
   run : [
-    ${bench-jvmci.mx-dacapo} ["--machine_name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "20"]
+    ${bench-jvmci.mx-dacapo} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-n", "20"]
   ]
 }
 
