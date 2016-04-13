@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class SymbolInvokerImpl {
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -126,6 +127,7 @@ final class SymbolInvokerImpl {
         @Child private Node isNull;
         @Child private Node isBoxed;
         @Child private Node unbox;
+        private final ConditionProfile isBoxedProfile = ConditionProfile.createBinaryProfile();
 
         ConvertNode() {
             this.isNull = Message.IS_NULL.createNode();
@@ -143,7 +145,7 @@ final class SymbolInvokerImpl {
 
         private Object convert(VirtualFrame frame, TruffleObject obj) {
             boolean isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
-            if (isBoxedResult) {
+            if (isBoxedProfile.profile(isBoxedResult)) {
                 try {
                     return ForeignAccess.sendUnbox(unbox, frame, obj);
                 } catch (UnsupportedMessageException e) {

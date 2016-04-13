@@ -58,6 +58,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
       ],
       "checkstyle" : "com.oracle.truffle.api",
