@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.PrintBackendCFG;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintBinaryGraphs;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintCFG;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugConfigCustomizer;
 import com.oracle.graal.debug.DebugDumpHandler;
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -42,11 +39,11 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
     public void customize(DebugConfig config) {
         config.dumpHandlers().add(new GraphPrinterDumpHandler());
         config.dumpHandlers().add(new NodeDumper());
-        if (PrintCFG.getValue() || PrintBackendCFG.getValue()) {
-            if (PrintBinaryGraphs.getValue() && PrintCFG.getValue()) {
+        if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
+            if (Options.PrintBinaryGraphs.getValue() && Options.PrintCFG.getValue()) {
                 TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
             }
-            config.dumpHandlers().add(new CFGPrinterObserver(PrintCFG.getValue()));
+            config.dumpHandlers().add(new CFGPrinterObserver(Options.PrintCFG.getValue()));
         }
         config.verifyHandlers().add(new NoDeadCodeVerifyHandler());
     }
