@@ -512,6 +512,11 @@ public class PolyglotEngine {
 
     private Value eval(final Language l, final Source s) throws IOException {
         final TruffleLanguage[] lang = {null};
+        if (executor == null) {
+            Object value = evalImpl(lang, s, l);
+            return new Value(lang, value);
+        }
+
         ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
             @Override
             protected Object compute() throws IOException {
@@ -882,7 +887,11 @@ public class PolyglotEngine {
         /** @since 0.9 */
         @Override
         public String toString() {
-            return "PolyglotEngine.Value[" + (compute == null ? value : compute) + "]";
+            if (compute != null) {
+                return "PolyglotEngine.Value[" + compute + "]";
+            } else {
+                return "PolyglotEngine.Value[value=" + value + ",computed=true,exception=null]";
+            }
         }
     }
 
