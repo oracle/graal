@@ -269,6 +269,12 @@ public abstract class Accessor {
     private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
+    public static void initializeThreadForUseWithPolglotEngine(Object /* because types are evil */ polyglotEngine) {
+        assert polyglotEngine != null;
+        assert CURRENT_VM.get() == null;
+        CURRENT_VM.set(polyglotEngine);
+    }
+
     @TruffleBoundary
     protected Closeable executionStart(Object vm, @SuppressWarnings("unused") int currentDepth, boolean debugger, Source s) {
         CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
