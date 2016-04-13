@@ -262,7 +262,7 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
+    public RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMNode[] destructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
         return null;
     }
 

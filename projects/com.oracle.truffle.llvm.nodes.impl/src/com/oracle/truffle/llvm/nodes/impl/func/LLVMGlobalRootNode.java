@@ -50,7 +50,6 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 /**
  * The global entry point initializes the global scope and starts execution with the main function.
@@ -58,21 +57,21 @@ import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 public class LLVMGlobalRootNode extends RootNode {
 
     @Children private final LLVMNode[] staticInits;
+    @Children private final LLVMNode[] staticDestructors;
     private final DirectCallNode main;
-    @CompilationFinal private final LLVMAddress[] llvmAddresses;
     @CompilationFinal private final Object[] arguments;
     private final LLVMContext context;
     // FIXME instead make the option system "PE safe"
     private final boolean printNativeStats = LLVMOptions.printNativeCallStats();
     private final FrameSlot stackPointerSlot;
 
-    public LLVMGlobalRootNode(FrameSlot stackSlot, FrameDescriptor descriptor, LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMAddress[] llvmAddresses, Object... arguments) {
+    public LLVMGlobalRootNode(FrameSlot stackSlot, FrameDescriptor descriptor, LLVMContext context, LLVMNode[] staticInits, CallTarget main, LLVMNode[] staticDestructors, Object... arguments) {
         super(LLVMLanguage.class, null, descriptor);
         this.stackPointerSlot = stackSlot;
         this.context = context;
         this.staticInits = staticInits;
         this.main = Truffle.getRuntime().createDirectCallNode(main);
-        this.llvmAddresses = llvmAddresses;
+        this.staticDestructors = staticDestructors;
         this.arguments = arguments;
     }
 
@@ -105,8 +104,8 @@ public class LLVMGlobalRootNode extends RootNode {
             }
             return result;
         } finally {
-            for (LLVMAddress alloc : llvmAddresses) {
-                LLVMHeap.freeMemory(alloc);
+            for (LLVMNode node : staticInits) {
+                node.executeVoid(frame);
             }
             if (printNativeStats) {
                 printNativeCallStats(context);

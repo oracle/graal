@@ -156,7 +156,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 /**
@@ -283,7 +282,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         List<LLVMNode> globalVarNodes = addGlobalVars(this, staticVars);
         globalNodes.addAll(globalVarNodes);
-        deallocations = globalDeallocations.toArray(new LLVMAddress[globalDeallocations.size()]);
+        deallocations = globalDeallocations.toArray(new LLVMNode[globalDeallocations.size()]);
         return functionCallTargets;
     }
 
@@ -313,7 +312,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
             if (globalVar.getName().equals("@llvm.global_ctors")) {
                 ResolvedArrayType type = (ResolvedArrayType) typeResolver.resolve(globalVar.getType());
                 int size = type.getSize();
-                LLVMAddress allocGlobalVariable = findOrAllocateGlobal(globalVar);
+                Object allocGlobalVariable = findOrAllocateGlobal(globalVar);
                 ResolvedType structType = type.getContainedType(0);
                 int structSize = LLVMTypeHelper.getByteSize(structType);
                 for (int i = 0; i < size; i++) {
@@ -375,7 +374,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 LLVMBaseType llvmType = getLLVMType(globalVariable.getType());
                 ResolvedType resolvedType = resolve(globalVariable.getType());
                 int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
-                LLVMAddress allocGlobalVariable = findOrAllocateGlobal(globalVariable);
+                Object allocGlobalVariable = findOrAllocateGlobal(globalVariable);
                 if (byteSize == 0) {
                     return null;
                 } else {
@@ -398,19 +397,16 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
-    private final Map<GlobalVariable, LLVMAddress> globalVars = new HashMap<>();
-    private final List<LLVMAddress> globalDeallocations = new ArrayList<>();
+    private final Map<GlobalVariable, Object> globalVars = new HashMap<>();
+    private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    private LLVMAddress findOrAllocateGlobal(GlobalVariable globalVariable) {
+    private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
         if (globalVars.containsKey(globalVariable)) {
             return globalVars.get(globalVariable);
         } else {
-            ResolvedType resolvedType = resolve(globalVariable.getType());
-            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
-            LLVMAddress allocation = LLVMHeap.allocateMemory(byteSize);
+            Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
             globalVars.put(globalVariable, allocation);
-            globalDeallocations.add(allocation);
             return allocation;
         }
     }
@@ -553,7 +549,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
     public static DataSpecConverter layoutConverter;
 
-    private LLVMAddress[] deallocations;
+    private LLVMNode[] deallocations;
 
     private List<LLVMNode> globalNodes;
 
@@ -970,7 +966,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                     LLVMAddress nativeSymbolAddress = LLVMAddress.fromLong(getNativeSymbol);
                     return factoryFacade.createLiteral(nativeSymbolAddress, LLVMBaseType.ADDRESS);
                 } else {
-                    LLVMAddress findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
+                    Object findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
                     assert findOrAllocateGlobal != null;
                     return factoryFacade.createLiteral(findOrAllocateGlobal, LLVMBaseType.ADDRESS);
                 }
@@ -1419,7 +1415,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public LLVMAddress getGlobalAddress(GlobalVariable var) {
+    public Object getGlobalAddress(GlobalVariable var) {
         return globalVars.get(var);
     }
 
@@ -1441,5 +1437,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
     @Override
     public FrameDescriptor getGlobalFrameDescriptor() {
         return globalFrameDescriptor;
+    }
+
+    @Override
+    public void addDestructor(LLVMNode destructorNode) {
+        globalDeallocations.add(destructorNode);
     }
 }

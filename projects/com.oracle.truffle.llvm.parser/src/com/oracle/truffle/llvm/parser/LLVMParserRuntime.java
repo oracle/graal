@@ -36,8 +36,8 @@ import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public interface LLVMParserRuntime {
 
@@ -65,7 +65,7 @@ public interface LLVMParserRuntime {
 
     LLVMExpressionNode allocateVectorResult(EObject type);
 
-    LLVMAddress getGlobalAddress(GlobalVariable var);
+    Object getGlobalAddress(GlobalVariable var);
 
     FrameSlot getStackPointerSlot();
 
@@ -74,4 +74,11 @@ public interface LLVMParserRuntime {
     int getBitAlignment(LLVMBaseType type);
 
     FrameDescriptor getGlobalFrameDescriptor();
+
+    /**
+     * Adds a destructor node that is executed after returning from the main function.
+     *
+     * @param destructorNode
+     */
+    void addDestructor(LLVMNode destructorNode);
 }

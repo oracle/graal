@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
@@ -197,13 +198,13 @@ public interface NodeFactoryFacade {
      *
      * @param staticInits
      * @param mainCallTarget
-     * @param allocatedGlobalAddresses
+     * @param staticDestructors
      * @param args
      * @param mainTypes
      * @param sourceFile
      * @return the global root
      */
-    RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
+    RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMNode[] staticDestructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
 
     /**
      * Wraps the global root (e.g., the main function in C) to convert its result.
@@ -298,5 +299,7 @@ public interface NodeFactoryFacade {
     RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode);
 
     LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs);
+
+    Object allocateGlobalVariable(GlobalVariable globalVariable);
 
 }
