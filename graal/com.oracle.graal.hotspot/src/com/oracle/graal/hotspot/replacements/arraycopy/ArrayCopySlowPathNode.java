@@ -28,6 +28,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.ValueNode;
@@ -35,7 +36,7 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.nodes.BasicArrayCopyNode;
 
-@NodeInfo
+@NodeInfo(allowedUsageTypes = InputType.Memory)
 public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {
 
     public static final NodeClass<ArrayCopySlowPathNode> TYPE = NodeClass.create(ArrayCopySlowPathNode.class);
