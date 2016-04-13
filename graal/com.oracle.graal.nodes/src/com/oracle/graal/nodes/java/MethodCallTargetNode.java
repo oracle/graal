@@ -218,7 +218,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     private boolean tryCheckCastSingleImplementor(ValueNode receiver, TypeReference speculatedType) {
         ResolvedJavaType singleImplementor = speculatedType.getType();
         if (singleImplementor != null) {
-            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType());
+            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveConcreteMethod(targetMethod(), invoke().getContextType());
             if (singleImplementorMethod != null) {
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
