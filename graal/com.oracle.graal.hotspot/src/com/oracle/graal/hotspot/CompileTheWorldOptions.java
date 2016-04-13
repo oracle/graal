@@ -31,8 +31,8 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 /**
  * Options related to {@link CompileTheWorld}.
  *
- * Note: This must be a top level class to work around for <a
- * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
+ * Note: This must be a top level class to work around for
+ * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
 public class CompileTheWorldOptions {
     // @formatter:off

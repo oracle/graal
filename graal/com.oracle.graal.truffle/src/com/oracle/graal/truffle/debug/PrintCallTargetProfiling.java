@@ -54,7 +54,7 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
 
         List<OptimizedCallTarget> uniqueSortedTargets = groupedTargets.keySet().stream().sorted(
                         (target1, target2) -> sumCalls(groupedTargets.get(target2), p -> p.getTotalCallCount()) - sumCalls(groupedTargets.get(target1), p -> p.getTotalCallCount())).collect(
-                        Collectors.toList());
+                                        Collectors.toList());
 
         int totalDirectCallCount = 0;
         int totalInlinedCallCount = 0;

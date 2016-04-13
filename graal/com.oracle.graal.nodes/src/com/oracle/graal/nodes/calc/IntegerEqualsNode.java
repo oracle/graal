@@ -174,7 +174,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
              * a & c == c is the same as a & c != 0, if c is a single bit.
              */
             AndNode andNode = (AndNode) nonConstant;
-            if (constant instanceof PrimitiveConstant && Long.bitCount(((PrimitiveConstant) constant).asLong()) == 1 && andNode.getY().isConstant() && andNode.getY().asJavaConstant().equals(constant)) {
+            if (constant instanceof PrimitiveConstant && Long.bitCount(((PrimitiveConstant) constant).asLong()) == 1 && andNode.getY().isConstant() &&
+                            andNode.getY().asJavaConstant().equals(constant)) {
                 return new LogicNegationNode(new IntegerTestNode(andNode.getX(), andNode.getY()));
             }
         }

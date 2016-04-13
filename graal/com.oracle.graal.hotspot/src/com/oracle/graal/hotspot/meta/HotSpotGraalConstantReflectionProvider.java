@@ -123,10 +123,10 @@ public class HotSpotGraalConstantReflectionProvider extends HotSpotConstantRefle
     }
 
     /**
-     * Separate out the static initialization of
-     * {@linkplain #isEmbeddable(HotSpotResolvedJavaField) embeddable fields} to eliminate cycles
-     * between clinit and other locks that could lead to deadlock. Static code that doesn't call
-     * back into type or field machinery is probably ok but anything else should be made lazy.
+     * Separate out the static initialization of {@linkplain #isEmbeddable(HotSpotResolvedJavaField)
+     * embeddable fields} to eliminate cycles between clinit and other locks that could lead to
+     * deadlock. Static code that doesn't call back into type or field machinery is probably ok but
+     * anything else should be made lazy.
      */
     static class ImmutableCodeLazy {
 

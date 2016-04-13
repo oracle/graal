@@ -80,7 +80,9 @@ public class VerifierAnnotationProcessor extends AbstractProcessor {
     }
 
     public List<AbstractVerifier> getVerifiers() {
-        /* Initialized lazily to fail(CNE) when the processor is invoked and not when it is created. */
+        /*
+         * Initialized lazily to fail(CNE) when the processor is invoked and not when it is created.
+         */
         if (verifiers == null) {
             assert this.processingEnv != null : "ProcessingEnv must be initialized before calling getVerifiers.";
             verifiers = new ArrayList<>();

@@ -312,16 +312,16 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
 
         public void printStatistics(GraalTruffleRuntime rt, Function<T, String> toStringFunction) {
             types.keySet().stream().sorted(Comparator.comparing(c -> -types.get(c).getSum())).//
-            forEach(c -> {
-                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
-            });
+                            forEach(c -> {
+                                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
+                            });
         }
 
         public void accept(Stream<T> classes) {
             classes.collect(groupingBy(identity(), counting())).//
-            forEach((clazz, count) -> {
-                types.computeIfAbsent(clazz, c -> new IntSummaryStatistics()).accept(count.intValue());
-            });
+                            forEach((clazz, count) -> {
+                                types.computeIfAbsent(clazz, c -> new IntSummaryStatistics()).accept(count.intValue());
+                            });
         }
     }
 

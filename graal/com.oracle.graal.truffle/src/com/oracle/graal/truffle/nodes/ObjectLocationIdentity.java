@@ -33,11 +33,15 @@ import jdk.vm.ci.meta.LocationIdentity;
  */
 public final class ObjectLocationIdentity extends LocationIdentity {
 
-    private JavaConstant object;
+    private final JavaConstant object;
 
     public static LocationIdentity create(JavaConstant object) {
         assert object.getJavaKind() == JavaKind.Object && object.isNonNull();
         return new ObjectLocationIdentity(object);
+    }
+
+    private ObjectLocationIdentity(JavaConstant object) {
+        this.object = object;
     }
 
     @Override
@@ -52,10 +56,6 @@ public final class ObjectLocationIdentity extends LocationIdentity {
     @Override
     public int hashCode() {
         return object.hashCode();
-    }
-
-    private ObjectLocationIdentity(JavaConstant object) {
-        this.object = object;
     }
 
     @Override

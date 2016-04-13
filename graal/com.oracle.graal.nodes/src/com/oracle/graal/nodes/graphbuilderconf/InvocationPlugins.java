@@ -125,8 +125,7 @@ public class InvocationPlugins {
     }
 
     /**
-     * Utility for
-     * {@linkplain InvocationPlugins#register(InvocationPlugin, Class, String, Class...)
+     * Utility for {@linkplain InvocationPlugins#register(InvocationPlugin, Class, String, Class...)
      * registration} of invocation plugins.
      */
     public static class Registration implements MethodSubstitutionRegistry {

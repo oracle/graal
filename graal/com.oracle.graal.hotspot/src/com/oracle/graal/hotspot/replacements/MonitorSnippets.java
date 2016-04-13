@@ -117,8 +117,8 @@ import com.oracle.graal.word.WordBase;
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
  *
- * The locking algorithm used is described in the paper <a
- * href="http://dl.acm.org/citation.cfm?id=1167515.1167496"> Eliminating synchronization-related
+ * The locking algorithm used is described in the paper
+ * <a href="http://dl.acm.org/citation.cfm?id=1167515.1167496"> Eliminating synchronization-related
  * atomic operations with biased locking and bulk rebiasing</a> by Kenneth Russell and David
  * Detlefs.
  *
@@ -276,7 +276,8 @@ public class MonitorSnippets implements Snippets {
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(OffsetAddressNode.address(object, markOffset()), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY,
+                                        compareAndSwap(OffsetAddressNode.address(object, markOffset()), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object, true);
                             lockBiasAcquired.inc();

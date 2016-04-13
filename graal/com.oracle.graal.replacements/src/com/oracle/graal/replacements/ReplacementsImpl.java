@@ -394,8 +394,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                     initialIntrinsicContext = new IntrinsicContext(original, method, INLINE_AFTER_PARSING);
                 }
 
-                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(
-                                graph);
+                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
+                                initialIntrinsicContext).apply(
+                                                graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));

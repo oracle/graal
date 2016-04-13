@@ -25,8 +25,8 @@ package com.oracle.graal.debug;
 import com.oracle.graal.debug.internal.DebugScope;
 
 /**
- * A utility for scoping a change to the current debug
- * {@linkplain DebugScope#setConfig(DebugConfig) configuration}. For example:
+ * A utility for scoping a change to the current debug {@linkplain DebugScope#setConfig(DebugConfig)
+ * configuration}. For example:
  *
  * <pre>
  *     DebugConfig config = ...;

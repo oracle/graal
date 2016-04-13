@@ -189,7 +189,8 @@ public class IntervalWalker {
             binding = fixed != Interval.EndMarker && fixed.from() <= any.from() ? RegisterBinding.Fixed : RegisterBinding.Any;
 
             assert binding == RegisterBinding.Fixed && fixed.from() <= any.from() || binding == RegisterBinding.Any && any.from() <= fixed.from() : "wrong interval!!!";
-            assert any == Interval.EndMarker || fixed == Interval.EndMarker || any.from() != fixed.from() || binding == RegisterBinding.Fixed : "if fixed and any-Interval start at same position, fixed must be processed first";
+            assert any == Interval.EndMarker || fixed == Interval.EndMarker || any.from() != fixed.from() ||
+                            binding == RegisterBinding.Fixed : "if fixed and any-Interval start at same position, fixed must be processed first";
 
         } else if (fixed != Interval.EndMarker) {
             binding = RegisterBinding.Fixed;

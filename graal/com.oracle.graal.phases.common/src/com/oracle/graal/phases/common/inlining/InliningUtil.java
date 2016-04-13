@@ -606,8 +606,9 @@ public class InliningUtil {
                 // partial intrinsic, these calls are given frame states
                 // that exclude the outer frame state denoting a position
                 // in the intrinsic code.
-                assert inlinedMethod.getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
-                                frameState;
+                assert inlinedMethod.getAnnotation(
+                                MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
+                                                frameState;
             } else if (frameState.method().getName().equals(inlinedMethod.getName())) {
                 // This can happen for method substitutions.
             } else {

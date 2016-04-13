@@ -353,7 +353,8 @@ public class AMD64Assembler extends Assembler {
     /**
      * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field. There
      * are two cases for the memory operand:<br>
-     * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0. <br>
+     * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0.
+     * <br>
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
      */
     protected static int getRXB(Register reg, AMD64Address rm) {
