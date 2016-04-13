@@ -2197,7 +2197,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         ValueNode exception = frameState.stack[0];
                         FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                        append(new IfNode(graph.addOrUniqueWithInputs(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        append(new IfNode(graph.addOrUniqueWithInputs(createInstanceOf(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
@@ -2213,7 +2213,7 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.pop(JavaKind.Object);
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
-            IfNode ifNode = append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), catchSuccessor, nextDispatch, 0.5));
+            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception, null)), catchSuccessor, nextDispatch, 0.5));
             piNode.setGuard(ifNode.trueSuccessor());
         } else {
             handleUnresolvedExceptionType(catchType);
@@ -2999,7 +2999,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, null));
                     if (typeCheck.isTautology()) {
                         castNode = object;
                     } else {
@@ -3062,7 +3062,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
-                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, null));
                     if (!typeCheck.isTautology()) {
                         append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
                     }
