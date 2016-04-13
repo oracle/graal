@@ -81,10 +81,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         return func;
     }
 
-    public static LLVMFunctionDescriptor createFromName(String name) {
-        return create(name, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false, -1);
-    }
-
     public String getName() {
         return functionName;
     }
