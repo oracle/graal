@@ -2,6 +2,7 @@ import tarfile
 import os
 from os.path import join
 import shutil
+import zipfile
 
 import mx
 import mx_findbugs
@@ -49,6 +50,9 @@ def executeGate():
     with VM('server', 'product'):
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
+    with VM('server', 'product'):
+        with Task('TestPolglot', tasks) as t:
+            if t: runPolyglotTestCases()
     with VM('server', 'product'):
         with Task('TestSulong', tasks) as t:
             if t: runTruffleTestCases()
@@ -408,6 +412,7 @@ def runTests(args=None):
     runLLVMTestCases()
     runTruffleTestCases()
     runTypeTestCases()
+    runPolyglotTestCases()
     runBenchmarkTestCases()
 
 def runBenchmarkTestCases(args=None):
@@ -453,8 +458,18 @@ def runTypeTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
+def runPolyglotTestCases(args=None):
+    """runs the type test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
+
 def getCommonOptions(lib_args=None):
-    return ['-Dgraal.TruffleCompilationExceptionsArePrinted=true', '-Dgraal.ExitVMOnException=true', '-Dsulong.IntrinsifyCFunctions=false', getSearchPathOption(lib_args)]
+    return [
+        '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
+        '-Dgraal.ExitVMOnException=true',
+        '-Dsulong.IntrinsifyCFunctions=false',
+        getSearchPathOption(lib_args)
+    ]
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
@@ -475,7 +490,11 @@ def getSearchPathOption(lib_args=None):
         print osStr, "not supported!"
 
     for lib_arg in ['-lc', '-lstdc++'] + lib_args:
-        lib_names.append(lib_aliases[lib_arg][index])
+        if lib_arg in lib_aliases:
+            lib_arg = lib_aliases[lib_arg][index]
+        else:
+            lib_arg = lib_arg[2:]
+        lib_names.append(lib_arg)
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
@@ -519,6 +538,28 @@ def opt(args=None):
     ensureLLVMBinariesExist()
     optPath = _toolDir + 'tools/llvm/bin/opt'
     return mx.run([optPath] + args)
+
+def link(args=None):
+    """Links LLVM bitcode into an su file."""
+    modules = []
+    libraries = []
+    n = 0
+    while n < len(args):
+        arg = args[n]
+        if arg == '-o':
+            out = args[n + 1]
+            n += 1
+        elif arg.startswith('-l'):
+            libraries += [arg[2:]]
+        else:
+            modules += [arg]
+        n += 1
+    if out is None:
+        out = 'out.su'
+    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+        for module in modules:
+            z.write(module)
+        z.writestr('libs', '\n'.join(libraries))
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
@@ -667,10 +708,12 @@ mx.update_commands(_suite, {
     'su-tests-sulong' : [runTruffleTestCases, ''],
     'su-tests-nwcc' : [runNWCCTestCases, ''],
     'su-tests-types' : [runTypeTestCases, ''],
+    'su-tests-polyglot' : [runPolyglotTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
+    'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],

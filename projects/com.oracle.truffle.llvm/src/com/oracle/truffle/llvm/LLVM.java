@@ -30,7 +30,12 @@
 package com.oracle.truffle.llvm;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -75,9 +80,42 @@ public class LLVM {
             public CallTarget parse(Source code, Node context, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
-                ParserResult parserResult = parseFile(code.getPath(), llvmContext);
-                llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
-                return parserResult.getMainFunction();
+
+                if (code.getMimeType() == LLVMLanguage.LLVM_MIME_TYPE) {
+                    ParserResult parserResult = parseFile(code.getPath(), llvmContext);
+                    llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                    return parserResult.getMainFunction();
+                } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
+                    final List<CallTarget> mainFunctions = new ArrayList<>();
+
+                    final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
+
+                    try {
+                        library.readContents(dependentLibrary -> {
+                            throw new UnsupportedOperationException();
+                        }, source -> {
+                            ParserResult parserResult;
+                            try {
+                                parserResult = parseString(source.getCode(), llvmContext);
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+
+                            llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                            mainFunctions.add(parserResult.getMainFunction());
+                        });
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+
+                    if (mainFunctions.size() != 1) {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    return mainFunctions.get(0);
+                } else {
+                    throw new IllegalArgumentException("undeclared mime type");
+                }
             }
 
             @Override
@@ -102,6 +140,20 @@ public class LLVM {
         System.arraycopy(args, 1, otherArgs, 0, otherArgs.length);
         int status = executeMain(file, otherArgs);
         System.exit(status);
+    }
+
+    public static ParserResult parseString(String source, LLVMContext context) throws IOException {
+        final File file = File.createTempFile("sulong", ".ll");
+
+        try {
+            try (FileOutputStream stream = new FileOutputStream(file.getPath())) {
+                stream.write(source.getBytes(StandardCharsets.UTF_8));
+            }
+
+            return parseFile(file.getPath(), context);
+        } finally {
+            file.delete();
+        }
     }
 
     public static ParserResult parseFile(String filePath, LLVMContext context) {

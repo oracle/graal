@@ -80,6 +80,10 @@ Now, Sulong is ready to start. You can for example compile a C file named
     mx su-clang -S -emit-llvm -o test.ll test.c
     mx su-run test.ll
 
+Libraries to load can be specified using the `-l` flag, as in a compiler:
+
+    mx su-run -lz test.ll
+
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
 for other IDEs):
@@ -88,6 +92,21 @@ for other IDEs):
 
 If you want to inspect the command line that mx generates for a mx
 command you can use the -v flag.
+
+Sulong Library Files
+--------------------
+
+You can package LLVM bitcode and a list of library dependencies using the
+`su-link` linker command to create a `.su` file which is easy to manage and
+distribute. You can also specify other libraries to load when this library
+is loaded using the `-l` flag:
+
+    mx su-link -o test.su -lz test.ll
+
+You can run this `.su` file directly and it will know to load dependencies that
+you specified at link-time:
+
+   mx su-run test.su
 
 From where does the project name originate?
 -------------------------------------------

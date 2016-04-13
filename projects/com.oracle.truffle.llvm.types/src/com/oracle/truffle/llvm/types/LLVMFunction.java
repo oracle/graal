@@ -29,13 +29,24 @@
  */
 package com.oracle.truffle.llvm.types;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunction> {
 
@@ -176,7 +187,69 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
 
     @Override
     public ForeignAccess getForeignAccess() {
-        throw new AssertionError();
+        return ForeignAccess.create(LLVMFunction.class, new Factory10() {
+
+            @Override
+            public CallTarget accessIsNull() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessIsExecutable() {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+            }
+
+            @Override
+            public CallTarget accessIsBoxed() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessHasSize() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessGetSize() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessUnbox() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessRead() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessWrite() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessExecute(int argumentsLength) {
+                return Truffle.getRuntime().createCallTarget(new ForeignCallNode());
+            }
+
+            @Override
+            public CallTarget accessInvoke(int argumentsLength) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessNew(int argumentsLength) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CallTarget accessMessage(Message unknown) {
+                throw new UnsupportedOperationException();
+            }
+
+        });
     }
 
     public static int getNumberRegisteredFunctions() {
@@ -214,6 +287,63 @@ public final class LLVMFunction implements TruffleObject, Comparable<LLVMFunctio
                 return true;
             }
         }
+    }
+
+    private static class ForeignCallNode extends RootNode {
+
+        private final LLVMStack stack;
+
+        @Child private IndirectCallNode callNode;
+
+        protected ForeignCallNode() {
+            super(getLLVMLanguage(), null, new FrameDescriptor());
+            stack = getLLVMStack();
+            callNode = Truffle.getRuntime().createIndirectCallNode();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            assert ForeignAccess.getArguments(frame).isEmpty();
+            final LLVMFunction function = (LLVMFunction) ForeignAccess.getReceiver(frame);
+            final CallTarget callTarget = getCallTarget(function);
+            try {
+                return callNode.call(frame, callTarget, new Object[]{stack.allocate()});
+            } finally {
+                stack.free();
+            }
+        }
+
+        // TODO No static access to these classes at the moment
+
+        @SuppressWarnings("unchecked")
+        private static Class<? extends TruffleLanguage<?>> getLLVMLanguage() {
+            try {
+                return (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage");
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private static LLVMStack getLLVMStack() {
+            try {
+                final Class<?> contextClass = Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMContext");
+                final Method getStaticStackMethod = contextClass.getMethod("getStaticStack");
+                return (LLVMStack) getStaticStackMethod.invoke(null);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private static CallTarget getCallTarget(LLVMFunction function) {
+            try {
+                final Class<?> contextClass = Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMContext");
+                final Method getCallTargetMethod = contextClass.getMethod("getCallTarget", LLVMFunction.class);
+                return (CallTarget) getCallTargetMethod.invoke(null, function);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
     }
 
 }
