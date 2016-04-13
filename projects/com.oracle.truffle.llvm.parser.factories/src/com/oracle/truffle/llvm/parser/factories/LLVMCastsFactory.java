@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI1NodeFactory.LLVMI8ToI1Nod
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVM80BitFloatToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMAddressToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMDoubleToI32NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFloatToI32BitNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFloatToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFunctionToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMI16ToI32NodeGen;
@@ -303,7 +304,7 @@ public final class LLVMCastsFactory {
         } else if (conv == LLVMConversionType.BITCAST) {
             switch (targetType) {
                 case I32:
-                    return LLVMFloatToI32NodeGen.create(fromNode);
+                    return LLVMFloatToI32BitNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType);
             }

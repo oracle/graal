@@ -390,6 +390,36 @@ suite = {
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ]
   },
+    "SULONG_TEST" : {
+      "path" : "build/sulong_test.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/sulong_test.src.zip",
+      "dependencies" : ["com.oracle.truffle.llvm.test"],
+      "exclude" : [
+       "EMF_COMMON",
+       "LLVM_IR_PARSER",
+       "ECORE",
+       "INJECT",
+       "XTEXT",
+       "EMF_ECORE_XMI",
+       "XTEXT_TYPES",
+       "XTEXT_JAVAX_INJECT",
+       "XTEXT_LOG4J",
+       "XTEXT_GOOGLE_GUAVA",
+       "XTEXT_ANTLR_RUNTIME",
+       "XTEXT_UTIL",
+       "ECLIPSE_EQUINOX",
+       "mx:JUNIT"
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "graal-core:GRAAL_API",
+        "graal-core:GRAAL_COMPILER",
+        "graal-core:GRAAL_HOTSPOT",
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "sulong:SULONG"
+      ]
+  },
  }
 }
 
