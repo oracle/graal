@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI64VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
@@ -201,8 +201,8 @@ public class LLVMArgNode {
 
         @Specialization
         @Override
-        public LLVMFunction executeFunction(VirtualFrame frame) {
-            return (LLVMFunction) frame.getArguments()[getIndex()];
+        public LLVMFunctionDescriptor executeFunction(VirtualFrame frame) {
+            return (LLVMFunctionDescriptor) frame.getArguments()[getIndex()];
         }
 
     }

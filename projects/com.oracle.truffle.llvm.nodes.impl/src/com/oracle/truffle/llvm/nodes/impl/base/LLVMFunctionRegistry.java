@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -41,25 +42,42 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
  * Manages Sulong functions and intrinsified native functions.
  */
 public class LLVMFunctionRegistry {
 
+    // do not start with 0, otherwise the first function
+    // pointer would be == NULL
+    private static final int FUNCTION_START_INDEX = 1;
+
     private final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
-    private NodeFactoryFacade facade;
+    private final NodeFactoryFacade facade;
+
+    /**
+     * The function index assigned to the next function descriptor.
+     */
+    private int currentFunctionIndex = FUNCTION_START_INDEX;
+
+    /**
+     * Maps a function index (see {@link LLVMFunctionDescriptor#getFunctionIndex()} to a call
+     * target.
+     */
+    @CompilationFinal private RootCallTarget[] functionPtrCallTargetMap;
+
+    /**
+     * Maps a function index (see {@link LLVMFunctionDescriptor#getFunctionIndex()} to a function
+     * descriptor.
+     */
+    @CompilationFinal private LLVMFunctionDescriptor[] functionDescriptors = new LLVMFunctionDescriptor[FUNCTION_START_INDEX];
 
     public LLVMFunctionRegistry(LLVMOptimizationConfiguration optimizationConfig, NodeFactoryFacade facade) {
         this.facade = facade;
         this.intrinsics = facade.getFunctionSubstitutionFactories(optimizationConfig);
     }
-
-    /**
-     * Maps a function index (see {@link LLVMFunction#getFunctionIndex()} to a call target.
-     */
-    @CompilationFinal private RootCallTarget[] functionPtrCallTargetMap;
 
     /**
      * Looks up the call target for a specific function. The lookup may return <code>null</code> if
@@ -68,7 +86,7 @@ public class LLVMFunctionRegistry {
      * @param function the function
      * @return the call target, <code>null</code> if not found.
      */
-    public RootCallTarget lookup(LLVMFunction function) {
+    public RootCallTarget lookup(LLVMFunctionDescriptor function) {
         int functionIndex = function.getFunctionIndex();
         if (functionIndex >= 0 && functionIndex < functionPtrCallTargetMap.length) {
             RootCallTarget result = functionPtrCallTargetMap[functionIndex];
@@ -78,17 +96,18 @@ public class LLVMFunctionRegistry {
         }
     }
 
-    public void register(Map<LLVMFunction, RootCallTarget> functionCallTargets) {
-        functionPtrCallTargetMap = new RootCallTarget[LLVMFunction.getNumberRegisteredFunctions() + intrinsics.size()];
+    public void register(Map<LLVMFunctionDescriptor, RootCallTarget> functionCallTargets) {
+        CompilerAsserts.neverPartOfCompilation();
+        functionPtrCallTargetMap = new RootCallTarget[FUNCTION_START_INDEX + functionDescriptors.length + intrinsics.size()];
         registerIntrinsics();
-        for (LLVMFunction func : functionCallTargets.keySet()) {
+        for (LLVMFunctionDescriptor func : functionCallTargets.keySet()) {
             functionPtrCallTargetMap[func.getFunctionIndex()] = functionCallTargets.get(func);
         }
     }
 
     private void registerIntrinsics() {
         for (String intrinsicFunction : intrinsics.keySet()) {
-            LLVMFunction function = LLVMFunction.createFromName(intrinsicFunction);
+            LLVMFunctionDescriptor function = createFunctionDescriptor(intrinsicFunction, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
             NodeFactory<? extends LLVMNode> nodeFactory = intrinsics.get(intrinsicFunction);
             List<Class<? extends Node>> executionSignature = nodeFactory.getExecutionSignature();
             int nrArguments = executionSignature.size();
@@ -99,13 +118,46 @@ public class LLVMFunctionRegistry {
             LLVMNode intrinsicNode = nodeFactory.createNode((Object[]) args);
             RootNode functionRoot = facade.createFunctionSubstitutionRootNode(intrinsicNode);
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(functionRoot);
-            addToFunctionMap(function, callTarget);
+            assert functionPtrCallTargetMap[function.getFunctionIndex()] == null;
+            functionPtrCallTargetMap[function.getFunctionIndex()] = callTarget;
         }
     }
 
-    private void addToFunctionMap(LLVMFunction function, RootCallTarget callTarget) {
-        assert functionPtrCallTargetMap[function.getFunctionIndex()] == null;
-        functionPtrCallTargetMap[function.getFunctionIndex()] = callTarget;
+    /**
+     * Creates an unique function descriptor identified by the given <code>name</code>.
+     *
+     * @param name the function's name
+     * @param returnType the function's return type
+     * @param paramTypes the function's
+     * @param varArgs
+     * @return the function descriptor
+     */
+    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType returnType, LLVMRuntimeType[] paramTypes, boolean varArgs) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (int i = FUNCTION_START_INDEX; i < functionDescriptors.length; i++) {
+            if (functionDescriptors[i].getName().equals(name)) {
+                return functionDescriptors[i];
+            }
+        }
+        LLVMFunctionDescriptor function = LLVMFunctionDescriptor.create(name, returnType, paramTypes, varArgs, currentFunctionIndex++);
+        LLVMFunctionDescriptor[] newFunctions = new LLVMFunctionDescriptor[functionDescriptors.length + 1];
+        System.arraycopy(functionDescriptors, 0, newFunctions, 0, functionDescriptors.length);
+        newFunctions[function.getFunctionIndex()] = function;
+        functionDescriptors = newFunctions;
+        return function;
+    }
+
+    /**
+     * Creates a function descriptor from the given <code>index</code> that has previously been
+     * obtained by {@link LLVMFunctionDescriptor#getFunctionIndex()}}.
+     *
+     * @param index the function index
+     * @return the function descriptor
+     */
+    public LLVMFunctionDescriptor createFromIndex(int index) {
+        LLVMFunctionDescriptor llvmFunction = functionDescriptors[index];
+        assert llvmFunction != null;
+        return llvmFunction;
     }
 
 }

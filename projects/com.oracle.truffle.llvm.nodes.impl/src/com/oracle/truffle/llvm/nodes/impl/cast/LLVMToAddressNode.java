@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public abstract class LLVMToAddressNode extends LLVMAddressNode {
 
@@ -72,8 +72,8 @@ public abstract class LLVMToAddressNode extends LLVMAddressNode {
     public abstract static class LLVMFunctionToAddressNode extends LLVMToAddressNode {
 
         @Specialization
-        public LLVMAddress executeI64(LLVMFunction from) {
-            return LLVMAddress.fromLong(from.getFunctionAddress().getVal());
+        public LLVMAddress executeI64(LLVMFunctionDescriptor from) {
+            return LLVMAddress.fromLong(from.getFunctionIndex());
         }
     }
 

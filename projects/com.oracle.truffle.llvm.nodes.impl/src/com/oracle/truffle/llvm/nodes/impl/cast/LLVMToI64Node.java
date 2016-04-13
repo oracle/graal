@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
@@ -188,8 +188,8 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
     public abstract static class LLVMFunctionToI64Node extends LLVMToI64Node {
 
         @Specialization
-        public long executeI64(LLVMFunction from) {
-            return from.getFunctionAddress().getVal();
+        public long executeI64(LLVMFunctionDescriptor from) {
+            return from.getFunctionIndex();
         }
     }
 }

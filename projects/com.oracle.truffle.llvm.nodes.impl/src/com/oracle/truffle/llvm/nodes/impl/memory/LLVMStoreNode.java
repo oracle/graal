@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -161,8 +161,8 @@ public abstract class LLVMStoreNode extends LLVMNode {
     public abstract static class LLVMFunctionStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, LLVMFunction function) {
-            LLVMHeap.putFunction(address, function);
+        public void execute(LLVMAddress address, LLVMFunctionDescriptor function) {
+            LLVMHeap.putFunctionIndex(address, function.getFunctionIndex());
         }
 
     }
@@ -421,8 +421,8 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMFunction currentValue = values[i].executeFunction(frame);
-                LLVMHeap.putFunction(currentAddress, currentValue);
+                LLVMFunctionDescriptor currentValue = values[i].executeFunction(frame);
+                LLVMHeap.putFunctionIndex(currentAddress, currentValue.getFunctionIndex());
                 currentAddress = currentAddress.increment(stride);
             }
             return addr;

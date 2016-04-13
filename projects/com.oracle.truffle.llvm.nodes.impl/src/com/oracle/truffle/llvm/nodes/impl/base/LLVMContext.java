@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public class LLVMContext extends ExecutionContext {
@@ -63,7 +63,7 @@ public class LLVMContext extends ExecutionContext {
         lastContext = this;
     }
 
-    public RootCallTarget getFunction(LLVMFunction function) {
+    public RootCallTarget getFunction(LLVMFunctionDescriptor function) {
         return registry.lookup(function);
     }
 
@@ -72,7 +72,7 @@ public class LLVMContext extends ExecutionContext {
         return registry;
     }
 
-    public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMExpressionNode[] args) {
+    public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
         return nativeLookup.getNativeHandle(function, args);
     }
 
@@ -80,7 +80,7 @@ public class LLVMContext extends ExecutionContext {
         return nativeLookup.getNativeHandle(functionName);
     }
 
-    public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
+    public Map<LLVMFunctionDescriptor, Integer> getNativeFunctionLookupStats() {
         return nativeLookup.getNativeFunctionLookupStats();
     }
 
@@ -108,7 +108,7 @@ public class LLVMContext extends ExecutionContext {
 
     private static LLVMContext lastContext;
 
-    public static CallTarget getCallTarget(LLVMFunction function) {
+    public static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
         return lastContext.registry.lookup(function);
     }
 

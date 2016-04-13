@@ -34,10 +34,11 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -67,11 +68,14 @@ public abstract class LLVMDirectLoadNode {
     }
 
     @NodeChild(type = LLVMAddressNode.class)
+    @NodeField(type = LLVMFunctionRegistry.class, name = "functionRegistry")
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMFunctionNode {
 
+        public abstract LLVMFunctionRegistry getFunctionRegistry();
+
         @Specialization
-        public LLVMFunction executeAddress(LLVMAddress addr) {
-            return LLVMHeap.getFunction(addr);
+        public LLVMFunctionDescriptor executeAddress(LLVMAddress addr) {
+            return getFunctionRegistry().createFromIndex(LLVMHeap.getFunctionIndex(addr));
         }
     }
 

@@ -33,7 +33,9 @@ import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
@@ -137,7 +139,8 @@ public final class LLVMMemoryReadWriteFactory {
             case ADDRESS:
                 return LLVMAddressDirectLoadNodeGen.create(loadTarget);
             case FUNCTION_ADDRESS:
-                return LLVMFunctionDirectLoadNodeGen.create(loadTarget);
+                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+                return LLVMFunctionDirectLoadNodeGen.create(loadTarget, context.getFunctionRegistry());
             case STRUCT:
             case ARRAY:
                 return LLVMStructDirectLoadNodeGen.create(loadTarget);

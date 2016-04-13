@@ -61,8 +61,8 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMFunction.LLVMRuntimeType;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMCallNode {
@@ -84,7 +84,7 @@ public abstract class LLVMCallNode {
         } else if (originalArgs[i] instanceof LLVM80BitFloatNode) {
             throw new AssertionError("foreign function interface does not support 80 bit floats yet");
         } else if (originalArgs[i] instanceof LLVMFunctionNode) {
-            LLVMFunction function = ((LLVMFunctionLiteralNode) originalArgs[i]).executeFunction();
+            LLVMFunctionDescriptor function = ((LLVMFunctionLiteralNode) originalArgs[i]).executeFunction();
             String functionName = function.getName();
             long getNativeSymbol = context.getNativeHandle(functionName);
             if (getNativeSymbol != 0) {
@@ -137,7 +137,7 @@ public abstract class LLVMCallNode {
         public Object executeGeneric(VirtualFrame frame) {
             CompilerDirectives.transferToInterpreter();
             if (functionNode instanceof LLVMFunctionLiteralNode) {
-                LLVMFunction function = functionNode.executeFunction(frame);
+                LLVMFunctionDescriptor function = functionNode.executeFunction(frame);
                 CallTarget callTarget = context.getFunction(function);
                 if (callTarget == null) {
                     NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(getArgs(), context));
@@ -182,7 +182,8 @@ public abstract class LLVMCallNode {
 
         private final NativeFunctionHandle functionHandle;
 
-        public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunction function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
+        public LLVMResolvedDirectNativeCallNode(@SuppressWarnings("unused") LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args,
+                        LLVMContext context) {
             super(prepareForNative(args, context));
             functionHandle = nativeFunctionHandle;
         }
@@ -194,10 +195,10 @@ public abstract class LLVMCallNode {
 
     }
 
-    public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunction function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args, LLVMContext context) {
-        if (function.getLlvmReturnType() == LLVMRuntimeType.ADDRESS || function.getLlvmReturnType() == LLVMRuntimeType.STRUCT) {
+    public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunctionDescriptor function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args, LLVMContext context) {
+        if (function.getReturnType() == LLVMRuntimeType.ADDRESS || function.getReturnType() == LLVMRuntimeType.STRUCT) {
             return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args, context);
-        } else if (function.getLlvmReturnType() == LLVMRuntimeType.X86_FP80) {
+        } else if (function.getReturnType() == LLVMRuntimeType.X86_FP80) {
             return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args, context);
         } else {
             return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args, context);
@@ -233,7 +234,7 @@ public abstract class LLVMCallNode {
         @Override
         public Object executeGeneric(VirtualFrame frame) {
             Object[] args = evaluateArgs(frame);
-            LLVMFunction function = functionCallNode.executeFunction(frame);
+            LLVMFunctionDescriptor function = functionCallNode.executeFunction(frame);
             return chain.executeDispatch(frame, function, args);
         }
 
@@ -255,9 +256,9 @@ public abstract class LLVMCallNode {
             this.nodes = nodes;
         }
 
-        public abstract Object executeDispatch(VirtualFrame frame, LLVMFunction function, Object[] arguments);
+        public abstract Object executeDispatch(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments);
 
-        public CallTarget getIndirectCallTarget(LLVMContext currentContext, LLVMFunction function, LLVMExpressionNode[] args) {
+        public CallTarget getIndirectCallTarget(LLVMContext currentContext, LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
             CallTarget callTarget = currentContext.getFunction(function);
             if (callTarget == null) {
                 return getNativeCallTarget(currentContext, function, args);
@@ -267,7 +268,7 @@ public abstract class LLVMCallNode {
         }
 
         @TruffleBoundary
-        private CallTarget getNativeCallTarget(LLVMContext currentContext, LLVMFunction function, LLVMExpressionNode[] args) {
+        private CallTarget getNativeCallTarget(LLVMContext currentContext, LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
             if (CompilerDirectives.inInterpreter() && !printedNativePerformanceWarning) {
                 printIndirectNativeCallWarning(function);
             }
@@ -288,15 +289,15 @@ public abstract class LLVMCallNode {
             }
         }
 
-        @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function.getFunctionAddress() == cachedFunction.getFunctionAddress()")
-        protected Object doDirect(VirtualFrame frame, @SuppressWarnings("unused") LLVMFunction function, Object[] arguments, //
-                        @SuppressWarnings("unused") @Cached("function") LLVMFunction cachedFunction, //
+        @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function.getFunctionIndex() == cachedFunction.getFunctionIndex()")
+        protected Object doDirect(VirtualFrame frame, @SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments, //
+                        @SuppressWarnings("unused") @Cached("function") LLVMFunctionDescriptor cachedFunction, //
                         @Cached("create(getIndirectCallTarget(getContext(), cachedFunction, getNodes()))") DirectCallNode callNode) {
             return callNode.call(frame, arguments);
         }
 
         @Specialization(contains = "doDirect")
-        protected Object doIndirect(VirtualFrame frame, LLVMFunction function, Object[] arguments, //
+        protected Object doIndirect(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             if (CompilerDirectives.inInterpreter() && !printedExceedInlineCacheWarning) {
                 printExceededInlineCacheWarning(function);
@@ -304,13 +305,13 @@ public abstract class LLVMCallNode {
             return callNode.call(frame, getIndirectCallTarget(getContext(), function, getNodes()), arguments);
         }
 
-        private void printIndirectNativeCallWarning(LLVMFunction function) {
+        private void printIndirectNativeCallWarning(LLVMFunctionDescriptor function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             printedNativePerformanceWarning = true;
             LLVMLogger.performanceWarning("indirectly calling a native function " + function.getName() + " + is expensive at the moment!");
         }
 
-        private void printExceededInlineCacheWarning(LLVMFunction function) {
+        private void printExceededInlineCacheWarning(LLVMFunctionDescriptor function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMLogger.performanceWarning("exceeded inline cache limit for function " + function);
             printedExceedInlineCacheWarning = true;
