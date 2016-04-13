@@ -157,7 +157,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
-import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 /**
@@ -231,63 +230,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
         Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions = visit(model, facade);
         LLVMFunctionDescriptor mainFunction = searchFunction(parsedFunctions, "@main");
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
-        int argParamCount = mainFunction.getParameterTypes().length;
         RootNode globalFunction;
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);
-        int argsCount = mainArgs.length + 1;
-        if (argParamCount == 0) {
-            globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations);
-        } else {
-            if (argParamCount == 1) {
-                globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations, argsCount);
-            } else {
-                Object[] args = new Object[argsCount];
-                args[0] = sourceFile;
-                System.arraycopy(mainArgs, 0, args, 1, mainArgs.length);
-                LLVMParserAsserts.assertNoNullElement(args);
-                LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
-                // Checkstyle: stop magic number check
-                if (argParamCount == 2) {
-                    globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations, argsCount, allocatedArgsStartAddress);
-                } else if (argParamCount == 3) {
-                    LLVMAddress posixEnvPointer = LLVMAddress.NULL_POINTER;
-                    globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations, argsCount, allocatedArgsStartAddress,
-                                    posixEnvPointer);
-                } else {
-                    throw new AssertionError(argParamCount);
-                }
-                // Checkstyle: resume magic number check
-            }
-        }
+        globalFunction = factoryFacade.createGlobalRootNode(staticInits, mainCallTarget, deallocations, mainArgs, sourceFile, mainFunction.getParameterTypes());
         RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
         RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getReturnType());
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
         return new ParserResult(wrappedCallTarget, parsedFunctions);
-    }
-
-    private static LLVMAddress getArgsAsStringArray(Object... args) {
-        LLVMParserAsserts.assertNoNullElement(args);
-        String[] stringArgs = getStringArgs(args);
-        int argsMemory = stringArgs.length * LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
-        LLVMAddress allocatedArgsStartAddress = LLVMHeap.allocateMemory(argsMemory);
-        LLVMAddress allocatedArgs = allocatedArgsStartAddress;
-        for (int i = 0; i < stringArgs.length; i++) {
-            String string = stringArgs[i];
-            LLVMAddress allocatedCString = LLVMHeap.allocateCString(string);
-            LLVMMemory.putAddress(allocatedArgs, allocatedCString);
-            allocatedArgs = allocatedArgs.increment(LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE);
-        }
-        return allocatedArgsStartAddress;
-    }
-
-    private static String[] getStringArgs(Object... args) {
-        LLVMParserAsserts.assertNoNullElement(args);
-        String[] stringArgs = new String[args.length];
-        for (int i = 0; i < args.length; i++) {
-            stringArgs[i] = args[i].toString();
-        }
-        LLVMParserAsserts.assertNoNullElement(stringArgs);
-        return stringArgs;
     }
 
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
@@ -375,7 +324,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                     LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
                     LLVMExpressionNode loadedFunction = factoryFacade.createLoad(functionType, functionLoadTarget);
                     LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot())};
-                    assert argNodes.length == factoryFacade.getArgStartIndex();
+                    assert argNodes.length == factoryFacade.getArgStartIndex().get();
                     LLVMNode functionCall = factoryFacade.createFunctionCall(loadedFunction, argNodes, LLVMBaseType.VOID);
                     globalVarNodes.add(functionCall);
                 }
@@ -568,7 +517,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         EList<Parameter> pars = functionHeader.getParameters().getParameters();
         LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
         formalParamInits.add(factoryFacade.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, getStackPointerSlot()));
-        int argIndex = factoryFacade.getArgStartIndex();
+        int argIndex = factoryFacade.getArgStartIndex().get();
         if (resolve(functionHeader.getRettype()).isStruct()) {
             LLVMExpressionNode functionRetParNode = factoryFacade.createFunctionArgNode(argIndex++, LLVMBaseType.STRUCT);
             LLVMNode retValue = createAssignment((String) retSlot.getIdentifier(), functionRetParNode, functionHeader.getRettype());

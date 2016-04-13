@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.EObject;
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -59,8 +61,8 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
- * This class implements an abstract adapter that returns a default value (mostly <code>null</code>)
- * for each implemented method.
+ * This class implements an abstract adapter that returns <code>null</code> for each implemented
+ * method.
  */
 public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
@@ -260,7 +262,7 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object... args) {
+    public RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
         return null;
     }
 
@@ -296,8 +298,8 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public int getArgStartIndex() {
-        return 0;
+    public Optional<Integer> getArgStartIndex() {
+        return Optional.empty();
     }
 
     @Override

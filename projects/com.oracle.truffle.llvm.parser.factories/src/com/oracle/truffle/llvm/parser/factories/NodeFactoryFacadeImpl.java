@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -298,11 +300,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses,
-                    Object... args) {
-        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                        staticInits,
-                        mainCallTarget, allocatedGlobalAddresses,
-                        args);
+                    Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, staticInits, mainCallTarget, allocatedGlobalAddresses, args, sourceFile, mainTypes);
     }
 
     @Override
@@ -338,8 +337,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public int getArgStartIndex() {
-        return LLVMCallNode.ARG_START_INDEX;
+    public Optional<Integer> getArgStartIndex() {
+        return Optional.of(LLVMCallNode.ARG_START_INDEX);
     }
 
     @Override

@@ -56,7 +56,7 @@ public class TestHelper {
      * @param folder the root folder
      * @return list of collected files matching the extension
      */
-    static List<File> collectFilesWithExtension(File folder, final ProgrammingLanguage... languages) {
+    public static List<File> collectFilesWithExtension(File folder, final ProgrammingLanguage... languages) {
         if (!folder.isDirectory()) {
             throw new IllegalArgumentException(folder.getAbsolutePath() + " is not a folder!");
         }
@@ -93,16 +93,16 @@ public class TestHelper {
         return collected;
     }
 
-    static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile) {
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile) {
         return compileToLLVMIRWithClang(toBeCompiled, destinationFile, expectedFile, ClangOptions.builder());
     }
 
-    static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile, ClangOptions builder) {
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile, ClangOptions builder) {
         Clang.compileToLLVMIR(toBeCompiled, destinationFile, builder);
         return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, expectedFile);
     }
 
-    static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile) {
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile) {
         Clang.compileToLLVMIR(toBeCompiled, destinationFile, ClangOptions.builder());
         return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile);
     }
@@ -117,7 +117,7 @@ public class TestHelper {
         return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile);
     }
 
-    static File getTempLLFile(File toBeCompiled, String optionName) {
+    public static File getTempLLFile(File toBeCompiled, String optionName) {
         String absolutePathToFileName = absolutePathToFileName(toBeCompiled);
         String outputFileName = PathUtil.replaceExtension(absolutePathToFileName, "." + optionName + Constants.TMP_EXTENSION + Constants.LLVM_BITFILE_EXTENSION);
         File destinationFile = new File(LLVMPaths.TEMP_DIRECTORY, outputFileName);
@@ -138,7 +138,7 @@ public class TestHelper {
      *
      * @param bitcodeFile the bitcode file to be compiled
      */
-    static ProcessResult executeLLVMBinary(File bitcodeFile) {
+    public static ProcessResult executeLLVMBinary(File bitcodeFile) {
         try {
             File objectFile = File.createTempFile(absolutePathToFileName(bitcodeFile), ".o");
             File executable = File.createTempFile(absolutePathToFileName(bitcodeFile), ".out");
@@ -188,7 +188,7 @@ public class TestHelper {
         return files;
     }
 
-    static void removeFilesTestCases(List<TestCaseFiles[]> collectedSpecificationFiles, List<TestCaseFiles[]> filesRecursively) {
+    public static void removeFilesTestCases(List<TestCaseFiles[]> collectedSpecificationFiles, List<TestCaseFiles[]> filesRecursively) {
         for (TestCaseFiles[] alreadyCanExecute : collectedSpecificationFiles) {
             for (TestCaseFiles[] allFilesFile : filesRecursively) {
                 if (alreadyCanExecute[0].getOriginalFile().equals(allFilesFile[0].getOriginalFile())) {
@@ -202,7 +202,7 @@ public class TestHelper {
         }
     }
 
-    static void removeFilesFromTestCases(List<File> excludedFiles, List<TestCaseFiles[]> filesRecursively) {
+    public static void removeFilesFromTestCases(List<File> excludedFiles, List<TestCaseFiles[]> filesRecursively) {
         for (File excludedFile : excludedFiles) {
             List<TestCaseFiles[]> filesToRemove = new ArrayList<>();
             for (TestCaseFiles[] allFilesFile : filesRecursively) {

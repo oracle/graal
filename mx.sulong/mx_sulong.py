@@ -389,11 +389,6 @@ def extract_compiler_args(args, useDoubleDash=False):
                 remainder += [arg]
     return compilerArgs, remainder
 
-
-def runDebugLLVM(args=None):
-    """uses Sulong to execute a LLVM IR file and starts debugging on port 5005"""
-    return runLLVM(['-Xdebug', '-Xrunjdwp:server=y,transport=dt_socket,address=5005,suspend=y'] + args)
-
 def runLLVM(args=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgsWithLibs = truffle_extract_VM_args(args)
@@ -495,7 +490,7 @@ def getRemoteClasspathOption():
     return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
-    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false', '-Dsulong.ExecutionCount=5', '-Dsulong.PerformanceWarningsAreFatal=true']
+    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false', '-Dsulong.ExecutionCount=5', '-Dsulong.PerformanceWarningsAreFatal=true', '-Dgraal.TruffleTimeThreshold=1000000']
 
 def getLLVMRootOption():
     return "-Dsulong.ProjectRoot=" + _root
@@ -665,7 +660,6 @@ mx.update_commands(_suite, {
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
-    'su-debug' : [runDebugLLVM, ''],
     'su-tests' : [runTests, ''],
     'su-tests-bench' : [runBenchmarkTestCases, ''],
     'su-tests-gcc' : [runGCCTestCases, ''],

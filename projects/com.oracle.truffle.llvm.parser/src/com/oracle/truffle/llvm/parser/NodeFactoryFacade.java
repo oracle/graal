@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -112,13 +114,6 @@ public interface NodeFactoryFacade {
      * @return an argument node
      */
     LLVMNode createFunctionArgNode(int argIndex, Class<? extends Node> clazz);
-
-    /**
-     * Returns the index of the first argument of the formal parameter list.
-     *
-     * @return the index
-     */
-    int getArgStartIndex();
 
     LLVMNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, LLVMBaseType llvmType);
 
@@ -204,9 +199,11 @@ public interface NodeFactoryFacade {
      * @param mainCallTarget
      * @param allocatedGlobalAddresses
      * @param args
+     * @param mainTypes
+     * @param sourceFile
      * @return the global root
      */
-    RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object... args);
+    RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
 
     /**
      * Wraps the global root (e.g., the main function in C) to convert its result.
@@ -262,6 +259,13 @@ public interface NodeFactoryFacade {
      * @return a function root node
      */
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName);
+
+    /**
+     * Returns the index of the first argument of the formal parameter list.
+     *
+     * @return the index
+     */
+    Optional<Integer> getArgStartIndex();
 
     /**
      * Creates an inline assembler instruction.
