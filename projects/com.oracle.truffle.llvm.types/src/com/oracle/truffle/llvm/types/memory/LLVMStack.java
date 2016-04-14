@@ -127,4 +127,8 @@ public class LLVMStack extends LLVMMemory {
         }
     }
 
+    public long getUpperBounds() {
+        return upperBounds;
+    }
+
 }

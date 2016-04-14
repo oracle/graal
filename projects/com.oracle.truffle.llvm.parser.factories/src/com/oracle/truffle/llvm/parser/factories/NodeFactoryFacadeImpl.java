@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyFactory;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -303,9 +304,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMNode[] staticDestructors,
+    public LLVMGlobalRootNode createGlobalRootNode(RootCallTarget mainCallTarget, LLVMNode[] staticDestructors,
                     Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
-        return LLVMRootNodeFactory.createGlobalRootNode(runtime, staticInits, mainCallTarget, staticDestructors, args, sourceFile, mainTypes);
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, staticDestructors, args, sourceFile, mainTypes);
     }
 
     @Override
@@ -378,6 +379,12 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(allocation, LLVMBaseType.ADDRESS);
         runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
         return allocation;
+    }
+
+    @Override
+    public RootNode createStaticInitsRootNode(LLVMNode[] staticInits) {
+        return new LLVMStaticInitsBlockNode(staticInits, runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        runtime.getStackPointerSlot());
     }
 
 }

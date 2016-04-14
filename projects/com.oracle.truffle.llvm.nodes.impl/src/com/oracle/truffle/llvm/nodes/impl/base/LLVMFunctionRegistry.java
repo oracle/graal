@@ -149,7 +149,7 @@ public class LLVMFunctionRegistry {
 
     /**
      * Creates a function descriptor from the given <code>index</code> that has previously been
-     * obtained by {@link LLVMFunctionDescriptor#getFunctionIndex()}}.
+     * obtained by {@link LLVMFunctionDescriptor#getFunctionIndex()} .
      *
      * @param index the function index
      * @return the function descriptor

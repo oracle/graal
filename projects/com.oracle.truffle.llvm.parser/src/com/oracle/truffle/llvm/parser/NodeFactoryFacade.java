@@ -58,7 +58,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -196,7 +195,6 @@ public interface NodeFactoryFacade {
     /**
      * Creates the global root (e.g., the main function in C).
      *
-     * @param staticInits
      * @param mainCallTarget
      * @param staticDestructors
      * @param args
@@ -204,7 +202,7 @@ public interface NodeFactoryFacade {
      * @param sourceFile
      * @return the global root
      */
-    RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMNode[] staticDestructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
+    RootNode createGlobalRootNode(RootCallTarget mainCallTarget, LLVMNode[] staticDestructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
 
     /**
      * Wraps the global root (e.g., the main function in C) to convert its result.
@@ -302,4 +300,5 @@ public interface NodeFactoryFacade {
 
     Object allocateGlobalVariable(GlobalVariable globalVariable);
 
+    RootNode createStaticInitsRootNode(LLVMNode[] staticInits);
 }

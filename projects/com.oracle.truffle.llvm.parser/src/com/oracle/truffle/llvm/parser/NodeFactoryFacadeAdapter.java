@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Map;
+import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
@@ -57,7 +57,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
@@ -262,7 +261,7 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMNode[] destructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
+    public RootNode createGlobalRootNode(RootCallTarget mainCallTarget, LLVMNode[] destructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
         return null;
     }
 
