@@ -278,12 +278,6 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createMemCopyNode(LLVMExpressionNode globalVarAddress, LLVMExpressionNode constant, LLVMExpressionNode lengthNode, LLVMExpressionNode alignNode,
-                    LLVMExpressionNode isVolatileNode) {
-        return null;
-    }
-
-    @Override
     public LLVMNode createBasicBlockNode(LLVMNode[] statementNodes, LLVMNode terminatorNode) {
         return null;
     }
