@@ -131,4 +131,8 @@ public class LLVMStack extends LLVMMemory {
         return upperBounds;
     }
 
+    public boolean isFreed() {
+        return isFreed;
+    }
+
 }

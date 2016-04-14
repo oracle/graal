@@ -65,6 +65,8 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
 
         CallTarget parse(Source code, Node context, String... argumentNames);
+
+        void disposeContext(LLVMContext context);
     }
 
     public static LLVMLanguageProvider provider;
@@ -75,6 +77,11 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return provider.createContext(env);
+    }
+
+    @Override
+    protected void disposeContext(LLVMContext context) {
+        provider.disposeContext(context);
     }
 
     @Override

@@ -85,7 +85,6 @@ public class LLVM {
                     ParserResult parserResult = parseFile(code.getPath(), llvmContext);
                     RootCallTarget mainFunction = parserResult.getMainFunction();
                     llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
-                    llvmContext.getStack().allocate();
                     parserResult.getStaticInits().call();
                     return mainFunction;
                 } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
@@ -129,7 +128,17 @@ public class LLVM {
                 facade.setParserRuntime(runtime);
                 context.setMainArguments((Object[]) env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY));
                 context.setSourceFile((Source) env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY));
+                context.getStack().allocate();
                 return context;
+            }
+
+            @Override
+            public void disposeContext(LLVMContext context) {
+                // the PolyglotEngine calls this method for every mime type supported by the
+                // language
+                if (!context.getStack().isFreed()) {
+                    context.getStack().free();
+                }
             }
         };
     }
@@ -201,6 +210,8 @@ public class LLVM {
             return result;
         } catch (IOException e) {
             throw new AssertionError(e);
+        } finally {
+            vm.dispose();
         }
     }
 

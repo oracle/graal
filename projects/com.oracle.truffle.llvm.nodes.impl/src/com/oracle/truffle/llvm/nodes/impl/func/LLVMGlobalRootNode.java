@@ -79,8 +79,6 @@ public class LLVMGlobalRootNode extends RootNode {
             return executeProgram(frame, stackPointer);
         } catch (LLVMExitException e) {
             return e.getReturnCode();
-        } finally {
-            context.getStack().free();
         }
     }
 
