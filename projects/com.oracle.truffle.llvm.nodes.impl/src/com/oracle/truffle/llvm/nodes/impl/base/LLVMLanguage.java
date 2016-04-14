@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 @TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.SULONG_LIBRARY_MIME_TYPE})
 public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
@@ -91,6 +92,11 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
+        for (LLVMFunctionDescriptor descr : context.getFunctionRegistry().getFunctionDescriptors()) {
+            if (descr != null && descr.getName().equals(globalName)) {
+                return descr;
+            }
+        }
         throw new AssertionError(globalName);
     }
 

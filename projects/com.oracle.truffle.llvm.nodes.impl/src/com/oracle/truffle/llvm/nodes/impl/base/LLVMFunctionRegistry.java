@@ -160,4 +160,8 @@ public class LLVMFunctionRegistry {
         return llvmFunction;
     }
 
+    public LLVMFunctionDescriptor[] getFunctionDescriptors() {
+        return functionDescriptors;
+    }
+
 }
