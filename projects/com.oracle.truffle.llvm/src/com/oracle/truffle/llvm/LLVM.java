@@ -77,17 +77,17 @@ public class LLVM {
         return new LLVMLanguage.LLVMLanguageProvider() {
 
             @Override
-            public CallTarget parse(Source code, Node context, String... argumentNames) {
+            public CallTarget parse(Source code, Node contextNode, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
-                LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
+                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
 
                 CallTarget mainFunction;
                 if (code.getMimeType() == LLVMLanguage.LLVM_MIME_TYPE) {
-                    ParserResult parserResult = parseFile(code.getPath(), llvmContext);
+                    ParserResult parserResult = parseFile(code.getPath(), context);
                     mainFunction = parserResult.getMainFunction();
-                    llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
-                    llvmContext.registerStaticInitializer(parserResult.getStaticInits());
-                    llvmContext.registerStaticDestructor(parserResult.getStaticDestructors());
+                    context.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                    context.registerStaticInitializer(parserResult.getStaticInits());
+                    context.registerStaticDestructor(parserResult.getStaticDestructors());
                     parserResult.getStaticInits().call();
                 } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
 
@@ -100,15 +100,15 @@ public class LLVM {
                         } , source -> {
                             ParserResult parserResult;
                             try {
-                                parserResult = parseString(source.getCode(), llvmContext);
+                                parserResult = parseString(source.getCode(), context);
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
                             }
                             parserResult.getStaticInits().call();
-                            llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                            context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
-                            llvmContext.registerStaticInitializer(parserResult.getStaticInits());
-                            llvmContext.registerStaticDestructor(parserResult.getStaticDestructors());
+                            context.registerStaticInitializer(parserResult.getStaticInits());
+                            context.registerStaticDestructor(parserResult.getStaticDestructors());
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
