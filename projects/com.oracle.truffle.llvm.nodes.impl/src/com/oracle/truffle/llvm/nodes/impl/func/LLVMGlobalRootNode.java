@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.func;
 
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -59,6 +61,7 @@ public class LLVMGlobalRootNode extends RootNode {
     private final LLVMContext context;
     // FIXME instead make the option system "PE safe"
     private final boolean printNativeStats = LLVMOptions.printNativeCallStats();
+    private final int executionCount = LLVMOptions.getExecutionCount();
     private final FrameSlot stackPointerSlot;
 
     public LLVMGlobalRootNode(FrameSlot stackSlot, FrameDescriptor descriptor, LLVMContext context, CallTarget main, Object... arguments) {
@@ -70,33 +73,41 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @Override
+    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         LLVMAddress stackPointer = LLVMAddress.fromLong(context.getStack().getUpperBounds());
         try {
-            return executeProgram(frame, stackPointer);
-        } catch (LLVMExitException e) {
-            return e.getReturnCode();
-        }
-    }
-
-    @ExplodeLoop
-    private Object executeProgram(VirtualFrame frame, LLVMAddress stackPointer) {
-        try {
             Object result = null;
-            for (int i = 0; i < LLVMOptions.getExecutionCount(); i++) {
+            for (int i = 0; i < executionCount; i++) {
                 frame.setObject(stackPointerSlot, stackPointer);
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
                 realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
                 result = main.call(frame, realArgs);
+                if (i != executionCount - 1) {
+                    executeDestructorsAndStaticInit();
+                }
             }
             return result;
+        } catch (LLVMExitException e) {
+            return e.getReturnCode();
         } finally {
             if (printNativeStats) {
                 printNativeCallStats(context);
             }
         }
+    }
 
+    @TruffleBoundary
+    private void executeDestructorsAndStaticInit() {
+        List<RootCallTarget> staticDestructors = context.getStaticDestructors();
+        for (RootCallTarget staticDestructor : staticDestructors) {
+            staticDestructor.call(staticDestructor);
+        }
+        List<RootCallTarget> staticInits = context.getStaticInitializers();
+        for (RootCallTarget callTarget : staticInits) {
+            callTarget.call(staticInits);
+        }
     }
 
     @TruffleBoundary
