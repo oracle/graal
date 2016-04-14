@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public class LLVMStaticInitsBlockNode extends RootNode {
@@ -57,7 +56,7 @@ public class LLVMStaticInitsBlockNode extends RootNode {
     @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        frame.setObject(stackSlot, LLVMAddress.fromLong(stack.getUpperBounds()));
+        frame.setObject(stackSlot, stack.getUpperBounds());
         for (LLVMNode node : nodes) {
             node.executeVoid(frame);
         }

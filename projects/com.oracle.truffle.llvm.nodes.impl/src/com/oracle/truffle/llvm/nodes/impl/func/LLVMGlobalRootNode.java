@@ -75,7 +75,7 @@ public class LLVMGlobalRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        LLVMAddress stackPointer = LLVMAddress.fromLong(context.getStack().getUpperBounds());
+        LLVMAddress stackPointer = context.getStack().getUpperBounds();
         try {
             Object result = null;
             for (int i = 0; i < executionCount; i++) {

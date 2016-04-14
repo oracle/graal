@@ -227,7 +227,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
             assert ForeignAccess.getArguments(frame).isEmpty();
             final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) ForeignAccess.getReceiver(frame);
             final CallTarget callTarget = getCallTarget(function);
-            return callNode.call(frame, callTarget, new Object[]{LLVMAddress.fromLong(stack.getUpperBounds())});
+            return callNode.call(frame, callTarget, new Object[]{stack.getUpperBounds()});
         }
 
         // TODO No static access to these classes at the moment
