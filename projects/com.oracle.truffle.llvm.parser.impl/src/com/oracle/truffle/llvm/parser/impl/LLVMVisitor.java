@@ -384,7 +384,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
         } else {
             LLVMExpressionNode constant = visitConstant(globalVariable.getType(), initialValue);
             if (constant != null) {
-                LLVMBaseType llvmType = getLLVMType(globalVariable.getType());
                 ResolvedType resolvedType = resolve(globalVariable.getType());
                 int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
                 Object allocGlobalVariable = findOrAllocateGlobal(globalVariable);
@@ -392,15 +391,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                     return null;
                 } else {
                     LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(allocGlobalVariable, LLVMBaseType.ADDRESS);
-                    LLVMNode storeNode;
-                    if (llvmType == LLVMBaseType.ARRAY || llvmType == LLVMBaseType.STRUCT) {
-                        LLVMExpressionNode isVolatileNode = factoryFacade.createLiteral(false, LLVMBaseType.I1);
-                        LLVMExpressionNode alignNode = factoryFacade.createLiteral(0, LLVMBaseType.I32);
-                        LLVMExpressionNode lengthNode = factoryFacade.createLiteral(byteSize, LLVMBaseType.I32);
-                        storeNode = factoryFacade.createMemCopyNode(globalVarAddress, constant, lengthNode, alignNode, isVolatileNode);
-                    } else {
-                        storeNode = getStoreNode(globalVarAddress, constant, globalVariable.getType());
-                    }
+                    LLVMNode storeNode = getStoreNode(globalVarAddress, constant, globalVariable.getType());
                     return storeNode;
                 }
             } else {
