@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
@@ -57,13 +58,14 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
  * This class implements an abstract adapter that returns <code>null</code> for each implemented
  * method.
  */
-public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
+public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index) {
@@ -318,6 +320,21 @@ public abstract class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
     public RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode) {
+        return null;
+    }
+
+    @Override
+    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs) {
+        return null;
+    }
+
+    @Override
+    public Object allocateGlobalVariable(GlobalVariable globalVariable) {
+        return null;
+    }
+
+    @Override
+    public RootNode createStaticInitsRootNode(LLVMNode[] staticInits) {
         return null;
     }
 
