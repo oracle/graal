@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
@@ -63,9 +64,11 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyFactory;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -75,12 +78,14 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
@@ -299,9 +304,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMGlobalRootNode createGlobalRootNode(LLVMNode[] staticInits, RootCallTarget mainCallTarget, LLVMAddress[] allocatedGlobalAddresses,
+    public LLVMGlobalRootNode createGlobalRootNode(RootCallTarget mainCallTarget,
                     Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
-        return LLVMRootNodeFactory.createGlobalRootNode(runtime, staticInits, mainCallTarget, allocatedGlobalAddresses, args, sourceFile, mainTypes);
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, args, sourceFile, mainTypes);
     }
 
     @Override
@@ -364,6 +369,22 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs) {
         return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().createFunctionDescriptor(name, convertType, convertTypes, varArgs);
+    }
+
+    @Override
+    public Object allocateGlobalVariable(GlobalVariable globalVariable) {
+        ResolvedType resolvedType = runtime.resolve(globalVariable.getType());
+        int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+        LLVMAddress allocation = LLVMHeap.allocateMemory(byteSize);
+        LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(allocation, LLVMBaseType.ADDRESS);
+        runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
+        return allocation;
+    }
+
+    @Override
+    public RootNode createStaticInitsRootNode(LLVMNode[] staticInits) {
+        return new LLVMStaticInitsBlockNode(staticInits, runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        runtime.getStackPointerSlot());
     }
 
 }

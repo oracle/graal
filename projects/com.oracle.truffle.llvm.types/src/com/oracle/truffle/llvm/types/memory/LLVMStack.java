@@ -127,4 +127,12 @@ public class LLVMStack extends LLVMMemory {
         }
     }
 
+    public LLVMAddress getUpperBounds() {
+        return LLVMAddress.fromLong(upperBounds);
+    }
+
+    public boolean isFreed() {
+        return isFreed;
+    }
+
 }

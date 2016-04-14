@@ -27,58 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.nodes.impl.others;
 
-import org.eclipse.emf.ecore.EObject;
-
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
-public interface LLVMParserRuntime {
+public class LLVMStaticInitsBlockNode extends RootNode {
 
-    ResolvedType resolve(EObject e);
+    @Children private final LLVMNode[] nodes;
+    private final FrameSlot stackSlot;
+    private final LLVMStack stack;
 
-    /**
-     * Performs an <code>alloc</code> style allocation. At the begin of a function (or the global
-     * scope) the memory is allocated and again released when leaving the function (or the global
-     * scope). The intrinsic <code>@llvm.stacksave</code> might also cause the allocation to be
-     * released earlier.
-     *
-     * @see <a href="http://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic">llvm.stacksave
-     *      intrinsic</a>
-     * @param size the bytes to be allocated
-     * @return a node that allocates the requested memory.
-     */
-    LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment);
+    public LLVMStaticInitsBlockNode(LLVMNode[] nodes, FrameDescriptor descriptor, LLVMContext llvmContext, FrameSlot stackSlot) {
+        super(LLVMLanguage.class, null, descriptor);
+        this.nodes = nodes;
+        this.stackSlot = stackSlot;
+        stack = llvmContext.getStack();
 
-    /**
-     * Gets the return slot where the function return value is stored.
-     *
-     * @return the return slot.
-     */
-    FrameSlot getReturnSlot();
+    }
 
-    LLVMExpressionNode allocateVectorResult(EObject type);
+    @ExplodeLoop
+    @Override
+    public Object execute(VirtualFrame frame) {
+        frame.setObject(stackSlot, stack.getUpperBounds());
+        for (LLVMNode node : nodes) {
+            node.executeVoid(frame);
+        }
+        return null;
+    }
 
-    Object getGlobalAddress(GlobalVariable var);
-
-    FrameSlot getStackPointerSlot();
-
-    LLVMOptimizationConfiguration getOptimizationConfiguration();
-
-    int getBitAlignment(LLVMBaseType type);
-
-    FrameDescriptor getGlobalFrameDescriptor();
-
-    /**
-     * Adds a destructor node that is executed after returning from the main function.
-     *
-     * @param destructorNode
-     */
-    void addDestructor(LLVMNode destructorNode);
 }

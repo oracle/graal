@@ -77,7 +77,7 @@ public class LLVMConstantEvaluator {
     }
 
     private static Object evaluateGlobalVariable(GlobalVariable ref) {
-        LLVMAddress addr = runtime.getGlobalAddress(ref);
+        Object addr = runtime.getGlobalAddress(ref);
         assert addr != null;
         return addr;
     }

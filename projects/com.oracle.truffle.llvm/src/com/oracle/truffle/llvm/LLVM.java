@@ -48,6 +48,7 @@ import com.google.inject.Injector;
 import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -76,17 +77,21 @@ public class LLVM {
         return new LLVMLanguage.LLVMLanguageProvider() {
 
             @Override
-            public CallTarget parse(Source code, Node context, String... argumentNames) {
+            public CallTarget parse(Source code, Node contextNode, String... argumentNames) {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
-                LLVMContext llvmContext = LLVMLanguage.INSTANCE.findContext0(findContext);
+                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
 
+                CallTarget mainFunction;
                 if (code.getMimeType() == LLVMLanguage.LLVM_MIME_TYPE) {
-                    ParserResult parserResult = parseFile(code.getPath(), llvmContext);
-                    llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
-                    return parserResult.getMainFunction();
+                    ParserResult parserResult = parseFile(code.getPath(), context);
+                    mainFunction = parserResult.getMainFunction();
+                    context.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                    context.registerStaticInitializer(parserResult.getStaticInits());
+                    context.registerStaticDestructor(parserResult.getStaticDestructors());
+                    parserResult.getStaticInits().call();
                 } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
-                    final List<CallTarget> mainFunctions = new ArrayList<>();
 
+                    final List<CallTarget> mainFunctions = new ArrayList<>();
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
 
                     try {
@@ -95,13 +100,15 @@ public class LLVM {
                         }, source -> {
                             ParserResult parserResult;
                             try {
-                                parserResult = parseString(source.getCode(), llvmContext);
+                                parserResult = parseString(source.getCode(), context);
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
                             }
-
-                            llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                            parserResult.getStaticInits().call();
+                            context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
+                            context.registerStaticInitializer(parserResult.getStaticInits());
+                            context.registerStaticDestructor(parserResult.getStaticDestructors());
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
@@ -111,10 +118,11 @@ public class LLVM {
                         throw new UnsupportedOperationException();
                     }
 
-                    return mainFunctions.get(0);
+                    mainFunction = mainFunctions.get(0);
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
+                return mainFunction;
             }
 
             @Override
@@ -125,7 +133,20 @@ public class LLVM {
                 facade.setParserRuntime(runtime);
                 context.setMainArguments((Object[]) env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY));
                 context.setSourceFile((Source) env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY));
+                context.getStack().allocate();
                 return context;
+            }
+
+            @Override
+            public void disposeContext(LLVMContext context) {
+                // the PolyglotEngine calls this method for every mime type supported by the
+                // language
+                if (!context.getStack().isFreed()) {
+                    for (RootCallTarget destructor : context.getStaticDestructors()) {
+                        destructor.call();
+                    }
+                    context.getStack().free();
+                }
             }
         };
     }
@@ -197,6 +218,8 @@ public class LLVM {
             return result;
         } catch (IOException e) {
             throw new AssertionError(e);
+        } finally {
+            vm.dispose();
         }
     }
 
