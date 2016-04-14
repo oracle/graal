@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,17 +29,26 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
- * @deprecated use {@link MessageResolution} and {@link Resolve} instead.
+ * Annotation to put on your node to simplify handling of incoming inter-operability {@link Message
+ * messages}.
  *
- * @since 0.11
+ * This node needs to be an abstract class. Sub-classes will be automatically generated, which is
+ * similar to Truffle's DSL for node specialization. The node needs to define abstract
+ * <code>accept</code> methods, which implement the node's behaviour. The first argument of
+ * <code>accept</code> can be a {@link VirtualFrame} (optional). The second argument of
+ * <code>accept</code> needs to be the receiver object, i.e., a {@link TruffleObject}. Afterwards,
+ * the arguments of the message follow. For example:
+ *
+ * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
+ *
+ * @since 0.13
  */
-@Deprecated
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
-public @interface AcceptMessage {
+public @interface Resolve {
     /**
      * Identification of the {@link Message message} to accept. Well known messages include fields
      * of the {@link Message} class (e.g. <em>"READ"</em>, <em>"WRITE"</em>, <em>"UNBOX"</em>,
@@ -50,22 +59,5 @@ public @interface AcceptMessage {
      * @return string identification of an inter-operability message
      * @see Message#valueOf(java.lang.String)
      */
-    String value();
-
-    /**
-     * The receiver object class that this message implementation belongs to.
-     *
-     * An annotation processor generates a {@link ForeignAccess} class, which the
-     * {@link TruffleObject} can use to implement {@link TruffleObject#getForeignAccess()}.
-     *
-     * @return class of the receiver object
-     */
-    Class<?> receiverType();
-
-    /**
-     * The language the message implementation belongs to.
-     *
-     * @return class of the language object
-     */
-    Class<? extends TruffleLanguage<?>> language();
+    String message();
 }

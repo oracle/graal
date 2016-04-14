@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,21 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tck.impl.TckLanguage;
 
-final class ComplexNumbersA implements TruffleObject {
+@MessageResolution(receiverType = StructuredDataEntry.class, language = TckLanguage.class)
+class StructuredDataEntryMessageResolution {
 
-    private final double[] data;
+    @Resolve(message = "READ")
+    abstract static class StructuredDataEntryReadNode extends Node {
 
-    ComplexNumbersA(double[] data) {
-        assert data.length % 2 == 0;
-        this.data = data;
-    }
+        public Object access(StructuredDataEntry data, String name) {
+            return data.getSchema().get(data.getBuffer(), data.getIndex(), name);
+        }
 
-    public double[] getData() {
-        return data;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ComplexNumbersA;
-    }
-
-    public ForeignAccess getForeignAccess() {
-        return ComplexNumbersAMessageResolutionForeign.createAccess();
     }
 
 }

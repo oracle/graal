@@ -53,13 +53,13 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.AcceptMessage;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * THIS IS NOT PUBLIC API.
  */
+@SuppressWarnings("deprecation")
 public final class InteropProcessor extends AbstractProcessor {
 
     private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
@@ -89,11 +89,11 @@ public final class InteropProcessor extends AbstractProcessor {
 
         List<String> generatedClasses = new LinkedList<>();
 
-        top: for (Element e : roundEnv.getElementsAnnotatedWith(AcceptMessage.class)) {
+        top: for (Element e : roundEnv.getElementsAnnotatedWith(com.oracle.truffle.api.interop.AcceptMessage.class)) {
             if (e.getKind() != ElementKind.CLASS) {
                 continue;
             }
-            AcceptMessage message = e.getAnnotation(AcceptMessage.class);
+            com.oracle.truffle.api.interop.AcceptMessage message = e.getAnnotation(com.oracle.truffle.api.interop.AcceptMessage.class);
             if (message == null) {
                 continue;
             }
@@ -240,7 +240,7 @@ public final class InteropProcessor extends AbstractProcessor {
         }
     }
 
-    private static boolean isNonStaticInner(AcceptMessage message) {
+    private static boolean isNonStaticInner(com.oracle.truffle.api.interop.AcceptMessage message) {
         try {
             Class<?> receiverType = message.receiverType();
             if (receiverType.isMemberClass() || receiverType.isLocalClass()) {
@@ -278,7 +278,7 @@ public final class InteropProcessor extends AbstractProcessor {
         return true;
     }
 
-    private static String getReceiverTypeFullClassName(AcceptMessage message) {
+    private static String getReceiverTypeFullClassName(com.oracle.truffle.api.interop.AcceptMessage message) {
         String receiverTypeFullClassName;
         try {
             receiverTypeFullClassName = message.receiverType().getName();
@@ -289,7 +289,7 @@ public final class InteropProcessor extends AbstractProcessor {
         return receiverTypeFullClassName;
     }
 
-    private static String getPreparedReceiverTypeClassName(AcceptMessage message) {
+    private static String getPreparedReceiverTypeClassName(com.oracle.truffle.api.interop.AcceptMessage message) {
         StringBuilder receiverTypeFullClassName = new StringBuilder();
         try {
             Class<?> receiverType = message.receiverType();
@@ -314,7 +314,7 @@ public final class InteropProcessor extends AbstractProcessor {
         return receiverTypeFullClassName.toString();
     }
 
-    private static String getTruffleLanguageFullClassName(AcceptMessage message) {
+    private static String getTruffleLanguageFullClassName(com.oracle.truffle.api.interop.AcceptMessage message) {
         String truffleLanguageFullClazzName;
         try {
             truffleLanguageFullClazzName = message.language().getName();
