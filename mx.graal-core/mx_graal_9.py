@@ -29,7 +29,8 @@ from os.path import join, exists
 from argparse import ArgumentParser
 import sanitycheck
 import re
-import hashlib
+import zipfile
+import shutil
 
 import mx
 from mx_gate import Task
@@ -310,25 +311,46 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if _jvmciModes[_vm.jvmciMode]:
         bcp.extend([d.get_classpath_repr() for d in _bootClasspathDists])
 
-    # Create com.oracle.graal module
-    graalModuleName = 'com.oracle.graal'
+    # Create modules for the boot class path distributions
     modulesDir = mx.ensure_dir_exists(join(_suite.get_output_root(), 'modules'))
-    graalModuleDir = mx.ensure_dir_exists(join(modulesDir, graalModuleName))
-    graalModuleJar = join(modulesDir, graalModuleName + '.jar')
-    if not exists(graalModuleJar):
-        moduleSource = join(graalModuleDir, 'module-info.java')
-        with open(moduleSource, 'w') as fp:
-            fp.write('module ' + graalModuleName + ' { requires jdk.vm.ci; }')
-        with open('source', 'w') as fp:
-            print >> fp, os.pathsep.join(bcp)
-        mx.run([_jdk.javac, '-d', graalModuleDir, moduleSource])
-        with open(join(graalModuleDir, 'module-info.class'), 'rb') as fp:
-            graalModuleClass = fp.read()
-        with mx.Archiver(graalModuleJar) as arc:
-            arc.zf.writestr('module-info.class', graalModuleClass)
+    moduleDists = [mx.distribution('truffle:TRUFFLE_API')] + [d.dist() for d in _bootClasspathDists]
+    modulePath = []
+    for moduleDist in moduleDists:
+        moduleName = moduleDist.name.lower()
+        moduleDir = mx.ensure_dir_exists(join(modulesDir, moduleName))
+        moduleJar = join(modulesDir, moduleName + '.jar')
+        modulePath.append(moduleJar)
+        distJar = moduleDist.path
+        if not exists(moduleJar) or mx.TimeStampFile(distJar).isNewerThan(moduleJar):
+            moduleSource = join(moduleDir, 'module-info.java')
+            with open(moduleSource, 'w') as fp:
+                if moduleName == 'graal':
+                    print >> fp, 'module ' + moduleName + ' {'
+#                    print >> fp, '    requires public jdk.vm.ci;'
+#                    print >> fp, '    provides jdk.vm.ci.runtime.JVMCICompilerFactory with '
+#                    print >> fp, '             com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;'
+                    print >> fp, '}'
+                else:
+                    fp.write('module ' + moduleName + ' {  }')
+            with zipfile.ZipFile(distJar, 'r') as zf:
+                zf.extractall(path=moduleDir)
+            mx.run([_jdk.javac, '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=' + moduleName, '-d', moduleDir, moduleSource])
+            shutil.make_archive(moduleJar, 'zip', moduleDir)
+            os.rename(moduleJar + '.zip', moduleJar)
 
-#    args = ['-XaddExports:jdk.vm.ci/com.oracle.graal.replacements=ALL-UNNAMED', '-Xpatch:jdk.vm.ci=' + os.pathsep.join(bcp)] + args
-    args = ['-mp' , graalModuleJar, '-Xpatch:' + graalModuleName + '=' + os.pathsep.join(bcp), '-XaddExports:java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED', '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED'] + args
+    cpIndex, cp = mx.find_classpath_arg(args)
+    if cp:
+        bcp = frozenset([e.classpath_repr() for e in mx.classpath_entries([d.dist() for d in _bootClasspathDists] + [mx.distribution('truffle:TRUFFLE_API')], preferProjects=True)])
+        newCp = os.pathsep.join([e for e in cp.split(os.pathsep) if e not in bcp])
+        if cp != newCp:
+            # If classes in boot class path dists were also on the class path, then we need to either
+            # export all packages in these dists or -Xpatch them into the graal module
+            args[cpIndex] = newCp
+            del args[cpIndex - 1]
+            del args[cpIndex - 1]
+            args = ['-Xpatch:graal=' + newCp] + args
+    
+    args = ['-addmods', 'graal,jdk.vm.ci', '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=graal', '-mp' , os.pathsep.join(modulePath)] + args
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]

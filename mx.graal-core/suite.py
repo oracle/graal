@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.14.0",
+  "mxversion" : "5.20.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -1345,48 +1345,9 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ]
     },
-  },
 
-  "graal-core:modules" : {
-    "com.oracle.graal" : {
-      "requires" : [
-        "java.management", "jdk.management", "java.logging"
-      ],
-      "projects" : [
-        "com.oracle.graal.options",
-        "com.oracle.graal.nodeinfo",
-        "com.oracle.graal.api.replacements",
-        "com.oracle.graal.api.runtime",
-        "com.oracle.graal.graph",
-        "com.oracle.graal.compiler",
-        "com.oracle.graal.replacements",
-        "com.oracle.graal.runtime",
-        "com.oracle.graal.code",
-        "com.oracle.graal.printer",
-        "com.oracle.graal.compiler.aarch64",
-        "com.oracle.graal.replacements.aarch64",
-        "com.oracle.graal.compiler.amd64",
-        "com.oracle.graal.replacements.amd64",
-        "com.oracle.graal.compiler.sparc",
-        "com.oracle.graal.replacements.sparc",
-        "com.oracle.graal.salver",
-        "com.oracle.graal.hotspot.aarch64",
-        "com.oracle.graal.hotspot.amd64",
-        "com.oracle.graal.hotspot.sparc",
-        "com.oracle.graal.hotspot",
-        "com.oracle.graal.truffle",
-        "com.oracle.graal.truffle.hotspot.amd64",
-        "com.oracle.graal.truffle.hotspot.sparc"
-      ],
-    }
-  }
-}
-
-import mx
-JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
-if JDK9:
-    # Define a monolithic graal.jar for ease of Graal deployment without mx
-    suite["distributions"]["GRAAL"] = {
+    # This will be deployed as a module on JDK >= 9
+    "GRAAL" : {
       "subDir" : "graal",
       "overlaps" : [
         "GRAAL_OPTIONS",
@@ -1428,4 +1389,6 @@ if JDK9:
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
-    }
+    },
+  },
+}
