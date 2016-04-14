@@ -304,9 +304,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMGlobalRootNode createGlobalRootNode(RootCallTarget mainCallTarget, LLVMNode[] staticDestructors,
+    public LLVMGlobalRootNode createGlobalRootNode(RootCallTarget mainCallTarget,
                     Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes) {
-        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, staticDestructors, args, sourceFile, mainTypes);
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, args, sourceFile, mainTypes);
     }
 
     @Override

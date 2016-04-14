@@ -48,6 +48,7 @@ import com.google.inject.Injector;
 import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -85,6 +86,7 @@ public class LLVM {
                     ParserResult parserResult = parseFile(code.getPath(), llvmContext);
                     mainFunction = parserResult.getMainFunction();
                     llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
+                    llvmContext.registerStaticDestructor(parserResult.getStaticDestructors());
                     parserResult.getStaticInits().call();
                 } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
 
@@ -104,6 +106,7 @@ public class LLVM {
                             parserResult.getStaticInits().call();
                             llvmContext.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
+                            llvmContext.registerStaticDestructor(parserResult.getStaticDestructors());
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
@@ -137,6 +140,9 @@ public class LLVM {
                 // the PolyglotEngine calls this method for every mime type supported by the
                 // language
                 if (!context.getStack().isFreed()) {
+                    for (RootCallTarget destructor : context.getStaticDestructors()) {
+                        destructor.call();
+                    }
                     context.getStack().free();
                 }
             }

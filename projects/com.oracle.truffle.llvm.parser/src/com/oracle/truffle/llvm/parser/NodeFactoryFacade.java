@@ -196,13 +196,12 @@ public interface NodeFactoryFacade {
      * Creates the global root (e.g., the main function in C).
      *
      * @param mainCallTarget
-     * @param staticDestructors
      * @param args
      * @param mainTypes
      * @param sourceFile
      * @return the global root
      */
-    RootNode createGlobalRootNode(RootCallTarget mainCallTarget, LLVMNode[] staticDestructors, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
+    RootNode createGlobalRootNode(RootCallTarget mainCallTarget, Object[] args, Source sourceFile, LLVMRuntimeType[] mainTypes);
 
     /**
      * Wraps the global root (e.g., the main function in C) to convert its result.

@@ -201,11 +201,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
         private final RootCallTarget mainFunction;
         private final RootCallTarget staticInits;
+        private final RootCallTarget staticDestructors;
         private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
 
-        public ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
+        public ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
             this.mainFunction = mainFunction;
             this.staticInits = staticInits;
+            this.staticDestructors = staticDestructors;
             this.parsedFunctions = parsedFunctions;
         }
 
@@ -219,6 +221,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
 
         public RootCallTarget getStaticInits() {
             return staticInits;
+        }
+
+        public RootCallTarget getStaticDestructors() {
+            return staticDestructors;
         }
     }
 
@@ -236,16 +242,17 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMFunctionDescriptor mainFunction = searchFunction(parsedFunctions, "@main");
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);
         RootCallTarget staticInitsTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(staticInits));
+        deallocations = globalDeallocations.toArray(new LLVMNode[globalDeallocations.size()]);
+        RootCallTarget staticDestructorsTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(deallocations));
         if (mainFunction == null) {
-            return new ParserResult(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null)), staticInitsTarget, parsedFunctions);
+            return new ParserResult(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null)), staticInitsTarget, staticDestructorsTarget, parsedFunctions);
         }
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
-        RootNode globalFunction;
-        globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, deallocations, mainArgs, sourceFile, mainFunction.getParameterTypes());
+        RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, mainArgs, sourceFile, mainFunction.getParameterTypes());
         RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
         RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getReturnType());
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
-        return new ParserResult(wrappedCallTarget, staticInitsTarget, parsedFunctions);
+        return new ParserResult(wrappedCallTarget, staticInitsTarget, staticDestructorsTarget, parsedFunctions);
     }
 
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
@@ -289,7 +296,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         List<LLVMNode> globalVarNodes = addGlobalVars(this, staticVars);
         globalNodes.addAll(globalVarNodes);
-        deallocations = globalDeallocations.toArray(new LLVMNode[globalDeallocations.size()]);
         return functionCallTargets;
     }
 
