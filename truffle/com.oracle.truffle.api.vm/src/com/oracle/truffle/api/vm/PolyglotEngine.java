@@ -448,7 +448,7 @@ public class PolyglotEngine {
     public Value eval(Source source) throws IOException {
         assertNoTruffle();
         String mimeType = source.getMimeType();
-        checkThread();
+        assert checkThread();
         Language l = langs.get(mimeType);
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
@@ -468,7 +468,7 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public void dispose() {
-        checkThread();
+        assert checkThread();
         assertNoTruffle();
         disposed = true;
         ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
@@ -624,7 +624,7 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public Value findGlobalSymbol(final String globalName) {
-        checkThread();
+        assert checkThread();
         assertNoTruffle();
         final TruffleLanguage<?>[] lang = {null};
         ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
@@ -671,13 +671,14 @@ public class PolyglotEngine {
         return new ExecutorValue(lang, compute);
     }
 
-    private void checkThread() {
+    private boolean checkThread() {
         if (initThread != Thread.currentThread()) {
             throw new IllegalStateException("PolyglotEngine created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
         }
         if (disposed) {
             throw new IllegalStateException("Engine has already been disposed");
         }
+        return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -873,7 +874,7 @@ public class PolyglotEngine {
 
         private Object waitForSymbol() throws IOException {
             assertNoTruffle();
-            checkThread();
+            assert checkThread();
             return value();
         }
     }
@@ -1001,7 +1002,7 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public void setEnabled(final boolean enabled) {
-            checkThread();
+            assert checkThread();
             if (this.enabled != enabled) {
                 ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
                     @Override
@@ -1100,7 +1101,7 @@ public class PolyglotEngine {
          */
         public Value eval(Source source) throws IOException {
             assertNoTruffle();
-            checkThread();
+            assert checkThread();
             return PolyglotEngine.this.eval(this, source);
         }
 
@@ -1117,7 +1118,7 @@ public class PolyglotEngine {
          */
         @SuppressWarnings("try")
         public Value getGlobalObject() {
-            checkThread();
+            assert checkThread();
             ContextStore prev = Access.EXEC.executionStarted(context);
             try {
                 Object res = Access.LANGS.languageGlobal(getEnv(true));
