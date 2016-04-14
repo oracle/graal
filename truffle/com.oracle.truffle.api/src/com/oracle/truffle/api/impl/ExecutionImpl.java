@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import java.util.Objects;
 
@@ -46,9 +44,7 @@ final class ExecutionImpl extends Accessor.ExecSupport {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     public ContextStore executionStarted(ContextStore context) {
-        CompilerAsserts.neverPartOfCompilation("do not call Accessor.executionStart from compiled code");
         Object vm = context.vm;
         Objects.requireNonNull(vm);
         final ContextStore prev = CURRENT_VM.get();

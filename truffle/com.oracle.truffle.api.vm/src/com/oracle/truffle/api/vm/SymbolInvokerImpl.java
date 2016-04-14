@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.ContextStore;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -41,7 +42,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class SymbolInvokerImpl {
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol) {
+    static CallTarget createCallTarget(TruffleLanguage<?> lang, PolyglotEngine engine, Object symbol) {
         Class<? extends TruffleLanguage<?>> type;
         if (lang != null) {
             type = (Class) lang.getClass();
@@ -52,7 +53,7 @@ final class SymbolInvokerImpl {
         if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
             symbolNode = RootNode.createConstantNode(symbol);
         } else {
-            symbolNode = new ExecuteRoot(type, (TruffleObject) symbol);
+            symbolNode = new ExecuteRoot(type, engine, (TruffleObject) symbol);
         }
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
@@ -89,19 +90,37 @@ final class SymbolInvokerImpl {
 
     static class ExecuteRoot extends RootNode {
         private final TruffleObject function;
+        private final PolyglotEngine engine;
 
         @Child private ConvertNode convert;
         @Child private Node foreignAccess;
 
         @SuppressWarnings("rawtypes")
-        ExecuteRoot(Class<? extends TruffleLanguage> lang, TruffleObject function) {
+        ExecuteRoot(Class<? extends TruffleLanguage> lang, PolyglotEngine engine, TruffleObject function) {
             super(lang, null, null);
             this.function = function;
+            this.engine = engine;
             this.convert = new ConvertNode();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            ContextStore prev = PolyglotEngine.Access.EXEC.executionStarted(engine.context());
+            boolean noDebugger = PolyglotEngine.Access.DEBUG.assumeNoDebugger().isValid();
+            try {
+                if (!noDebugger) {
+                    PolyglotEngine.Access.DEBUG.executionStarted(engine, -1, engine.debugger(), null);
+                }
+                return executeImpl(frame);
+            } finally {
+                PolyglotEngine.Access.EXEC.executionEnded(prev);
+                if (!noDebugger) {
+                    PolyglotEngine.Access.DEBUG.executionEnded(engine, engine.debugger());
+                }
+            }
+        }
+
+        private Object executeImpl(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             try {
                 if (foreignAccess == null) {

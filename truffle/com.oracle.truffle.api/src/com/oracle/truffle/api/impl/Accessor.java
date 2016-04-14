@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.Assumption;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -54,6 +55,7 @@ public abstract class Accessor {
     }
 
     public abstract static class DebugSupport {
+        public abstract Assumption assumeNoDebugger();
         public abstract void executionStarted(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
         public abstract void executionEnded(Object vm, Object[] debuggerHolder);
     }
