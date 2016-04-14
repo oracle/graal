@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
@@ -46,6 +45,7 @@ import com.oracle.graal.debug.DebugMetric;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -220,15 +220,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.outerFrameState = x;
     }
 
-    public BytecodePosition toBytecodePosition() {
-        return toBytecodePosition(this);
-    }
-
-    public static BytecodePosition toBytecodePosition(FrameState fs) {
+    public static NodeSourcePosition toSourcePosition(FrameState fs) {
         if (fs == null) {
             return null;
         }
-        return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
+        return new NodeSourcePosition(null, toSourcePosition(fs.outerFrameState()), fs.method(), fs.bci);
     }
 
     /**

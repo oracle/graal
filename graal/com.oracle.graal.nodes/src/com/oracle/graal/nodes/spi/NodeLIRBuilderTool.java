@@ -25,14 +25,13 @@ package com.oracle.graal.nodes.spi;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -79,7 +78,7 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
 
     void visitFullInfopointNode(FullInfopointNode i);
 
-    void recordSimpleInfopoint(InfopointReason reason, BytecodePosition position);
+    void setSourcePosition(NodeSourcePosition position);
 
     LIRGeneratorTool getLIRGeneratorTool();
 

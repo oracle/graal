@@ -54,7 +54,6 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.spi.Replacements;
@@ -196,7 +195,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             if (shouldDebugNonSafepoints) {
                 GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
                 GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-                graphBuilderConfig = graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple);
+                graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
                 GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
                 newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             }

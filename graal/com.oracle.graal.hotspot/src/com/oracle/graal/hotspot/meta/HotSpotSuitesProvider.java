@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.SimplifyingGraphDecoder;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.AddressLoweringPhase;
@@ -123,16 +122,15 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     }
 
     /**
-     * Modifies a given {@link GraphBuilderConfiguration} to build extra
-     * {@linkplain DebugInfoMode#Simple debug info}.
+     * Modifies a given {@link GraphBuilderConfiguration} to record per node source information.
      *
      * @param gbs the current graph builder suite to modify
      */
-    public static PhaseSuite<HighTierContext> withSimpleDebugInfo(PhaseSuite<HighTierContext> gbs) {
+    public static PhaseSuite<HighTierContext> withNodeSourcePosition(PhaseSuite<HighTierContext> gbs) {
         PhaseSuite<HighTierContext> newGbs = gbs.copy();
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
         GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-        GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
+        GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withNodeSourcePosition(true));
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
         return newGbs;
     }

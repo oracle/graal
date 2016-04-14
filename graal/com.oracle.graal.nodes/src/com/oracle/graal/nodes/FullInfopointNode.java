@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import jdk.vm.ci.code.site.InfopointReason;
 
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -37,15 +38,21 @@ import com.oracle.graal.nodes.spi.NodeWithState;
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
 @NodeInfo
-public final class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState, Simplifiable {
+public final class FullInfopointNode extends FixedWithNextNode implements LIRLowerable, NodeWithState, Simplifiable {
     public static final NodeClass<FullInfopointNode> TYPE = NodeClass.create(FullInfopointNode.class);
+    protected final InfopointReason reason;
     @Input(InputType.State) FrameState state;
     @OptionalInput ValueNode escapedReturnValue;
 
     public FullInfopointNode(InfopointReason reason, FrameState state, ValueNode escapedReturnValue) {
-        super(TYPE, reason);
+        super(TYPE, StampFactory.forVoid());
+        this.reason = reason;
         this.state = state;
         this.escapedReturnValue = escapedReturnValue;
+    }
+
+    public InfopointReason getReason() {
+        return reason;
     }
 
     private void setEscapedReturnValue(ValueNode x) {

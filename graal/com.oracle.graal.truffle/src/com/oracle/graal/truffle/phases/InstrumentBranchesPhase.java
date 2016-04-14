@@ -22,10 +22,24 @@
  */
 package com.oracle.graal.truffle.phases;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.IfNode;
@@ -33,19 +47,6 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
@@ -97,22 +98,6 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         graph.addAfterFixed(beginNode, store);
     }
 
-    public static void addNodeSourceLocation(Node node, BytecodePosition pos) {
-        node.setNodeContext(new SourceLocation(pos));
-    }
-
-    public static class SourceLocation {
-        private BytecodePosition position;
-
-        public SourceLocation(BytecodePosition position) {
-            this.position = position;
-        }
-
-        public BytecodePosition getPosition() {
-            return position;
-        }
-    }
-
     public static class BranchInstrumentation {
 
         public Map<String, Point> pointMap = new LinkedHashMap<>();
@@ -124,9 +109,9 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
          * source location key.
          */
         private static String encode(Node ifNode) {
-            SourceLocation loc = ifNode.getNodeContext(SourceLocation.class);
+            NodeSourcePosition loc = ifNode.getNodeSourcePosition();
             if (loc != null) {
-                return loc.getPosition().toString().replace("\n", ",");
+                return loc.toString().replace("\n", ",");
             } else {
                 // IfNode has no position information, and is probably synthetic, so we do not
                 // instrument it.

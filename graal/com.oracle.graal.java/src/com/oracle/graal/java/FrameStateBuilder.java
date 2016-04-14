@@ -42,8 +42,8 @@ import java.util.function.Function;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,6 +53,7 @@ import jdk.vm.ci.meta.Signature;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractMergeNode;
@@ -68,8 +69,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
+import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
@@ -100,6 +101,8 @@ public final class FrameStateBuilder implements SideEffectsState {
      * than one when the current block contains no side-effects but merging predecessor blocks do.
      */
     private List<StateSplit> sideEffects;
+
+    private JavaConstant constantReceiver;
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
@@ -134,6 +137,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             locals[javaIndex] = arguments[index];
             javaIndex = 1;
             index = 1;
+            constantReceiver = locals[0].asJavaConstant();
         }
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
@@ -298,31 +302,31 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public BytecodePosition createBytecodePosition(int bci) {
+    public NodeSourcePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
         if (HideSubstitutionStates.getValue()) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
-                return new BytecodePosition(parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
+                return new NodeSourcePosition(constantReceiver, parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
             }
             // Skip intrinsic frames
             parent = parser.getNonIntrinsicAncestor();
         }
-        return create(null, bci, parent);
+        return create(null, constantReceiver, bci, parent);
     }
 
-    private BytecodePosition create(BytecodePosition o, int bci, BytecodeParser parent) {
-        BytecodePosition outer = o;
+    private NodeSourcePosition create(NodeSourcePosition o, JavaConstant receiver, int bci, BytecodeParser parent) {
+        NodeSourcePosition outer = o;
         if (outer == null && parent != null) {
             outer = parent.getFrameStateBuilder().createBytecodePosition(parent.bci());
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            return FrameState.toBytecodePosition(outerFrameState);
+            return FrameState.toSourcePosition(outerFrameState);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
         }
-        return new BytecodePosition(outer, method, bci);
+        return new NodeSourcePosition(receiver, outer, method, bci);
     }
 
     public FrameStateBuilder copy() {

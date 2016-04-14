@@ -69,14 +69,14 @@ public class Graph {
     Node[] nodes;
 
     /**
-     * Extra context information to be added to newly created nodes.
+     * Source information to associate with newly created nodes.
      */
-    Object currentNodeContext;
+    NodeSourcePosition currentNodeSourcePosition;
 
     /**
-     * Records if context information exists (or existed) for any nodes in this graph.
+     * Records if updating of node source information is required when performing inlining.
      */
-    boolean seenNodeContext;
+    boolean seenNodeSourcePosition;
 
     /**
      * The number of valid entries in {@link #nodes}.
@@ -158,58 +158,71 @@ public class Graph {
         }
     }
 
-    private class NodeContextScope implements DebugCloseable {
-        private final Object previous;
+    private class NodeSourcePositionScope implements DebugCloseable {
+        private final NodeSourcePosition previous;
 
-        NodeContextScope(Object context) {
-            previous = currentNodeContext;
-            currentNodeContext = context;
-            seenNodeContext = true;
+        NodeSourcePositionScope(NodeSourcePosition sourcePosition) {
+            previous = currentNodeSourcePosition;
+            currentNodeSourcePosition = sourcePosition;
         }
 
         @Override
         public void close() {
-            currentNodeContext = previous;
+            currentNodeSourcePosition = previous;
         }
     }
 
+    public NodeSourcePosition currentNodeSourcePosition() {
+        return currentNodeSourcePosition;
+    }
+
     /**
-     * Opens a scope in which the context information from {@code node} is copied into nodes created
-     * within the scope. If {@code node} has no context information, no scope is opened and
-     * {@code null} is returned.
+     * Opens a scope in which the source information from {@code node} is copied into nodes created
+     * within the scope. If {@code node} has no source information information, no scope is opened
+     * and {@code null} is returned.
      *
      * @return a {@link DebugCloseable} for managing the opened scope or {@code null} if no scope
      *         was opened
      */
-    public DebugCloseable withNodeContext(Node node) {
-        return node.nodeContext != null ? new NodeContextScope(node.nodeContext) : null;
+    public DebugCloseable withNodeSourcePosition(Node node) {
+        return withNodeSourcePosition(node.sourcePosition);
     }
 
     /**
-     * Opens a scope in which {@code context} is copied into nodes created within the scope. If
-     * {@code context == null}, no scope is opened and {@code null} is returned.
+     * Opens a scope in which {@code sourcePosition} is copied into nodes created within the scope.
+     * If {@code sourcePosition == null}, no scope is opened and {@code null} is returned.
      *
      * @return a {@link DebugCloseable} for managing the opened scope or {@code null} if no scope
      *         was opened
      */
-    public DebugCloseable withNodeContext(Object context) {
-        return context != null ? new NodeContextScope(context) : null;
+    public DebugCloseable withNodeSourcePosition(NodeSourcePosition sourcePosition) {
+        return sourcePosition != null ? new NodeSourcePositionScope(sourcePosition) : null;
     }
 
     /**
-     * Opens a scope in which newly created nodes do not get any context information added.
+     * Opens a scope in which newly created nodes do not get any source information added.
      *
      * @return a {@link DebugCloseable} for managing the opened scope
      */
-    public DebugCloseable withoutNodeContext() {
-        return new NodeContextScope(null);
+    public DebugCloseable withoutNodeSourcePosition() {
+        return new NodeSourcePositionScope(null);
     }
 
     /**
-     * Determines if this graph might contain nodes with extra context.
+     * Determines if this graph might contain nodes with source information. This is mainly useful
+     * to short circuit logic for updating those positions after inlining since that requires
+     * visiting every node in the graph.
      */
-    public boolean mayHaveNodeContext() {
-        return seenNodeContext;
+    public boolean mayHaveNodeSourcePosition() {
+        assert seenNodeSourcePosition || verifyHasNoSourcePosition();
+        return seenNodeSourcePosition;
+    }
+
+    private boolean verifyHasNoSourcePosition() {
+        for (Node node : getNodes()) {
+            assert node.getNodeSourcePosition() == null;
+        }
+        return true;
     }
 
     /**
@@ -927,8 +940,10 @@ public class Graph {
         }
         int id = nodesSize;
         nodes[id] = node;
-        if (currentNodeContext != null) {
-            node.setNodeContext(currentNodeContext);
+        if (currentNodeSourcePosition != null) {
+            node.setNodeSourcePosition(currentNodeSourcePosition);
+        } else if (!seenNodeSourcePosition && node.getNodeSourcePosition() != null) {
+            seenNodeSourcePosition = true;
         }
         nodesSize++;
 
@@ -937,6 +952,9 @@ public class Graph {
         node.id = id;
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
+        }
+        if (!seenNodeSourcePosition && node.sourcePosition != null) {
+            seenNodeSourcePosition = true;
         }
         if (Fingerprint.ENABLED) {
             Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
