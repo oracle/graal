@@ -2196,6 +2196,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
             BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
             ValueNode exception = frameState.stack[0];
+            /* Anchor for the piNode, which must be before any LoopExit inserted by createTarget. */
+            BeginNode piNodeAnchor = graph.add(new BeginNode());
             ObjectStamp checkedStamp = StampFactory.objectNonNull(checkedCatchType);
             PiNode piNode = graph.addWithoutUnique(new PiNode(exception, checkedStamp));
             frameState.pop(JavaKind.Object);
@@ -2204,7 +2206,9 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.pop(JavaKind.Object);
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
-            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception, null)), catchSuccessor, nextDispatch, 0.5));
+            piNodeAnchor.setNext(catchSuccessor);
+            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception, null)), piNodeAnchor, nextDispatch, 0.5));
+            assert ifNode.trueSuccessor() == piNodeAnchor;
             piNode.setGuard(ifNode.trueSuccessor());
         } else {
             handleUnresolvedExceptionType(catchType);
