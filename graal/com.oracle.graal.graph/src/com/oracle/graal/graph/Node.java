@@ -965,7 +965,7 @@ public abstract class Node implements Cloneable, Formattable {
             while (iterator.hasNext()) {
                 Position pos = iterator.nextPosition();
                 if (pos.get(usage) == this && pos.getInputType() != InputType.Unchecked) {
-                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type " + pos.getInputType() + " from " + usage + " to " + this + " (" + pos.getName() + ")");
+                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type %s from %s to %s (%s)", pos.getInputType(), usage, this, pos.getName());
                 }
             }
         }

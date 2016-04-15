@@ -53,6 +53,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
+        ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
         ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
@@ -60,6 +61,11 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
             if (callee.getDeclaringClass().equals(debugType)) {
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || calleeName.equals("dump")) {
                     verifyParameters(graph, t.arguments(), stringType, calleeName.equals("dump") ? 2 : 1);
+                }
+            }
+            if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
+                if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
+                    verifyParameters(graph, t.arguments(), stringType, 1);
                 }
             }
         }
