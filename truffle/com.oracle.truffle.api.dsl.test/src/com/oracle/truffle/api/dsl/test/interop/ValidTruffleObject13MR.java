@@ -22,17 +22,33 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.LanguageCheck;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-public class ValidTruffleObject8 implements TruffleObject {
+@SuppressWarnings("unused")
+@MessageResolution(receiverType = ValidTruffleObject12.class, language = TestTruffleLanguage.class)
+public class ValidTruffleObject13MR {
 
-    public ForeignAccess getForeignAccess() {
-        return null;
+    @Resolve(message = "READ")
+    public abstract static class ReadNode13 extends Node {
+
+        protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
+            return 0;
+        }
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ValidTruffleObject8;
+    @LanguageCheck
+    public abstract static class LanguageCheck1 extends Node {
+
+        @ExpectError("Method must return a boolean value")
+        protected Object test(VirtualFrame frame, TruffleObject receiver) {
+            return receiver instanceof ValidTruffleObject11;
+        }
     }
 
 }

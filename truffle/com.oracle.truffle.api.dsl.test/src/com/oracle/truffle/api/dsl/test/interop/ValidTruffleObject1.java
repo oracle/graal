@@ -32,6 +32,6 @@ public class ValidTruffleObject1 extends ValidTruffleObject0 {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return ValidTruffleObject1MRForeign.ACCESS;
+        return null;
     }
 }
