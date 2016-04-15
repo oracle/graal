@@ -740,6 +740,7 @@ public class PolyglotEngine {
         }
 
         abstract boolean isDirect();
+
         abstract Object value() throws IOException;
 
         /**
@@ -877,6 +878,7 @@ public class PolyglotEngine {
 
     private class DirectValue extends Value {
         private final Object value;
+
         DirectValue(TruffleLanguage<?>[] language, Object value) {
             super(language);
             this.value = value;

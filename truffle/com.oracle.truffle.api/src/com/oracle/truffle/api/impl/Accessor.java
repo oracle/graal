@@ -56,13 +56,17 @@ public abstract class Accessor {
 
     public abstract static class DebugSupport {
         public abstract Assumption assumeNoDebugger();
+
         public abstract void executionStarted(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
+
         public abstract void executionEnded(Object vm, Object[] debuggerHolder);
     }
 
     public abstract static class ExecSupport {
         public abstract ContextStore createStore(Object vm);
+
         public abstract ContextStore executionStarted(ContextStore context);
+
         public abstract void executionEnded(ContextStore prev);
 
         public abstract Object findVM();
