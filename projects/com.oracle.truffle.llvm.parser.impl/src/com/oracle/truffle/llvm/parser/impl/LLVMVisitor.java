@@ -1104,7 +1104,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         if (currentOffset != 0) {
             LLVMExpressionNode oneValueNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
-            currentAddress = factoryFacade.createGetElementPtr(currentAddress, oneValueNode, currentOffset);
+            currentAddress = factoryFacade.createGetElementPtr(LLVMBaseType.I32, currentAddress, oneValueNode, currentOffset);
         }
         return currentAddress;
     }

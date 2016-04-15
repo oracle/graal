@@ -133,7 +133,16 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress);
 
-    LLVMExpressionNode createGetElementPtr(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength);
+    /**
+     * Creates an getelementptr (GEP) instruction.
+     *
+     * @param indexType the integer type of the index parameter.
+     * @param aggregateAddress the address of the aggregate data structure
+     * @param index
+     * @param indexedTypeLength
+     * @return the getelementptr node
+     */
+    LLVMExpressionNode createGetElementPtr(LLVMBaseType indexType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength);
 
     Class<?> getJavaClass(LLVMExpressionNode llvmExpressionNode);
 
@@ -189,8 +198,6 @@ public interface NodeFactoryFacade {
     LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size);
 
     LLVMExpressionNode createEmptyStructLiteralNode(LLVMExpressionNode alloca, int byteSize);
-
-    LLVMExpressionNode createGetElementPtr(LLVMExpressionNode currentAddress, LLVMExpressionNode oneValueNode, int currentOffset);
 
     /**
      * Creates the global root (e.g., the main function in C).
