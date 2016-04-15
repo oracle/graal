@@ -67,12 +67,12 @@ final class ContextStoreProfile {
     void enter(ContextStore store) {
         assert store != null;
         // fast path
-        if (constantStore == store) {
+        if (constantStore == store && constantStoreAssumption.isValid()) {
             return;
         }
 
         // fast path single thread
-        if (Thread.currentThread() == singleThread && dynamicStore != UNINTIALIZED_STORE) {
+        if (Thread.currentThread() == singleThread && dynamicStore != UNINTIALIZED_STORE && dynamicStoreAssumption.isValid()) {
             dynamicStore = store;
             return;
         }
