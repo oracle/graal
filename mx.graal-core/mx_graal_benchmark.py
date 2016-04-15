@@ -24,10 +24,29 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
+import argparse
 import re
 
 import mx
 import mx_benchmark
+
+
+_dacapoIterations = {
+    "avrora"    : 10,
+    "batik"     : 40,
+    "eclipse"   : -1,
+    "fop"       : 40,
+    "h2"        : 20,
+    "jython"    : 40,
+    "luindex"   : 15,
+    "lusearch"  : 40,
+    "pmd"       : 30,
+    "sunflow"   : 30,
+    "tomcat"    : 50,
+    "tradebeans": -1,
+    "tradesoap" : -1,
+    "xalan"     : 20,
+}
 
 
 class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -65,6 +84,22 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def runArgs(self, bmSuiteArgs):
         return self.vmAndRunArgs(bmSuiteArgs)[1]
 
+    def postprocessRunArgs(self, benchname, runArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-n", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        if args.n:
+            if args.n.isdigit():
+                return ["-n", args.n] + remaining
+            if args.n == "-1":
+                return None
+        else:
+            iterations = _dacapoIterations[benchname]
+            if iterations == -1:
+                return None
+            else:
+                return ["-n", str(iterations)] + remaining
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             raise RuntimeError(
@@ -72,24 +107,15 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if len(benchmarks) != 1:
             raise RuntimeError(
                 "Suite runs only a single benchmark, got: {0}".format(benchmarks))
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return None
         return (
             self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.dacapoPath()] +
-            [benchmarks[0]] + self.runArgs(bmSuiteArgs))
+            [benchmarks[0]] + runArgs)
 
     def benchmarks(self):
-        return [
-            "avrora",
-            "batik",
-            "fop",
-            "h2",
-            "jython",
-            "luindex",
-            "lusearch",
-            "pmd",
-            "sunflow",
-            "tomcat",
-            "xalan"
-        ]
+        return _dacapoIterations.keys()
 
     def successPatterns(self):
         return [
@@ -131,7 +157,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           ),
           mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) completed warmup 1 in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "metric.name": "warmup",
