@@ -49,6 +49,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeSourcePosition;
@@ -367,6 +368,28 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         decode(methodScope, null);
         cleanupGraph(methodScope, null);
         methodScope.graph.verify();
+    }
+
+    @Override
+    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
+        super.cleanupGraph(methodScope, start);
+
+        for (FrameState frameState : methodScope.graph.getNodes(FrameState.TYPE)) {
+            if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                /*
+                 * handleMissingAfterExceptionFrameState is called during graph decoding from
+                 * InliningUtil.processFrameState - but during graph decoding it does not do
+                 * anything because the usages of the frameState are not available yet. So we need
+                 * to call it again.
+                 */
+                InliningUtil.handleMissingAfterExceptionFrameState(frameState);
+
+                /*
+                 * The frameState must be gone now, because it is not a valid deoptimization point.
+                 */
+                assert frameState.isDeleted();
+            }
+        }
     }
 
     @Override

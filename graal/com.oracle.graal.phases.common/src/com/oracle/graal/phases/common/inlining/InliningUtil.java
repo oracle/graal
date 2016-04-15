@@ -607,7 +607,7 @@ public class InliningUtil {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized());
     }
 
-    protected static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {
+    public static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {
         Graph graph = nonReplaceableFrameState.graph();
         NodeWorkList workList = graph.createNodeWorkList();
         workList.add(nonReplaceableFrameState);
