@@ -77,8 +77,8 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public boolean verify() {
-        assertTrue(virtualObjects.size() + 1 == lockIndexes.size(), "lockIndexes size doesn't match " + virtualObjects + ", " + lockIndexes);
-        assertTrue(lockIndexes.get(lockIndexes.size() - 1) == locks.size(), "locks size doesn't match " + lockIndexes + ", " + locks);
+        assertTrue(virtualObjects.size() + 1 == lockIndexes.size(), "lockIndexes size doesn't match %s, %s", virtualObjects, lockIndexes);
+        assertTrue(lockIndexes.get(lockIndexes.size() - 1) == locks.size(), "locks size doesn't match %s,%s", lockIndexes, locks);
         int valueCount = 0;
         for (VirtualObjectNode virtual : virtualObjects) {
             valueCount += virtual.entryCount();
