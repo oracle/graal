@@ -32,7 +32,7 @@ import mx_benchmark
 
 
 _dacapoIterations = {
-    "avrora"    : 10,
+    "avrora"    : 20,
     "batik"     : 40,
     "eclipse"   : -1,
     "fop"       : 40,
