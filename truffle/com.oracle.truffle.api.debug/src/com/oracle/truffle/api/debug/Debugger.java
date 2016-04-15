@@ -1008,6 +1008,7 @@ public final class Debugger {
                 engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), 1);
             }
 
+            @Override
             public void executionEnded(Object vm, Object[] debugger) {
                 if (debugger[0] != null) {
                     ((Debugger) debugger[0]).executionEnded();
