@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 final class ContextReference<C> {
-    private static Map<TruffleLanguage<?>,Integer> ids = new HashMap<>();
+    private static Map<TruffleLanguage<?>, Integer> ids = new HashMap<>();
     private final ContextStoreProfile profile;
     private final TruffleLanguage<C> language;
     private final int languageId;

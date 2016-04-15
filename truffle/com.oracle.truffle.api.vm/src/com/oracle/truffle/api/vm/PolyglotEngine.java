@@ -881,7 +881,7 @@ public class PolyglotEngine {
 
     private class DirectValue extends Value {
         private final Object value;
-        public DirectValue(TruffleLanguage<?>[] language, Object value) {
+        DirectValue(TruffleLanguage<?>[] language, Object value) {
             super(language);
             this.value = value;
         }
@@ -905,7 +905,7 @@ public class PolyglotEngine {
     private class ExecutorValue extends Value {
         private final ComputeInExecutor<Object> compute;
 
-        public ExecutorValue(TruffleLanguage<?>[] language, ComputeInExecutor<Object> compute) {
+        ExecutorValue(TruffleLanguage<?>[] language, ComputeInExecutor<Object> compute) {
             super(language);
             this.compute = compute;
         }

@@ -33,7 +33,7 @@ import com.oracle.truffle.api.Truffle;
 
 public final class ContextStore {
     final Object vm;
-    
+
     @CompilationFinal Object[] store;
     @CompilationFinal private Assumption storeStable = Truffle.getRuntime().createAssumption("context store stable");
 
