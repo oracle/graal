@@ -141,7 +141,9 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
                 re.MULTILINE),
         ]
 
-    def rules(self, out):
+    def rules(self, out, bmSuiteArgs):
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
           mx_benchmark.StdOutRule(
             r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
@@ -154,6 +156,19 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.score-function": "id",
               "metric.better": "lower",
               "metric.iteration": 0
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            {
+              "benchmark": ("<benchmark>", str),
+              "metric.name": "warmup",
+              "metric.value": ("<time>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": totalIterations - 1
             }
           ),
           mx_benchmark.StdOutRule(
