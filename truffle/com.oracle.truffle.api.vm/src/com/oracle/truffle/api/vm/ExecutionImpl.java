@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import java.util.Objects;
 
-final class ExecutionImpl extends Accessor.ExecSupport {
+final class ExecutionImpl {
     //
     // execution
     //
@@ -38,13 +38,11 @@ final class ExecutionImpl extends Accessor.ExecSupport {
         return CURRENT_VM;
     }
 
-    @Override
-    public ContextStore createStore(Object vm) {
+    public static ContextStore createStore(Object vm) {
         return new ContextStore(vm, 4);
     }
 
-    @Override
-    public ContextStore executionStarted(ContextStore context) {
+    public static ContextStore executionStarted(ContextStore context) {
         Object vm = context.vm;
         Objects.requireNonNull(vm);
         final ContextStore prev = CURRENT_VM.get();
@@ -52,18 +50,18 @@ final class ExecutionImpl extends Accessor.ExecSupport {
         return prev;
     }
 
-    @Override
-    public void executionEnded(ContextStore prev) {
+    @SuppressWarnings("unused")
+    public static void executionEnded(ContextStore prev) {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     static <C> C findContext(Object currentVM, Class<? extends TruffleLanguage> type) {
-        TruffleLanguage.Env env = Accessor.engineAccess().findEnv(currentVM, type);
-        return (C) Accessor.languageAccess().findContext(env);
+        PolyglotEngine vm = (PolyglotEngine) currentVM;
+        TruffleLanguage.Env env = vm.findEnv(type);
+        return (C) PolyglotEngine.Access.LANGS.findContext(env);
     }
 
-    @Override
-    public Object findVM() {
+    public static Object findVM() {
         return currentVM();
     }
 

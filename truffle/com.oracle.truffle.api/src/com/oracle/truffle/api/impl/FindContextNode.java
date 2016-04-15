@@ -27,20 +27,8 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class FindContextNode<C> extends Node {
-    private final TruffleLanguage<C> language;
-    private final ContextReference<C> ref;
+public abstract class FindContextNode<C> extends Node {
+    public abstract C executeFindContext();
 
-    public FindContextNode(TruffleLanguage<C> language) {
-        this.ref = ContextReference.create(language);
-        this.language = language;
-    }
-
-    public C executeFindContext() {
-        return ref.get();
-    }
-
-    public TruffleLanguage<C> getTruffleLanguage() {
-        return language;
-    }
+    public abstract TruffleLanguage<C> getTruffleLanguage();
 }

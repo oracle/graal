@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.vm;
 
 import java.util.Arrays;
 
@@ -31,7 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 
-public final class ContextStore {
+final class ContextStore {
     final Object vm;
 
     @CompilationFinal Object[] store;

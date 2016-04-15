@@ -62,17 +62,9 @@ public abstract class Accessor {
         public abstract void executionEnded(Object vm, Object[] debuggerHolder);
     }
 
-    public abstract static class ExecSupport {
-        public abstract ContextStore createStore(Object vm);
-
-        public abstract ContextStore executionStarted(ContextStore context);
-
-        public abstract void executionEnded(ContextStore prev);
-
-        public abstract Object findVM();
-    }
-
     public abstract static class EngineSupport {
+        public abstract <C> FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
+
         @SuppressWarnings("rawtypes")
         public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
 
@@ -141,7 +133,6 @@ public abstract class Accessor {
     private static Accessor.Nodes NODES;
     private static Accessor.OldInstrumentSupport INSTRUMENT;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
-    private static Accessor.ExecSupport EXEC;
     private static Accessor.DebugSupport DEBUG;
 
     static {
@@ -202,7 +193,6 @@ public abstract class Accessor {
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
-        EXEC = new ExecutionImpl();
     }
 
     protected Accessor() {
@@ -252,10 +242,6 @@ public abstract class Accessor {
 
     protected LanguageSupport languageSupport() {
         return API;
-    }
-
-    protected ExecSupport execSupport() {
-        return EXEC;
     }
 
     protected DebugSupport debugSupport() {

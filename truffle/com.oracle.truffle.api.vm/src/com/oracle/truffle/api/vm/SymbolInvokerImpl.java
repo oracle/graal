@@ -31,7 +31,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.ContextStore;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -114,14 +113,14 @@ final class SymbolInvokerImpl {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            ContextStore prev = PolyglotEngine.Access.EXEC.executionStarted(store);
+            ContextStore prev = ExecutionImpl.executionStarted(store);
             try {
                 if (!debuggingDisabled.isValid()) {
                     debugExecutionStarted();
                 }
                 return executeImpl(frame);
             } finally {
-                PolyglotEngine.Access.EXEC.executionEnded(prev);
+                ExecutionImpl.executionEnded(prev);
                 if (!debuggingDisabled.isValid()) {
                     debugExecutionEnded();
                 }

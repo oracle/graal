@@ -295,9 +295,8 @@ public abstract class TruffleLanguage<C> {
      *         for this language
      * @since 0.8 or earlier
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
     protected final Node createFindContextNode() {
-        return new FindContextNode(this);
+        return AccessAPI.engineAccess().createFindContextNode(this);
     }
 
     /**

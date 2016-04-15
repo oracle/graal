@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.vm;
 
 import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;

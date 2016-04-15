@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.impl.FindContextNode;
 
-final class ContextReference<C> {
-    private static Map<TruffleLanguage<?>, Integer> ids = new HashMap<>();
-    private final ContextStoreProfile profile;
+final class FindContextNodeImpl<C> extends FindContextNode<C> {
     private final TruffleLanguage<C> language;
-    private final int languageId;
+    private final ContextReference<C> ref;
 
-    private ContextReference(ContextStoreProfile profile, TruffleLanguage<C> language, int languageId) {
-        this.profile = profile;
+    FindContextNodeImpl(TruffleLanguage<C> language) {
+        this.ref = ContextReference.create(language);
         this.language = language;
-        this.languageId = languageId;
     }
 
-    @SuppressWarnings("unchecked")
-    public C get() {
-        final ContextStore store = profile.get();
-        Object context = store.getContext(languageId);
-        if (context == this) {
-            return null;
-        }
-        if (context == null) {
-            context = ExecutionImpl.findContext(store.vm, language.getClass());
-            store.setContext(languageId, context == null ? this : context);
-        }
-        return (C) context;
+    @Override
+    public C executeFindContext() {
+        return ref.get();
     }
 
-    public static synchronized <C> ContextReference<C> create(TruffleLanguage<C> language) {
-        Integer id = ids.get(language);
-        if (id == null) {
-            ids.put(language, id = ids.size());
-        }
-        return new ContextReference<>(ExecutionImpl.sharedProfile(), language, id);
+    @Override
+    public TruffleLanguage<C> getTruffleLanguage() {
+        return language;
     }
 }
