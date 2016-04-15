@@ -53,6 +53,6 @@ public final class SLObjectType extends ObjectType {
 
     @Override
     public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
-        return SLObjectTypeForeign.ACCESS;
+        return SLObjectMessageResolutionForeign.createAccess();
     }
 }

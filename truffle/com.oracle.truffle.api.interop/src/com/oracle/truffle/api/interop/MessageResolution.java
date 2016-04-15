@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,25 +32,31 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.TruffleLanguage;
 
 /**
- * @deprecated use {@link MessageResolution} and {@link Resolve} instead.
+ * Annotation to put on your node to simplify handling of incoming inter-operability {@link Message
+ * messages}.
  *
- * @since 0.11
+ * This class contains the node implementations for all messages that the receiver object should
+ * resolve. Elements in the super class that are annotated with {@link Resolve} will be ignored. For
+ * example:
+ *
+ * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
+ *
+ * The receiver object needs to implement a static method <code>isInstance</code>, which checks if a
+ * given foreign object is an instance of the given receiver type and can therefore be accessed by
+ * this node. For example:
+ *
+ * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObject#isInstanceCheck}
+ *
+ * From this class a {@link ForeignAccess} will be generated. The receiver object can then return a
+ * singleton instance of this access. For example: <br>
+ *
+ * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObject#getForeignAccessMethod}
+ *
+ * @since 0.13
  */
-@Deprecated
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
-public @interface AcceptMessage {
-    /**
-     * Identification of the {@link Message message} to accept. Well known messages include fields
-     * of the {@link Message} class (e.g. <em>"READ"</em>, <em>"WRITE"</em>, <em>"UNBOX"</em>,
-     * <em>IS_NULL</em>) or slightly mangled names of {@link Message} class factory methods (
-     * <em>EXECUTE</em>, <em>INVOKE</em>). For more details on the string encoding of message names
-     * see {@link Message#valueOf(java.lang.String)} method.
-     *
-     * @return string identification of an inter-operability message
-     * @see Message#valueOf(java.lang.String)
-     */
-    String value();
+public @interface MessageResolution {
 
     /**
      * The receiver object class that this message implementation belongs to.

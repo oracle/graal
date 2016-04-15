@@ -38,7 +38,7 @@ class ComplexNumberBEntry implements TruffleObject {
     }
 
     public ForeignAccess getForeignAccess() {
-        return ComplexNumberBEntryForeign.ACCESS;
+        return ComplexNumberBEntryMessageResolutionForeign.createAccess();
     }
 
     public static boolean isInstance(TruffleObject obj) {

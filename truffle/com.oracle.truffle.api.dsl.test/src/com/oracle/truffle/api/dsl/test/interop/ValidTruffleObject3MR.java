@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,29 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.dsl.test.interop;
 
-import java.lang.reflect.Method;
+import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.nodes.Node;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+@SuppressWarnings("unused")
+@MessageResolution(receiverType = ValidTruffleObject3.class, language = TestTruffleLanguage.class)
+public class ValidTruffleObject3MR {
+    @ExpectError("Inconsistent argument length.")
+    @Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
+    public abstract static class AcceptMyMessage2 extends Node {
+        public Object access(VirtualFrame frame, ValidTruffleObject0 object, int a, double b, Object c) {
+            return true;
+        }
 
-final class JavaFunctionObject implements TruffleObject {
-    final Method method;
-    final Object obj;
-
-    JavaFunctionObject(Method method, Object obj) {
-        this.method = method;
-        this.obj = obj;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof JavaFunctionObject;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return JavaFunctionMessageResolutionForeign.createAccess();
+        public Object access(VirtualFrame frame, ValidTruffleObject0 object, int a, double b) {
+            return true;
+        }
     }
 
 }

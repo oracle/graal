@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,40 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tck.impl.TckLanguage;
 
-final class ComplexNumbersA implements TruffleObject {
+@SuppressWarnings("unused")
+@MessageResolution(receiverType = StructuredData.class, language = TckLanguage.class)
+class StructuredDataMessageResolution {
+    @Resolve(message = "GET_SIZE")
+    abstract static class StructuredDataGetSizeNode extends Node {
 
-    private final double[] data;
+        public Object access(StructuredData data) {
+            return data.getSchema().length();
+        }
 
-    ComplexNumbersA(double[] data) {
-        assert data.length % 2 == 0;
-        this.data = data;
     }
 
-    public double[] getData() {
-        return data;
+    @Resolve(message = "HAS_SIZE")
+    abstract static class StructuredDataHasSizeNode extends Node {
+
+        public Object access(StructuredData data) {
+            return true;
+        }
+
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ComplexNumbersA;
-    }
+    @Resolve(message = "READ")
+    abstract static class StructuredDataReadNode extends Node {
 
-    public ForeignAccess getForeignAccess() {
-        return ComplexNumbersAMessageResolutionForeign.createAccess();
+        public Object access(StructuredData data, Number index) {
+            int idx = TckLanguage.checkBounds(index.intValue(), data.getSchema().length());
+            return new StructuredDataEntry(data.getBuffer(), data.getSchema(), idx);
+        }
+
     }
 
 }
