@@ -141,8 +141,10 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
                 re.MULTILINE),
         ]
 
-    def rules(self, out, bmSuiteArgs):
+    def rules(self, out, benchmarks, bmSuiteArgs):
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return []
         totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
           mx_benchmark.StdOutRule(
