@@ -173,8 +173,9 @@ public final class Debugger {
 
         @TruffleBoundary
         public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
-            if (currentDebugContext != null) {
-                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
+            DebugExecutionContext context = getCurrentDebugContext();
+            if (context != null) {
+                context.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
             }
         }
     };
@@ -182,15 +183,34 @@ public final class Debugger {
     private WarningLog warningLog = new WarningLog() {
 
         public void addWarning(String warning) {
-            assert currentDebugContext != null;
-            currentDebugContext.logWarning(warning);
+            DebugExecutionContext context = getCurrentDebugContext();
+            assert context != null;
+            context.logWarning(warning);
         }
     };
 
     /**
-     * Head of the stack of executions.
+     * Representing the head of the stack of executions per thread. Note, this is meant for a 1:n
+     * setting of 1 polyglot engine and n threads. Currently, these additional threads are not
+     * officially supported, and need to be initialized manually with
+     * {@link #executionStarted(int, Source)}. They should also be probably deinitalized with
+     * {@link #executionEnded()}.
      */
-    private DebugExecutionContext currentDebugContext;
+    private ThreadLocal<DebugExecutionContext> currentDebugContext = new ThreadLocal<>();
+
+    /**
+     * @return Head of the stack of executions.
+     */
+    private DebugExecutionContext getCurrentDebugContext() {
+        return currentDebugContext.get();
+    }
+
+    /**
+     * @param currentDebugContext the head of the stack of executions.
+     */
+    private void setCurrentDebugContext(DebugExecutionContext context) {
+        currentDebugContext.set(context);
+    }
 
     /**
      * Sets a breakpoint to halt at a source line.
@@ -255,7 +275,7 @@ public final class Debugger {
      */
     @TruffleBoundary
     void prepareContinue(int depth) {
-        currentDebugContext.setAction(depth, new Continue());
+        getCurrentDebugContext().setAction(depth, new Continue());
     }
 
     /**
@@ -279,7 +299,7 @@ public final class Debugger {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
-        currentDebugContext.setAction(new StepInto(stepCount));
+        getCurrentDebugContext().setAction(new StepInto(stepCount));
     }
 
     /**
@@ -297,7 +317,7 @@ public final class Debugger {
      */
     @TruffleBoundary
     void prepareStepOut() {
-        currentDebugContext.setAction(new StepOut());
+        getCurrentDebugContext().setAction(new StepOut());
     }
 
     /**
@@ -323,7 +343,7 @@ public final class Debugger {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
-        currentDebugContext.setAction(new StepOver(stepCount));
+        getCurrentDebugContext().setAction(new StepOver(stepCount));
     }
 
     Instrumenter getInstrumenter() {
@@ -937,7 +957,7 @@ public final class Debugger {
         return count[0] == 0 ? 0 : count[0] + 1;
     }
 
-    private void executionStarted(int depth, Source source) {
+    public void executionStarted(int depth, Source source) {
         Source execSource = source;
         if (execSource == null) {
             execSource = lastSource;
@@ -945,16 +965,18 @@ public final class Debugger {
             lastSource = execSource;
         }
         // Push a new execution context onto stack
-        currentDebugContext = new DebugExecutionContext(execSource, currentDebugContext, depth);
+        DebugExecutionContext context = new DebugExecutionContext(execSource, getCurrentDebugContext(), depth);
+        setCurrentDebugContext(context);
         prepareContinue(depth);
-        currentDebugContext.trace("BEGIN EXECUTION");
+        context.trace("BEGIN EXECUTION");
     }
 
-    private void executionEnded() {
-        currentDebugContext.trace("END EXECUTION");
-        currentDebugContext.dispose();
+    public void executionEnded() {
+        DebugExecutionContext context = getCurrentDebugContext();
+        context.trace("END EXECUTION");
+        context.dispose();
         // Pop the stack of execution contexts.
-        currentDebugContext = currentDebugContext.predecessor;
+        setCurrentDebugContext(context.predecessor);
     }
 
     /**
@@ -969,7 +991,8 @@ public final class Debugger {
     Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
         try {
             if (frameInstance == null) {
-                return AccessorDebug.langs().evalInContext(engine, ev, code, currentDebugContext.haltedEventContext.getInstrumentedNode(), currentDebugContext.haltedFrame);
+                DebugExecutionContext context = getCurrentDebugContext();
+                return AccessorDebug.langs().evalInContext(engine, ev, code, context.haltedEventContext.getInstrumentedNode(), context.haltedFrame);
             } else {
                 return AccessorDebug.langs().evalInContext(engine, ev, code, frameInstance.getCallNode(), frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize());
             }
