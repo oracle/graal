@@ -133,7 +133,16 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress);
 
-    LLVMExpressionNode createGetElementPtr(LLVMBaseType indexType, LLVMExpressionNode currentAddress, LLVMExpressionNode index, int indexedTypeLength);
+    /**
+     * Creates an getelementptr (GEP) instruction.
+     *
+     * @param indexType the integer type of the index parameter.
+     * @param aggregateAddress the address of the aggregate data structure
+     * @param index
+     * @param indexedTypeLength
+     * @return the getelementptr node
+     */
+    LLVMExpressionNode createGetElementPtr(LLVMBaseType indexType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength);
 
     Class<?> getJavaClass(LLVMExpressionNode llvmExpressionNode);
 
