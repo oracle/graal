@@ -77,6 +77,9 @@ def travis1(args=None):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
     with VM('server', 'product'):
+        with Task('TestPolglot', tasks) as t:
+            if t: runPolyglotTestCases()
+    with VM('server', 'product'):
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
     with VM('server', 'product'):

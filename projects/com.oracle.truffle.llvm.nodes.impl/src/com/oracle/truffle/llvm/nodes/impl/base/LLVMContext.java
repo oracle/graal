@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
@@ -45,6 +47,9 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public class LLVMContext extends ExecutionContext {
+
+    private final List<RootCallTarget> staticInitializers = new ArrayList<>();
+    private final List<RootCallTarget> staticDestructors = new ArrayList<>();
 
     private final LLVMFunctionRegistry registry;
 
@@ -114,6 +119,22 @@ public class LLVMContext extends ExecutionContext {
 
     public static LLVMStack getStaticStack() {
         return lastContext.stack;
+    }
+
+    public void registerStaticDestructor(RootCallTarget staticDestructor) {
+        staticDestructors.add(staticDestructor);
+    }
+
+    public void registerStaticInitializer(RootCallTarget staticInitializer) {
+        staticInitializers.add(staticInitializer);
+    }
+
+    public List<RootCallTarget> getStaticDestructors() {
+        return staticDestructors;
+    }
+
+    public List<RootCallTarget> getStaticInitializers() {
+        return staticInitializers;
     }
 
 }
