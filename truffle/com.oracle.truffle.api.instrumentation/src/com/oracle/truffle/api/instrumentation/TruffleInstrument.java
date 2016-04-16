@@ -81,9 +81,9 @@ import com.oracle.truffle.api.source.Source;
  *     &#064;Override
  *     protected void onCreate(Env env, Instrumenter instrumenter) {
  *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
- *         .tagIs(&quot;EXPRESSION&quot;).build(), new EventNodeFactory() {
- *             public EventNode create(final EventContext context) {
- *                 return new EventNode() {
+ *         .tagIs(&quot;EXPRESSION&quot;).build(), new ExecutionEventNodeFactory() {
+ *             public ExecutionEventNode create(final EventContext context) {
+ *                 return new ExecutionEventNode() {
  *                     &#064;CompilationFinal private boolean visited;
  * 
  *                     &#064;Override

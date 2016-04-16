@@ -25,6 +25,9 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.Assert;
@@ -254,22 +257,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @SuppressWarnings("deprecation")
         @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
         protected boolean isInstrumentable(Node node) {
             return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
         }
 
         @Override
@@ -669,6 +658,122 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
             });
+        }
+    }
+
+    /*
+     * Test that parsing and executing foreign languages with context work.
+     */
+    @Test
+    public void testTestFindParentEventNode1() throws IOException {
+        InstrumentationTest.findParentNodes = new ArrayList<>();
+        List<FindParentEventNode> nodes = InstrumentationTest.findParentNodes;
+
+        engine.getInstruments().get("testTestFindParentEventNode1").setEnabled(true);
+        run("STATEMENT(EXPRESSION,EXPRESSION(STATEMENT))");
+
+        // assert no assertions during execution
+        Assert.assertTrue("Errors during execution: " + getErr(), getErr().isEmpty());
+
+        Assert.assertEquals(4, nodes.size());
+
+        FindParentEventNode node0 = nodes.get(0);
+        FindParentEventNode node1 = nodes.get(1);
+        FindParentEventNode node2 = nodes.get(2);
+        FindParentEventNode node3 = nodes.get(3);
+
+        Assert.assertNull(node0.parentNode);
+        Assert.assertSame(node1.parentNode, node0);
+        Assert.assertSame(node2.parentNode, node0);
+        Assert.assertSame(node3.parentNode, node2);
+
+        Assert.assertTrue(node0.beforeChildren.get(0).isEmpty());
+        Assert.assertTrue(node1.beforeChildren.get(0).isEmpty());
+        Assert.assertTrue(node2.beforeChildren.get(0).isEmpty());
+        Assert.assertTrue(node3.beforeChildren.get(0).isEmpty());
+
+        Assert.assertEquals(Arrays.asList(node1, node2), node0.afterChildren.get(0));
+        Assert.assertEquals(Arrays.asList(), node1.afterChildren.get(0));
+        Assert.assertEquals(Arrays.asList(node3), node2.afterChildren.get(0));
+        Assert.assertEquals(Arrays.asList(), node3.afterChildren.get(0));
+
+        run("STATEMENT(EXPRESSION,EXPRESSION(STATEMENT))");
+        // assert no assertions during execution
+        Assert.assertTrue("Errors during execution: " + getErr(), getErr().isEmpty());
+
+        Assert.assertEquals(4, nodes.size());
+
+        node0 = nodes.get(0);
+        node1 = nodes.get(1);
+        node2 = nodes.get(2);
+        node3 = nodes.get(3);
+
+        Assert.assertNull(node0.parentNode);
+        Assert.assertSame(node1.parentNode, node0);
+        Assert.assertSame(node2.parentNode, node0);
+        Assert.assertSame(node3.parentNode, node2);
+
+        Assert.assertEquals(Arrays.asList(node1, node2), node0.beforeChildren.get(1));
+        Assert.assertEquals(Arrays.asList(), node1.beforeChildren.get(1));
+        Assert.assertEquals(Arrays.asList(node3), node2.beforeChildren.get(1));
+        Assert.assertEquals(Arrays.asList(), node3.beforeChildren.get(1));
+
+        Assert.assertEquals(Arrays.asList(node1, node2), node0.afterChildren.get(1));
+        Assert.assertEquals(Arrays.asList(), node1.afterChildren.get(1));
+        Assert.assertEquals(Arrays.asList(node3), node2.afterChildren.get(1));
+        Assert.assertEquals(Arrays.asList(), node3.afterChildren.get(1));
+
+    }
+
+    @Registration(id = "testTestFindParentEventNode1")
+    public static class TestFindParentEventNode1 extends TruffleInstrument {
+
+        static int parentNodesFound = 0;
+
+        @Override
+        protected void onCreate(final Env env) {
+            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(),
+                            new FindParentExecutionEventNodeFactory());
+        }
+    }
+
+    static class FindParentExecutionEventNodeFactory implements ExecutionEventNodeFactory {
+        public ExecutionEventNode create(final EventContext context) {
+            return new FindParentEventNode(context, this);
+        }
+    }
+
+    static List<FindParentEventNode> findParentNodes = new ArrayList<>();
+
+    static class FindParentEventNode extends ExecutionEventNode {
+
+        private final EventContext context;
+        private final ExecutionEventNodeFactory factory;
+
+        FindParentEventNode(EventContext context, ExecutionEventNodeFactory factory) {
+            this.context = context;
+            this.factory = factory;
+            findParentNodes.add(this);
+        }
+
+        ExecutionEventNode parentNode;
+        List<List<ExecutionEventNode>> beforeChildren = new ArrayList<>();
+        List<List<ExecutionEventNode>> afterChildren = new ArrayList<>();
+
+        @Override
+        protected void onEnter(VirtualFrame frame) {
+            ExecutionEventNode parent = context.findParentEventNode(factory);
+            if (this.parentNode != null) {
+                Assert.assertSame(parent, parentNode);
+            }
+            this.parentNode = parent;
+            this.beforeChildren.add(context.findChildEventNodes(factory));
+        }
+
+        @Override
+        protected void onReturnValue(VirtualFrame frame, Object result) {
+            Assert.assertSame(parentNode, context.findParentEventNode(factory));
+            this.afterChildren.add(context.findChildEventNodes(factory));
         }
     }
 

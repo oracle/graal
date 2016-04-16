@@ -25,8 +25,12 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -97,6 +101,82 @@ public final class EventContext {
      */
     public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
         return InstrumentationHandler.ACCESSOR.parse(null, source, getInstrumentedNode(), argumentNames);
+    }
+
+    /**
+     * Returns the first found parent {@link ExecutionEventNode event node} created from a given
+     * {@link ExecutionEventNodeFactory factory}. If multiple
+     * {@link Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory) bindings}
+     * were created with a single {@link ExecutionEventNodeFactory factory} instance then the first
+     * ExecutionEventNode which is found is returned in the order of event binding attachment.
+     *
+     * @param factory a event node factory for which to return the first event node
+     * @return the first event node found in the order of event binding attachment
+     * @since 0.13
+     */
+    @TruffleBoundary
+    public ExecutionEventNode findParentEventNode(final ExecutionEventNodeFactory factory) {
+        Node parent = getInstrumentedNode().getParent();
+        while ((parent = parent.getParent()) != null) {
+            ExecutionEventNode eventNode = findEventNode(factory, parent);
+            if (eventNode != null) {
+                return eventNode;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @return an event node from the direct parent, or null.
+     * @since 0.13
+     */
+    @TruffleBoundary
+    public ExecutionEventNode findDirectParentEventNode(final ExecutionEventNodeFactory factory) {
+        Node parent = getInstrumentedNode().getParent();
+
+        assert parent instanceof WrapperNode;  // this is the wrapper of the current node
+        parent = parent.getParent();           // this is the parent node
+        parent = parent.getParent();
+        assert parent instanceof WrapperNode;  // this is the wrapper of the parent node
+
+        return findEventNode(factory, parent);
+    }
+
+    /**
+     * Returns all first-level child event nodes created from a given
+     * {@link ExecutionEventNodeFactory factory}.
+     *
+     * @param factory an event node factory for which to return all first-level children
+     * @return all first-level children that were created from a given factory
+     * @since 0.13
+     */
+    @TruffleBoundary
+    public List<ExecutionEventNode> findChildEventNodes(final ExecutionEventNodeFactory factory) {
+        final List<ExecutionEventNode> eventNodes = new ArrayList<>();
+        Node instrumentedNode = getInstrumentedNode();
+        // TODO ideally one could use a NodeListener instead of the recursive algortihm.
+        // Unfortunately returning false in NodeVisitor#visit does not continue traversing all
+        // parents children but stops visitation completely. Bug!?
+        collectEventNodes(eventNodes, factory, instrumentedNode);
+        return Collections.unmodifiableList(eventNodes);
+    }
+
+    private void collectEventNodes(List<ExecutionEventNode> eventNodes, ExecutionEventNodeFactory factory, Node node) {
+        for (Node child : node.getChildren()) {
+            ExecutionEventNode eventNode = findEventNode(factory, child);
+            if (eventNode != null) {
+                eventNodes.add(eventNode);
+            } else if (child != null) {
+                collectEventNodes(eventNodes, factory, child);
+            }
+        }
+    }
+
+    private static ExecutionEventNode findEventNode(ExecutionEventNodeFactory factory, Node node) {
+        if (node instanceof WrapperNode) {
+            return ((WrapperNode) node).getProbeNode().findEventNode(factory);
+        }
+        return null;
     }
 
     /*

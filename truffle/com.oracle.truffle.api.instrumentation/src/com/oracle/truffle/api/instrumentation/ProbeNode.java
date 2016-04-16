@@ -149,6 +149,24 @@ public final class ProbeNode extends Node {
         }
     }
 
+    ExecutionEventNode findEventNode(final ExecutionEventNodeFactory factory) {
+        if (version != null && version.isValid() && chain != null) {
+            return findEventNodeInChain(factory);
+        }
+        return null;
+    }
+
+    private ExecutionEventNode findEventNodeInChain(ExecutionEventNodeFactory factory) {
+        EventChainNode currentChain = this.chain;
+        while (currentChain != null) {
+            if (currentChain.binding.getElement() == factory) {
+                return ((EventProviderChainNode) currentChain).eventNode;
+            }
+            currentChain = currentChain.next;
+        }
+        return null;
+    }
+
     private boolean lazyUpdate(VirtualFrame frame) {
         if (version == null || !version.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -197,7 +215,7 @@ public final class ProbeNode extends Node {
         try {
             eventNode = ((ExecutionEventNodeFactory) element).create(context);
             if (eventNode.getParent() != null) {
-                throw new IllegalStateException(String.format("Returned EventNode %s was already adopted by another AST.", eventNode));
+                throw new IllegalStateException(String.format("Returned ExecutionEventNode %s was already adopted by another AST.", eventNode));
             }
         } catch (Throwable t) {
             if (binding.isLanguageBinding()) {
@@ -421,4 +439,5 @@ public final class ProbeNode extends Node {
         }
 
     }
+
 }
