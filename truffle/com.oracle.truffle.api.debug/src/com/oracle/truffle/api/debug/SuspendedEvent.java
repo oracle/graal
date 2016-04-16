@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.debug.Debugger.DebugExecutionContext;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -59,15 +60,15 @@ public final class SuspendedEvent {
         }
     }
 
-    private final Debugger debugger;
+    private final DebugExecutionContext context;
     private final Node haltedNode;
     private final MaterializedFrame haltedFrame;
     private final List<FrameInstance> stack;
     private final List<String> warnings;
     private volatile boolean kill;
 
-    SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
-        this.debugger = debugger;
+    SuspendedEvent(DebugExecutionContext context, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
+        this.context = context;
         this.haltedNode = haltedNode;
         this.haltedFrame = haltedFrame;
         this.stack = stack;
@@ -87,7 +88,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
-        return debugger;
+        return context.getDebugger();
     }
 
     /** @since 0.9 */
@@ -133,7 +134,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public void prepareContinue() {
-        debugger.prepareContinue(-1);
+        context.getDebugger().prepareContinue(context, -1);
     }
 
     /**
@@ -143,7 +144,8 @@ public final class SuspendedEvent {
      * <li>User breakpoints are disabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at a node with the tag {@link Debugger#HALT_TAG}, <strong>or:</strong></li>
+     * <li>execution arrives at a node with the tag {@link Debugger#HALT_TAG}, <strong>or:</strong>
+     * </li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),
@@ -155,7 +157,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public void prepareStepInto(int stepCount) {
-        debugger.prepareStepInto(stepCount);
+        context.getDebugger().prepareStepInto(context, stepCount);
     }
 
     /**
@@ -165,7 +167,8 @@ public final class SuspendedEvent {
      * <li>User breakpoints are enabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at the nearest enclosing call site on the stack, <strong>or</strong></li>
+     * <li>execution arrives at the nearest enclosing call site on the stack, <strong>or</strong>
+     * </li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepOut mode persists only through one resumption, and reverts by default to Continue
@@ -175,7 +178,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public void prepareStepOut() {
-        debugger.prepareStepOut();
+        context.getDebugger().prepareStepOut(context);
     }
 
     /**
@@ -199,7 +202,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public void prepareStepOver(int stepCount) {
-        debugger.prepareStepOver(stepCount);
+        context.getDebugger().prepareStepOver(context, stepCount);
     }
 
     /**
@@ -214,7 +217,7 @@ public final class SuspendedEvent {
      * @since 0.9
      */
     public Object eval(String code, FrameInstance frame) throws IOException {
-        return debugger.evalInContext(this, code, frame);
+        return context.getDebugger().evalInContext(context, this, code, frame);
     }
 
     /**

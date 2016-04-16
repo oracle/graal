@@ -38,13 +38,14 @@ import java.util.concurrent.Callable;
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
  * keep it to further manipulate with debugging capabilities of the
  * {@link com.oracle.truffle.api.vm.PolyglotEngine} when it is running.
- * 
+ *
  * @since 0.9
  */
 @SuppressWarnings("javadoc")
 public final class ExecutionEvent {
     private Object debugger;
 
+    // TODO: this needs the execution context
     ExecutionEvent(Debugger debugger) {
         this.debugger = debugger;
     }
@@ -85,11 +86,13 @@ public final class ExecutionEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
-     * 
+     *
      * @since 0.9
      */
+    // TODO: this needs the execution context
     public void prepareContinue() {
-        getDebugger().prepareContinue(-1);
+        throw new RuntimeException("Not Yet Implemented. Needs execution context.");
+// getDebugger().prepareContinue(-1);
     }
 
     /**
@@ -109,7 +112,9 @@ public final class ExecutionEvent {
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
      * @since 0.9
      */
+    // TODO: this needs the execution context
     public void prepareStepInto() {
-        getDebugger().prepareStepInto(1);
+        throw new RuntimeException("Not Yet Implemented. Needs execution context.");
+// getDebugger().prepareStepInto(1);
     }
 }
