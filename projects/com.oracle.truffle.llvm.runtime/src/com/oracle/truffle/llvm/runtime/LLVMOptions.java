@@ -131,6 +131,7 @@ public class LLVMOptions {
                         LLVMOptions::parseString,
                         PropertyCategory.TESTS),
         DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
+        DYN_BITCODE_LIBRARIES("DynamicBitcodeLibraries", "The paths to shared bitcode libraries delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
         PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString, PropertyCategory.MX),
         OPTIMIZATIONS_DISABLE_SPECULATIVE(
                         "DisableSpeculativeOptimizations",
@@ -349,6 +350,10 @@ public class LLVMOptions {
 
     public static boolean performanceWarningsAreFatal() {
         return getParsedProperty(Property.PERFORMANCE_WARNING_ARE_FATAL);
+    }
+
+    public static String[] getDynamicBitcodeLibraries() {
+        return getParsedProperty(Property.DYN_BITCODE_LIBRARIES);
     }
 
 }
