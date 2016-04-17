@@ -12,6 +12,8 @@ from mx_gate import Task, add_gate_runner
 from mx_jvmci import VM, buildvms
 
 _suite = mx.suite('sulong')
+_mx = join(_suite.dir, "mx.sulong/")
+_libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testDir = join(_root, "com.oracle.truffle.llvm.test/")
@@ -471,6 +473,7 @@ def getCommonOptions(lib_args=None):
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
         '-Dsulong.IntrinsifyCFunctions=false',
+        getBitcodeLibrariesOption(),
         getSearchPathOption(lib_args)
     ]
 
@@ -688,6 +691,19 @@ def mdlCheck(args=None):
             if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
                 absPath = path + '/' + f
                 subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032', absPath])
+
+def getBitcodeLibrariesOption():
+    libraries = []
+    for path, _, files in os.walk(_libPath):
+        for f in files:
+            # TODO: also allow other extensions, best introduce a command "compile" that compiles C, C++, Fortran and other files
+            if f.endswith('.c'):
+                bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
+                absBitcodeFile = path + '/' + bitcodeFile
+                if not os.path.isfile(absBitcodeFile):
+                    compileWithClang(['-S', '-emit-llvm', path + '/' + f, '-o', absBitcodeFile])
+                libraries.append(absBitcodeFile)
+    return'-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
