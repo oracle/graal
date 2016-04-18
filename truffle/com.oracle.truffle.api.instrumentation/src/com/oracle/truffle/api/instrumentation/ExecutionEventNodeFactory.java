@@ -32,10 +32,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * does never change for a particular returned event node.
  *
  * <p>
- * For example it makes sense to register a performance counter on {@link #create(EventContext) } and
- * increment the counter in the {@link ExecutionEventNode} implementation. The counter can be stored
- * as a {@link CompilationFinal compilation final}, so no peak performance overhead persists for
- * looking up the counter on the fast path.
+ * For example it makes sense to register a performance counter on {@link #create(EventContext) }
+ * and increment the counter in the {@link ExecutionEventNode} implementation. The counter can be
+ * stored as a {@link CompilationFinal compilation final}, so no peak performance overhead persists
+ * for looking up the counter on the fast path.
  * </p>
  * 
  * @since 0.12

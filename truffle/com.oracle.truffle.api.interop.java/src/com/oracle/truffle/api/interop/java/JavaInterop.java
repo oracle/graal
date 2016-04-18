@@ -68,7 +68,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <li>If the {@link Message#createInvoke(int) previous message} isn't handled, a
  * {@link Message#READ} is sent to your {@link TruffleObject object} (e.g.
  * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
- * equal to the name of the interface method. If the read returns a primitive type, it is returned.</li>
+ * equal to the name of the interface method. If the read returns a primitive type, it is returned.
+ * </li>
  * <li>If the read value is another {@link TruffleObject}, it is inspected whether it handles
  * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
  * of the interface method and its parameters is sent to the object. The result is returned to the

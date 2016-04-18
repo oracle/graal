@@ -767,8 +767,8 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         // no generic executes
         if (!genericFound) {
-            node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the "
-                            + "signature 'public abstract {Type} execute(VirtualFrame)' and must not throw any checked exceptions.");
+            node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the " +
+                            "signature 'public abstract {Type} execute(VirtualFrame)' and must not throw any checked exceptions.");
         }
 
         int nodeChildDeclarations = 0;
@@ -790,8 +790,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (!requireNodeChildDeclarations.isEmpty()) {
-            node.addError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. "
-                            + "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
+            node.addError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
+                            "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
         }
 
         if (nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {

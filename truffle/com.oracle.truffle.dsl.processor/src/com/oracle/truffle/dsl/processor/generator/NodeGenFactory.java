@@ -1050,7 +1050,7 @@ public class NodeGenFactory {
         for (SpecializationData specialization : node.getSpecializations()) {
             if (specialization.isReachable() &&   //
                             (specialization.isSpecialized() //
-                            || (specialization.isFallback() && optimizeFallback(specialization)))) {
+                                            || (specialization.isFallback() && optimizeFallback(specialization)))) {
                 specializations.add(specialization);
             }
         }

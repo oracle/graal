@@ -52,8 +52,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * runtime. An AST <em>location</em> is best represented as the {@link SourceSection} from which the
  * original AST Node was created.
  * <p>
- * Client-oriented documentation for the use of Probes is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
+ * Client-oriented documentation for the use of Probes is available online at
+ * <a HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
  * net/display/Graal/Finding+Probes</a>
  * <p>
  *
