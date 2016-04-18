@@ -756,7 +756,7 @@ public class PolyglotEngine {
         public Object get() throws IOException {
             assertNoTruffle();
             Object result = waitForSymbol();
-            if (result instanceof TruffleObject) {
+            if (executor != null && result instanceof TruffleObject) {
                 return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
             } else {
                 return result;
