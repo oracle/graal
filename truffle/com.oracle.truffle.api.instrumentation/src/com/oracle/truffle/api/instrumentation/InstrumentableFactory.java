@@ -30,7 +30,8 @@ import com.oracle.truffle.api.nodes.Node;
  * Factory for creating <em>wrapper nodes</em>. The instrumentation framework inserts a wrapper
  * between an {@link Instrumentable} guest language node (called the <em>delegate</em>) and its
  * parent for the purpose of interposing on execution events at the delegate and reporting those
- * events to the instrumentation framework.</p>
+ * events to the instrumentation framework.
+ * </p>
  * <p>
  * Wrapper implementations can be generated automatically: see the {@link Instrumentable}
  * annotation.
@@ -44,10 +45,11 @@ public interface InstrumentableFactory<T extends Node> {
      * Returns a new, never adopted, unshared {@link WrapperNode wrapper} node implementation for a
      * particular {@link Instrumentable} node of the guest language AST called its <em>delegate</em>
      * . The returned wrapper implementation must extend the same type that is annotated with
-     * {@link Instrumentable}.</p>
+     * {@link Instrumentable}.
+     * </p>
      * <p>
-     * A wrapper forwards the following events concerning the delegate to the given
-     * {@link ProbeNode probe} for propagation through the instrumentation framework, e.g. to
+     * A wrapper forwards the following events concerning the delegate to the given {@link ProbeNode
+     * probe} for propagation through the instrumentation framework, e.g. to
      * {@linkplain ExecutionEventListener event listeners} bound to this guest language program
      * location:
      * <ul>

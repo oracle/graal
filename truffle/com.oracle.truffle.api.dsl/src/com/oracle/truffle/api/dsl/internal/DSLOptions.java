@@ -128,8 +128,8 @@ public @interface DSLOptions {
         DECLARED,
 
         /**
-         * Never generate an optimized fallback specialization. Please be aware that triggering a @Fallback
-         * case without optimization will also invalidate your compiled code.
+         * Never generate an optimized fallback specialization. Please be aware that triggering
+         * a @Fallback case without optimization will also invalidate your compiled code.
          */
         NEVER;
     }

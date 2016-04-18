@@ -46,19 +46,19 @@
  * This introduction to Truffle contains items in the following recommended order:
  *
  * <ul>
- * <li>How to get access to the Truffle runtime?
- * {@link com.oracle.truffle.api.TruffleRuntimeTest}</li>
+ * <li>How to get access to the Truffle runtime? {@link com.oracle.truffle.api.TruffleRuntimeTest}
+ * </li>
  * <li>How to create a root node? {@link com.oracle.truffle.api.RootNodeTest}</li>
  * <li>How to create a child node and link it with its parent?
  * {@link com.oracle.truffle.api.ChildNodeTest}</li>
  * <li>How to create an array of child nodes? {@link com.oracle.truffle.api.ChildrenNodesTest}</li>
- * <li>Why are final fields in node classes important?
- * {@link com.oracle.truffle.api.FinalFieldTest}</li>
+ * <li>Why are final fields in node classes important? {@link com.oracle.truffle.api.FinalFieldTest}
+ * </li>
  * <li>How to replace one node with another node and what for?
  * {@link com.oracle.truffle.api.ReplaceTest}</li>
  * <li>How to let one Truffle tree invoke another one? {@link com.oracle.truffle.api.CallTest}</li>
- * <li>How to pass arguments when executing a tree?
- * {@link com.oracle.truffle.api.ArgumentsTest}</li>
+ * <li>How to pass arguments when executing a tree? {@link com.oracle.truffle.api.ArgumentsTest}
+ * </li>
  * <li>How to use frames and frame slots to store values local to an activation?
  * {@link com.oracle.truffle.api.FrameTest}</li>
  * <li>How to use type specialization and speculation for frame slots?
@@ -70,4 +70,3 @@
  * </ul>
  */
 package com.oracle.truffle.api;
-

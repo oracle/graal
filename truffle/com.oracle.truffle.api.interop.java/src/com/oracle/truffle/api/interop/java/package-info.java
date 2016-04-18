@@ -30,8 +30,7 @@
  */
 
 /**
- * {@link com.oracle.truffle.api.interop.java.JavaInterop Helper methods} 
- * to simplify co-operation of <b>Java</b> and 
- * {@link com.oracle.truffle.api.interop.TruffleObject Truffle objects}.
+ * {@link com.oracle.truffle.api.interop.java.JavaInterop Helper methods} to simplify co-operation
+ * of <b>Java</b> and {@link com.oracle.truffle.api.interop.TruffleObject Truffle objects}.
  */
 package com.oracle.truffle.api.interop.java;

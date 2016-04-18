@@ -50,4 +50,3 @@
  * @see com.oracle.truffle.api.object.dsl.Layout
  */
 package com.oracle.truffle.api.object.dsl;
-

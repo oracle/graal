@@ -197,7 +197,7 @@ public class RubyCall {
 
     }
 
-    public static final class RubyClass /* this would extend RubyModule */{
+    public static final class RubyClass /* this would extend RubyModule */ {
 
         private final String name;
         private final RubyClass parent; // this would be a RubyModule

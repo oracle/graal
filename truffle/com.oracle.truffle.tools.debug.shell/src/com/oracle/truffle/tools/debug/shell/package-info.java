@@ -30,45 +30,40 @@
  */
 
 /**
- * <strong>Warning:</strong> The public classes in this package have been
- * deprecated and will be removed from the Truffle public API in a subsequent
- * release.
+ * <strong>Warning:</strong> The public classes in this package have been deprecated and will be
+ * removed from the Truffle public API in a subsequent release.
  * <p>
- * This package contains <strong>REPL*</strong>: an experimental framework for
- * building a <em>language-agnostic</em> command-line oriented debugger that:
+ * This package contains <strong>REPL*</strong>: an experimental framework for building a
+ * <em>language-agnostic</em> command-line oriented debugger that:
  * <ul>
- * <li>works with every Truffle-implemented language "out of the box",
- * i.e. requiring minimal additional support by language implementors;</li>
+ * <li>works with every Truffle-implemented language "out of the box", i.e. requiring minimal
+ * additional support by language implementors;</li>
  * <li>works simultaneously, without special configuration, for all Truffle language implementations
  * available to it; and</li>
- * <li>demonstrates Truffle language-interopability by debugging seamlessly
- * across Truffle <em>cross-language</em> calls.</li>
+ * <li>demonstrates Truffle language-interopability by debugging seamlessly across Truffle
+ * <em>cross-language</em> calls.</li>
  * </ul>
  * <p>
  * <h4>Goals for building <strong>REPL*</strong></h4>
  * <ol>
  * <li>Exercise and test <em>in action</em> the built-in
- * {@linkplain com.oracle.truffle.api.debug.Debugger} debugging support services
- * provided as part of the Truffle API, which in turn relies on Truffle
+ * {@linkplain com.oracle.truffle.api.debug.Debugger} debugging support services provided as part of
+ * the Truffle API, which in turn relies on Truffle
  * {@linkplain com.oracle.truffle.api.instrument.Instrumenter Instrumentation}.</li>
- * <li>Emulates a client/server architecture to demonstrate that
- * language-agnostic debugging can be implemented over wire protocols.  Wire
- * protocol communication between client and server is <em>partially</em> emulated
- * by passing messages expressed as textual key-value pairs. The emulation is
- * <em>partial</em> because both run interleaved on a single JVM thread, with some
+ * <li>Emulates a client/server architecture to demonstrate that language-agnostic debugging can be
+ * implemented over wire protocols. Wire protocol communication between client and server is
+ * <em>partially</em> emulated by passing messages expressed as textual key-value pairs. The
+ * emulation is <em>partial</em> because both run interleaved on a single JVM thread, with some
  * sharing of resources.</li>
- * <li>Provide a working debugger that is always available during development
- * of new Truffle language implementations.</li>
- * <li>Provide a working debugger with extra support for Truffle language
- * development, in particular the ability to inspect the current structure
- * of the Truffle AST around a halted location.</li>
+ * <li>Provide a working debugger that is always available during development of new Truffle
+ * language implementations.</li>
+ * <li>Provide a working debugger with extra support for Truffle language development, in particular
+ * the ability to inspect the current structure of the Truffle AST around a halted location.</li>
  * </ol>
- * <h4>Command Set</h4>
- * The Command Line Interface (CLI) for <strong>REPL*</strong> is based as
- * much as possible on the CLI for the
- * <a href="http://www.gnu.org/software/gdb/documentation/">GDB Debugger.</a>
- * <h4>REPL* Functionality</h4>
- * Basic navigation:
+ * <h4>Command Set</h4> The Command Line Interface (CLI) for <strong>REPL*</strong> is based as much
+ * as possible on the CLI for the <a href="http://www.gnu.org/software/gdb/documentation/">GDB
+ * Debugger.</a>
+ * <h4>REPL* Functionality</h4> Basic navigation:
  * <ul>
  * <li>StepIn (n times)</li>
  * <li>StepOut (n times)</li>
@@ -115,4 +110,3 @@
  * </ul>
  */
 package com.oracle.truffle.tools.debug.shell;
-

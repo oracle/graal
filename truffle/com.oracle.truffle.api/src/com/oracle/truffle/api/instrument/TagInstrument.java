@@ -32,8 +32,8 @@ package com.oracle.truffle.api.instrument;
  * <li>A <em>listener</em>: a consumer of execution events on behalf of an external client.
  * </ol>
  * <p>
- * Client-oriented documentation for the use of Instruments is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
+ * Client-oriented documentation for the use of Instruments is available online at
+ * <a HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
  * @see SyntaxTag

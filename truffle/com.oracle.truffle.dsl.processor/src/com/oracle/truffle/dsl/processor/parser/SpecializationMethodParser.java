@@ -85,8 +85,8 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
 
             for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
                 if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
-                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. "
-                                    + "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
+                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. " +
+                                    "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
                                     ElementUtils.getQualifiedName(typeMirror));
                 }
             }

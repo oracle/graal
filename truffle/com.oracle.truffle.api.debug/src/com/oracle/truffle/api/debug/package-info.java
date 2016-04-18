@@ -30,10 +30,13 @@
  */
 
 /**
- * Control over {@link com.oracle.truffle.api.debug.Debugger debugging} of your {@link com.oracle.truffle.api.vm.PolyglotEngine}. Each {@link com.oracle.truffle.api.vm.PolyglotEngine}
- * is inherently capable to run in debugging mode - there is just one thing
- * to do - the {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder creator of the virtual machine}
- * needs to turn debugging on when constructing its polyglot execution engine:
+ * Control over {@link com.oracle.truffle.api.debug.Debugger debugging} of your
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine}. Each
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine} is inherently capable to run in debugging mode -
+ * there is just one thing to do - the {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder
+ * creator of the virtual machine} needs to turn debugging on when constructing its polyglot
+ * execution engine:
+ * 
  * <pre>
  * vm = {@link com.oracle.truffle.api.vm.PolyglotEngine#buildNew()}.
  *     {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
@@ -49,59 +52,61 @@
  *         }
  *     }).{@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#build() build()};
  * </pre>
- * The debugging is controlled by events emitted by the Truffle virtual machine
- * at important moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent}
- * is sent when a call to {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)}
- * is made and allows one to configure {@link com.oracle.truffle.api.debug.Breakpoint breakpoints} and/or decide whether the
- * program should {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or
- * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareContinue() just run}. Once the execution is suspended a
- * {@link com.oracle.truffle.api.debug.SuspendedEvent} is generated which
- * allows one to inspect the stack and choose the further execution mode
- * ({@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepInto(int) step-into}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOver(int) step-over},
- *  {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOut() step-out}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareContinue() continue}).
+ * 
+ * The debugging is controlled by events emitted by the Truffle virtual machine at important
+ * moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent} is sent when a call to
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} is
+ * made and allows one to configure {@link com.oracle.truffle.api.debug.Breakpoint breakpoints}
+ * and/or decide whether the program should
+ * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or
+ * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareContinue() just run}. Once the
+ * execution is suspended a {@link com.oracle.truffle.api.debug.SuspendedEvent} is generated which
+ * allows one to inspect the stack and choose the further execution mode (
+ * {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepInto(int) step-into},
+ * {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOver(int) step-over},
+ * {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOut() step-out},
+ * {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareContinue() continue}).
  * <p>
- * The events methods are only available when the event is being delivered and
- * shouldn't be used anytime later. Both events however provide access to
- * {@link com.oracle.truffle.api.debug.Debugger} which can be kept and used
- * during whole existence of the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
- * {@link com.oracle.truffle.api.debug.Debugger} is the central class that
- * keeps information about {@link com.oracle.truffle.api.debug.Debugger#getBreakpoints() registered breakpoints}
- * and allows one create new {@link com.oracle.truffle.api.debug.Breakpoint ones}.
+ * The events methods are only available when the event is being delivered and shouldn't be used
+ * anytime later. Both events however provide access to
+ * {@link com.oracle.truffle.api.debug.Debugger} which can be kept and used during whole existence
+ * of the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
+ * {@link com.oracle.truffle.api.debug.Debugger} is the central class that keeps information about
+ * {@link com.oracle.truffle.api.debug.Debugger#getBreakpoints() registered breakpoints} and allows
+ * one create new {@link com.oracle.truffle.api.debug.Breakpoint ones}.
  *
  * <h4>Turning on Stepping Mode</h4>
  *
  * In case you want your execution to pause on first statement, register for
- * {@link com.oracle.truffle.api.debug.ExecutionEvent} and once delivered
- * call {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto()}.
+ * {@link com.oracle.truffle.api.debug.ExecutionEvent} and once delivered call
+ * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto()}.
  *
  * <h4>Register a {@link com.oracle.truffle.api.debug.Breakpoint}</h4>
  *
  * Wait for execution to be started - which generates an
  * {@link com.oracle.truffle.api.debug.ExecutionEvent}. Use its
- * {@link com.oracle.truffle.api.debug.Debugger ev.getDebugger}()
- * methods to submit breakpoints.
+ * {@link com.oracle.truffle.api.debug.Debugger ev.getDebugger}() methods to submit breakpoints.
  *
  * <h4>Enable Debugging for your Language</h4>
  *
- * The platform's core support for 
- * {@link com.oracle.truffle.api.debug.Debugger debugging} is language-agnostic. A
- * {@link com.oracle.truffle.api.TruffleLanguage language implementation} enables debugging by supplying
- * extra information in every AST that configures debugger behavior for code written in that particular language.
+ * The platform's core support for {@link com.oracle.truffle.api.debug.Debugger debugging} is
+ * language-agnostic. A {@link com.oracle.truffle.api.TruffleLanguage language implementation}
+ * enables debugging by supplying extra information in every AST that configures debugger behavior
+ * for code written in that particular language.
  * <p>
  * This extra information is expressed as
- * {@linkplain com.oracle.truffle.api.source.SourceSection#withTags(java.lang.String...) tags}.
- * The language implementation applies tags to the 
- * {@link com.oracle.truffle.api.source.SourceSection source information} associated with
- * {@link com.oracle.truffle.api.nodes.Node nodes} relevant to debugging. 
- * At this time the debugger requries two tags for basic behavior; more tags may be required in the future
- * as the debugger acquires more functionality.
+ * {@linkplain com.oracle.truffle.api.source.SourceSection#withTags(java.lang.String...) tags}. The
+ * language implementation applies tags to the {@link com.oracle.truffle.api.source.SourceSection
+ * source information} associated with {@link com.oracle.truffle.api.nodes.Node nodes} relevant to
+ * debugging. At this time the debugger requries two tags for basic behavior; more tags may be
+ * required in the future as the debugger acquires more functionality.
  * <ul>
- * <li>{@link com.oracle.truffle.api.debug.Debugger#HALT_TAG}: must be applied to every Node where the debugger
- * should halt during ordinary <em>stepping</em>.  This typically corresponds to "statements" in each language.</li>
- * <li>{@link com.oracle.truffle.api.debug.Debugger#CALL_TAG}: must be applied to every Node where the debugger
- * should halt when either <em>returning</em> or <em>stepping out</em> from a call.  This typically corresponds
- * to function/method calls in each language.</li>
+ * <li>{@link com.oracle.truffle.api.debug.Debugger#HALT_TAG}: must be applied to every Node where
+ * the debugger should halt during ordinary <em>stepping</em>. This typically corresponds to
+ * "statements" in each language.</li>
+ * <li>{@link com.oracle.truffle.api.debug.Debugger#CALL_TAG}: must be applied to every Node where
+ * the debugger should halt when either <em>returning</em> or <em>stepping out</em> from a call.
+ * This typically corresponds to function/method calls in each language.</li>
  * </ul>
  */
 package com.oracle.truffle.api.debug;
-

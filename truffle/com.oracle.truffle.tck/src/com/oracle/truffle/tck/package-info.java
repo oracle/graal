@@ -34,4 +34,3 @@
  * your {@link com.oracle.truffle.api.TruffleLanguage language} implementation is compliant.
  */
 package com.oracle.truffle.tck;
-
