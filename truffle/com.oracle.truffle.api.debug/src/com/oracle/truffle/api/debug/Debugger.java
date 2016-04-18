@@ -872,7 +872,7 @@ public final class Debugger {
             try {
                 // Pass control to the debug client with current execution suspended
                 SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
-                AccessorDebug.engineAccess().dispatchEvent(engine, event, 2);
+                AccessorDebug.engineAccess().dispatchEvent(engine, event, Accessor.EngineSupport.SUSPENDED_EVENT);
                 if (event.isKillPrepared()) {
                     trace("KILL");
                     throw new KillException();
@@ -1005,7 +1005,7 @@ public final class Debugger {
                     final Debugger dbg = (Debugger) debugger[0];
                     dbg.executionStarted(currentDepth, s);
                 }
-                engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), 1);
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), EngineSupport.EXECUTION_EVENT);
             }
 
             @Override

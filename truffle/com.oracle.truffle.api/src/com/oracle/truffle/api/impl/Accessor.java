@@ -63,6 +63,9 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
+        public static final int EXECUTION_EVENT = 1;
+        public static final int SUSPENDED_EVENT = 2;
+
         public abstract <C> FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
 
         @SuppressWarnings("rawtypes")
