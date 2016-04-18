@@ -263,7 +263,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
         List<GlobalVariable> staticVars = new ArrayList<>();
         functionToLabelMapping = new HashMap<>();
         setTargetInfo(objects);
-        allocateGlobalsAndAliases(this, objects);
+        allocateGlobals(objects);
+        allocateAliases(objects);
         this.nativeLookup = new NativeLookup(facade);
         for (EObject object : objects) {
             if (object instanceof FunctionDef) {
@@ -299,6 +300,40 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return functionCallTargets;
     }
 
+    private void allocateAliases(List<EObject> objects) {
+        boolean resolvedAllAliases;
+        boolean madeProgress;
+        do {
+            resolvedAllAliases = true;
+            madeProgress = false;
+            for (EObject object : objects) {
+                if (object instanceof Alias) {
+                    Alias alias = (Alias) object;
+                    if (aliases.get(alias) == null) {
+                        GlobalValueDef aliasee = alias.getAliasee().getRef();
+                        Object globalVar;
+                        if (aliasee instanceof GlobalVariable) {
+                            globalVar = globalVars.get(aliasee);
+                        } else if (aliasee instanceof Alias) {
+                            globalVar = aliases.get(aliasee);
+                        } else {
+                            continue;
+                        }
+                        if (globalVar == null) {
+                            resolvedAllAliases = false;
+                        } else {
+                            aliases.put(alias, globalVar);
+                            madeProgress = true;
+                        }
+                    }
+                }
+            }
+            if (!resolvedAllAliases && !madeProgress) {
+                throw new AssertionError("Could not make progress in resolving aliases!");
+            }
+        } while (!resolvedAllAliases);
+    }
+
     private static void setTargetInfo(List<EObject> objects) {
         for (EObject object : objects) {
             if (object instanceof TargetInfo) {
@@ -307,24 +342,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
-    private void allocateGlobalsAndAliases(LLVMVisitor visitor, List<EObject> objects) {
+    private void allocateGlobals(List<EObject> objects) {
         for (EObject object : objects) {
             if (object instanceof GlobalVariable) {
-                visitor.findOrAllocateGlobal((GlobalVariable) object);
-            }
-            if (object instanceof Alias) {
-                Alias alias = (Alias) object;
-                GlobalValueDef aliasee = alias.getAliasee().getRef();
-                Object globalVar;
-                if (aliasee instanceof GlobalVariable) {
-                    globalVar = globalVars.get(aliasee);
-                } else if (aliasee instanceof Alias) {
-                    globalVar = aliases.get(aliasee);
-                } else {
-                    continue;
-                }
-                LLVMParserAsserts.assertNotNull(globalVar);
-                aliases.put(alias, globalVar);
+                findOrAllocateGlobal((GlobalVariable) object);
             }
         }
     }
