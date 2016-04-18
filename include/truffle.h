@@ -40,16 +40,81 @@ extern "C" {
 void *truffle_import(const char *name);
 void truffle_export(const char *name, void *value);
 
+// Binary:
 bool truffle_is_executable(void *object);
-void *truffle_execute(void *object, ...);
-void *truffle_invoke(void *object, const char *name, ...);
-bool truffle_has_size(void *object);
-void *truffle_get_size(void *object);
-bool truffle_is_boxed(void *object);
-void *truffle_unbox(void *object);
 bool truffle_is_null(void *object);
-void *truffle_read(void *object, void *name);
-void truffle_write(void *object, void *name, void *value);
+bool truffle_has_size(void *object);
+bool truffle_is_boxed(void *object);
+
+// Execute:
+void *truffle_execute(void *object, ...);
+int truffle_execute_i(void *object, ...);
+long truffle_execute_l(void *object, ...);
+char truffle_execute_c(void *object, ...);
+float truffle_execute_f(void *object, ...);
+double truffle_execute_d(void *object, ...);
+bool truffle_execute_b(void *object, ...);
+short truffle_execute_s(void *object, ...);
+
+// Invoke:
+void *truffle_invoke(void *object, const char *name, ...);
+int truffle_invoke_i(void *object, const char *name, ...);
+long truffle_invoke_l(void *object, const char *name, ...);
+char truffle_invoke_c(void *object, const char *name, ...);
+float truffle_invoke_f(void *object, const char *name, ...);
+double truffle_invoke_d(void *object, const char *name, ...);
+bool truffle_invoke_b(void *object, const char *name, ...);
+short truffle_invoke_s(void *object, const char *name, ...);
+
+// GetSize
+int truffle_get_size(void *object);
+
+// Unbox
+int truffle_unbox_i(void *object);
+long truffle_unbox_l(void *object);
+char truffle_unbox_c(void *object);
+float truffle_unbox_f(void *object);
+double truffle_unbox_d(void *object);
+bool truffle_unbox_b(void *object);
+short truffle_unbox_s(void *object);
+
+// Read
+void *truffle_read(void *object, const char *name);
+int truffle_read_i(void *object, const char *name);
+long truffle_read_l(void *object, const char *name);
+char truffle_read_c(void *object, const char *name);
+float truffle_read_f(void *object, const char *name);
+double truffle_read_d(void *object, const char *name);
+bool truffle_read_b(void *object, const char *name);
+short truffle_read_s(void *object, const char *name);
+
+void *truffle_read_idx(void *object, int idx);
+int truffle_read_idx_i(void *object, int idx);
+long truffle_read_idx_l(void *object, int idx);
+char truffle_read_idx_c(void *object, int idx);
+float truffle_read_idx_f(void *object, int idx);
+double truffle_read_idx_d(void *object, int idx);
+bool truffle_read_idx_b(void *object, int idx);
+short truffle_read_idx_s(void *object, int idx);
+
+// Write
+void truffle_write(void *object, const char *name, void *value);
+void truffle_write_i(void *object, const char *name, int value);
+void truffle_write_l(void *object, const char *name, long value);
+void truffle_write_c(void *object, const char *name, char value);
+void truffle_write_f(void *object, const char *name, float value);
+void truffle_write_d(void *object, const char *name, double value);
+void truffle_write_b(void *object, const char *name, bool value);
+void truffle_write_s(void *object, const char *name, short value);
+
+void truffle_write_idx(void *object, int idx, void *value);
+void truffle_write_idx_i(void *object, int idx, int value);
+void truffle_write_idx_l(void *object, int idx, long value);
+void truffle_write_idx_c(void *object, int idx, char value);
+void truffle_write_idx_f(void *object, int idx, float value);
+void truffle_write_idx_d(void *object, int idx, double value);
+void truffle_write_idx_b(void *object, int idx, bool value);
+void truffle_write_idx_s(void *object, int idx, short value);
 
 #if defined(__cplusplus)
 }
