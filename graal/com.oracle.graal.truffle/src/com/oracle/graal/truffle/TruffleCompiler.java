@@ -142,22 +142,39 @@ public abstract class TruffleCompiler {
         compilationNotify.notifyCompilationStarted(compilable);
 
         try {
+            TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
+
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
             try (DebugCloseable a = PartialEvaluationTime.start(); DebugCloseable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, AllowAssumptions.YES);
+                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES);
             }
 
             if (Thread.currentThread().isInterrupted()) {
                 return;
             }
 
-            compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
+            dequeueInlinedCallSites(inliningDecision);
+
+            compilationNotify.notifyCompilationTruffleTierFinished(compilable, inliningDecision, graph);
             CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable);
-            compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
+            compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult);
+            dequeueInlinedCallSites(inliningDecision);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
             throw t;
+        }
+    }
+
+    private static void dequeueInlinedCallSites(TruffleInlining inliningDecision) {
+        if (inliningDecision != null) {
+            for (TruffleInliningDecision decision : inliningDecision) {
+                if (decision.isInline()) {
+                    OptimizedCallTarget target = decision.getTarget();
+                    target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                    dequeueInlinedCallSites(decision);
+                }
+            }
         }
     }
 

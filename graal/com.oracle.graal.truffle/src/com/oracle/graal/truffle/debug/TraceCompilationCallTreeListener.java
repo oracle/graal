@@ -51,12 +51,12 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        log(0, "opt call tree", target.toString(), target.getDebugProperties());
-        logTruffleCallTree(target);
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+        log(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
+        logTruffleCallTree(target, inliningDecision);
     }
 
-    private static void logTruffleCallTree(OptimizedCallTarget compilable) {
+    private static void logTruffleCallTree(OptimizedCallTarget compilable, TruffleInlining inliningDecision) {
         CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
 
             @Override
@@ -70,8 +70,8 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
                         dispatched = "";
                     }
                     Map<String, Object> properties = new LinkedHashMap<>();
-                    addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
-                    properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
+                    addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
+                    properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
                     log(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
@@ -81,7 +81,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
             }
 
         };
-        compilable.accept(visitor, true);
+        compilable.accept(visitor, inliningDecision);
     }
 
 }

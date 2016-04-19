@@ -68,11 +68,11 @@ public interface GraalTruffleCompilationListener {
 
     void notifyCompilationStarted(OptimizedCallTarget target);
 
-    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph);
+    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph);
 
     void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph);
 
-    void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result);
+    void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result);
 
     /**
      * Invoked if a compiled call target was invalidated.

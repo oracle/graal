@@ -166,7 +166,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
      * Visits all nodes of the {@link CallTarget} and all of its inlined calls.
      */
     public void accept(OptimizedCallTarget target, NodeVisitor visitor) {
-        target.getRootNode().accept(new CallTreeNodeVisitorImpl(target, visitor));
+        target.getRootNode().accept(new CallTreeNodeVisitorImpl(visitor));
     }
 
     /**
@@ -223,14 +223,14 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
      * This visitor wraps an existing {@link NodeVisitor} or {@link CallTreeNodeVisitor} and
      * traverses the full Truffle tree including inlined call sites.
      */
-    private static final class CallTreeNodeVisitorImpl implements NodeVisitor {
+    private final class CallTreeNodeVisitorImpl implements NodeVisitor {
 
         protected final List<TruffleInlining> stack = new ArrayList<>();
         private final NodeVisitor visitor;
         private boolean continueTraverse = true;
 
-        CallTreeNodeVisitorImpl(OptimizedCallTarget target, NodeVisitor visitor) {
-            stack.add(target.getInlining());
+        CallTreeNodeVisitorImpl(NodeVisitor visitor) {
+            stack.add(TruffleInlining.this);
             this.visitor = visitor;
         }
 
@@ -266,13 +266,13 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         }
     }
 
-    private static final class CallTreeNodeIterator implements Iterator<Node> {
+    private final class CallTreeNodeIterator implements Iterator<Node> {
 
         private List<TruffleInlining> inliningDecisionStack = new ArrayList<>();
         private List<Iterator<Node>> iteratorStack = new ArrayList<>();
 
         CallTreeNodeIterator(OptimizedCallTarget target) {
-            inliningDecisionStack.add(target.getInlining());
+            inliningDecisionStack.add(TruffleInlining.this);
             iteratorStack.add(NodeUtil.makeRecursiveIterator(target.getRootNode()));
         }
 
