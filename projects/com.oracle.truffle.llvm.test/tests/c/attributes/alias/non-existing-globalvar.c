@@ -1,10 +1,14 @@
 #include<stdlib.h>
 
-int alias __attribute__((alias("non_existing")));
-int alias2 __attribute__((alias("alias")));
+#if __GNUC__
+int non_existing = 3;
+#endif
+
+extern int asdf __attribute__((alias("non_existing")));
+extern int asdf2 __attribute__((alias("asdf")));
 
 int func() {
-	return alias2 + alias;
+	return asdf2 + asdf;
 }
 
 int main() {
