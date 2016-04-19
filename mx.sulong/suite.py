@@ -66,15 +66,39 @@ suite = {
       }
     },
     "XTEXT" : {
-      "path" : "lib/org.eclipse.xtext_2.8.4.v201508050135.jar",
+      "path" : "lib/org.eclipse.xtext_2.9.2.v201603040440.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/xtext/org.eclipse.xtext_2.8.4.v201508050135.jar",
+        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/xtext/org.eclipse.xtext_2.9.2.v201603040440.jar",
       ],
-      "sha1" : "04541b8101d779abb52c27de974b5d9c56b047e9",
+      "sha1" : "17d747e9d13de0d07ca9139c8d457f8d251bccfc",
       "maven" : {
         "groupId" : "xtext",
         "artifactId" : "xtext",
         "version" : "2.8.4.v201508050135.jar",
+      }
+    },
+    "XTEXT_XBASE" : {
+      "path" : "lib/org.eclipse.xtext.xbase_2.9.2.v201603040440.jar",
+      "urls" : [
+        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/xtext/org.eclipse.xtext.xbase_2.9.2.v201603040440.jar",
+      ],
+      "sha1" : "dac32b3a2021127f42eedc099d77a66109587dde",
+      "maven" : {
+        "groupId" : "xtext",
+        "artifactId" : "xtext",
+        "version" : "2.9.2.v201603040440.jar",
+      }
+    },
+    "XTEXT_XBASE_LIB" : {
+      "path" : "lib/org.eclipse.xtext.xbase.lib_2.9.2.v201603040440.jar",
+      "urls" : [
+        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/xtext/org.eclipse.xtext.xbase.lib_2.9.2.v201603040440.jar",
+      ],
+      "sha1" : "7d184d42dd41a6c470007998a060fc07bad0a1b4",
+      "maven" : {
+        "groupId" : "xtext",
+        "artifactId" : "xtext",
+        "version" : "2.9.2.v201603040440.jar",
       }
     },
     "EMF_ECORE_XMI" : {
@@ -283,7 +307,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["dummy-src"],
       "dependencies" : [
-          "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
+          "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
       ],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
@@ -297,7 +321,7 @@ suite = {
         "com.oracle.truffle.llvm.nodes",
         "com.oracle.truffle.llvm.types",
         "LLVM_IR_PARSER",
-        "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
+        "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -373,6 +397,8 @@ suite = {
        "ECORE",
        "INJECT",
        "XTEXT",
+       "XTEXT_XBASE",
+       "XTEXT_XBASE_LIB",
        "EMF_ECORE_XMI",
        "XTEXT_TYPES",
        "XTEXT_JAVAX_INJECT",
@@ -401,6 +427,8 @@ suite = {
        "ECORE",
        "INJECT",
        "XTEXT",
+       "XTEXT_XBASE",
+       "XTEXT_XBASE_LIB",
        "EMF_ECORE_XMI",
        "XTEXT_TYPES",
        "XTEXT_JAVAX_INJECT",
