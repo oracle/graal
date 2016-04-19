@@ -18,15 +18,15 @@ suite = {
 
   "libraries" : {
     "LLVM_IR_PARSER" : {
-      "path" : "lib/com.intel.llvm.ireditor-1.0.6.jar",
+      "path" : "lib/com.intel.llvm.ireditor-1.0.7.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/com.intel.llvm.ireditor-1.0.6.jar",
+        "http://lafo.ssw.uni-linz.ac.at/sulong-deps/com.intel.llvm.ireditor-1.0.7.jar",
       ],
-      "sha1" : "4850cba64ecac914427329591886819446562e62",
+      "sha1" : "95156df822ba98ff1b30d3e0e80225b95d6d9a7f",
       "maven" : {
         "groupId" : "parser",
         "artifactId" : "parser",
-        "version" : "1.0.6",
+        "version" : "1.0.7",
       }
     },
     "EMF_COMMON" : {
