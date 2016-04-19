@@ -502,6 +502,9 @@ final class InstrumentationHandler {
 
         @Override
         boolean shouldVisit() {
+            if (root == null) {
+                return false;
+            }
             SourceSection sourceSection = root.getSourceSection();
             for (int i = 0; i < bindings.size(); i++) {
                 EventBinding<?> binding = bindings.get(i);

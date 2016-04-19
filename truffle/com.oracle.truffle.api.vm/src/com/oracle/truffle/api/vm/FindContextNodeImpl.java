@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,25 @@
  */
 package com.oracle.truffle.api.vm;
 
-final class ArgumentsMishmashException extends IllegalArgumentException {
-    static final long serialVersionUID = 1L;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.impl.FindContextNode;
 
-    ArgumentsMishmashException() {
+final class FindContextNodeImpl<C> extends FindContextNode<C> {
+    private final TruffleLanguage<C> language;
+    private final ContextReference<C> ref;
+
+    FindContextNodeImpl(TruffleLanguage<C> language) {
+        this.ref = ContextReference.create(language);
+        this.language = language;
     }
 
     @Override
-    public synchronized Throwable fillInStackTrace() {
-        return this;
+    public C executeFindContext() {
+        return ref.get();
     }
 
+    @Override
+    public TruffleLanguage<C> getTruffleLanguage() {
+        return language;
+    }
 }

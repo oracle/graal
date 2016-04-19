@@ -58,6 +58,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
       ],
       "checkstyle" : "com.oracle.truffle.api",
@@ -346,10 +347,12 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
+        "mx:JMH",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Test",
+      "annotationProcessors" : ["mx:JMH"],
       "license" : "UPL",
     },
    },
@@ -421,6 +424,10 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.sl",
         "com.oracle.truffle.sl.test"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+        "mx:JMH"
       ],
       "distDependencies" : [
           "TRUFFLE_API",

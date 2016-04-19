@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
@@ -38,7 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
  * foreign language implementations, you need to implement {@link TruffleObject} and its
  * {@link TruffleObject#getForeignAccess()} method. To create instance of <code>ForeignAccess</code>
  * , use one of the factory methods available in this class.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class ForeignAccess {
@@ -247,8 +248,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, arguments);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception catched.", e);
         }
     }
@@ -490,7 +493,7 @@ public final class ForeignAccess {
      * that provides an AST snippet for a given {@link Message}. Rather than using this generic
      * {@code Factory}, consider implementing {@link Factory10} interface that captures the set of
      * messages each language should implement as of Truffle version 1.0.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public interface Factory {

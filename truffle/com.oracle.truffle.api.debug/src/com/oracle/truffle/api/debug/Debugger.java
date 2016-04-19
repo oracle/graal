@@ -24,14 +24,13 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.Closeable;
+import com.oracle.truffle.api.Assumption;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -88,6 +87,7 @@ public final class Debugger {
 
     private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
     private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
+    private static final Assumption NO_DEBUGGER = Truffle.getRuntime().createAssumption("No debugger assumption");
 
     /** Counter for externally requested step actions. */
     private static int nextActionID = 0;
@@ -126,7 +126,7 @@ public final class Debugger {
         }
     };
 
-    private static Debugger find(PolyglotEngine engine, boolean create) {
+    static Debugger find(PolyglotEngine engine, boolean create) {
         PolyglotEngine.Instrument instrument = engine.getInstruments().get(DebuggerInstrument.ID);
         if (instrument == null) {
             throw new IllegalStateException();
@@ -151,6 +151,7 @@ public final class Debugger {
         this.engine = engine;
         this.instrumenter = instrumenter;
         this.breakpoints = new BreakpointFactory(instrumenter, breakpointCallback, warningLog);
+        NO_DEBUGGER.invalidate();
     }
 
     interface BreakpointCallback {
@@ -872,7 +873,7 @@ public final class Debugger {
             try {
                 // Pass control to the debug client with current execution suspended
                 SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
-                AccessorDebug.engineAccess().dispatchEvent(engine, event);
+                AccessorDebug.engineAccess().dispatchEvent(engine, event, Accessor.EngineSupport.SUSPENDED_EVENT);
                 if (event.isKillPrepared()) {
                     trace("KILL");
                     throw new KillException();
@@ -938,7 +939,7 @@ public final class Debugger {
         return count[0] == 0 ? 0 : count[0] + 1;
     }
 
-    private void executionStarted(int depth, Source source) {
+    void executionStarted(int depth, Source source) {
         Source execSource = source;
         if (execSource == null) {
             execSource = lastSource;
@@ -993,32 +994,32 @@ public final class Debugger {
         }
 
         @Override
-        protected Closeable executionStart(Object vm, final int currentDepth, final boolean initializeDebugger, final Source s) {
-            final PolyglotEngine engine = (PolyglotEngine) vm;
-            final Debugger[] debugger = {find(engine, initializeDebugger)};
-            if (debugger[0] != null) {
-                debugger[0].executionStarted(currentDepth, s);
-                engineAccess().dispatchEvent(engine, new ExecutionEvent(debugger[0]));
-            } else {
-                engineAccess().dispatchEvent(engine, new ExecutionEvent(new Callable<Debugger>() {
-                    @Override
-                    public Debugger call() throws Exception {
-                        if (debugger[0] == null) {
-                            debugger[0] = find(engine, true);
-                            debugger[0].executionStarted(currentDepth, s);
-                        }
-                        return debugger[0];
-                    }
-                }));
-            }
-            return new Closeable() {
-                @Override
-                public void close() throws IOException {
-                    if (debugger[0] != null) {
-                        debugger[0].executionEnded();
-                    }
+        protected DebugSupport debugSupport() {
+            return new DebugImpl();
+        }
+
+        private static final class DebugImpl extends DebugSupport {
+            @Override
+            public void executionStarted(Object vm, final int currentDepth, final Object[] debugger, final Source s) {
+                final PolyglotEngine engine = (PolyglotEngine) vm;
+                if (debugger[0] != null) {
+                    final Debugger dbg = (Debugger) debugger[0];
+                    dbg.executionStarted(currentDepth, s);
                 }
-            };
+                engineAccess().dispatchEvent(engine, new ExecutionEvent(engine, currentDepth, debugger, s), EngineSupport.EXECUTION_EVENT);
+            }
+
+            @Override
+            public void executionEnded(Object vm, Object[] debugger) {
+                if (debugger[0] != null) {
+                    ((Debugger) debugger[0]).executionEnded();
+                }
+            }
+
+            @Override
+            public Assumption assumeNoDebugger() {
+                return NO_DEBUGGER;
+            }
         }
 
         @SuppressWarnings("rawtypes")
