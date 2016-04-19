@@ -81,7 +81,7 @@ public final class Position {
 
     public void initialize(Node node, Node value) {
         if (index < edges.getDirectCount()) {
-            Edges.initializeNode(node, edges.getOffsets(), index, value);
+            edges.initializeNode(node, index, value);
         } else {
             Edges.getNodeList(node, edges.getOffsets(), index).initialize(subIndex, value);
         }

@@ -638,8 +638,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 } else {
                     node.updatePredecessor(null, newEdge);
                 }
-                assert assertUpdateValid(node, edges, index, newEdge);
-                Edges.initializeNode(node, curOffsets, index, newEdge);
+                edges.initializeNode(node, index, newEdge);
             }
             index++;
         }
@@ -647,15 +646,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         while (index < edges.getCount()) {
             NodeList<Node> list = Edges.getNodeList(node, curOffsets, index);
             if (list != null) {
-                Edges.initializeList(node, curOffsets, index, updateEdgeListCopy(node, list, duplicationReplacement, curType));
+                edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, curType));
             }
             index++;
         }
-    }
-
-    private static boolean assertUpdateValid(Node node, Edges edges, int index, Node newEdge) {
-        assert newEdge == null || edges.getType(index).isAssignableFrom(newEdge.getClass()) : "Can not assign " + newEdge.getClass() + " to " + edges.getType(index) + " in " + node;
-        return true;
     }
 
     void updateInputSuccInPlace(Node node, InplaceUpdateClosure duplicationReplacement) {
