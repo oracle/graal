@@ -74,14 +74,14 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- * 
+ *
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- * 
+ *
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -100,12 +100,12 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
  *   TEST (x: v1|i, y: v1|i)
  *   BRANCH ~[v2|i, v0|j] condition: <, true: B1 false: B2
  * ________________________________________________
- * 
+ *
  * B1 <- B0
  *   [-, v0|j] = LABEL
  *   ...
  * ________________________________________________
- * 
+ *
  * B2 <- B0
  *   [v2|i, v0|j] = LABEL
  *   ...
@@ -160,6 +160,7 @@ public final class SSIUtil {
 
         assert label.getIncomingSize() == blockEnd.getOutgoingSize() : String.format("In/Out size mismatch: in=%d vs. out=%d, blocks %s vs. %s", label.getIncomingSize(), blockEnd.getOutgoingSize(),
                         toBlock, fromBlock);
+        assert label.getPhiSize() == blockEnd.getPhiSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getPhiSize(), blockEnd.getPhiSize());
 
         for (int i = 0; i < label.getIncomingSize(); i++) {
             visitor.visit(label.getIncomingValue(i), blockEnd.getOutgoingValue(i));

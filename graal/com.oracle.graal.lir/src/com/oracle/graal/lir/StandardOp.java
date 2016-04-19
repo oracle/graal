@@ -45,6 +45,7 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.ssa.SSAUtil;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
@@ -68,6 +69,12 @@ public class StandardOp {
         void clearOutgoingValues();
 
         void forEachOutgoingValue(InstructionValueProcedure proc);
+
+        /**
+         * The number of {@link SSAUtil phi} operands in the {@link #getOutgoingValue outgoing}
+         * array.
+         */
+        int getPhiSize();
     }
 
     public interface NullCheck {
@@ -98,12 +105,31 @@ public class StandardOp {
         @Def({REG, STACK}) private Value[] incomingValues;
         private final Label label;
         private final boolean align;
+        private int numbPhis;
 
         public LabelOp(Label label, boolean align) {
             super(TYPE);
             this.label = label;
             this.align = align;
             this.incomingValues = Value.NO_VALUES;
+            this.numbPhis = 0;
+        }
+
+        public void setPhiValues(Value[] values) {
+            setIncomingValues(values);
+            setNumberOfPhis(values.length);
+        }
+
+        private void setNumberOfPhis(int numPhis) {
+            assert numbPhis == 0;
+            numbPhis = numPhis;
+        }
+
+        /**
+         * @see BlockEndOp#getPhiSize
+         */
+        public int getPhiSize() {
+            return numbPhis;
         }
 
         public void setIncomingValues(Value[] values) {
@@ -172,10 +198,26 @@ public class StandardOp {
         public static final EnumSet<OperandFlag> outgoingFlags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
         @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
+        private int numberOfPhis;
 
         protected AbstractBlockEndOp(LIRInstructionClass<? extends AbstractBlockEndOp> c) {
             super(c);
             this.outgoingValues = Value.NO_VALUES;
+        }
+
+        public void setPhiValues(Value[] values) {
+            setOutgoingValues(values);
+            setNumberOfPhis(values.length);
+        }
+
+        private void setNumberOfPhis(int numPhis) {
+            assert numberOfPhis == 0;
+            numberOfPhis = numPhis;
+        }
+
+        @Override
+        public int getPhiSize() {
+            return numberOfPhis;
         }
 
         @Override
