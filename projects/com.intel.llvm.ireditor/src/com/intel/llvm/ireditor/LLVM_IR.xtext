@@ -130,6 +130,7 @@ InlineAsm:
 GlobalVariable:
 	name=GlobalName
 	linkage=Linkage?
+	visibility=Visibility?
 	addrspace=AddressSpace?
 	tlsModel=TLSmodel?
 	'unnamed_addr'?
