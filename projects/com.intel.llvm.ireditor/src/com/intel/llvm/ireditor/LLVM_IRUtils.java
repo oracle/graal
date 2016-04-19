@@ -71,8 +71,10 @@ public class LLVM_IRUtils {
 
         if (object instanceof LocalValue) {
             Multimap<LocalValue, LocalValueRef> map = xrefCache.get(Refs.LOCAL_VALUES, object.eResource(), new Provider<Multimap<LocalValue, LocalValueRef>>() {
+                @Override
                 public Multimap<LocalValue, LocalValueRef> get() {
                     return Multimaps.index(EcoreUtil2.getAllContentsOfType(root, LocalValueRef.class), new Function<LocalValueRef, LocalValue>() {
+                        @Override
                         public LocalValue apply(LocalValueRef ref) {
                             return ref.getRef();
                         }
@@ -82,8 +84,10 @@ public class LLVM_IRUtils {
             return map.get((LocalValue) object);
         } else if (object instanceof BasicBlock) {
             Multimap<BasicBlock, BasicBlockRef> map = xrefCache.get(Refs.BASIC_BLOCKS, object.eResource(), new Provider<Multimap<BasicBlock, BasicBlockRef>>() {
+                @Override
                 public Multimap<BasicBlock, BasicBlockRef> get() {
                     return Multimaps.index(EcoreUtil2.getAllContentsOfType(root, BasicBlockRef.class), new Function<BasicBlockRef, BasicBlock>() {
+                        @Override
                         public BasicBlock apply(BasicBlockRef ref) {
                             return ref.getRef();
                         }
@@ -95,8 +99,10 @@ public class LLVM_IRUtils {
             // Key is EObject and not GlobalValueDef because we need to map non-ref refs to
             // something.
             Multimap<EObject, GlobalValueRef> map = xrefCache.get(Refs.GLOBAL_VALUES, object.eResource(), new Provider<Multimap<EObject, GlobalValueRef>>() {
+                @Override
                 public Multimap<EObject, GlobalValueRef> get() {
                     return Multimaps.index(EcoreUtil2.getAllContentsOfType(root, GlobalValueRef.class), new Function<GlobalValueRef, EObject>() {
+                        @Override
                         public EObject apply(GlobalValueRef ref) {
                             if (ref.getConstant() != null && ref.getConstant().getRef() != null) {
                                 return ref.getConstant().getRef();
