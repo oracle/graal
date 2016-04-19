@@ -260,14 +260,15 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
 
         @SuppressWarnings("try")
         private void addInterTraceHints() {
-            try (Scope s = Debug.scope("InterTraceHints")) {
+            try (Scope s = Debug.scope("InterTraceHints", intervalData)) {
                 // set hints for phi/sigma intervals
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
                     LabelOp label = SSIUtil.incoming(lir, block);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                         if (isAllocatedOrCurrent(block, pred)) {
                             BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
-                            for (int i = 0; i < outgoing.getOutgoingSize(); i++) {
+                            // do not look at phi variables as they are not same value!
+                            for (int i = outgoing.getPhiSize(); i < outgoing.getOutgoingSize(); i++) {
                                 Value toValue = label.getIncomingValue(i);
                                 assert !isShadowedRegisterValue(toValue) : "Shadowed Registers are not allowed here: " + toValue;
                                 if (isVariable(toValue)) {
@@ -281,6 +282,8 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                         }
                     }
                 }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
         }
 
