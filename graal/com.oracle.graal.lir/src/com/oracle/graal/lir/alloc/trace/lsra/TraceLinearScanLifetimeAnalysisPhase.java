@@ -287,17 +287,15 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue) {
             assert isVariable(toValue) : "Wrong toValue: " + toValue;
             assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
+            TraceInterval to = intervalData.getOrCreateInterval(toValue);
             if (isVariableOrRegister(fromValue)) {
-                TraceInterval to = intervalData.getOrCreateInterval(toValue);
                 IntervalHint from = getIntervalHint(intervalData, (AllocatableValue) fromValue);
                 setHint(label, to, from);
             } else if (isStackSlotValue(fromValue)) {
-                TraceInterval to = intervalData.getOrCreateInterval(toValue);
                 setSpillSlot(label, to, (AllocatableValue) fromValue);
             } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
                 ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
                 IntervalHint from = getIntervalHint(intervalData, shadowedRegisterValue.getRegister());
-                TraceInterval to = intervalData.getOrCreateInterval(toValue);
                 setHint(label, to, from);
                 setSpillSlot(label, to, shadowedRegisterValue.getStackSlot());
             } else {
