@@ -41,6 +41,7 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.Register;
@@ -51,7 +52,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
-public final class IntervalData {
+public final class IntervalData implements IntervalDumper {
 
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
 
@@ -356,7 +357,7 @@ public final class IntervalData {
                     }
                 }
             }
-            Debug.dump(Debug.INFO_LOG_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervalsSize)), label);
+            Debug.dump(Debug.INFO_LOG_LEVEL, this, label);
         }
     }
 
@@ -453,5 +454,59 @@ public final class IntervalData {
 
     private static boolean isEmptyInterval(FixedInterval fixed) {
         return fixed.from() == -1 && fixed.to() == 0;
+    }
+
+    @Override
+    public void visitIntervals(IntervalVisitor visitor) {
+        for (FixedInterval interval : fixedIntervals) {
+            if (interval != null) {
+                printFixedInterval(interval, visitor);
+            }
+        }
+        for (TraceInterval interval : intervals) {
+            if (interval != null) {
+                printInterval(interval, visitor);
+            }
+        }
+    }
+
+    private static void printFixedInterval(FixedInterval interval, IntervalVisitor visitor) {
+        Value hint = null;
+        AllocatableValue operand = interval.operand;
+        String type = "fixed";
+        char typeChar = operand.getPlatformKind().getTypeChar();
+        visitor.visitIntervalStart(operand, operand, operand, hint, type, typeChar);
+
+        // print ranges
+        for (FixedRange range = interval.first(); range != FixedRange.EndMarker; range = range.next) {
+            visitor.visitRange(range.from, range.to);
+        }
+
+        // no use positions
+
+        visitor.visitIntervalEnd("NOT_SUPPORTED");
+
+    }
+
+    private static void printInterval(TraceInterval interval, IntervalVisitor visitor) {
+        Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
+        AllocatableValue operand = interval.operand;
+        String type = isRegister(operand) ? "fixed" : operand.getLIRKind().getPlatformKind().toString();
+        char typeChar = operand.getPlatformKind().getTypeChar();
+        visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
+
+        // print ranges
+        visitor.visitRange(interval.from(), interval.to());
+
+        // print use positions
+        int prev = -1;
+        UsePosList usePosList = interval.usePosList();
+        for (int i = usePosList.size() - 1; i >= 0; --i) {
+            assert prev < usePosList.usePos(i) : "use positions not sorted";
+            visitor.visitUsePos(usePosList.usePos(i), usePosList.registerPriority(i));
+            prev = usePosList.usePos(i);
+        }
+
+        visitor.visitIntervalEnd(interval.spillState());
     }
 }

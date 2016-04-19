@@ -653,7 +653,7 @@ public final class TraceLinearScan {
                 intervalData = intervals;
             }
 
-            try (Scope s = Debug.scope("AfterLifetimeAnalysis", new TraceIntervalDumper(fixedIntervals(), intervals()))) {
+            try (Scope s = Debug.scope("AfterLifetimeAnalysis", getIntervalData())) {
 
                 printLir("Before register allocation", true);
                 printIntervals("Before register allocation");
