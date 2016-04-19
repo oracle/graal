@@ -108,9 +108,9 @@ Instruction:
 
 Alias:
 	name=GlobalName
+	visibility=Visibility?
 	'alias'
 	linkage=Linkage?
-	visibility=Visibility?
 	type=Type
 	aliasee=Aliasee
 ;

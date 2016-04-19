@@ -303,6 +303,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
     private void allocateAliases(List<EObject> objects) {
         boolean resolvedAllAliases;
         boolean madeProgress;
+        Object unresolvedAlias = null;
         do {
             resolvedAllAliases = true;
             madeProgress = false;
@@ -321,6 +322,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
                         }
                         if (globalVar == null) {
                             resolvedAllAliases = false;
+                            unresolvedAlias = alias.getName();
                         } else {
                             aliases.put(alias, globalVar);
                             madeProgress = true;
@@ -329,7 +331,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 }
             }
             if (!resolvedAllAliases && !madeProgress) {
-                throw new AssertionError("Could not make progress in resolving aliases!");
+                LLVMLogger.info("Could not resolve all aliases (e.g., " + unresolvedAlias + ")");
+                break;
             }
         } while (!resolvedAllAliases);
     }
@@ -445,9 +448,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
         if (globalVars.containsKey(globalVariable)) {
             return globalVars.get(globalVariable);
         } else {
-            Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
-            globalVars.put(globalVariable, allocation);
-            return allocation;
+            try {
+                Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
+                globalVars.put(globalVariable, allocation);
+                return allocation;
+            } catch (Throwable t) {
+                throw new AssertionError(globalVariable.getName());
+            }
         }
     }
 
@@ -1051,6 +1058,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
             Object globalVar = aliases.get(ref);
             LLVMParserAsserts.assertNotNull(globalVar);
             return factoryFacade.createLiteral(globalVar, LLVMBaseType.ADDRESS);
+        } else if (aliasee.getBitcast() != null) {
+            GlobalValueRef constant = aliasee.getBitcast().getConstant();
+            return visitValueRef(constant, aliasee.getBitcast().getTargetType());
         } else {
             throw new AssertionError(aliaseeRef);
         }
