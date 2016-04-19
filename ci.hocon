@@ -35,5 +35,5 @@ common : {
 builds = [
   ${common} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
   ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-  ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, gate],   name: "gate-downstream"},
+  ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
 ]
