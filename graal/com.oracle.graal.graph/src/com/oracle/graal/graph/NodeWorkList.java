@@ -122,18 +122,18 @@ public abstract class NodeWorkList implements Iterable<Node> {
         @Override
         public void add(Node node) {
             if (node != null) {
+                if (inQueue == null && worklist.size() > EXPLICIT_BITMAP_THRESHOLD) {
+                    inflateToBitMap(node.graph());
+                }
+
                 if (inQueue != null) {
                     if (inQueue.isMarkedAndGrow(node)) {
                         return;
                     }
                 } else {
-                    if (worklist.size() > EXPLICIT_BITMAP_THRESHOLD) {
-                        inflateToBitMap(node.graph());
-                    } else {
-                        for (Node queuedNode : worklist) {
-                            if (queuedNode == node) {
-                                return;
-                            }
+                    for (Node queuedNode : worklist) {
+                        if (queuedNode == node) {
+                            return;
                         }
                     }
                 }
