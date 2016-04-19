@@ -114,9 +114,9 @@ bench-specjvm2008 : ${common} {
 
 bench-specjvm2008-x52 : ${bench-dacapo} {
   capabilities : [linux, x52, bench, post-merge]
-  name : "bench-dacapo-linux-x52"
+  name : "bench-specjvm2008-linux-x52"
   run : [
-    ${bench-jvmci.mx-specjvm2008} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-it 240s", "-wt 120s"]
+    ${bench-jvmci.mx-specjvm2008} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-it", "240s", "-wt", "120s"]
   ]
 }
 
@@ -132,4 +132,5 @@ builds = [
 #  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
 #  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
   ${bench-dacapo-x52}
+  ${bench-specjvm2008-x52}
 ]
