@@ -1051,6 +1051,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
             Object globalVar = aliases.get(ref);
             LLVMParserAsserts.assertNotNull(globalVar);
             return factoryFacade.createLiteral(globalVar, LLVMBaseType.ADDRESS);
+        } else if (aliasee.getBitcast() != null) {
+            GlobalValueRef constant = aliasee.getBitcast().getConstant();
+            return visitValueRef(constant, aliasee.getBitcast().getTargetType());
         } else {
             throw new AssertionError(aliaseeRef);
         }
