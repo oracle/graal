@@ -397,14 +397,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-// public TruffleInlining getInlining() {
-// return inlining;
-// }
-//
-// public void setInlining(TruffleInlining inliningDecision) {
-// this.inlining = inliningDecision;
-// }
-
     boolean cancelInstalledTask(Node source, CharSequence reason) {
         return runtime().cancelInstalledTask(this, source, reason);
     }
