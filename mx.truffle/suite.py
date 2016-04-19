@@ -397,6 +397,7 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recent requirements of the Truffle infrastructure and tooling.""",
+      "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
@@ -405,7 +406,7 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : [],
-      "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+      "maven" : False,
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
@@ -414,6 +415,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+      "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_SL" : {
@@ -434,6 +436,7 @@ suite = {
       ],
       "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
+      "allowsJavadocWarnings": True,
     },
 
      "TRUFFLE_DEBUG" : {
@@ -469,6 +472,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_DEBUG",
       ],
+      "maven" : False,
      },
   },
 }
