@@ -50,7 +50,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         @Option(help = "Use bidirectional trace builder.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
         @Option(help = "Schedule trivial traces as early as possible.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionValue<>(false);
+        public static final OptionValue<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionValue<>(true);
         // @formatter:on
     }
 
