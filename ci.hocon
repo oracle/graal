@@ -110,6 +110,7 @@ bench-specjvm2008 : ${common} {
   teardown : [
     ${bench-jvmci.mx-teardown}
   ]
+  timelimit : "2:50:00"
 }
 
 bench-specjvm2008-x52 : ${bench-specjvm2008} {
