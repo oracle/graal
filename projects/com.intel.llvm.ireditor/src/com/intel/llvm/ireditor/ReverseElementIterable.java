@@ -118,6 +118,7 @@ public class ReverseElementIterable implements Iterable<EObject> {
         throw new IllegalArgumentException("Can only reverse iterate from a basic block, a paremeter, a global or an instruction");
     }
 
+    @Override
     public Iterator<EObject> iterator() {
         return new ReverseElementIterator();
     }
@@ -128,6 +129,7 @@ public class ReverseElementIterable implements Iterable<EObject> {
         Mode currMode = initialMode;
         Mode nextMode;
 
+        @Override
         public boolean hasNext() {
             try {
                 switch (currMode) {
@@ -170,12 +172,14 @@ public class ReverseElementIterable implements Iterable<EObject> {
             }
         }
 
+        @Override
         public EObject next() {
             currMode = nextMode;
             currNode = nextNode;
             return NodeModelUtils.findActualSemanticObjectFor(currNode);
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }
