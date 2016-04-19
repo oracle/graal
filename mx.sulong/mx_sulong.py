@@ -473,9 +473,8 @@ def getCommonOptions(lib_args=None):
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
         '-Dsulong.IntrinsifyCFunctions=false',
-        getBitcodeLibrariesOption(),
         getSearchPathOption(lib_args)
-    ]
+    ] + getBitcodeLibrariesOption()
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
@@ -614,12 +613,8 @@ def suBench(args=None):
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
     return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
-def suOptBench(args=None):
-    """runs a given benchmark with Sulong after optimizing it with opt"""
-    ensureLLVMBinariesExist()
-    vmArgs, other = truffle_extract_VM_args(args)
-    inputFile = other[0]
-    outputFile = 'test.ll'
+def compileWithClangOpt(inputFile, outputFile='test.ll'):
+    """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
@@ -630,7 +625,15 @@ def suOptBench(args=None):
     else:
         exit(ext + " is not supported!")
     opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
-    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), 'test.ll'] + vmArgs)
+
+def suOptBench(args=None):
+    """runs a given benchmark with Sulong after optimizing it with opt"""
+    ensureLLVMBinariesExist()
+    vmArgs, other = truffle_extract_VM_args(args)
+    inputFile = other[0]
+    outputFile = 'test.ll'
+    compileWithClangOpt(inputFile, outputFile)
+    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -701,9 +704,9 @@ def getBitcodeLibrariesOption():
                 bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
                 absBitcodeFile = path + '/' + bitcodeFile
                 if not os.path.isfile(absBitcodeFile):
-                    compileWithClang(['-S', '-emit-llvm', path + '/' + f, '-o', absBitcodeFile])
+                    compileWithClangOpt(path + '/' + f, absBitcodeFile)
                 libraries.append(absBitcodeFile)
-    return'-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)
+    return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
