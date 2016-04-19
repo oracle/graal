@@ -22,14 +22,22 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.truffle.GraalTruffleCompilationListener;
+import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.OptimizedDirectCallNode;
 import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
 import com.oracle.graal.truffle.TruffleInliningDecision;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -43,8 +51,71 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 @NodeInfo(shortName = "isInlined")
 public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
 
+    private static final Map<OptimizedCallTarget, TruffleInlining> inliningDecisions = Collections.synchronizedMap(new WeakHashMap<>());
+
+    static {
+        ((GraalTruffleRuntime) Truffle.getRuntime()).addCompilationListener(new GraalTruffleCompilationListener() {
+
+            @Override
+            public void notifyStartup(GraalTruffleRuntime runtime) {
+
+            }
+
+            @Override
+            public void notifyShutdown(GraalTruffleRuntime runtime) {
+
+            }
+
+            @Override
+            public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
+
+            }
+
+            @Override
+            public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+                inliningDecisions.put(target, inliningDecision);
+            }
+
+            @Override
+            public void notifyCompilationStarted(OptimizedCallTarget target) {
+
+            }
+
+            @Override
+            public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
+
+            }
+
+            @Override
+            public void notifyCompilationQueued(OptimizedCallTarget target) {
+
+            }
+
+            @Override
+            public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
+
+            }
+
+            @Override
+            public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+
+            }
+
+            @Override
+            public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
+
+            }
+
+            @Override
+            public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+
+            }
+        });
+    }
+
     SLIsInlinedBuiltin() {
         super(SLIsInlinedBuiltin.class);
+
     }
 
     @Specialization
@@ -89,7 +160,7 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
                 return true;
             }
 
-        }, true);
+        }, inliningDecisions.get(rootTarget));
     }
 
     private static final class InliningTrace {

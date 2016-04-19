@@ -31,6 +31,7 @@ import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
@@ -46,9 +47,9 @@ public final class TraceCompilationPolymorphismListener extends AbstractDebugCom
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        super.notifyCompilationSuccess(target, graph, result);
-        target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)).//
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+        super.notifyCompilationSuccess(target, inliningDecision, graph, result);
+        target.nodeStream(inliningDecision).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)).//
                         forEach(node -> {
                             NodeCost cost = node.getCost();
                             Map<String, Object> props = new LinkedHashMap<>();

@@ -393,14 +393,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @SuppressWarnings("try")
     private void doCompile0(OptimizedCallTarget optimizedCallTarget) {
-        boolean success = true;
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
             getTruffleCompiler().compileMethod(optimizedCallTarget);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
-            success = false;
         } finally {
-            optimizedCallTarget.notifyCompilationFinished(success);
+            optimizedCallTarget.resetCompilationTask();
         }
     }
 
@@ -444,7 +442,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             optimizedCallTarget.resetCompilationTask();
             boolean result = codeTask.cancel(true);
             if (result) {
-                optimizedCallTarget.notifyCompilationFinished(false);
+                optimizedCallTarget.resetCompilationTask();
                 getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
             }
             return result;
@@ -557,9 +555,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         @Override
-        public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
+        public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationSuccess(target, graph, result);
+                l.notifyCompilationSuccess(target, inliningDecision, graph, result);
             }
         }
 
@@ -571,9 +569,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         @Override
-        public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+        public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationTruffleTierFinished(target, graph);
+                l.notifyCompilationTruffleTierFinished(target, inliningDecision, graph);
             }
         }
 

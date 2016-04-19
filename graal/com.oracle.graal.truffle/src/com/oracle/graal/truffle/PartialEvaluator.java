@@ -149,7 +149,7 @@ public class PartialEvaluator {
     }
 
     @SuppressWarnings("try")
-    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(Debug.INFO_LOG_LEVEL, callTarget, "%s", callTarget);
         } catch (Throwable e) {
@@ -164,7 +164,7 @@ public class PartialEvaluator {
             PhaseContext baseContext = new PhaseContext(providers);
             HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
-            fastPartialEvaluation(callTarget, graph, baseContext, tierContext);
+            fastPartialEvaluation(callTarget, inliningDecision, graph, baseContext, tierContext);
 
             if (Thread.currentThread().isInterrupted()) {
                 return null;
@@ -352,8 +352,7 @@ public class PartialEvaluator {
         };
     }
 
-    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph, HighTierContext tierContext) {
-        callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
+    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInlining inliningDecision) {
 
         PEGraphDecoder decoder = createGraphDecoder(graph, tierContext);
 
@@ -362,7 +361,7 @@ public class PartialEvaluator {
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
-        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), replacements);
+        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision, replacements);
 
         HistogramInlineInvokePlugin histogramPlugin = null;
         if (PrintTruffleExpansionHistogram.getValue()) {
@@ -404,8 +403,8 @@ public class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
-        doGraphPE(callTarget, graph, tierContext);
+    private void fastPartialEvaluation(OptimizedCallTarget callTarget, TruffleInlining inliningDecision, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+        doGraphPE(callTarget, graph, tierContext, inliningDecision);
         Debug.dump(Debug.INFO_LOG_LEVEL, graph, "After FastPE");
 
         graph.maybeCompress();

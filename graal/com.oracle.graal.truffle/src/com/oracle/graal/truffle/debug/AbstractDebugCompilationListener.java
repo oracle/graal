@@ -51,7 +51,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
     }
 
     @Override
@@ -63,7 +63,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
     }
 
     @Override
@@ -111,12 +111,11 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
         OptimizedCallTarget.log(sb.toString());
     }
 
-    public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
+    public static void addASTSizeProperty(OptimizedCallTarget target, TruffleInlining inliningDecision, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
         int deepNodeCount = nodeCount;
-        TruffleInlining inlining = target.getInlining();
-        if (inlining != null) {
-            deepNodeCount += inlining.getInlinedNodeCount();
+        if (inliningDecision != null) {
+            deepNodeCount += inliningDecision.getInlinedNodeCount();
         }
         properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
 
