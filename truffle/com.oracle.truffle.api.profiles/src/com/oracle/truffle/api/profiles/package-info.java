@@ -36,4 +36,3 @@
  * @see com.oracle.truffle.api.profiles.Profile
  */
 package com.oracle.truffle.api.profiles;
-

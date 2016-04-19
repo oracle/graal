@@ -41,8 +41,8 @@ import java.lang.annotation.Target;
  * which is good enough to read fields or invoke methods. However the
  * {@link com.oracle.truffle.api.interop Interop API} is far richer and supports additional
  * {@link Message messages} (not only the well known ones, but also arbitrary custom ones). To
- * control which {@link Message} is sent one can annotate each method by this annotation. <h5>
- * Writing to a field</h5> For example to write to field x of a JSON object:
+ * control which {@link Message} is sent one can annotate each method by this annotation.
+ * <h5>Writing to a field</h5> For example to write to field x of a JSON object:
  * 
  * <pre>
  * var obj = { 'x' : 5 }

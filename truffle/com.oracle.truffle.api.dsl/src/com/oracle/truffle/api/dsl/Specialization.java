@@ -230,7 +230,8 @@ public @interface Specialization {
      * <li>Dynamic and cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
      * <li>Non-private, static or virtual methods or fields of enclosing node.</li>
-     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.</li>
+     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.
+     * </li>
      * <li>Public and static methods or fields imported using {@link ImportStatic}.</li>
      * </ol>
      * </p>
@@ -269,7 +270,8 @@ public @interface Specialization {
      * <li>Cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
      * <li>Non-private, static or virtual methods or fields of enclosing node.</li>
-     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.</li>
+     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.
+     * </li>
      * <li>Public and static methods or fields imported using {@link ImportStatic}.</li>
      * </ol>
      * </p>
@@ -312,7 +314,8 @@ public @interface Specialization {
      * <li>Cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
      * <li>Non-private, static or virtual methods or fields of enclosing node.</li>
-     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.</li>
+     * <li>Non-private, static or virtual methods or fields of super types of the enclosing node.
+     * </li>
      * <li>Public and static methods or fields imported using {@link ImportStatic}.</li>
      * </ol>
      * </p>
