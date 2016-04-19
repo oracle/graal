@@ -653,7 +653,7 @@ public final class TraceLinearScan {
                 intervalData = intervals;
             }
 
-            try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
+            try (Scope s = Debug.scope("AfterLifetimeAnalysis", new TraceIntervalDumper(fixedIntervals(), intervals()))) {
 
                 printLir("Before register allocation", true);
                 printIntervals("Before register allocation");
@@ -784,7 +784,7 @@ public final class TraceLinearScan {
                             Debug.log(i1.logString());
                             Debug.log(i2.logString());
                         }
-                        throw new BailoutException("");
+                        throw new BailoutException("Intervals %s and %s overlap and have the same register assigned", i1, i2);
                     }
                 }
                 // check fixed intervals
