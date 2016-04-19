@@ -112,7 +112,7 @@ bench-specjvm2008 : ${common} {
   ]
 }
 
-bench-specjvm2008-x52 : ${bench-dacapo} {
+bench-specjvm2008-x52 : ${bench-specjvm2008} {
   capabilities : [linux, x52, bench, post-merge]
   name : "bench-specjvm2008-linux-x52"
   run : [
