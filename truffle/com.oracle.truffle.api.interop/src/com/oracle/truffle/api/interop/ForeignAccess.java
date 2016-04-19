@@ -86,7 +86,7 @@ public final class ForeignAccess {
      *            version 1.0
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects
      * @return new instance wrapping <code>factory</code>
-     * @since 0.13 or earlier
+     * @since 0.13
      */
     public static ForeignAccess create(final Factory10 factory, final RootNode languageCheck) {
         return new ForeignAccess(languageCheck, new DelegatingFactory(null, factory));
@@ -503,7 +503,7 @@ public final class ForeignAccess {
 
     CallTarget checkLanguage() {
         if (languageCheck != null) {
-            return Truffle.getRuntime().createCallTarget((RootNode) languageCheck.copy());
+            return Truffle.getRuntime().createCallTarget((RootNode) languageCheck.deepCopy());
         } else {
             return null;
         }
