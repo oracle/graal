@@ -70,10 +70,14 @@ public final class IntervalBuilderUtil {
     }
 
     protected static void setSpillSlot(LIRInstruction op, TraceInterval interval, AllocatableValue spillSlot) {
-        interval.setSpillSlot(spillSlot);
-        interval.setSpillState(SpillState.StartInMemory);
-        if (Debug.isLogEnabled()) {
-            Debug.log("operation at opId %d: added spill slot %s to interval %s", op.id(), spillSlot, interval);
+        if (interval.spillSlot() == null) {
+            interval.setSpillSlot(spillSlot);
+            interval.setSpillState(SpillState.StartInMemory);
+            if (Debug.isLogEnabled()) {
+                Debug.log("operation at opId %d: added spill slot %s to interval %s", op.id(), spillSlot, interval);
+            }
+        } else if (Debug.isLogEnabled()) {
+            Debug.log("operation at opId %d: has already a slot assigned %s", op.id(), interval.spillSlot());
         }
     }
 
