@@ -44,7 +44,7 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.LanguageCheck;
+import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -118,7 +118,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             if (innerClass.getKind() != ElementKind.CLASS) {
                 continue;
             }
-            if (innerClass.getAnnotation(LanguageCheck.class) != null) {
+            if (innerClass.getAnnotation(CanResolve.class) != null) {
                 receiverChecks.add((TypeElement) innerClass);
             }
         }
