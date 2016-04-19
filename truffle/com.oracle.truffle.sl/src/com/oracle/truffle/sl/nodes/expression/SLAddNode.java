@@ -92,8 +92,8 @@ public abstract class SLAddNode extends SLBinaryNode {
      * Java is doing everything we need.
      * <p>
      * This specialization is automatically selected by the Truffle DSL if both the left and right
-     * operand are {@link BigInteger} values. Because the type system defines an
-     * {@link ImplicitCast implicit conversion} from {@code long} to {@link BigInteger} in
+     * operand are {@link BigInteger} values. Because the type system defines an {@link ImplicitCast
+     * implicit conversion} from {@code long} to {@link BigInteger} in
      * {@link SLTypes#castBigInteger(long)}, this specialization is also taken if the left or the
      * right operand is a {@code long} value. Because the {@link #add(long, long) long}
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if

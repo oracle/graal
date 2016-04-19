@@ -45,8 +45,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>A <em>listener</em>: a consumer of execution events on behalf of an external client.
  * </ol>
  * <p>
- * Client-oriented documentation for the use of Instruments is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
+ * Client-oriented documentation for the use of Instruments is available online at
+ * <a HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
  * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  *
  * @see Probe
@@ -75,7 +75,8 @@ public abstract class ProbeInstrument extends Instrument {
      * {@link StandardInstrumentListener}, since those event methods identify the concrete Node
      * instance (and thus the AST instance) where the event takes place.
      * <p>
-     * <h4>Implementation Notes: the Life Cycle of an {@link ProbeInstrument} at a {@link Probe}</h4>
+     * <h4>Implementation Notes: the Life Cycle of an {@link ProbeInstrument} at a {@link Probe}
+     * </h4>
      * <p>
      * <ul>
      * <li>A new Instrument is created in permanent association with a client-provided
@@ -90,7 +91,8 @@ public abstract class ProbeInstrument extends Instrument {
      * <li>Neither Instruments nor Probes are {@link Node}s.</li>
      *
      * <li>A Probe has a single source-based location in an AST, but manages a separate
-     * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.</li>
+     * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.
+     * </li>
      * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is
      * cloned along with the rest of the AST.</li>
      *

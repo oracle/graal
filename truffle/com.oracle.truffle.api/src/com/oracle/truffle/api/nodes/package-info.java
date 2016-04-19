@@ -34,4 +34,3 @@
  * for your {@link com.oracle.truffle.api.TruffleLanguage}.
  */
 package com.oracle.truffle.api.nodes;
-

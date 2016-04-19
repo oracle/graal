@@ -148,8 +148,8 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
     }
 
     /**
-     * Determines if a given exception is (most likely) caused by <a
-     * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
+     * Determines if a given exception is (most likely) caused by
+     * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
      */
     public static boolean isBug367599(Throwable t) {
         if (t instanceof FilerException) {

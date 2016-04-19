@@ -366,7 +366,7 @@ public class CachedTest {
     static class CachedError1 extends ValueNode {
         @Specialization
         static int do1(int value, @ExpectError("Incompatible return type int. The expression type must be equal to the parameter type double.")//
-                        @Cached("value") double cachedValue) {
+        @Cached("value") double cachedValue) {
             return value;
         }
     }

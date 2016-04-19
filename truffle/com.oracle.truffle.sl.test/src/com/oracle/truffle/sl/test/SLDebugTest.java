@@ -118,7 +118,7 @@ public class SLDebugTest {
                         "  res = n * nMOFact;\n" +
                         "  return res;\n" + "}\n",
                         "factorial.sl").withMimeType(
-                        "application/x-sl");
+                                        "application/x-sl");
     }
 
     protected final String getOut() {

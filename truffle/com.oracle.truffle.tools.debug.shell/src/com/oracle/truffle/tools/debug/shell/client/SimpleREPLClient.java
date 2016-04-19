@@ -45,9 +45,9 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
  * A very simple line-oriented, language-agnostic debugging client shell: the first step toward a
  * general, extensible debugging framework designed to be adapted for remote debugging.
  * <p>
- * The architecture of this debugging framework is modeled loosely on <a
- * href="https://github.com/clojure/tools.nrepl">nREPL</a>, a network REPL developed by the Clojure
- * community with a focus on generality:
+ * The architecture of this debugging framework is modeled loosely on
+ * <a href="https://github.com/clojure/tools.nrepl">nREPL</a>, a network REPL developed by the
+ * Clojure community with a focus on generality:
  * <ul>
  * <li>Client and (possibly remote) server communicate via <em>messages</em> carried over some
  * <em>transport</em>;</li>
