@@ -40,7 +40,7 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -237,8 +237,8 @@ public final class TraceLinearScan {
         return registerAttributes[reg.number];
     }
 
-    private static final DebugMetric globalStackSlots = Debug.metric("TraceRA[GlobalStackSlots]");
-    private static final DebugMetric allocatedStackSlots = Debug.metric("TraceRA[AllocatedStackSlots]");
+    private static final DebugCounter globalStackSlots = Debug.counter("TraceRA[GlobalStackSlots]");
+    private static final DebugCounter allocatedStackSlots = Debug.counter("TraceRA[AllocatedStackSlots]");
 
     void assignSpillSlot(TraceInterval interval) {
         /*

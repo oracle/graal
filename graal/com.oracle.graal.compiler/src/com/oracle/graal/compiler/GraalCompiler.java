@@ -49,7 +49,7 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.lir.BailoutAndRestartBackendException;
 import com.oracle.graal.lir.LIR;
@@ -346,12 +346,12 @@ public class GraalCompiler {
                 compilationResult.setBytecodeSize(bytecodeSize);
             }
             crb.finish();
-            if (Debug.isMeterEnabled()) {
+            if (Debug.isCountEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
                 JavaKind[] kindValues = JavaKind.values();
-                DebugMetric[] dms = new DebugMetric[kindValues.length];
+                DebugCounter[] dms = new DebugCounter[kindValues.length];
                 for (int i = 0; i < dms.length; i++) {
-                    dms[i] = Debug.metric("DataPatches-%s", kindValues[i]);
+                    dms[i] = Debug.counter("DataPatches-%s", kindValues[i]);
                 }
 
                 for (DataPatch dp : ldp) {
@@ -365,11 +365,11 @@ public class GraalCompiler {
                     dms[kind.ordinal()].add(1);
                 }
 
-                Debug.metric("CompilationResults").increment();
-                Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
-                Debug.metric("InfopointsEmitted").add(compilationResult.getInfopoints().size());
-                Debug.metric("DataPatches").add(ldp.size());
-                Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
+                Debug.counter("CompilationResults").increment();
+                Debug.counter("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
+                Debug.counter("InfopointsEmitted").add(compilationResult.getInfopoints().size());
+                Debug.counter("DataPatches").add(ldp.size());
+                Debug.counter("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
             }
 
             Debug.dump(Debug.BASIC_LOG_LEVEL, compilationResult, "After code generation");

@@ -36,7 +36,7 @@ import jdk.vm.ci.common.JVMCIError;
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Node.ValueNumberable;
@@ -775,7 +775,7 @@ public class Graph {
 
     public static final int COMPRESSION_THRESHOLD = Options.GraphCompressionThreshold.getValue();
 
-    private static final DebugMetric GraphCompressions = Debug.metric("GraphCompressions");
+    private static final DebugCounter GraphCompressions = Debug.counter("GraphCompressions");
 
     /**
      * If the {@linkplain #COMPRESSION_THRESHOLD compression threshold} is met, the list of nodes is

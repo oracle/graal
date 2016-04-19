@@ -23,7 +23,7 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
@@ -38,16 +38,16 @@ public final class StackSlotAllocatorUtil {
     /**
      * The number of allocated stack slots.
      */
-    public static DebugMetric allocatedSlots = Debug.metric("StackSlotAllocator[allocatedSlots]");
+    public static DebugCounter allocatedSlots = Debug.counter("StackSlotAllocator[allocatedSlots]");
     /**
      * The number of reused stack slots.
      */
-    public static DebugMetric reusedSlots = Debug.metric("StackSlotAllocator[reusedSlots]");
+    public static DebugCounter reusedSlots = Debug.counter("StackSlotAllocator[reusedSlots]");
     /**
      * The size (in bytes) required for all allocated stack slots. Note that this number corresponds
      * to the actual frame size and might include alignment.
      */
-    public static DebugMetric allocatedFramesize = Debug.metric("StackSlotAllocator[AllocatedFramesize]");
+    public static DebugCounter allocatedFramesize = Debug.counter("StackSlotAllocator[AllocatedFramesize]");
     /** The size (in bytes) required for all virtual stack slots. */
-    public static DebugMetric virtualFramesize = Debug.metric("StackSlotAllocator[VirtualFramesize]");
+    public static DebugCounter virtualFramesize = Debug.counter("StackSlotAllocator[VirtualFramesize]");
 }

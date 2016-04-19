@@ -32,7 +32,7 @@ import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.GraalGraphJVMCIError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -43,7 +43,7 @@ import com.oracle.graal.nodeinfo.Verbosity;
  */
 
 public class MatchStatement {
-    private static final DebugMetric MatchStatementSuccess = Debug.metric("MatchStatementSuccess");
+    private static final DebugCounter MatchStatementSuccess = Debug.counter("MatchStatementSuccess");
 
     /**
      * A printable name for this statement. Usually it's just the name of the method doing the
@@ -98,7 +98,7 @@ public class MatchStatement {
             if (value != null) {
                 context.setResult(value);
                 MatchStatementSuccess.increment();
-                Debug.metric("MatchStatement[%s]", getName()).increment();
+                Debug.counter("MatchStatement[%s]", getName()).increment();
                 return true;
             }
             // The pattern matched but some other code generation constraint disallowed code

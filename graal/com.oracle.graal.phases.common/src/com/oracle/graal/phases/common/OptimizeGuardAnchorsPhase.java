@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -42,8 +42,8 @@ import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.phases.Phase;
 
 public class OptimizeGuardAnchorsPhase extends Phase {
-    private static final DebugMetric metricGuardsAnchorOptimized = Debug.metric("GuardsAnchorOptimized");
-    private static final DebugMetric metricGuardsOptimizedAtSplit = Debug.metric("GuardsOptimizedAtSplit");
+    private static final DebugCounter counterGuardsAnchorOptimized = Debug.counter("GuardsAnchorOptimized");
+    private static final DebugCounter counterGuardsOptimizedAtSplit = Debug.counter("GuardsOptimizedAtSplit");
 
     public static class LazyCFG {
         private ControlFlowGraph cfg;
@@ -78,7 +78,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                         for (GuardNode guard : guards.snapshot()) {
                             guard.setAnchor(newAnchor);
                         }
-                        metricGuardsAnchorOptimized.increment();
+                        counterGuardsAnchorOptimized.increment();
                     }
                 }
             }
@@ -132,7 +132,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                     otherGuard.replaceAndDelete(newGuard);
                 }
                 guard.replaceAndDelete(newGuard);
-                metricGuardsOptimizedAtSplit.increment();
+                counterGuardsOptimizedAtSplit.increment();
             }
             otherGuards.clear();
         }

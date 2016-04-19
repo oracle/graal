@@ -29,7 +29,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;
@@ -59,13 +59,13 @@ import com.oracle.graal.phases.tiers.PhaseContext;
 public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     private static final int MAX_ITERATION_PER_NODE = 10;
-    private static final DebugMetric METRIC_CANONICALIZED_NODES = Debug.metric("CanonicalizedNodes");
-    private static final DebugMetric METRIC_PROCESSED_NODES = Debug.metric("ProcessedNodes");
-    private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
-    private static final DebugMetric METRIC_INFER_STAMP_CALLED = Debug.metric("InferStampCalled");
-    private static final DebugMetric METRIC_STAMP_CHANGED = Debug.metric("StampChanged");
-    private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
-    private static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
+    private static final DebugCounter COUNTER_CANONICALIZED_NODES = Debug.counter("CanonicalizedNodes");
+    private static final DebugCounter COUNTER_PROCESSED_NODES = Debug.counter("ProcessedNodes");
+    private static final DebugCounter COUNTER_CANONICALIZATION_CONSIDERED_NODES = Debug.counter("CanonicalizationConsideredNodes");
+    private static final DebugCounter COUNTER_INFER_STAMP_CALLED = Debug.counter("InferStampCalled");
+    private static final DebugCounter COUNTER_STAMP_CHANGED = Debug.counter("StampChanged");
+    private static final DebugCounter COUNTER_SIMPLIFICATION_CONSIDERED_NODES = Debug.counter("SimplificationConsideredNodes");
+    private static final DebugCounter COUNTER_GLOBAL_VALUE_NUMBERING_HITS = Debug.counter("GlobalValueNumberingHits");
 
     private boolean canonicalizeReads = true;
     private boolean simplify = true;
@@ -213,7 +213,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         private void processNode(Node node) {
             if (node.isAlive()) {
-                METRIC_PROCESSED_NODES.increment();
+                COUNTER_PROCESSED_NODES.increment();
 
                 NodeClass<?> nodeClass = node.getNodeClass();
                 if (tryGlobalValueNumbering(node, nodeClass)) {
@@ -247,7 +247,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (newNode != null) {
                     assert !(node instanceof FixedNode || newNode instanceof FixedNode);
                     node.replaceAtUsagesAndDelete(newNode);
-                    METRIC_GLOBAL_VALUE_NUMBERING_HITS.increment();
+                    COUNTER_GLOBAL_VALUE_NUMBERING_HITS.increment();
                     Debug.log("GVN applied and new node is %1s", newNode);
                     return true;
                 }
@@ -283,7 +283,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 }
             }
             if (nodeClass.isCanonicalizable()) {
-                METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
+                COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment();
                 Node canonical;
                 try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
                     try (DebugCloseable position = node.graph().withNodeSourcePosition(node)) {
@@ -302,7 +302,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             if (nodeClass.isSimplifiable() && simplify) {
                 Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: simplifying %s", node);
-                METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
+                COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 node.simplify(tool);
                 return node.isDeleted();
             }
@@ -332,7 +332,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             } else {
                 Node canonical = newCanonical;
                 Debug.log("Canonicalizer: replacing %1s with %1s", node, canonical);
-                METRIC_CANONICALIZED_NODES.increment();
+                COUNTER_CANONICALIZED_NODES.increment();
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 if (canonical != null && !canonical.isAlive()) {
                     assert !canonical.isDeleted();
@@ -392,9 +392,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
          */
         private boolean tryInferStamp(ValueNode node) {
             if (node.isAlive()) {
-                METRIC_INFER_STAMP_CALLED.increment();
+                COUNTER_INFER_STAMP_CALLED.increment();
                 if (node.inferStamp()) {
-                    METRIC_STAMP_CHANGED.increment();
+                    COUNTER_STAMP_CHANGED.increment();
                     for (Node usage : node.usages()) {
                         workList.add(usage);
                     }

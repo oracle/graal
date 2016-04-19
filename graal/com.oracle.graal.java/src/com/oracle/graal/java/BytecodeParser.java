@@ -299,7 +299,7 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
@@ -426,9 +426,9 @@ public class BytecodeParser implements GraphBuilderContext {
     /**
      * Meters the number of actual bytecodes parsed.
      */
-    public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
+    public static final DebugCounter BytecodesParsed = Debug.counter("BytecodesParsed");
 
-    protected static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
+    protected static final DebugCounter EXPLICIT_EXCEPTIONS = Debug.counter("ExplicitExceptions");
 
     /**
      * A scoped object for tasks to be performed after parsing an intrinsic such as processing

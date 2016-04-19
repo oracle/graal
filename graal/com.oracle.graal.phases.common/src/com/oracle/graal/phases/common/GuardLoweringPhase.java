@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.BeginNode;
@@ -78,7 +78,7 @@ import com.oracle.graal.phases.tiers.MidTierContext;
  */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
-    private static final DebugMetric metricImplicitNullCheck = Debug.metric("ImplicitNullCheck");
+    private static final DebugCounter counterImplicitNullCheck = Debug.counter("ImplicitNullCheck");
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
@@ -152,7 +152,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 } else {
                     assert guard instanceof GuardNode;
                 }
-                metricImplicitNullCheck.increment();
+                counterImplicitNullCheck.increment();
                 access.setGuard(null);
                 FixedAccessNode fixedAccess;
                 if (access instanceof FloatingAccessNode) {

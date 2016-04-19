@@ -30,12 +30,12 @@ import com.oracle.graal.debug.internal.DebugScope;
 
 /**
  * Implements the filter specified by the {@link Options#Dump}, {@link Options#Log},
- * {@link Options#Meter} and {@link Options#Time} options.
+ * {@link Options#Count} and {@link Options#Time} options.
  * <p>
  * These options enable the associated debug facility if their filter matches the
  * {@linkplain DebugScope#getQualifiedName() name} of the {@linkplain Debug#currentScope() current
  * scope}. For the {@link Options#Dump} and {@link Options#Log} options, the log or dump level is
- * set. The {@link Options#Meter} and {@link Options#Time} options don't have a level, for them
+ * set. The {@link Options#Count} and {@link Options#Time} options don't have a level, for them
  * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
  * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}. {@code  

@@ -30,13 +30,13 @@ import jdk.vm.ci.meta.ProfilingInfo;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 
 public final class OptimisticOptimizations {
 
     public static final OptimisticOptimizations ALL = new OptimisticOptimizations(EnumSet.allOf(Optimization.class));
     public static final OptimisticOptimizations NONE = new OptimisticOptimizations(EnumSet.noneOf(Optimization.class));
-    private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
+    private static final DebugCounter disabledOptimisticOptsCounter = Debug.counter("DisabledOptimisticOpts");
 
     public enum Optimization {
         RemoveNeverExecutedCode,
@@ -64,7 +64,7 @@ public final class OptimisticOptimizations {
         if (checkDeoptimizations(info, deoptReason)) {
             enabledOpts.add(optimization);
         } else {
-            disabledOptimisticOptsMetric.increment();
+            disabledOptimisticOptsCounter.increment();
         }
     }
 

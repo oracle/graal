@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
@@ -42,8 +42,8 @@ import com.oracle.graal.virtual.nodes.VirtualObjectState;
  */
 public class ObjectState {
 
-    public static final DebugMetric CREATE_ESCAPED_OBJECT_STATE = Debug.metric("CreateEscapeObjectState");
-    public static final DebugMetric GET_ESCAPED_OBJECT_STATE = Debug.metric("GetEscapeObjectState");
+    public static final DebugCounter CREATE_ESCAPED_OBJECT_STATE = Debug.counter("CreateEscapeObjectState");
+    public static final DebugCounter GET_ESCAPED_OBJECT_STATE = Debug.counter("GetEscapeObjectState");
 
     private ValueNode[] entries;
     private ValueNode materializedValue;

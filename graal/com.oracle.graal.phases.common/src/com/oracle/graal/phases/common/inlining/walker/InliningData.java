@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -96,10 +96,10 @@ import com.oracle.graal.phases.util.Providers;
  */
 public class InliningData {
 
-    // Metrics
-    private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
-    private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
-    private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
+    // Counters
+    private static final DebugCounter counterInliningPerformed = Debug.counter("InliningPerformed");
+    private static final DebugCounter counterInliningRuns = Debug.counter("InliningRuns");
+    private static final DebugCounter counterInliningConsidered = Debug.counter("InliningConsidered");
 
     /**
      * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
@@ -383,7 +383,7 @@ public class InliningData {
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);
-                metricInliningRuns.increment();
+                counterInliningRuns.increment();
                 Debug.dump(Debug.INFO_LOG_LEVEL, callerGraph, "after %s", calleeInfo);
 
                 if (OptCanonicalizer.getValue()) {
@@ -401,7 +401,7 @@ public class InliningData {
 
                 callerCallsiteHolder.computeProbabilities();
 
-                metricInliningPerformed.increment();
+                counterInliningPerformed.increment();
             }
         } catch (BailoutException bailout) {
             throw bailout;
@@ -430,7 +430,7 @@ public class InliningData {
         CallsiteHolderExplorable callerCallsiteHolder = (CallsiteHolderExplorable) currentGraph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
-        metricInliningConsidered.increment();
+        counterInliningConsidered.increment();
 
         if (inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, inliningDepth, true)) {
             doInline(callerCallsiteHolder, calleeInvocation);

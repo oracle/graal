@@ -106,7 +106,7 @@ public final class DebugScope implements Debug.Scope {
 
     private static final char SCOPE_SEP = '.';
 
-    private boolean meterEnabled;
+    private boolean countEnabled;
     private boolean timeEnabled;
     private boolean memUseTrackingEnabled;
     private boolean verifyEnabled;
@@ -242,8 +242,8 @@ public final class DebugScope implements Debug.Scope {
         return currentLogLevel >= logLevel;
     }
 
-    public boolean isMeterEnabled() {
-        return meterEnabled;
+    public boolean isCountEnabled() {
+        return countEnabled;
     }
 
     public boolean isTimeEnabled() {
@@ -355,7 +355,7 @@ public final class DebugScope implements Debug.Scope {
     private void updateFlags() {
         DebugConfig config = getConfig();
         if (config == null) {
-            meterEnabled = false;
+            countEnabled = false;
             memUseTrackingEnabled = false;
             timeEnabled = false;
             verifyEnabled = false;
@@ -366,7 +366,7 @@ public final class DebugScope implements Debug.Scope {
             // set while logging
             output = TTY.out;
         } else {
-            meterEnabled = config.isMeterEnabled();
+            countEnabled = config.isCountEnabled();
             memUseTrackingEnabled = config.isMemUseTrackingEnabled();
             timeEnabled = config.isTimeEnabled();
             verifyEnabled = config.isVerifyEnabled();

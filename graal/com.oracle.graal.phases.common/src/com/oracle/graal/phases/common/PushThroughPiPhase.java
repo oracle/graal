@@ -23,7 +23,7 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -32,7 +32,7 @@ import com.oracle.graal.phases.Phase;
 
 public class PushThroughPiPhase extends Phase {
 
-    public static final DebugMetric PUSHED_NODES = Debug.metric("NodesPushedThroughPi");
+    public static final DebugCounter PUSHED_NODES = Debug.counter("NodesPushedThroughPi");
 
     @Override
     protected void run(StructuredGraph graph) {

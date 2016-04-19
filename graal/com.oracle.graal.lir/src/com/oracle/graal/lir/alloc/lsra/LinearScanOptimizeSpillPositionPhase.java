@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -45,8 +45,8 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 
 public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 
-    private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
-    private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
+    private static final DebugCounter betterSpillPos = Debug.counter("BetterSpillPosition");
+    private static final DebugCounter betterSpillPosWithLowerProbability = Debug.counter("BetterSpillPositionWithLowerProbability");
 
     private final LinearScan allocator;
 

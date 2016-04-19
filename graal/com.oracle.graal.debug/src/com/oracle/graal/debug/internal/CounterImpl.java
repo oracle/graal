@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.debug.internal;
 
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 
-public final class MetricImpl extends DebugValue implements DebugMetric {
+public final class CounterImpl extends DebugValue implements DebugCounter {
 
-    public MetricImpl(String name, boolean conditional) {
+    public CounterImpl(String name, boolean conditional) {
         super(name, conditional);
         if (isEnabled()) {
-            // Allows for zero-count metrics to be shown
+            // Allows for zero counters to be shown
             getCurrentValue();
         }
     }

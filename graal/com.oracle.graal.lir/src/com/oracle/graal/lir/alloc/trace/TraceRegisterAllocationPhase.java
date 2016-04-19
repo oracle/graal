@@ -34,7 +34,7 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -80,8 +80,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
 
-    private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
-    private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
+    private static final DebugCounter trivialTracesCounter = Debug.counter("TraceRA[trivialTraces]");
+    private static final DebugCounter tracesCounter = Debug.counter("TraceRA[traces]");
 
     @Override
     @SuppressWarnings("try")
@@ -100,9 +100,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
-                    tracesMetric.increment();
-                    if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
-                        trivialTracesMetric.increment();
+                    tracesCounter.increment();
+                    if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
+                        trivialTracesCounter.increment();
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {

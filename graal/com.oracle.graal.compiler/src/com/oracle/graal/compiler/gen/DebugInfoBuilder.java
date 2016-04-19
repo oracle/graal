@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
@@ -244,10 +244,10 @@ public class DebugInfoBuilder {
         return toJavaValue(state.lockAt(i));
     }
 
-    private static final DebugMetric STATE_VIRTUAL_OBJECTS = Debug.metric("StateVirtualObjects");
-    private static final DebugMetric STATE_ILLEGALS = Debug.metric("StateIllegals");
-    private static final DebugMetric STATE_VARIABLES = Debug.metric("StateVariables");
-    private static final DebugMetric STATE_CONSTANTS = Debug.metric("StateConstants");
+    private static final DebugCounter STATE_VIRTUAL_OBJECTS = Debug.counter("StateVirtualObjects");
+    private static final DebugCounter STATE_ILLEGALS = Debug.counter("StateIllegals");
+    private static final DebugCounter STATE_VARIABLES = Debug.counter("StateVariables");
+    private static final DebugCounter STATE_CONSTANTS = Debug.counter("StateConstants");
 
     private static JavaKind toSlotKind(ValueNode value) {
         if (value == null) {

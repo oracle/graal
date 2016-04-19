@@ -57,9 +57,9 @@ public class DelegatingDebugConfig implements DebugConfig {
          */
         VERIFY_METHOD,
         /**
-         * @see Debug#isMeterEnabled()
+         * @see Debug#isCountEnabled()
          */
-        METER,
+        COUNT,
         /**
          * @see Debug#isMemUseTrackingEnabled()
          */
@@ -146,10 +146,10 @@ public class DelegatingDebugConfig implements DebugConfig {
     }
 
     @Override
-    public boolean isMeterEnabled() {
-        Boolean fs = featureState.get(Feature.METER);
+    public boolean isCountEnabled() {
+        Boolean fs = featureState.get(Feature.COUNT);
         if (fs == null) {
-            return delegate.isMeterEnabled();
+            return delegate.isCountEnabled();
         }
         return fs.booleanValue();
     }

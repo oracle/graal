@@ -42,7 +42,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.nodeinfo.InputType;
@@ -87,8 +87,8 @@ import jdk.vm.ci.meta.TriState;
 
 public class DominatorConditionalEliminationPhase extends Phase {
 
-    private static final DebugMetric metricStampsRegistered = Debug.metric("StampsRegistered");
-    private static final DebugMetric metricStampsFound = Debug.metric("StampsFound");
+    private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
+    private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private final boolean fullSchedule;
 
     public DominatorConditionalEliminationPhase(boolean fullSchedule) {
@@ -490,7 +490,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
             protected boolean rewireGuards(ValueNode guard, boolean result, GuardRewirer rewireGuardFunction) {
                 assert guard instanceof GuardingNode;
-                metricStampsFound.increment();
+                counterStampsFound.increment();
                 ValueNode proxiedGuard = proxyGuard(guard);
                 return rewireGuardFunction.rewire(proxiedGuard, result);
             }
@@ -671,7 +671,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         info = new Info();
                         map.set(value, info);
                     }
-                    metricStampsRegistered.increment();
+                    counterStampsRegistered.increment();
                     final Info finalInfo = info;
                     Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
                     finalInfo.pushElement(new InfoElement(newStamp, guard));
