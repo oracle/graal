@@ -68,21 +68,15 @@ gateStyle : ${common} ${java8Downloads} {
   ]
 }
 
-benchSPECjvm2008 : ${common} {
-  downloads : ${java8Downloads.downloads} {
-    SPECJVM2008 : {name : specjvm2008, version : "1.01"}
-  }
-  run : [
-    ["mx", "bench", "--results", "results.json", "specjvm2008"]
-    ["upload-results", "results.json"]
-  ]
-}
-
 bench-jvmci : {
   mx-settings : ["mx", "--vm=jvmci", "--vmbuild=product"]
   mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
+  mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
+
+# DaCapo-related targets
 
 bench-dacapo : ${common} ${java8Downloads} {
   downloads : {
@@ -92,7 +86,7 @@ bench-dacapo : ${common} ${java8Downloads} {
     ${bench-jvmci.mx-settings} ["build"]
   ]
   teardown : [
-    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
+    ${bench-jvmci.mx-teardown}
   ]
 }
 
@@ -103,6 +97,30 @@ bench-dacapo-x52 : ${bench-dacapo} {
     ${bench-jvmci.mx-dacapo} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"]
   ]
 }
+
+# SPECJvm2008-related targets
+
+bench-specjvm2008 : ${common} {
+  downloads : ${java8Downloads.downloads} {
+    SPECJVM2008 : {name : specjvm2008, version : "1.01"}
+  }
+  setup: [
+    ${bench-jvmci.mx-settings} ["build"]
+  ]
+  teardown : [
+    ${bench-jvmci.mx-teardown}
+  ]
+}
+
+bench-specjvm2008-x52 : ${bench-dacapo} {
+  capabilities : [linux, x52, bench, post-merge]
+  name : "bench-dacapo-linux-x52"
+  run : [
+    ${bench-jvmci.mx-specjvm2008} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-it 240s", "-wt 120s"]
+  ]
+}
+
+# Build targets
 
 builds = [
   ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
