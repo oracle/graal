@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMTo80BitFloatingNodeFactory.LLVMDoubleToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMTo80BitFloatingNodeFactory.LLVMFloatToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMTo80BitFloatingNodeFactory.LLVMI32ToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMTo80BitFloatingNodeFactory.LLVMI32ToLLVM80BitFloatUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMTo80BitFloatingNodeFactory.LLVMI64ToLLVM80BitFloatNodeGen;
@@ -72,6 +73,8 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI64ToF
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI64ToFloatUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI8ToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI8ToFloatZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFunctionNodeFactory.LLVMAddressToFunctionNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFunctionNodeFactory.LLVMI64ToFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI16NodeFactory.LLVMDoubleToI16NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI16NodeFactory.LLVMFloatToI16NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI16NodeFactory.LLVMI1ToI16NodeGen;
@@ -298,6 +301,8 @@ public final class LLVMCastsFactory {
                     return LLVMFloatToI64NodeGen.create(fromNode);
                 case DOUBLE:
                     return LLVMFloatToDoubleNodeGen.create(fromNode);
+                case X86_FP80:
+                    return LLVMFloatToLLVM80BitFloatNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
@@ -375,6 +380,8 @@ public final class LLVMCastsFactory {
                     // at the moment we still can directly cast from pointer to pointer (e.g. from
                     // I32* to I32Vector*)
                     return fromNode;
+                case FUNCTION_ADDRESS:
+                    return LLVMAddressToFunctionNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
@@ -419,6 +426,8 @@ public final class LLVMCastsFactory {
                     return LLVMI64ToLLVM80BitFloatUnsignedNodeGen.create(fromNode);
                 case ADDRESS:
                     return LLVMI64ToAddressNodeGen.create(fromNode);
+                case FUNCTION_ADDRESS:
+                    return LLVMI64ToFunctionNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }

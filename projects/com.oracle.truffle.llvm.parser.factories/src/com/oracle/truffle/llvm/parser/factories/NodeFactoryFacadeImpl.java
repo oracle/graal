@@ -69,6 +69,17 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVM
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVM80BitFloatUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMAddressUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMDoubleUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
@@ -79,8 +90,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -335,7 +344,32 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType) {
-        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+        switch (retType) {
+            case VOID:
+                return new LLVMUnsupportedInlineAssemblerNode();
+            case I1:
+                return new LLVMI1UnsupportedInlineAssemblerNode();
+            case I8:
+                return new LLVMI8UnsupportedInlineAssemblerNode();
+            case I16:
+                return new LLVMI16UnsupportedInlineAssemblerNode();
+            case I32:
+                return new LLVMI32UnsupportedInlineAssemblerNode();
+            case I64:
+                return new LLVMI64UnsupportedInlineAssemblerNode();
+            case FLOAT:
+                return new LLVMFloatUnsupportedInlineAssemblerNode();
+            case DOUBLE:
+                return new LLVMDoubleUnsupportedInlineAssemblerNode();
+            case X86_FP80:
+                return new LLVM80BitFloatUnsupportedInlineAssemblerNode();
+            case ADDRESS:
+                return new LLVMAddressUnsupportedInlineAssemblerNode();
+            case FUNCTION_ADDRESS:
+                return new LLVMFunctionUnsupportedInlineAssemblerNode();
+            default:
+                throw new AssertionError(retType);
+        }
     }
 
     @Override
