@@ -78,16 +78,23 @@ public class TraceBuilderPhase extends AllocationPhase {
     }
 
     private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraceBuilderResult(LIR lir, B startBlock, List<B> blocks) {
-        TraceBuilderResult.TrivialTracePredicate pred = !Options.TraceRAScheduleTrivialTracesEarly.getValue() ? null : new TrivialTracePredicate() {
-            @Override
-            public <T extends AbstractBlockBase<T>> boolean isTrivialTrace(Trace<T> trace) {
-                return TraceUtil.isTrivialTrace(lir, trace);
-            }
-        };
+        TraceBuilderResult.TrivialTracePredicate pred = getTrivialTracePredicate(lir);
 
         if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
             return BiDirectionalTraceBuilder.computeTraces(startBlock, blocks, pred);
         }
         return UniDirectionalTraceBuilder.computeTraces(startBlock, blocks, pred);
+    }
+
+    public static TraceBuilderResult.TrivialTracePredicate getTrivialTracePredicate(LIR lir) {
+        if (!Options.TraceRAScheduleTrivialTracesEarly.getValue()) {
+            return null;
+        }
+        return new TrivialTracePredicate() {
+            @Override
+            public <T extends AbstractBlockBase<T>> boolean isTrivialTrace(Trace<T> trace) {
+                return TraceUtil.isTrivialTrace(lir, trace);
+            }
+        };
     }
 }
