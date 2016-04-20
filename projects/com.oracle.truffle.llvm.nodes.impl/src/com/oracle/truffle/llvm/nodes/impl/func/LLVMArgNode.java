@@ -181,15 +181,22 @@ public class LLVMArgNode {
 
     }
 
-    @NodeField(name = "index", type = int.class)
-    public abstract static class LLVMAddressArgNode extends LLVMAddressNode {
+    public static final class LLVMAddressArgNode extends LLVMAddressNode {
 
-        public abstract int getIndex();
+        private final int index;
 
-        @Specialization
+        public LLVMAddressArgNode(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getArguments()[index];
+        }
+
         @Override
         public LLVMAddress executePointee(VirtualFrame frame) {
-            return (LLVMAddress) frame.getArguments()[getIndex()];
+            return (LLVMAddress) executeGeneric(frame);
         }
 
     }
