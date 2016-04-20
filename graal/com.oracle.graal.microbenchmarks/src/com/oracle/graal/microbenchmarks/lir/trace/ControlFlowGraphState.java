@@ -25,12 +25,12 @@ package com.oracle.graal.microbenchmarks.lir.trace;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Setup;
 
+import com.oracle.graal.lir.LIR;
 import com.oracle.graal.microbenchmarks.lir.GraalCompilerState;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 
 /**
- * TODO(zapster) document me!
- *
+ * State class for working with {@link ControlFlowGraph} and {@link LIR}.
  */
 public abstract class ControlFlowGraphState extends GraalCompilerState {
 
@@ -41,8 +41,15 @@ public abstract class ControlFlowGraphState extends GraalCompilerState {
         // setup graph
         initializeMethod();
         prepareRequest();
+        emitFrontEnd();
+        generateLIR();
         // compute cfg
-        this.cfg = ControlFlowGraph.compute(graph(), true, true, true, true);
+        this.cfg = (ControlFlowGraph) getLIR().getControlFlowGraph();
+    }
+
+    @Override
+    public LIR getLIR() {
+        return super.getLIR();
     }
 
 }
