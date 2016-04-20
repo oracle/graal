@@ -31,7 +31,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -58,7 +58,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             this.lir = lir;
         }
 
-        private static final DebugMetric BLOCKS_DELETED = Debug.metric("BlocksDeleted");
+        private static final DebugCounter BLOCKS_DELETED = Debug.counter("BlocksDeleted");
 
         /**
          * Checks whether a block can be deleted. Only blocks with exactly one successor and an

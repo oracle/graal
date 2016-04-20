@@ -194,7 +194,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
-                Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
+                Debug.counter("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache.getValue() || args != null) {
                     return newGraph;
                 }

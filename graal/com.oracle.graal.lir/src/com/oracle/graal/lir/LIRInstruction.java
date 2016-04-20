@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
@@ -197,7 +197,7 @@ public abstract class LIRInstruction {
      */
     private BytecodePosition position;
 
-    private static final DebugMetric LIR_NODE_COUNT = Debug.metric("LIRNodes");
+    private static final DebugCounter LIR_NODE_COUNT = Debug.counter("LIRNodes");
 
     /**
      * Constructs a new LIR instruction.

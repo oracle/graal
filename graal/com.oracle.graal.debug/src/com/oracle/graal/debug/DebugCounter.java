@@ -25,34 +25,34 @@ package com.oracle.graal.debug;
 /**
  * A counter for some value of interest.
  */
-public interface DebugMetric {
+public interface DebugCounter {
 
     /**
-     * Adds 1 to this counter if metering is {@link Debug#isMeterEnabled() enabled} or this is an
-     * {@linkplain #isConditional() unconditional} metric.
+     * Adds 1 to this counter if counting is {@link Debug#isCountEnabled() enabled} or this is an
+     * {@linkplain #isConditional() unconditional} counter.
      */
     void increment();
 
     /**
-     * Adds {@code value} to this counter if metering is {@link Debug#isMeterEnabled() enabled} or
-     * this is an {@linkplain #isConditional() unconditional} metric.
+     * Adds {@code value} to this counter if counting is {@link Debug#isCountEnabled() enabled} or
+     * this is an {@linkplain #isConditional() unconditional} counter.
      */
     void add(long value);
 
     /**
-     * Sets a flag determining if this counter is only enabled if metering is
-     * {@link Debug#isMeterEnabled() enabled}.
+     * Sets a flag determining if this counter is only enabled if counting is
+     * {@link Debug#isCountEnabled() enabled}.
      */
     void setConditional(boolean flag);
 
     /**
-     * Determines if this counter is only enabled if metering is {@link Debug#isMeterEnabled()
+     * Determines if this counter is only enabled if counting is {@link Debug#isCountEnabled()
      * enabled}.
      */
     boolean isConditional();
 
     /**
-     * Gets the current value of this metric.
+     * Gets the current value of this counter.
      */
     long getCurrentValue();
 
@@ -60,6 +60,6 @@ public interface DebugMetric {
      * Determines if this counter is enabled (either conditionally or unconditionally).
      */
     default boolean isEnabled() {
-        return !isConditional() || Debug.isMeterEnabled();
+        return !isConditional() || Debug.isCountEnabled();
     }
 }

@@ -29,7 +29,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -53,9 +53,9 @@ import com.oracle.graal.phases.tiers.LowTierContext;
 
 public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
-    private static final DebugMetric metricTrappingNullCheck = Debug.metric("TrappingNullCheck");
-    private static final DebugMetric metricTrappingNullCheckUnreached = Debug.metric("TrappingNullCheckUnreached");
-    private static final DebugMetric metricTrappingNullCheckDynamicDeoptimize = Debug.metric("TrappingNullCheckDynamicDeoptimize");
+    private static final DebugCounter counterTrappingNullCheck = Debug.counter("TrappingNullCheck");
+    private static final DebugCounter counterTrappingNullCheckUnreached = Debug.counter("TrappingNullCheckUnreached");
+    private static final DebugCounter counterTrappingNullCheckDynamicDeoptimize = Debug.counter("TrappingNullCheckDynamicDeoptimize");
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
@@ -167,12 +167,12 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
     }
 
     private static void replaceWithTrappingNullCheck(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, DeoptimizationReason deoptimizationReason) {
-        metricTrappingNullCheck.increment();
+        counterTrappingNullCheck.increment();
         if (deopt instanceof DynamicDeoptimizeNode) {
-            metricTrappingNullCheckDynamicDeoptimize.increment();
+            counterTrappingNullCheckDynamicDeoptimize.increment();
         }
         if (deoptimizationReason == DeoptimizationReason.UnreachedCode) {
-            metricTrappingNullCheckUnreached.increment();
+            counterTrappingNullCheckUnreached.increment();
         }
         IsNullNode isNullNode = (IsNullNode) condition;
         AbstractBeginNode nonTrappingContinuation = ifNode.falseSuccessor();

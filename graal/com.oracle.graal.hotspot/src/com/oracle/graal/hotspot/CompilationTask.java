@@ -52,7 +52,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.debug.TTY;
@@ -63,7 +63,7 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public class CompilationTask {
 
-    private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
+    private static final DebugCounter BAILOUTS = Debug.counter("Bailouts");
 
     private static final EventProvider eventProvider;
 
@@ -146,9 +146,9 @@ public class CompilationTask {
     private static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
 
     /**
-     * Meters the {@linkplain CompilationResult#getBytecodeSize() bytecodes} compiled.
+     * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes}.
      */
-    private static final DebugMetric CompiledBytecodes = Debug.metric("CompiledBytecodes");
+    private static final DebugCounter CompiledBytecodes = Debug.counter("CompiledBytecodes");
 
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 

@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.lsra.Interval;
 import com.oracle.graal.lir.alloc.lsra.LinearScan;
@@ -44,8 +44,8 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 
 class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
-    private static final DebugMetric numPhiResolutionMoves = Debug.metric("SSA LSRA[numPhiResolutionMoves]");
-    private static final DebugMetric numStackToStackMoves = Debug.metric("SSA LSRA[numStackToStackMoves]");
+    private static final DebugCounter numPhiResolutionMoves = Debug.counter("SSA LSRA[numPhiResolutionMoves]");
+    private static final DebugCounter numStackToStackMoves = Debug.counter("SSA LSRA[numStackToStackMoves]");
 
     SSALinarScanResolveDataFlowPhase(LinearScan allocator) {
         super(allocator);

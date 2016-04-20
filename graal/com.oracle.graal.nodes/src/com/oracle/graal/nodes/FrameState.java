@@ -41,7 +41,7 @@ import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
@@ -64,7 +64,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
-    private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
+    private static final DebugCounter FRAMESTATES_COUNTER = Debug.counter("FrameStateCount");
 
     /**
      * Marker value for the second slot of values that occupy two local variable or expression stack
@@ -134,7 +134,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.duringCall = duringCall;
         assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
         assert this.locksSize() == this.monitorIdCount();
-        METRIC_FRAMESTATE_COUNT.increment();
+        FRAMESTATES_COUNTER.increment();
     }
 
     public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,

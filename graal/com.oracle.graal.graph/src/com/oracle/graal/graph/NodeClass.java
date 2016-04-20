@@ -47,7 +47,7 @@ import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.FieldsScanner;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Edges.Type;
@@ -129,8 +129,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
 
-    private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
-    private final DebugMetric nodeIterableCount;
+    private static final DebugCounter ITERABLE_NODE_TYPES = Debug.counter("IterableNodeTypes");
+    private final DebugCounter nodeIterableCount;
 
     /**
      * Determines if this node type implements {@link Canonicalizable}.
@@ -213,7 +213,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             this.iterableId = Node.NOT_ITERABLE;
             this.iterableIds = null;
         }
-        nodeIterableCount = Debug.metric("NodeIterable_%s", clazz);
+        nodeIterableCount = Debug.counter("NodeIterable_%s", clazz);
         assert verifyIterableIds();
     }
 

@@ -67,7 +67,7 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
@@ -212,14 +212,14 @@ public class SnippetTemplate {
          *
          * @see SnippetTemplate#instantiationCounter
          */
-        private final DebugMetric instantiationCounter;
+        private final DebugCounter instantiationCounter;
 
         protected abstract Lazy lazy();
 
         protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
             this.method = method;
             this.privateLocations = SnippetCounterNode.addSnippetCounters(privateLocations);
-            instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method.getName());
+            instantiationCounter = Debug.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method.getName());
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
         }
@@ -537,7 +537,7 @@ public class SnippetTemplate {
     }
 
     private static final DebugTimer SnippetTemplateCreationTime = Debug.timer("SnippetTemplateCreationTime");
-    private static final DebugMetric SnippetTemplates = Debug.metric("SnippetTemplateCount");
+    private static final DebugCounter SnippetTemplates = Debug.counter("SnippetTemplateCount");
 
     static class Options {
         @Option(help = "Use a LRU cache for snippet templates.")//
@@ -663,7 +663,7 @@ public class SnippetTemplate {
         Object[] constantArgs = getConstantArgs(args);
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
-        instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
+        instantiationCounter = Debug.counter("SnippetTemplateInstantiationCount[%#s]", args);
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -876,7 +876,7 @@ public class SnippetTemplate {
                 }
             }
 
-            Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
+            Debug.counter("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
             Debug.dump(Debug.INFO_LOG_LEVEL, snippet, "SnippetTemplate final state");
 
         } catch (Throwable ex) {
@@ -985,7 +985,7 @@ public class SnippetTemplate {
      *
      * @see SnippetInfo#instantiationCounter
      */
-    private final DebugMetric instantiationCounter;
+    private final DebugCounter instantiationCounter;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.

@@ -174,7 +174,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         }
         state.addObject(id, new ObjectState(entryState, locks, ensureVirtualized));
         closure.addAndMarkAlias(virtualObject, virtualObject);
-        PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
+        PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment();
     }
 
     @Override
@@ -193,7 +193,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public boolean ensureMaterialized(VirtualObjectNode virtualObject) {
-        return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.METRIC_MATERIALIZATIONS_UNHANDLED);
+        return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.COUNTER_MATERIALIZATIONS_UNHANDLED);
     }
 
     @Override

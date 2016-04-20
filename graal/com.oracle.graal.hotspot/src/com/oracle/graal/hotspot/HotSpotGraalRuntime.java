@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
+import static com.oracle.graal.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
@@ -125,7 +125,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
+        if (Log.getValue() == null && !areScopedGlobalMetricsEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null && !Debug.isEnabled()) {
                 TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, TrackMemUse, Dump and Verify options are all null");
             }
@@ -148,7 +148,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areScopedMetricsOrTimersEnabled()) ||
+        if (Debug.areUnconditionalCountersEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areScopedGlobalMetricsEnabled()) ||
                         (Debug.isEnabled() && Debug.isMethodFilteringEnabled())) {
             // This must be created here to avoid loading the DebugValuesPrinter class
             // during shutdown() which in turn can cause a deadlock

@@ -28,7 +28,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Graph;
@@ -51,13 +51,13 @@ public abstract class BasePhase<C> {
     /**
      * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
      */
-    private final DebugMetric executionCount;
+    private final DebugCounter executionCount;
 
     /**
      * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
      * {@link #apply(StructuredGraph, Object, boolean)}.
      */
-    private final DebugMetric inputNodesCount;
+    private final DebugCounter inputNodesCount;
 
     /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
@@ -83,13 +83,13 @@ public abstract class BasePhase<C> {
         /**
          * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
          */
-        private final DebugMetric executionCount;
+        private final DebugCounter executionCount;
 
         /**
          * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
          * {@link #apply(StructuredGraph, Object, boolean)}.
          */
-        private final DebugMetric inputNodesCount;
+        private final DebugCounter inputNodesCount;
 
         /**
          * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
@@ -98,9 +98,9 @@ public abstract class BasePhase<C> {
 
         BasePhaseStatistics(Class<?> clazz) {
             timer = Debug.timer("PhaseTime_%s", clazz);
-            executionCount = Debug.metric("PhaseCount_%s", clazz);
+            executionCount = Debug.counter("PhaseCount_%s", clazz);
             memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", clazz);
-            inputNodesCount = Debug.metric("PhaseNodes_%s", clazz);
+            inputNodesCount = Debug.counter("PhaseNodes_%s", clazz);
         }
     }
 

@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -63,8 +63,8 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
  */
 final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveResolver {
 
-    private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("TraceRA[cycleBreakingSlotsAllocated(global)]");
-    private static final DebugMetric cycleBreakingSlotsReused = Debug.metric("TraceRA[cycleBreakingSlotsReused(global)]");
+    private static final DebugCounter cycleBreakingSlotsAllocated = Debug.counter("TraceRA[cycleBreakingSlotsAllocated(global)]");
+    private static final DebugCounter cycleBreakingSlotsReused = Debug.counter("TraceRA[cycleBreakingSlotsReused(global)]");
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted

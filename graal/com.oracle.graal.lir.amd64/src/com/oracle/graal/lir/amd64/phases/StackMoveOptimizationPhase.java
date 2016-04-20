@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.RedundantMoveElimination;
@@ -62,7 +62,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
         // @formatter:on
     }
 
-    private static final DebugMetric eliminatedBackup = Debug.metric("StackMoveOptimizer[EliminatedScratchBackupRestore]");
+    private static final DebugCounter eliminatedBackup = Debug.counter("StackMoveOptimizer[EliminatedScratchBackupRestore]");
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,

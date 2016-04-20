@@ -42,7 +42,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
@@ -83,12 +83,12 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         new Optimization(lirGenRes.getLIR(), lirGen).apply();
     }
 
-    private static final DebugMetric constantsTotal = Debug.metric("ConstantLoadOptimization[total]");
-    private static final DebugMetric phiConstantsSkipped = Debug.metric("ConstantLoadOptimization[PhisSkipped]");
-    private static final DebugMetric singleUsageConstantsSkipped = Debug.metric("ConstantLoadOptimization[SingleUsageSkipped]");
-    private static final DebugMetric usageAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[UsageAtDefinitionSkipped]");
-    private static final DebugMetric materializeAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[MaterializeAtDefinitionSkipped]");
-    private static final DebugMetric constantsOptimized = Debug.metric("ConstantLoadOptimization[optimized]");
+    private static final DebugCounter constantsTotal = Debug.counter("ConstantLoadOptimization[total]");
+    private static final DebugCounter phiConstantsSkipped = Debug.counter("ConstantLoadOptimization[PhisSkipped]");
+    private static final DebugCounter singleUsageConstantsSkipped = Debug.counter("ConstantLoadOptimization[SingleUsageSkipped]");
+    private static final DebugCounter usageAtDefinitionSkipped = Debug.counter("ConstantLoadOptimization[UsageAtDefinitionSkipped]");
+    private static final DebugCounter materializeAtDefinitionSkipped = Debug.counter("ConstantLoadOptimization[MaterializeAtDefinitionSkipped]");
+    private static final DebugCounter constantsOptimized = Debug.counter("ConstantLoadOptimization[optimized]");
 
     private static final class Optimization {
         private final LIR lir;

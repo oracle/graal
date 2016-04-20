@@ -45,7 +45,7 @@ import com.oracle.graal.debug.DelegatingDebugConfig.Level;
 import com.oracle.graal.debug.internal.DebugHistogramImpl;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.debug.internal.MetricImpl;
+import com.oracle.graal.debug.internal.CounterImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
 
 /**
@@ -77,7 +77,7 @@ public class Debug {
         public boolean enable;
         public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
-        public boolean enableUnscopedMetrics;
+        public boolean enableUnscopedCounters;
         public boolean enableUnscopedMemUseTrackers;
     }
 
@@ -140,8 +140,8 @@ public class Debug {
         return ENABLED && DebugScope.getInstance().isVerifyEnabled();
     }
 
-    public static boolean isMeterEnabled() {
-        return ENABLED && DebugScope.getInstance().isMeterEnabled();
+    public static boolean isCountEnabled() {
+        return ENABLED && DebugScope.getInstance().isCountEnabled();
     }
 
     public static boolean isTimeEnabled() {
@@ -1044,9 +1044,9 @@ public class Debug {
      * Debug.memUseTracker(format, arg, null)
      * </pre>
      *
-     * except that the string formatting only happens if metering is enabled.
+     * except that the string formatting only happens if mem tracking is enabled.
      *
-     * @see #metric(String, Object, Object)
+     * @see #counter(String, Object, Object)
      */
     public static DebugMemUseTracker memUseTracker(String format, Object arg) {
         if (!isUnconditionalMemUseTrackingEnabled && !ENABLED) {
@@ -1088,20 +1088,20 @@ public class Debug {
     }
 
     /**
-     * Creates a {@linkplain DebugMetric metric} that is enabled iff debugging is
+     * Creates a {@linkplain DebugCounter counter} that is enabled iff debugging is
      * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding
-     * {@value #ENABLE_METRIC_PROPERTY_NAME_PREFIX} to {@code name} is
+     * {@value #ENABLE_COUNTER_PROPERTY_NAME_PREFIX} to {@code name} is
      * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
-     * returned metric is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
+     * returned counter is {@linkplain DebugCounter#isConditional() unconditional} otherwise it is
      * conditional.
      * <p>
-     * A disabled metric has virtually no overhead.
+     * A disabled counter has virtually no overhead.
      */
-    public static DebugMetric metric(CharSequence name) {
-        if (!areUnconditionalMetricsEnabled() && !ENABLED) {
-            return VOID_METRIC;
+    public static DebugCounter counter(CharSequence name) {
+        if (!areUnconditionalCountersEnabled() && !ENABLED) {
+            return VOID_COUNTER;
         }
-        return createMetric("%s", name, null);
+        return createCounter("%s", name, null);
     }
 
     public static String applyFormattingFlagsAndWidth(String s, int flags, int width) {
@@ -1130,31 +1130,31 @@ public class Debug {
     }
 
     /**
-     * Creates a debug metric. Invoking this method is equivalent to:
+     * Creates a debug counter. Invoking this method is equivalent to:
      *
      * <pre>
-     * Debug.metric(format, arg, null)
+     * Debug.counter(format, arg, null)
      * </pre>
      *
-     * except that the string formatting only happens if metering is enabled.
+     * except that the string formatting only happens if count is enabled.
      *
-     * @see #metric(String, Object, Object)
+     * @see #counter(String, Object, Object)
      */
-    public static DebugMetric metric(String format, Object arg) {
-        if (!areUnconditionalMetricsEnabled() && !ENABLED) {
-            return VOID_METRIC;
+    public static DebugCounter counter(String format, Object arg) {
+        if (!areUnconditionalCountersEnabled() && !ENABLED) {
+            return VOID_COUNTER;
         }
-        return createMetric(format, arg, null);
+        return createCounter(format, arg, null);
     }
 
     /**
-     * Creates a debug metric. Invoking this method is equivalent to:
+     * Creates a debug counter. Invoking this method is equivalent to:
      *
      * <pre>
-     * Debug.metric(String.format(format, arg1, arg2))
+     * Debug.counter(String.format(format, arg1, arg2))
      * </pre>
      *
-     * except that the string formatting only happens if metering is enabled. In addition, each
+     * except that the string formatting only happens if count is enabled. In addition, each
      * argument is subject to the following type based conversion before being passed as an argument
      * to {@link String#format(String, Object...)}:
      *
@@ -1165,22 +1165,22 @@ public class Debug {
      *                   |
      * </pre>
      *
-     * @see #metric(CharSequence)
+     * @see #counter(CharSequence)
      */
-    public static DebugMetric metric(String format, Object arg1, Object arg2) {
-        if (!areUnconditionalMetricsEnabled() && !ENABLED) {
-            return VOID_METRIC;
+    public static DebugCounter counter(String format, Object arg1, Object arg2) {
+        if (!areUnconditionalCountersEnabled() && !ENABLED) {
+            return VOID_COUNTER;
         }
-        return createMetric(format, arg1, arg2);
+        return createCounter(format, arg1, arg2);
     }
 
-    private static DebugMetric createMetric(String format, Object arg1, Object arg2) {
+    private static DebugCounter createCounter(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
-        boolean conditional = enabledMetrics == null || !findMatch(enabledMetrics, enabledMetricsSubstrings, name);
+        boolean conditional = enabledCounters == null || !findMatch(enabledCounters, enabledCountersSubstrings, name);
         if (!ENABLED && conditional) {
-            return VOID_METRIC;
+            return VOID_COUNTER;
         }
-        return new MetricImpl(name, conditional);
+        return new CounterImpl(name, conditional);
     }
 
     /**
@@ -1210,7 +1210,7 @@ public class Debug {
         return fixedConfig(0, 0, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
     }
 
-    public static DebugConfig fixedConfig(final int logLevel, final int dumpLevel, final boolean isMeterEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
+    public static DebugConfig fixedConfig(final int logLevel, final int dumpLevel, final boolean isCountEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
                     final boolean isVerifyEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers, final PrintStream output) {
         return new DebugConfig() {
 
@@ -1225,8 +1225,8 @@ public class Debug {
             }
 
             @Override
-            public boolean isMeterEnabled() {
-                return isMeterEnabled;
+            public boolean isCountEnabled() {
+                return isCountEnabled;
             }
 
             @Override
@@ -1289,7 +1289,7 @@ public class Debug {
         };
     }
 
-    private static final DebugMetric VOID_METRIC = new DebugMetric() {
+    private static final DebugCounter VOID_COUNTER = new DebugCounter() {
 
         @Override
         public void increment() {
@@ -1301,7 +1301,7 @@ public class Debug {
 
         @Override
         public void setConditional(boolean flag) {
-            throw new InternalError("Cannot make void metric conditional");
+            throw new InternalError("Cannot make void counter conditional");
         }
 
         @Override
@@ -1334,28 +1334,29 @@ public class Debug {
     public static final String ENABLE_TIMER_PROPERTY_NAME_PREFIX = "graaldebug.timer.";
 
     /**
-     * @see #metric(CharSequence)
+     * @see #counter(CharSequence)
      */
-    public static final String ENABLE_METRIC_PROPERTY_NAME_PREFIX = "graaldebug.metric.";
+    public static final String ENABLE_COUNTER_PROPERTY_NAME_PREFIX = "graaldebug.counter.";
 
     /**
-     * Set of unconditionally enabled metrics. Possible values and their meanings:
+     * Set of unconditionally enabled counters. Possible values and their meanings:
      * <ul>
-     * <li>{@code null}: no unconditionally enabled metrics</li>
-     * <li>{@code isEmpty()}: all metrics are unconditionally enabled</li>
+     * <li>{@code null}: no unconditionally enabled counters</li>
+     * <li>{@code isEmpty()}: all counters are unconditionally enabled</li>
      * <li>{@code !isEmpty()}: use {@link #findMatch(Set, Set, String)} on this set and
-     * {@link #enabledMetricsSubstrings} to determine which metrics are unconditionally enabled</li>
+     * {@link #enabledCountersSubstrings} to determine which counters are unconditionally enabled
+     * </li>
      * </ul>
      */
-    private static final Set<String> enabledMetrics;
+    private static final Set<String> enabledCounters;
 
     /**
      * Set of unconditionally enabled timers. Same interpretation of values as for
-     * {@link #enabledMetrics}.
+     * {@link #enabledCounters}.
      */
     private static final Set<String> enabledTimers;
 
-    private static final Set<String> enabledMetricsSubstrings = new HashSet<>();
+    private static final Set<String> enabledCountersSubstrings = new HashSet<>();
     private static final Set<String> enabledTimersSubstrings = new HashSet<>();
 
     /**
@@ -1364,18 +1365,18 @@ public class Debug {
     private static final boolean isUnconditionalMemUseTrackingEnabled;
 
     static {
-        Set<String> metrics = new HashSet<>();
+        Set<String> counters = new HashSet<>();
         Set<String> timers = new HashSet<>();
-        parseMetricAndTimerSystemProperties(metrics, timers, enabledMetricsSubstrings, enabledTimersSubstrings);
-        metrics = metrics.isEmpty() && enabledMetricsSubstrings.isEmpty() ? null : metrics;
+        parseCounterAndTimerSystemProperties(counters, timers, enabledCountersSubstrings, enabledTimersSubstrings);
+        counters = counters.isEmpty() && enabledCountersSubstrings.isEmpty() ? null : counters;
         timers = timers.isEmpty() && enabledTimersSubstrings.isEmpty() ? null : timers;
-        if (metrics == null && params.enableUnscopedMetrics && !params.enableMethodFilter) {
-            metrics = Collections.emptySet();
+        if (counters == null && params.enableUnscopedCounters && !params.enableMethodFilter) {
+            counters = Collections.emptySet();
         }
         if (timers == null && params.enableUnscopedTimers && !params.enableMethodFilter) {
             timers = Collections.emptySet();
         }
-        enabledMetrics = metrics;
+        enabledCounters = counters;
         enabledTimers = timers;
         isUnconditionalMemUseTrackingEnabled = params.enableUnscopedMemUseTrackers;
     }
@@ -1402,24 +1403,24 @@ public class Debug {
         return enabledTimers != null;
     }
 
-    public static boolean areUnconditionalMetricsEnabled() {
-        return enabledMetrics != null;
+    public static boolean areUnconditionalCountersEnabled() {
+        return enabledCounters != null;
     }
 
     public static boolean isMethodFilteringEnabled() {
         return params.enableMethodFilter;
     }
 
-    protected static void parseMetricAndTimerSystemProperties(Set<String> metrics, Set<String> timers, Set<String> metricsSubstrings, Set<String> timersSubstrings) {
+    protected static void parseCounterAndTimerSystemProperties(Set<String> counters, Set<String> timers, Set<String> countersSubstrings, Set<String> timersSubstrings) {
         do {
             try {
                 for (Map.Entry<Object, Object> e : System.getProperties().entrySet()) {
                     String name = e.getKey().toString();
-                    if (name.startsWith(ENABLE_METRIC_PROPERTY_NAME_PREFIX) && Boolean.parseBoolean(e.getValue().toString())) {
+                    if (name.startsWith(ENABLE_COUNTER_PROPERTY_NAME_PREFIX) && Boolean.parseBoolean(e.getValue().toString())) {
                         if (name.endsWith("*")) {
-                            metricsSubstrings.add(name.substring(ENABLE_METRIC_PROPERTY_NAME_PREFIX.length(), name.length() - 1));
+                            countersSubstrings.add(name.substring(ENABLE_COUNTER_PROPERTY_NAME_PREFIX.length(), name.length() - 1));
                         } else {
-                            metrics.add(name.substring(ENABLE_METRIC_PROPERTY_NAME_PREFIX.length()));
+                            counters.add(name.substring(ENABLE_COUNTER_PROPERTY_NAME_PREFIX.length()));
                         }
                     }
                     if (name.startsWith(ENABLE_TIMER_PROPERTY_NAME_PREFIX) && Boolean.parseBoolean(e.getValue().toString())) {
@@ -1443,7 +1444,7 @@ public class Debug {
      * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding
      * {@value #ENABLE_TIMER_PROPERTY_NAME_PREFIX} to {@code name} is
      * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
-     * returned timer is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
+     * returned timer is {@linkplain DebugCounter#isConditional() unconditional} otherwise it is
      * conditional.
      * <p>
      * A disabled timer has virtually no overhead.
