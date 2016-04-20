@@ -24,13 +24,13 @@ package com.oracle.graal.hotspot;
 
 import java.util.ArrayList;
 
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.serviceprovider.ServiceProvider;
+
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
-
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
@@ -50,8 +50,8 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
     public void notifyInstall(HotSpotCodeCacheProvider codeCache, InstalledCode installedCode, CompiledCode compiledCode) {
-        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
-            Debug.dump(Debug.INFO_LOG_LEVEL, new Object[]{compiledCode, installedCode}, "After code installation");
+        if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+            Debug.dump(Debug.BASIC_LOG_LEVEL, installedCode, "After code installation");
         }
         if (Debug.isLogEnabled()) {
             Debug.log("%s", codeCache.disassemble(installedCode));

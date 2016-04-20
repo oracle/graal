@@ -323,7 +323,8 @@ public class CompilationTask {
     private void installMethod(final CompilationResult compResult) {
         final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         installedCode = null;
-        try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(getIdString(), true), codeCache, getMethod())) {
+        Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
+        try (Scope s = Debug.scope("CodeInstall", context)) {
             HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(request.getMethod(), request, compResult);
             installedCode = (HotSpotInstalledCode) codeCache.installCode(request.getMethod(), compiledCode, null, request.getMethod().getSpeculationLog(), installAsDefault);
         } catch (Throwable e) {

@@ -128,7 +128,7 @@ public class NativeCallStubGraphBuilder {
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
-        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
+        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method(), compResult)) {
             HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(g.method(), null, compResult);
             function.code = providers.getCodeCache().addCode(g.method(), compiledCode, null, null);
         } catch (Throwable e) {
