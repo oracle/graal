@@ -25,7 +25,9 @@ package com.oracle.graal.debug;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -138,7 +140,9 @@ public class GraalDebugConfig implements DebugConfig {
     private final List<DebugDumpHandler> dumpHandlers;
     private final List<DebugVerifyHandler> verifyHandlers;
     private final PrintStream output;
-    private final Set<Object> extraFilters = new HashSet<>();
+
+    // Use an identity set to handle context objects that don't support hashCode().
+    private final Set<Object> extraFilters = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public GraalDebugConfig(String logFilter, String countFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter, PrintStream output,
                     List<DebugDumpHandler> dumpHandlers, List<DebugVerifyHandler> verifyHandlers) {
