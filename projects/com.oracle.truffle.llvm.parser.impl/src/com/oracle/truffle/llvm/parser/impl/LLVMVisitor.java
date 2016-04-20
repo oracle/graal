@@ -895,7 +895,12 @@ public class LLVMVisitor implements LLVMParserRuntime {
             GlobalValueRef ref = (GlobalValueRef) currentRef;
             if (ref.getConstant() instanceof SimpleConstant) {
                 SimpleConstant simpleConstant = (SimpleConstant) ref.getConstant();
-                return Integer.parseInt(simpleConstant.getValue());
+                try {
+                    return Integer.parseInt(simpleConstant.getValue());
+                } catch (NumberFormatException e) {
+                    LLVMLogger.info("GEP index overflow (still parse as int");
+                    return (int) Long.parseLong(simpleConstant.getValue());
+                }
             }
         }
         return null;

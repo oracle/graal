@@ -29,36 +29,52 @@
  */
 package com.oracle.truffle.llvm.test.spec;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.File;
+import java.util.Collections;
+import java.util.Set;
 
-public final class TestSpecification {
+import com.oracle.truffle.llvm.test.TestCaseFlag;
 
-    private final List<SpecificationEntry> includedFiles;
-    private final List<SpecificationEntry> excludedFiles;
+public class SpecificationEntry {
 
-    public TestSpecification(List<SpecificationEntry> includeFiles, List<SpecificationEntry> excludeFiles) {
-        includedFiles = includeFiles;
-        excludedFiles = excludeFiles;
+    private final File file;
+    private final Set<TestCaseFlag> flags;
+
+    public SpecificationEntry(File file) {
+        this(file, Collections.emptySet());
     }
 
-    public List<SpecificationEntry> getIncludedFiles() {
-        return includedFiles;
+    public SpecificationEntry(File file, Set<TestCaseFlag> flags) {
+        this.file = file;
+        this.flags = flags;
     }
 
-    public List<SpecificationEntry> getExcludedFiles() {
-        return excludedFiles;
+    public File getFile() {
+        return file;
     }
 
-    public List<SpecificationEntry> getIncludedWithoutExcludedFiles() {
-        List<SpecificationEntry> copyIncluded = new ArrayList<>(includedFiles);
-        copyIncluded.removeAll(excludedFiles);
-        return copyIncluded;
+    public Set<TestCaseFlag> getFlags() {
+        return Collections.unmodifiableSet(flags);
+    }
+
+    @Override
+    public int hashCode() {
+        return file.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SpecificationEntry)) {
+            return false;
+        } else {
+            SpecificationEntry other = (SpecificationEntry) obj;
+            return file.equals(other.file);
+        }
     }
 
     @Override
     public String toString() {
-        return "included: " + includedFiles + " excluded: " + excludedFiles;
+        return file.toString();
     }
 
 }

@@ -27,38 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.spec;
+package com.oracle.truffle.llvm.nodes.impl.cast;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
-public final class TestSpecification {
+public abstract class LLVMToFunctionNode extends LLVMFunctionNode {
 
-    private final List<SpecificationEntry> includedFiles;
-    private final List<SpecificationEntry> excludedFiles;
+    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    public abstract static class LLVMI64ToFunctionNode extends LLVMToFunctionNode {
 
-    public TestSpecification(List<SpecificationEntry> includeFiles, List<SpecificationEntry> excludeFiles) {
-        includedFiles = includeFiles;
-        excludedFiles = excludeFiles;
+        @Specialization
+        public LLVMFunctionDescriptor executeI64(long from) {
+            // TODO implement
+            throw new AssertionError(from);
+        }
     }
 
-    public List<SpecificationEntry> getIncludedFiles() {
-        return includedFiles;
-    }
+    @NodeChild(value = "fromNode", type = LLVMAddressNode.class)
+    public abstract static class LLVMAddressToFunctionNode extends LLVMToFunctionNode {
 
-    public List<SpecificationEntry> getExcludedFiles() {
-        return excludedFiles;
-    }
-
-    public List<SpecificationEntry> getIncludedWithoutExcludedFiles() {
-        List<SpecificationEntry> copyIncluded = new ArrayList<>(includedFiles);
-        copyIncluded.removeAll(excludedFiles);
-        return copyIncluded;
-    }
-
-    @Override
-    public String toString() {
-        return "included: " + includedFiles + " excluded: " + excludedFiles;
+        @Specialization
+        public LLVMFunctionDescriptor executeI64(LLVMAddress from) {
+            // TODO implement
+            throw new AssertionError(from);
+        }
     }
 
 }

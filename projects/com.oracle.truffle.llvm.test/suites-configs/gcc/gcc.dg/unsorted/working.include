@@ -542,7 +542,7 @@ gcc.dg/tree-ssa/20040210-1.c
 gcc.dg/tree-ssa/vrp66.c
 gcc.dg/tree-ssa/20040319-1.c
 gcc.dg/builtin-object-size-7.c
-gcc.dg/pr43084.c
+gcc.dg/pr43084.c UNDEFINED_RETURN_CODE
 gcc.dg/builtin-object-size-13.c
 gcc.dg/pr32912-2.c
 gcc.dg/builtin-object-size-8.c
