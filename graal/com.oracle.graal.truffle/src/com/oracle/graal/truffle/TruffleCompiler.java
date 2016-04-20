@@ -204,7 +204,7 @@ public abstract class TruffleCompiler {
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
         InstalledCode installedCode;
-        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
+        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), result); DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
             CompiledCode compiledCode = backend.createCompiledCode(graph.method(), result);
             installedCode = providers.getCodeCache().addCode(graph.method(), compiledCode, graph.getSpeculationLog(), predefinedInstalledCode);
         } catch (Throwable e) {

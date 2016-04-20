@@ -215,7 +215,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
                 CompilationResult compResult = compileMethod(method);
                 CodeCacheProvider codeCache = providers.getCodeCache();
-                try (Scope s = Debug.scope("CodeInstall", codeCache, method)) {
+                try (Scope s = Debug.scope("CodeInstall", codeCache, method, compResult)) {
                     CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(method, null, compResult);
                     codeCache.setDefaultCode(method, compiledCode);
                 } catch (Throwable e) {

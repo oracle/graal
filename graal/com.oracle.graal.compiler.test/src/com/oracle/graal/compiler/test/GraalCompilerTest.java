@@ -772,7 +772,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }
 
-            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner)) {
+            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
                 installedCode = addMethod(installedCodeOwner, compResult);
                 if (installedCode == null) {
                     throw new JVMCIError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));

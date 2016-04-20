@@ -203,9 +203,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
             cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
-        } else if (isCompilationResultAndInstalledCode(object)) {
-            Object[] tuple = (Object[]) object;
-            cfgPrinter.printMachineCode(disassemble(codeCache, (CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
+        } else if (object instanceof InstalledCode) {
+            CompilationResult compResult = Debug.contextLookup(CompilationResult.class);
+            assert compResult != null : "missing " + CompilationResult.class.getName() + " from debug context";
+            cfgPrinter.printMachineCode(disassemble(codeCache, compResult, (InstalledCode) object), message);
         } else if (object instanceof IntervalDumper) {
             if (lastLIR == cfgPrinter.lir) {
                 cfgPrinter.printIntervals(message, (IntervalDumper) object);
@@ -281,16 +282,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             return dis.disassembleInstalledCode(codeCache, compResult, installedCode);
         }
         return dis.disassembleCompiledCode(codeCache, compResult);
-    }
-
-    private static boolean isCompilationResultAndInstalledCode(Object object) {
-        if (object instanceof Object[]) {
-            Object[] tuple = (Object[]) object;
-            if (tuple.length == 2 && tuple[0] instanceof CompilationResult && tuple[1] instanceof InstalledCode) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override

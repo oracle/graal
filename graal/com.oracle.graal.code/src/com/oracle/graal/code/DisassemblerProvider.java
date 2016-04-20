@@ -49,8 +49,8 @@ public interface DisassemblerProvider {
      * @param compResult a compiled code that was installed to produce {@code installedCode}. This
      *            will be null if not available.
      * @param installedCode
-     * @return a non-zero length string containing a disassembly of {@code code} or null if
-     *         {@code code} is {@link InstalledCode#isValid() invalid} or it could not be
+     * @return a non-zero length string containing a disassembly of {@code installedCode} or null if
+     *         {@code installedCode} is {@link InstalledCode#isValid() invalid} or it could not be
      *         disassembled for some other reason
      */
     default String disassembleInstalledCode(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode installedCode) {
