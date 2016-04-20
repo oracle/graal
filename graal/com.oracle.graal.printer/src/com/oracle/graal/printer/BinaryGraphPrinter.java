@@ -28,6 +28,7 @@ import static com.oracle.graal.graph.Edges.Type.Successors;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -136,6 +137,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
 
+    private static final Charset utf8 = Charset.forName("UTF-8");
+
     public BinaryGraphPrinter(WritableByteChannel channel) {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
@@ -222,11 +225,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void writeString(String str) throws IOException {
-        writeInt(str.length());
-        int sizeInBytes = str.length() * 2;
-        ensureAvailable(sizeInBytes);
-        buffer.asCharBuffer().put(str);
-        buffer.position(buffer.position() + sizeInBytes);
+        byte[] bytes = str.getBytes(utf8);
+        writeBytes(bytes);
     }
 
     private void writeBytes(byte[] b) throws IOException {
@@ -234,8 +234,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length);
-            buffer.put(b);
+            int bytesWritten = 0;
+            while (bytesWritten < b.length) {
+                int toWrite = Math.min(b.length - bytesWritten, buffer.capacity());
+                ensureAvailable(toWrite);
+                buffer.put(b, bytesWritten, toWrite);
+                bytesWritten += toWrite;
+            }
         }
     }
 
