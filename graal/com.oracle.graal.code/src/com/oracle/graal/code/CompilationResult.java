@@ -33,6 +33,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.graal.graph.NodeSourcePosition;
+
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.Call;
@@ -174,6 +176,7 @@ public class CompilationResult {
     private final DataSection dataSection = new DataSection();
 
     private final List<Infopoint> infopoints = new ArrayList<>();
+    private final List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
     private final List<Mark> marks = new ArrayList<>();
@@ -484,6 +487,11 @@ public class CompilationResult {
         infopoints.add(infopoint);
     }
 
+    public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
+        checkOpen();
+        sourceMapping.add(new SourceMapping(startOffset, endOffset, sourcePosition));
+    }
+
     /**
      * Records an instruction mark within this method.
      *
@@ -588,6 +596,16 @@ public class CompilationResult {
         return unmodifiableList(marks);
     }
 
+    /**
+     * @return the list of {@link SourceMapping}s
+     */
+    public List<SourceMapping> getSourceMappings() {
+        if (sourceMapping.isEmpty()) {
+            return emptyList();
+        }
+        return unmodifiableList(sourceMapping);
+    }
+
     public String getName() {
         return name;
     }
@@ -610,6 +628,7 @@ public class CompilationResult {
     public void resetForEmittingCode() {
         checkOpen();
         infopoints.clear();
+        sourceMapping.clear();
         dataPatches.clear();
         exceptionHandlers.clear();
         marks.clear();

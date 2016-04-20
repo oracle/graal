@@ -34,7 +34,30 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.BytecodePosition;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.spi.CodeGenProviders;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.graph.NodeSourcePosition;
+import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRVerifier;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.SwitchStrategy;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
@@ -49,29 +72,6 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.spi.CodeGenProviders;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.lir.ConstantValue;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRVerifier;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.SwitchStrategy;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -263,11 +263,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return reg.asValue(lirKind);
     }
 
-    BytecodePosition currentInfo;
+    NodeSourcePosition currentPosition;
 
     @Override
-    public void setSourcePosition(BytecodePosition position) {
-        currentInfo = position;
+    public void setSourcePosition(NodeSourcePosition position) {
+        currentPosition = position;
     }
 
     @Override
@@ -278,7 +278,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
         assert LIRVerifier.verify(op);
         List<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
-        op.setPosition(currentInfo);
+        op.setPosition(currentPosition);
         lirForBlock.add(op);
         return op;
     }

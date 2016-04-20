@@ -26,6 +26,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -100,9 +101,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
     }
 
+    @SuppressWarnings("try")
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(new ReadNode(getAddress(), getLocationIdentity(), stamp(), getGuard(), getBarrierType()));
+        try (DebugCloseable position = withNodeSourcePosition()) {
+            return graph().add(new ReadNode(getAddress(), getLocationIdentity(), stamp(), getGuard(), getBarrierType()));
+        }
     }
 
     @Override

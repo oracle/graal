@@ -59,8 +59,8 @@ public class NodeSourcePosition extends BytecodePosition {
         StringBuilder sb = new StringBuilder(100);
         NodeSourcePosition pos = this;
         while (pos != null) {
-            if (receiver != null) {
-                sb.append("receiver= " + receiver);
+            if (pos.receiver != null) {
+                sb.append("receiver=" + pos.receiver + " ");
             }
             MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
             pos = pos.getCaller();

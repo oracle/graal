@@ -31,6 +31,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -120,9 +121,12 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         }
     }
 
+    @SuppressWarnings("try")
     @Override
     public FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(), getGuard(), getBarrierType()));
+        try (DebugCloseable position = withNodeSourcePosition()) {
+            return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(), getGuard(), getBarrierType()));
+        }
     }
 
     @Override

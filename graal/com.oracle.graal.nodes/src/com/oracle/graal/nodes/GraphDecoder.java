@@ -38,6 +38,7 @@ import java.util.Set;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.Fields;
@@ -277,6 +278,7 @@ public class GraphDecoder {
         public final int exceptionOrderId;
         public final int exceptionStateOrderId;
         public final int exceptionNextOrderId;
+        public JavaConstant constantReceiver;
 
         protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId, int exceptionOrderId,
                         int exceptionStateOrderId, int exceptionNextOrderId) {

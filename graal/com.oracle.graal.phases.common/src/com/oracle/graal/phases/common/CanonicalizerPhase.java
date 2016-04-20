@@ -288,11 +288,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment();
                 Node canonical;
                 try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
-                    try (DebugCloseable position = node.graph().withNodeSourcePosition(node)) {
-                        canonical = ((Canonicalizable) node).canonical(tool);
-                        if (canonical == node && nodeClass.isCommutative()) {
-                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
-                        }
+                    canonical = ((Canonicalizable) node).canonical(tool);
+                    if (canonical == node && nodeClass.isCommutative()) {
+                        canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                     }
                 } catch (Throwable e) {
                     throw new RuntimeException(e);
@@ -327,6 +325,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
 // @formatter:on
+        @SuppressWarnings("try")
         private boolean performReplacement(final Node node, Node newCanonical) {
             if (newCanonical == node) {
                 Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: work on %1s", node);
@@ -338,7 +337,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 if (canonical != null && !canonical.isAlive()) {
                     assert !canonical.isDeleted();
-                    canonical = graph.addOrUniqueWithInputs(canonical);
+                    try (DebugCloseable position = node.withNodeSourcePosition()) {
+                        canonical = graph.addOrUniqueWithInputs(canonical);
+                    }
                 }
                 if (node instanceof FloatingNode) {
                     assert canonical == null || !(canonical instanceof FixedNode) ||
