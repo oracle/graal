@@ -247,6 +247,9 @@ public class GraalDebugConfig implements DebugConfig {
         if (context instanceof JavaMethodContext) {
             return ((JavaMethodContext) context).asJavaMethod();
         }
+        if (context instanceof JavaMethod) {
+            return (JavaMethod) context;
+        }
         return null;
     }
 
