@@ -25,10 +25,12 @@
 
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
  * arguments provided by a foreign access.
- * 
+ *
  * @since 0.11
  */
 public final class UnsupportedTypeException extends InteropException {
@@ -85,6 +87,7 @@ public final class UnsupportedTypeException extends InteropException {
      * @since 0.11
      */
     public static RuntimeException raise(Exception cause, Object[] suppliedValues) {
+        CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new UnsupportedTypeException(cause, suppliedValues));
     }
 }
