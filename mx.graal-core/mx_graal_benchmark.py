@@ -26,6 +26,7 @@
 
 import argparse
 import re
+from os.path import join, exists
 
 import mx
 import mx_benchmark
@@ -51,6 +52,8 @@ _dacapoIterations = {
 
 class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """DaCapo benchmark suite implementation.
+
+    This suite can only run a single benchmark in one VM invocation.
     """
     def name(self):
         return "dacapo"
@@ -189,3 +192,131 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         ]
 
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+
+_allSpecJVM2008Benchs = [
+    'startup.helloworld',
+    'startup.compiler.compiler',
+    # 'startup.compiler.sunflow', # disabled until timeout problem in jdk8 is resolved
+    'startup.compress',
+    'startup.crypto.aes',
+    'startup.crypto.rsa',
+    'startup.crypto.signverify',
+    'startup.mpegaudio',
+    'startup.scimark.fft',
+    'startup.scimark.lu',
+    'startup.scimark.monte_carlo',
+    'startup.scimark.sor',
+    'startup.scimark.sparse',
+    'startup.serial',
+    'startup.sunflow',
+    'startup.xml.transform',
+    'startup.xml.validation',
+    'compiler.compiler',
+    # 'compiler.sunflow',
+    'compress',
+    'crypto.aes',
+    'crypto.rsa',
+    'crypto.signverify',
+    'derby',
+    'mpegaudio',
+    'scimark.fft.large',
+    'scimark.lu.large',
+    'scimark.sor.large',
+    'scimark.sparse.large',
+    'scimark.fft.small',
+    'scimark.lu.small',
+    'scimark.sor.small',
+    'scimark.sparse.small',
+    'scimark.monte_carlo',
+    'serial',
+    'sunflow',
+    'xml.transform',
+    'xml.validation'
+]
+
+class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """SpecJVM2008 benchmark suite implementation.
+
+    This benchmark can run multiple benchmarks as part of one VM run.
+    """
+    def name(self):
+        return "specjvm2008"
+
+    def group(self):
+        return "graal"
+
+    def specJvmPath(self):
+        specjvm2008 = mx.get_env("SPECJVM2008")
+        if specjvm2008 is None:
+            mx.abort("Please set the SPECJVM2008 environment variable to a " +
+                "SPECjvm2008 directory.")
+        jarpath = join(specjvm2008, "SPECjvm2008.jar")
+        if not exists(jarpath):
+            mx.abort("The SPECJVM2008 environment variable points to a directory " +
+                "without the SPECjvm2008.jar file.")
+        return jarpath
+
+    def validateEnvironment(self):
+        if not self.specJvmPath():
+            raise RuntimeError(
+                "The SPECJVM2008 environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return mx.get_env("SPECJVM2008")
+
+    def vmAndRunArgs(self, bmSuiteArgs):
+        return mx_benchmark.splitArgs(bmSuiteArgs, "--")
+
+    def vmArgs(self, bmSuiteArgs):
+        return self.vmAndRunArgs(bmSuiteArgs)[0]
+
+    def runArgs(self, bmSuiteArgs):
+        return self.vmAndRunArgs(bmSuiteArgs)[1]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            # No benchmark specified in the command line means .
+            benchmarks = self.benchmarks()
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
+
+    def benchmarks(self):
+        return _allSpecJVM2008Benchs
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"^(Noncompliant c|C)omposite result: (?P<score>[0-9]+((,|\.)[0-9]+)?)( SPECjvm2008 (Base|Peak))? ops/m$", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return [
+            re.compile(r"^Errors in benchmark: ", re.MULTILINE)
+        ]
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+          mx_benchmark.StdOutRule(
+            r"^Score on (?P<benchmark>[a-zA-Z0-9\._]+): (?P<score>[0-9]+((,|\.)[0-9]+)?) ops/m$", # pylint: disable=line-too-long
+            {
+              "benchmark": ("<benchmark>", str),
+              "metric.name": "throughput",
+              "metric.value": ("<score>", float),
+              "metric.unit": "op/min",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
