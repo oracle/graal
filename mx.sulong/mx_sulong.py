@@ -686,10 +686,9 @@ def checkCommitMessage(quotedCommitMessage):
     if titleWithEndingPunct.match(commitMessage):
         error = True
         message = quotedCommitMessage + ' ends with period, question mark, or exclamation mark'
-    for pastTenseWord in pastTenseWords:
-        if pastTenseWord in commitMessage.lower().split():
-            error = True
-            message = quotedCommitMessage + ' contains past tense word', pastTenseWord
+    if commitMessage.lower().split()[0] in pastTenseWords:
+        error = True
+        print quotedCommitMessage, 'starts with past tense word "' + commitMessage.lower().split()[0] + '"'
     return (error, message)
 
 def logCheck(args=None):
@@ -706,6 +705,7 @@ def logCheck(args=None):
             print curMessage
         print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
         exit(-1)
+
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
