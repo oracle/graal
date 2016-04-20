@@ -3,6 +3,8 @@ import os
 from os.path import join
 import shutil
 import zipfile
+import subprocess
+import re
 
 import mx
 import mx_findbugs
@@ -31,6 +33,10 @@ _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
+
+gitLogOneLine = re.compile(r'^(?P<message>.*)$')
+titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
+pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
 
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
@@ -670,28 +676,34 @@ def gccBench(args=None):
 def standardLinkerCommands(args=None):
     return ['-lm', '-lgmp']
 
-import subprocess
-import re
-
-titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
-pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
+def checkCommitMessage(quotedCommitMessage):
+    error = False
+    message = ''
+    commitMessage = quotedCommitMessage[1:-1]
+    if commitMessage[0].islower():
+        error = True
+        message = quotedCommitMessage + ' starts with a lower case character'
+    if titleWithEndingPunct.match(commitMessage):
+        error = True
+        message = quotedCommitMessage + ' ends with period, question mark, or exclamation mark'
+    for pastTenseWord in pastTenseWords:
+        if pastTenseWord in commitMessage.lower().split():
+            error = True
+            message = quotedCommitMessage + ' contains past tense word', pastTenseWord
+    return (error, message)
 
 def logCheck(args=None):
-    error = False
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--after="2016-04-08"'])
+    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
+    foundErrors = []
     for s in output.splitlines():
-        withoutQuotes = s[1:-1]
-        if withoutQuotes[0].islower():
-            error = True
-            print s, 'starts with a lower case character'
-        if titleWithEndingPunct.match(withoutQuotes):
-            error = True
-            print s, 'ends with period, question mark, or exclamation mark'
-        for pastTenseWord in pastTenseWords:
-            if pastTenseWord in withoutQuotes.lower().split():
-                error = True
-                print s, 'contains past tense word', pastTenseWord
-    if error:
+        match = gitLogOneLine.match(s)
+        commitMessage = match.group('message')
+        (isError, curMessage) = checkCommitMessage(commitMessage)
+        if isError:
+            foundErrors.append(curMessage)
+    if foundErrors:
+        for curMessage in foundErrors:
+            print curMessage
         print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
         exit(-1)
 
