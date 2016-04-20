@@ -33,7 +33,9 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -84,10 +86,16 @@ public class BenchmarkGameSuite extends TestSuiteBase {
 
         private File file;
         private String arg;
+        private Set<TestCaseFlag> flags;
 
         Benchmark(String path, Object arg) {
+            this(path, arg, Collections.emptySet());
+        }
+
+        Benchmark(String path, Object arg, Set<TestCaseFlag> flags) {
             this.file = new File(LLVMPaths.BENCHMARK_GAME_SUITE, path);
             this.arg = arg == null ? null : arg.toString();
+            this.flags = flags;
         }
     }
 
@@ -103,14 +111,16 @@ public class BenchmarkGameSuite extends TestSuiteBase {
     @Test
     public void test() throws Throwable {
         File f = bench.file;
-        TestCaseFiles compileResult = TestHelper.compileToLLVMIRWithClang(f, TestHelper.getTempLLFile(f, "_main"), ClangOptions.builder().optimizationLevel(OptimizationLevel.O1));
+        TestCaseFiles compileResult = TestHelper.compileToLLVMIRWithClang(f, TestHelper.getTempLLFile(f, "_main"), bench.flags, ClangOptions.builder().optimizationLevel(OptimizationLevel.O1));
         int truffleResult;
         if (bench.arg != null) {
             truffleResult = LLVM.executeMain(compileResult.getBitCodeFile(), bench.arg);
         } else {
             truffleResult = LLVM.executeMain(compileResult.getBitCodeFile());
         }
-        assertEquals(0, truffleResult);
+        if (!compileResult.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE)) {
+            assertEquals(0, truffleResult);
+        }
     }
 
 }

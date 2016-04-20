@@ -27,38 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.spec;
+package com.oracle.truffle.llvm.test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public final class TestSpecification {
-
-    private final List<SpecificationEntry> includedFiles;
-    private final List<SpecificationEntry> excludedFiles;
-
-    public TestSpecification(List<SpecificationEntry> includeFiles, List<SpecificationEntry> excludeFiles) {
-        includedFiles = includeFiles;
-        excludedFiles = excludeFiles;
-    }
-
-    public List<SpecificationEntry> getIncludedFiles() {
-        return includedFiles;
-    }
-
-    public List<SpecificationEntry> getExcludedFiles() {
-        return excludedFiles;
-    }
-
-    public List<SpecificationEntry> getIncludedWithoutExcludedFiles() {
-        List<SpecificationEntry> copyIncluded = new ArrayList<>(includedFiles);
-        copyIncluded.removeAll(excludedFiles);
-        return copyIncluded;
-    }
-
-    @Override
-    public String toString() {
-        return "included: " + includedFiles + " excluded: " + excludedFiles;
-    }
-
+public enum TestCaseFlag {
+    UNDEFINED_RETURN_CODE
 }
