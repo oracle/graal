@@ -1070,6 +1070,7 @@ public class LLVM_IRJavaValidator extends AbstractLLVM_IRJavaValidator {
     private boolean dominates(final BasicBlock dominator, final BasicBlock dominatee) {
         Object key = Tuples.create(dominator, dominatee);
         return dominationCache.get(key, dominator.eResource(), new Provider<Boolean>() {
+            @Override
             public Boolean get() {
                 Set<BasicBlock> seen = new HashSet<>();
                 seen.add(dominatee);

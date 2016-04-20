@@ -27,22 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.nodes.impl.cast;
 
-public class LLVMParserAsserts {
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError();
-            }
+public abstract class LLVMToFunctionNode extends LLVMFunctionNode {
+
+    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    public abstract static class LLVMI64ToFunctionNode extends LLVMToFunctionNode {
+
+        @Specialization
+        public LLVMFunctionDescriptor executeI64(long from) {
+            // TODO implement
+            throw new AssertionError(from);
         }
-        return objects;
     }
 
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
+    @NodeChild(value = "fromNode", type = LLVMAddressNode.class)
+    public abstract static class LLVMAddressToFunctionNode extends LLVMToFunctionNode {
+
+        @Specialization
+        public LLVMFunctionDescriptor executeI64(LLVMAddress from) {
+            // TODO implement
+            throw new AssertionError(from);
         }
     }
 

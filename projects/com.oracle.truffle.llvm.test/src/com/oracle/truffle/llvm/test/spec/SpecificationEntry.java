@@ -27,23 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.test.spec;
 
-public class LLVMParserAsserts {
+import java.io.File;
+import java.util.Collections;
+import java.util.Set;
 
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError();
-            }
-        }
-        return objects;
+import com.oracle.truffle.llvm.test.TestCaseFlag;
+
+public class SpecificationEntry {
+
+    private final File file;
+    private final Set<TestCaseFlag> flags;
+
+    public SpecificationEntry(File file) {
+        this(file, Collections.emptySet());
     }
 
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
+    public SpecificationEntry(File file, Set<TestCaseFlag> flags) {
+        this.file = file;
+        this.flags = flags;
+    }
+
+    public File getFile() {
+        return file;
+    }
+
+    public Set<TestCaseFlag> getFlags() {
+        return Collections.unmodifiableSet(flags);
+    }
+
+    @Override
+    public int hashCode() {
+        return file.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SpecificationEntry)) {
+            return false;
+        } else {
+            SpecificationEntry other = (SpecificationEntry) obj;
+            return file.equals(other.file);
         }
+    }
+
+    @Override
+    public String toString() {
+        return file.toString();
     }
 
 }

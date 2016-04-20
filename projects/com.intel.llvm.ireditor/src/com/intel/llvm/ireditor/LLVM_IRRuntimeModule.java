@@ -213,6 +213,7 @@ public class LLVM_IRRuntimeModule extends com.intel.llvm.ireditor.AbstractLLVM_I
 
     public static class LlvmQualifiedNameConverter implements IQualifiedNameConverter {
 
+        @Override
         public String toString(QualifiedName name) {
             if (name == null) {
                 return null;
@@ -220,6 +221,7 @@ public class LLVM_IRRuntimeModule extends com.intel.llvm.ireditor.AbstractLLVM_I
             return name.getFirstSegment();
         }
 
+        @Override
         public QualifiedName toQualifiedName(String qualifiedNameAsText) {
             if (qualifiedNameAsText == null) {
                 return null;
@@ -259,6 +261,7 @@ public class LLVM_IRRuntimeModule extends com.intel.llvm.ireditor.AbstractLLVM_I
 
         private NameResolver namer = new NameResolver();
 
+        @Override
         public String toValue(String string, INode node) throws ValueConverterException {
             if (string == null || string.isEmpty()) {
                 return nameFromIndex(findIndex(node));
@@ -266,6 +269,7 @@ public class LLVM_IRRuntimeModule extends com.intel.llvm.ireditor.AbstractLLVM_I
             return nameFromString(string);
         }
 
+        @Override
         public String toString(String value) throws ValueConverterException {
             return value;
         }
