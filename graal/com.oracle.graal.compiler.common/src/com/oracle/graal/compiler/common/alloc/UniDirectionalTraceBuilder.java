@@ -37,10 +37,6 @@ import com.oracle.graal.debug.Indent;
  */
 public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
-    public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
-        return computeTraces(startBlock, blocks, null);
-    }
-
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks, TrivialTracePredicate pred) {
         return new UniDirectionalTraceBuilder<>(blocks).build(startBlock, blocks, pred);
     }
