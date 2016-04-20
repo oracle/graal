@@ -128,13 +128,17 @@ public abstract class GraalCompilerState {
 
     }
 
+    protected boolean useProfilingInfo() {
+        return false;
+    }
+
     @SuppressWarnings("try")
     protected void initializeMethod() {
         GraalState graal = new GraalState();
         ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethod());
         StructuredGraph structuredGraph = null;
         try (Debug.Scope s = Debug.scope("GraphState", method)) {
-            structuredGraph = preprocessOriginal(getGraph(graal, method));
+            structuredGraph = preprocessOriginal(getGraph(graal, method, useProfilingInfo()));
         } catch (Throwable t) {
             Debug.handle(t);
         }
