@@ -41,6 +41,28 @@ abstract class CloseableCounterImpl implements DebugCloseable {
         this.counter = counter;
     }
 
+    /**
+     * A hook for subclasses. Lets them perform custom operations with the value since the last
+     * invocation of {@link CloseableCounterImpl#close()} of this accumulated
+     * {@link CloseableCounterImpl#counter}.
+     *
+     * @param difference since the last invocation of this counter flat
+     */
+    protected void interceptDifferenceAccm(long difference) {
+        // hook for subclasses
+    }
+
+    /**
+     * A hook for subclasses. Lets them perform custom operations with the value since the last
+     * invocation of {@link CloseableCounterImpl#close()} of this flat
+     * {@link CloseableCounterImpl#counter}.
+     *
+     * @param difference since the last invocation of this counter flat
+     */
+    protected void interceptDifferenceFlat(long difference) {
+        // hook for subclasses
+    }
+
     @Override
     public void close() {
         long end = getCounterValue();
@@ -48,7 +70,6 @@ abstract class CloseableCounterImpl implements DebugCloseable {
         if (parent != null) {
             if (!counter.getName().equals(parent.counter.getName())) {
                 parent.nestedAmountToSubtract += difference;
-
                 // Look for our counter in an outer scope and fix up
                 // the adjustment to the flat count
                 CloseableCounterImpl ancestor = parent.parent;
@@ -64,6 +85,8 @@ abstract class CloseableCounterImpl implements DebugCloseable {
         long flatAmount = difference - nestedAmountToSubtract;
         counter.addToCurrentValue(difference);
         counter.flat.addToCurrentValue(flatAmount);
+        interceptDifferenceAccm(difference);
+        interceptDifferenceFlat(flatAmount);
     }
 
     abstract long getCounterValue();

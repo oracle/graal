@@ -68,7 +68,7 @@ public class DebugTimerTest {
 
     @Test
     public void test1() {
-        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, null, null, System.out);
+        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, false, null, null, System.out);
         try (DebugConfigScope dcs = new DebugConfigScope(debugConfig); Debug.Scope s = Debug.scope("DebugTimerTest")) {
 
             DebugTimer timerA = Debug.timer("TimerA");
@@ -94,7 +94,7 @@ public class DebugTimerTest {
 
     @Test
     public void test2() {
-        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, null, null, System.out);
+        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, false, null, null, System.out);
         try (DebugConfigScope dcs = new DebugConfigScope(debugConfig); Debug.Scope s = Debug.scope("DebugTimerTest")) {
             DebugTimer timerC = Debug.timer("TimerC");
             try (DebugCloseable c1 = timerC.start()) {
@@ -120,7 +120,7 @@ public class DebugTimerTest {
 
     @Test
     public void test3() {
-        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, null, null, System.out);
+        DebugConfig debugConfig = Debug.fixedConfig(0, 0, false, false, true, false, false, null, null, System.out);
         try (DebugConfigScope dcs = new DebugConfigScope(debugConfig); Debug.Scope s = Debug.scope("DebugTimerTest")) {
 
             DebugTimer timerD = Debug.timer("TimerD");

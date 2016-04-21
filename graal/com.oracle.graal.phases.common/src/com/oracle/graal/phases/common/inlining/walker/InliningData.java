@@ -35,12 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -68,6 +62,13 @@ import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
 import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * <p>

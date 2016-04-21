@@ -45,6 +45,7 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.MethodMetricsPhase;
 import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
@@ -66,6 +67,8 @@ public class HighTier extends PhaseSuite<HighTierContext> {
     }
 
     public HighTier() {
+        appendPhase(new MethodMetricsPhase());
+
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         if (ImmutableCode.getValue()) {
             canonicalizer.disableReadCanonicalization();

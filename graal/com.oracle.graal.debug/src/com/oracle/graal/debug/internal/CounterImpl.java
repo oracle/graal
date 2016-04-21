@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.debug.internal;
 
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 
-public final class CounterImpl extends DebugValue implements DebugCounter {
+public abstract class CounterImpl extends DebugValue implements DebugCounter {
 
     public CounterImpl(String name, boolean conditional) {
         super(name, conditional);
@@ -40,14 +42,45 @@ public final class CounterImpl extends DebugValue implements DebugCounter {
     }
 
     @Override
-    public void add(long value) {
-        if (isEnabled()) {
-            super.addToCurrentValue(value);
+    public String toString(long value) {
+        return Long.toString(value);
+    }
+
+    private static final class InterceptingCounterImpl extends CounterImpl {
+
+        private InterceptingCounterImpl(String name, boolean conditional) {
+            super(name, conditional);
+        }
+
+        @Override
+        public void add(long value) {
+            if (isEnabled()) {
+                if (Debug.isMethodMeterEnabled()) {
+                    MethodMetricsImpl.addToCurrentScopeMethodMetrics(getName(), value);
+                }
+                super.addToCurrentValue(value);
+            }
         }
     }
 
-    @Override
-    public String toString(long value) {
-        return Long.toString(value);
+    private static final class PlainCounterImpl extends CounterImpl {
+
+        private PlainCounterImpl(String name, boolean conditional) {
+            super(name, conditional);
+        }
+
+        @Override
+        public void add(long value) {
+            if (isEnabled()) {
+                super.addToCurrentValue(value);
+            }
+        }
+    }
+
+    public static DebugCounter create(String name, boolean conditional, boolean intercepting) {
+        if (intercepting) {
+            return new InterceptingCounterImpl(name, conditional);
+        }
+        return new PlainCounterImpl(name, conditional);
     }
 }

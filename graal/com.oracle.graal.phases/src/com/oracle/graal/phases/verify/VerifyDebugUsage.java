@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.verify;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -55,6 +56,8 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
         ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
         ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
+        ResolvedJavaType mCCDebugType = context.getMetaAccess().lookupJavaType(DebugMethodMetrics.class);
+
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             String calleeName = callee.getName();
@@ -65,6 +68,11 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
             }
             if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
                 if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
+                    verifyParameters(graph, t.arguments(), stringType, 1);
+                }
+            }
+            if (callee.getDeclaringClass().equals(mCCDebugType)) {
+                if (calleeName.equals("addToMetric") || calleeName.equals("getCurrentMetricValue") || calleeName.equals("incrementMetric")) {
                     verifyParameters(graph, t.arguments(), stringType, 1);
                 }
             }

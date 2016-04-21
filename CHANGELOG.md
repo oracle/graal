@@ -6,6 +6,7 @@ This changelog summarizes major changes between Graal versions relevant to devel
 * CompileTheWorld now includes class initializers.
 * Rename ```DebugMetric``` to ```DebugCounter```.
 * Rename ```-G:Meter``` option to ```-G:Count```.
+* Add new debug feature ```DebugMethodMetric``` to collect metrics per compilation
 
 ## Version 0.12
 * Added initial code for AArch64 port.

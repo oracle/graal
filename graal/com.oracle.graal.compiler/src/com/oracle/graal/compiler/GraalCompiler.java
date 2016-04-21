@@ -28,18 +28,6 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 
 import java.util.List;
 
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.site.ConstantReference;
-import jdk.vm.ci.code.site.DataPatch;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.VMConstant;
-
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
@@ -48,6 +36,8 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
@@ -79,6 +69,18 @@ import com.oracle.graal.phases.tiers.MidTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.TargetProvider;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.VMConstant;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.
@@ -166,14 +168,19 @@ public class GraalCompiler {
      */
     @SuppressWarnings("try")
     public static <T extends CompilationResult> T compile(Request<T> r) {
-        assert !r.graph.isFrozen();
-        try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
-            emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
-            emitBackEnd(r.graph, null, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, null, r.lirSuites);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
+        // if the current compilation is not triggered from JVMCI we need a valid context root
+        // method for method metrics
+        try (Scope s = DebugScope.getInstance().getExtraInfo() instanceof MethodMetricsRootScopeInfo ? null
+                        : Debug.methodMetricsScope("GraalCompilerRoot", MethodMetricsRootScopeInfo.create(r.installedCodeOwner), true)) {
+            assert !r.graph.isFrozen();
+            try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
+                emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
+                emitBackEnd(r.graph, null, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, null, r.lirSuites);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            return r.compilationResult;
         }
-        return r.compilationResult;
     }
 
     /**

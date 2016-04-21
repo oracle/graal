@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.debug.internal;
 
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
@@ -33,18 +33,26 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.DebugValue;
-import com.oracle.graal.debug.internal.DebugValueMap;
-import com.oracle.graal.debug.internal.KeyRegistry;
+import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+
+import jdk.vm.ci.common.JVMCIError;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all
  * {@link DebugValueMap#getTopLevelMaps() threads}.
  */
 public class DebugValuesPrinter {
+    private final MethodMetricsPrinter mmPrinter;
+
+    public DebugValuesPrinter() {
+        this(null);
+    }
+
+    public DebugValuesPrinter(MethodMetricsPrinter mmPrinter) {
+        this.mmPrinter = mmPrinter;
+    }
 
     public void printDebugValues() throws JVMCIError {
         TTY.println();
@@ -109,6 +117,9 @@ public class DebugValuesPrinter {
                 err.println("Error while printing debug values:");
                 e.printStackTrace();
             }
+        }
+        if (mmPrinter != null) {
+            mmPrinter.printMethodMetrics(MethodMetricsImpl.collectedMetrics());
         }
         TTY.println("</DebugValues>");
     }
