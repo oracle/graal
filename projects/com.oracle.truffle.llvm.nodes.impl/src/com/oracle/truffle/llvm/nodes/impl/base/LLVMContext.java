@@ -77,7 +77,23 @@ public class LLVMContext extends ExecutionContext {
     }
 
     public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
-        return nativeLookup.getNativeHandle(function, args);
+        LLVMFunctionDescriptor sameFunction = getFunctionDescriptor(function);
+        return nativeLookup.getNativeHandle(sameFunction, args);
+    }
+
+    /**
+     * Creates a complete function descriptor from the given one.
+     *
+     * {@link LLVMFunctionRegistry#createFromIndex} creates an incomplete function descriptor, with
+     * illegal types and no function name but a valid index. Not having to look up the whole
+     * function descriptor makes most indirect calls faster. However, since the native interface
+     * needs the return type of the function, we here have to look up the complete function
+     * descriptor.
+     */
+    private LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionDescriptor incompleteFunctionDescriptor) {
+        int validFunctionIndex = incompleteFunctionDescriptor.getFunctionIndex();
+        LLVMFunctionDescriptor[] completeFunctionDescriptors = registry.getFunctionDescriptors();
+        return completeFunctionDescriptors[validFunctionIndex];
     }
 
     public long getNativeHandle(String functionName) {
