@@ -83,14 +83,14 @@ public class LLVM {
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
                 parseDynamicBitcodeLibraries(context);
                 CallTarget mainFunction;
-                if (code.getMimeType() == LLVMLanguage.LLVM_MIME_TYPE) {
+                if (code.getMimeType().equals(LLVMLanguage.LLVM_MIME_TYPE)) {
                     ParserResult parserResult = parseFile(code.getPath(), context);
                     mainFunction = parserResult.getMainFunction();
                     context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                     context.registerStaticInitializer(parserResult.getStaticInits());
                     context.registerStaticDestructor(parserResult.getStaticDestructors());
                     parserResult.getStaticInits().call();
-                } else if (code.getMimeType() == LLVMLanguage.SULONG_LIBRARY_MIME_TYPE) {
+                } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
 
                     final List<CallTarget> mainFunctions = new ArrayList<>();
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
