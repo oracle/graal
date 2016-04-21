@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,6 +49,7 @@ final class ContextReference<C> {
             return null;
         }
         if (context == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             context = ExecutionImpl.findContext(store.vm, language.getClass());
             store.setContext(languageId, context == null ? this : context);
         }
