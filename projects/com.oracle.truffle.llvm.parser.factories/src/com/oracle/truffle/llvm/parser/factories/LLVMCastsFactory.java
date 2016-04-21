@@ -67,6 +67,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI8ToD
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVM80BitFloatToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMDoubleToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI16ToFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatBitNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI64ToFloatNodeGen;
@@ -543,7 +544,7 @@ public final class LLVMCastsFactory {
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
-        } else if (conv == LLVMConversionType.ZERO_EXTENSION || conv == LLVMConversionType.BITCAST) {
+        } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             switch (targetType) {
                 case I_VAR_BITWIDTH:
                     return LLVMI32ToIVarZeroExtNodeGen.create(fromNode, resolvedType.getBits().intValue());
@@ -555,6 +556,13 @@ public final class LLVMCastsFactory {
                     return LLVMI32ToDoubleUnsignedNodeGen.create(fromNode);
                 case X86_FP80:
                     return LLVMI32ToLLVM80BitFloatUnsignedNodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType + " " + conv);
+            }
+        } else if (conv == LLVMConversionType.BITCAST) {
+            switch (targetType) {
+                case FLOAT:
+                    return LLVMI32ToFloatBitNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
