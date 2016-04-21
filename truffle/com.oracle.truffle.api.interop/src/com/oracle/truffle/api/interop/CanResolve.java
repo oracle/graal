@@ -29,18 +29,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-
 /**
- * Annotation to put on your node to simplify handling of incoming inter-operability {@link Message
- * messages}.
+ * Annotation to put on your node to provide a language check for the receiver object.
+ *
+ * There must be only one element with this annotation on it.
  *
  * This node needs to be an abstract class. Sub-classes will be automatically generated, which is
- * similar to Truffle's DSL for node specialization. The node needs to define <code>accept</code>
- * methods, which implement the node's behaviour. The first argument of <code>accept</code> can be a
- * {@link VirtualFrame} (optional). The second argument of <code>accept</code> needs to be the
- * receiver object, i.e., a {@link TruffleObject}. Afterwards, the arguments of the message follow.
- * For example:
+ * similar to Truffle's DSL for node specialization. The node needs to define one <code>test</code>
+ * method, which implement the receiver language check.
  *
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
  *
@@ -48,16 +44,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
-public @interface Resolve {
-    /**
-     * Identification of the {@link Message message} to accept. Well known messages include fields
-     * of the {@link Message} class (e.g. <em>"READ"</em>, <em>"WRITE"</em>, <em>"UNBOX"</em>,
-     * <em>IS_NULL</em>) or slightly mangled names of {@link Message} class factory methods (
-     * <em>EXECUTE</em>, <em>INVOKE</em>). For more details on the string encoding of message names
-     * see {@link Message#valueOf(java.lang.String)} method.
-     *
-     * @return string identification of an inter-operability message
-     * @see Message#valueOf(java.lang.String)
-     */
-    String message();
+public @interface CanResolve {
+
 }

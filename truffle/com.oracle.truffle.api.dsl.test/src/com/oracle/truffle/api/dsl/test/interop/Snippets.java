@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -86,6 +87,14 @@ public static class ExampleTruffleObjectMR {
                 return value;
             }
             throw UnknownIdentifierException.raise(name);
+        }
+    }
+
+    @CanResolve
+    public abstract static class Check extends Node {
+
+        protected static boolean test(TruffleObject receiver) {
+            return receiver instanceof ExampleTruffleObject;
         }
     }
 

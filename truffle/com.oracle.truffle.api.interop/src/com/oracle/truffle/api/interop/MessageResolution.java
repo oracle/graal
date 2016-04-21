@@ -47,6 +47,8 @@ import com.oracle.truffle.api.TruffleLanguage;
  *
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObject#isInstanceCheck}
  *
+ * Alternatively, one can also define a language check node (see {@link CanResolve}.
+ *
  * From this class a {@link ForeignAccess} will be generated. The receiver object can then return a
  * singleton instance of this access. For example: <br>
  *

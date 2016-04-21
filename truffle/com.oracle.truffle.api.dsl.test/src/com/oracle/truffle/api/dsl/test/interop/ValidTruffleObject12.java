@@ -25,14 +25,9 @@ package com.oracle.truffle.api.dsl.test.interop;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-public class ValidTruffleObject10 implements TruffleObject {
+public class ValidTruffleObject12 implements TruffleObject {
 
     public ForeignAccess getForeignAccess() {
-        return ValidTruffleObject10Foreign.ACCESS;
+        return null;
     }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ValidTruffleObject10;
-    }
-
 }

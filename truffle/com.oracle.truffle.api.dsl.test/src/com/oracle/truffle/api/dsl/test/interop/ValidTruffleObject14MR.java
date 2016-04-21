@@ -22,14 +22,33 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
+import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
-@com.oracle.truffle.api.interop.AcceptMessage(value = "WRITE", receiverType = ValidTruffleObject10.class, language = TestTruffleLanguage.class)
-public final class AcceptMessageTest extends AcceptMessageTestBase {
+@SuppressWarnings("unused")
+@MessageResolution(receiverType = ValidTruffleObject12.class, language = TestTruffleLanguage.class)
+public class ValidTruffleObject14MR {
 
-    @Override
-    protected int access(VirtualFrame frame, Object receiver, Object name, Object value) {
-        return 0;
+    @Resolve(message = "READ")
+    public abstract static class ReadNode14 extends Node {
+
+        protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
+            return 0;
+        }
     }
+
+    @CanResolve
+    public abstract static class LanguageCheck1 extends Node {
+
+        @ExpectError("The receiver type must be TruffleObject")
+        protected boolean test(VirtualFrame frame, ValidTruffleObject12 receiver) {
+            return false;
+        }
+    }
+
 }

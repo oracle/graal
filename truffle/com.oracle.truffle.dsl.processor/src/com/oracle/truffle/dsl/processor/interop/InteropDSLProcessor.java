@@ -44,6 +44,7 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -109,63 +110,128 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return;
         }
 
-        if (isInstanceMissing(receiverTypeFullClassName)) {
+        // check if there is a @LanguageCheck class
+
+        Element curr = e;
+        List<TypeElement> receiverChecks = new ArrayList<>();
+        for (Element innerClass : curr.getEnclosedElements()) {
+            if (innerClass.getKind() != ElementKind.CLASS) {
+                continue;
+            }
+            if (innerClass.getAnnotation(CanResolve.class) != null) {
+                receiverChecks.add((TypeElement) innerClass);
+            }
+        }
+
+        if (receiverChecks.size() == 0 && isInstanceMissing(receiverTypeFullClassName)) {
             emitError("Missing isInstance method in class " + receiverTypeFullClassName, e);
+            return;
+        }
+
+        if (receiverChecks.size() > 1) {
+            emitError("Only one @LanguageCheck element allowed", e);
             return;
         }
 
         // Collect all inner classes with an @Resolve annotation
 
-        Element curr = e;
+        curr = e;
         List<TypeElement> elements = new ArrayList<>();
-        innerElements: for (Element innerClass : curr.getEnclosedElements()) {
+        for (Element innerClass : curr.getEnclosedElements()) {
             if (innerClass.getKind() != ElementKind.CLASS) {
-                continue innerElements;
+                continue;
             }
-            if (innerClass.getAnnotation(Resolve.class) == null) {
-                continue innerElements;
+            if (innerClass.getAnnotation(Resolve.class) != null) {
+                elements.add((TypeElement) innerClass);
             }
-            elements.add((TypeElement) innerClass);
         }
 
-        ForeignAccessFactoryGenerator factoryGenerator;
-        factoryGenerator = new ForeignAccessFactoryGenerator(processingEnv, messageImplementations, (TypeElement) e);
+        ForeignAccessFactoryGenerator factoryGenerator = new ForeignAccessFactoryGenerator(processingEnv, messageImplementations, (TypeElement) e);
 
         // Process inner classes with an @Resolve annotation
+        boolean generationSuccessfull = true;
         for (TypeElement elem : elements) {
-            processInnerClasses(elem.getAnnotation(Resolve.class), messageImplementations, elem, factoryGenerator);
+            generationSuccessfull &= processResolveClass(elem.getAnnotation(Resolve.class), messageImplementations, elem, factoryGenerator);
+        }
+        if (!generationSuccessfull) {
+            return;
+        }
+
+        if (!receiverChecks.isEmpty()) {
+            generationSuccessfull &= processLanguageCheck(messageImplementations, receiverChecks.get(0), factoryGenerator);
+        }
+        if (!generationSuccessfull) {
+            return;
         }
 
         factoryGenerator.generate();
     }
 
-    private void processInnerClasses(Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) throws IOException {
-        MessageGenerator currentGenerator = MessageGenerator.getGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
-
-        if (currentGenerator == null) {
-            emitError("Unknown message type: " + resolveAnnotation.message(), element);
-            return;
-        }
+    private boolean processLanguageCheck(MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator)
+                    throws IOException {
+        LanguageCheckGenerator generator = new LanguageCheckGenerator(processingEnv, messageResolutionAnnotation, element);
 
         if (!ElementUtils.typeEquals(element.getSuperclass(), Utils.getTypeMirror(processingEnv, com.oracle.truffle.api.nodes.Node.class))) {
             emitError(ElementUtils.getQualifiedName(element) + " must extend com.oracle.truffle.api.nodes.Node.", element);
-            return;
+            return false;
         }
 
         if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
             emitError("Class must be abstract", element);
-            return;
+            return false;
         }
 
         if (!element.getModifiers().contains(Modifier.STATIC)) {
             emitError("Class must be static", element);
-            return;
+            return false;
+        }
+
+        List<ExecutableElement> methods = generator.getTestMethods();
+        if (methods.isEmpty() || methods.size() > 1) {
+            emitError("There needs to be exactly one test method.", element);
+            return false;
+        }
+
+        ExecutableElement m = methods.get(0);
+        String errorMessage = generator.checkSignature(m);
+        if (errorMessage != null) {
+            emitError(errorMessage, m);
+            return false;
+        }
+
+        generator.generate();
+        factoryGenerator.addLanguageCheckHandler(generator.getRootNodeFactoryInvokation());
+        return true;
+    }
+
+    private boolean processResolveClass(Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator)
+                    throws IOException {
+        MessageGenerator currentGenerator = MessageGenerator.getGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+
+        if (currentGenerator == null) {
+            emitError("Unknown message type: " + resolveAnnotation.message(), element);
+            return false;
+        }
+
+        if (!ElementUtils.typeEquals(element.getSuperclass(), Utils.getTypeMirror(processingEnv, com.oracle.truffle.api.nodes.Node.class))) {
+            emitError(ElementUtils.getQualifiedName(element) + " must extend com.oracle.truffle.api.nodes.Node.", element);
+            return false;
+        }
+
+        if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
+            emitError("Class must be abstract", element);
+            return false;
+        }
+
+        if (!element.getModifiers().contains(Modifier.STATIC)) {
+            emitError("Class must be static", element);
+            return false;
         }
 
         List<ExecutableElement> methods = currentGenerator.getAccessMethods();
         if (methods.isEmpty()) {
             emitError("There needs to be at least one access method.", element);
-            return;
+            return false;
         }
 
         List<? extends VariableElement> params = methods.get(0).getParameters();
@@ -184,7 +250,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
 
             if (argumentSize != paramsSize) {
                 emitError("Inconsistent argument length.", element);
-                return;
+                return false;
             }
         }
 
@@ -192,13 +258,14 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             String errorMessage = currentGenerator.checkSignature(m);
             if (errorMessage != null) {
                 emitError(errorMessage, m);
-                return;
+                return false;
             }
         }
 
         currentGenerator.generate();
         Object currentMessage = Utils.getMessage(processingEnv, resolveAnnotation.message());
         factoryGenerator.addMessageHandler(currentMessage, currentGenerator.getRootNodeFactoryInvokation());
+        return true;
     }
 
     private static boolean isReceiverNonStaticInner(MessageResolution message) {

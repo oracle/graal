@@ -45,6 +45,8 @@ public final class ForeignAccessFactoryGenerator {
 
     private final Map<Object, String> messageHandlers;
 
+    private String languageCheckFactoryInvokation;
+
     public ForeignAccessFactoryGenerator(ProcessingEnvironment processingEnv, MessageResolution messageResolutionAnnotation, TypeElement element) {
         this.processingEnv = processingEnv;
         this.element = element;
@@ -52,10 +54,15 @@ public final class ForeignAccessFactoryGenerator {
         this.simpleClassName = ElementUtils.getSimpleName(element) + "Foreign";
         this.receiverTypeClass = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.messageHandlers = new HashMap<>();
+        this.languageCheckFactoryInvokation = null;
     }
 
     public void addMessageHandler(Object message, String factoryMethodInvocation) {
         messageHandlers.put(message, factoryMethodInvocation);
+    }
+
+    public void addLanguageCheckHandler(String invocation) {
+        this.languageCheckFactoryInvokation = invocation;
     }
 
     public void generate() throws IOException {
@@ -63,27 +70,32 @@ public final class ForeignAccessFactoryGenerator {
         Writer w = factoryFile.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
-        w.append("final class ").append(simpleClassName).append(" implements Factory10, Factory {\n");
+        w.append("final class ").append(simpleClassName);
+        w.append(" implements Factory10, Factory {\n");
 
         appendSingletonAndGetter(w);
         appendPrivateConstructor(w);
         appendFactoryCanHandle(w);
 
-        appendFactory10accessIsNull(w);
-        appendFactory10accessIsExecutable(w);
-        appendFactory10accessIsBoxed(w);
-        appendFactory10accessHasSize(w);
-        appendFactory10accessGetSize(w);
-        appendFactory10accessUnbox(w);
-        appendFactory10accessRead(w);
-        appendFactory10accessWrite(w);
-        appendFactory10accessExecute(w);
-        appendFactory10accessInvoke(w);
-        appendFactory10accessNew(w);
+        appendFactoryAccessIsNull(w);
+        appendFactoryAccessIsExecutable(w);
+        appendFactoryAccessIsBoxed(w);
+        appendFactoryAccessHasSize(w);
+        appendFactoryAccessGetSize(w);
+        appendFactoryAccessUnbox(w);
+        appendFactoryAccessRead(w);
+        appendFactoryAccessWrite(w);
+        appendFactoryAccessExecute(w);
+        appendFactoryAccessInvoke(w);
+        appendFactoryAccessNew(w);
         appendFactoryAccessMessage(w);
 
         w.append("}\n");
         w.close();
+    }
+
+    private boolean hasLanguageCheckNode() {
+        return languageCheckFactoryInvokation != null;
     }
 
     private static void appendImports(Writer w) throws IOException {
@@ -99,8 +111,14 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendSingletonAndGetter(Writer w) throws IOException {
-        w.append("  public static final ForeignAccess ACCESS = ForeignAccess.create(null, new ").append(simpleClassName).append("());").append("\n");
-        w.append("  public static ForeignAccess createAccess() { return ForeignAccess.create(null, new ").append(simpleClassName).append("());}").append("\n");
+        String allocation;
+        if (hasLanguageCheckNode()) {
+            allocation = "ForeignAccess.create(new " + simpleClassName + "(), " + languageCheckFactoryInvokation + ");";
+        } else {
+            allocation = "ForeignAccess.create(null, new " + simpleClassName + "());";
+        }
+        w.append("  public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
+        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append("}\n");
         w.append("\n");
     }
 
@@ -111,30 +129,34 @@ public final class ForeignAccessFactoryGenerator {
 
     private void appendFactoryCanHandle(Writer w) throws IOException {
         w.append("  public boolean canHandle(TruffleObject obj) {").append("\n");
-        w.append("    return ").append(receiverTypeClass).append(".isInstance(obj);").append("\n");
+        if (hasLanguageCheckNode()) {
+            w.append("    return (boolean) Truffle.getRuntime().createCallTarget(").append(languageCheckFactoryInvokation).append(").call(obj);\n");
+        } else {
+            w.append("    return ").append(receiverTypeClass).append(".isInstance(obj);").append("\n");
+        }
         w.append("  }").append("\n");
         w.append("\n");
     }
 
-    private void appendFactory10accessIsNull(Writer w) throws IOException {
+    private void appendFactoryAccessIsNull(Writer w) throws IOException {
         w.append("    public CallTarget accessIsNull() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_NULL);
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessIsExecutable(Writer w) throws IOException {
+    private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE);
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessIsBoxed(Writer w) throws IOException {
+    private void appendFactoryAccessIsBoxed(Writer w) throws IOException {
         w.append("    public CallTarget accessIsBoxed() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_BOXED);
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessHasSize(Writer w) throws IOException {
+    private void appendFactoryAccessHasSize(Writer w) throws IOException {
         w.append("    public CallTarget accessHasSize() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE);
         w.append("    }").append("\n");
@@ -148,43 +170,43 @@ public final class ForeignAccessFactoryGenerator {
         }
     }
 
-    private void appendFactory10accessGetSize(Writer w) throws IOException {
+    private void appendFactoryAccessGetSize(Writer w) throws IOException {
         w.append("    public CallTarget accessGetSize() {").append("\n");
         appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessUnbox(Writer w) throws IOException {
+    private void appendFactoryAccessUnbox(Writer w) throws IOException {
         w.append("    public CallTarget accessUnbox() {").append("\n");
         appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessRead(Writer w) throws IOException {
+    private void appendFactoryAccessRead(Writer w) throws IOException {
         w.append("    public CallTarget accessRead() {").append("\n");
         appendOptionalHandlerBody(w, Message.READ, "Message.READ");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessWrite(Writer w) throws IOException {
+    private void appendFactoryAccessWrite(Writer w) throws IOException {
         w.append("    public CallTarget accessWrite() {").append("\n");
         appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessExecute(Writer w) throws IOException {
+    private void appendFactoryAccessExecute(Writer w) throws IOException {
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessInvoke(Writer w) throws IOException {
+    private void appendFactoryAccessInvoke(Writer w) throws IOException {
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
         w.append("    }").append("\n");
     }
 
-    private void appendFactory10accessNew(Writer w) throws IOException {
+    private void appendFactoryAccessNew(Writer w) throws IOException {
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
         w.append("    }").append("\n");

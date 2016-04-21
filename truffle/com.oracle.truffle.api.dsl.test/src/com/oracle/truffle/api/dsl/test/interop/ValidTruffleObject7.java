@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 public class ValidTruffleObject7 implements TruffleObject {
 
     public ForeignAccess getForeignAccess() {
-        return ValidTruffleObject8MRForeign.ACCESS;
+        return null;
     }
 
     public static boolean isInstance(TruffleObject obj) {
