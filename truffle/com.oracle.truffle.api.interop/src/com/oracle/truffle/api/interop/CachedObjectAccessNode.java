@@ -53,11 +53,25 @@ final class CachedObjectAccessNode extends ObjectAccessNode {
     }
 
     private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(frame, new Object[]{receiver})) || languageCheck.canHandle(receiver)) {
+        if (accept(frame, receiver)) {
             return callTarget.call(frame, accessArguments.executeCreate(receiver, arguments));
         } else {
-            return next.executeWith(frame, receiver, arguments);
+            return doNext(frame, receiver, arguments);
         }
+    }
+
+    private boolean accept(VirtualFrame frame, TruffleObject receiver) {
+        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(frame, new Object[]{receiver}))) {
+            return true;
+        } else if (languageCheckAsNode == null && languageCheck.canHandle(receiver)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private Object doNext(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
+        return next.executeWith(frame, receiver, arguments);
     }
 
 }
