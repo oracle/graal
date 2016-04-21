@@ -31,12 +31,12 @@ Truffle bits are uploaded to Maven central. You can use them from your
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.11</version> <!-- or any later version -->
+    <version>0.13</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.11</version>
+    <version>0.13</version>
     <scope>provided</scope>
 </dependency>
 ```
