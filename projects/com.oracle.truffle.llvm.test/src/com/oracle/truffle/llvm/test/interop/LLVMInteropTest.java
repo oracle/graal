@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
 @SuppressWarnings({"static-method"})
 public final class LLVMInteropTest {
 
-    private static final String PATH = LLVMPaths.LOCAL_TESTS + "/interop";
+    private static final String PATH = LLVMPaths.LOCAL_TESTS + "/../interoptests";
 
     @Test
     public void test001() {
