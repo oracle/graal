@@ -28,7 +28,7 @@ import jdk.vm.ci.sparc.SPARC;
 
 import org.junit.Test;
 
-public class BC_frem extends BC_fdiv_frem_base {
+public class BC_frem extends BC_float_base {
 
     public static float test(float a, float b) {
         return a % b;
