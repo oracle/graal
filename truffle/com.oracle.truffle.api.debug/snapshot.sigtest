@@ -41,7 +41,7 @@ meth public com.oracle.truffle.api.debug.Breakpoint setTagBreakpoint(int,com.ora
 meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
 supr java.lang.Object
-hfds ACCESSOR,CALL_FILTER,FACTORY,HALT_FILTER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
+hfds ACCESSOR,CALL_FILTER,FACTORY,HALT_FILTER,NO_DEBUGGER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
 hcls AccessorDebug,BreakpointCallback,Continue,DebugExecutionContext,HaltPosition,StepInto,StepOut,StepOver,StepOverNested,StepStrategy,WarningLog
 
 CLSS public final com.oracle.truffle.api.debug.ExecutionEvent
@@ -49,7 +49,7 @@ meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public void prepareContinue()
 meth public void prepareStepInto()
 supr java.lang.Object
-hfds debugger
+hfds currentDepth,debugger,engine,source
 
 CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()

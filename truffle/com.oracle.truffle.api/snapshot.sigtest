@@ -131,7 +131,7 @@ meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
 supr java.lang.Object
 hfds API
-hcls AccessAPI,LangCtx
+hcls AccessAPI,LangCtx,LanguageImpl
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage

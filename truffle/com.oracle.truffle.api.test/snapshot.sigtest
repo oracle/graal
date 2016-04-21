@@ -13,6 +13,12 @@ meth public abstract java.lang.String getName()
 meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
 meth public abstract void invalidate()
 
+CLSS public com.oracle.truffle.api.AssumptionInvalidationTest
+cons public init()
+meth public void test() throws java.lang.InterruptedException
+supr java.lang.Object
+hcls CountingNode,TestRootNode,ValueNode
+
 CLSS public abstract interface com.oracle.truffle.api.CallTarget
 meth public abstract !varargs java.lang.Object call(java.lang.Object[])
 
@@ -258,7 +264,7 @@ meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
 supr java.lang.Object
 hfds API
-hcls AccessAPI,LangCtx
+hcls AccessAPI,LangCtx,LanguageImpl
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
