@@ -1,3 +1,4 @@
+*.jar
 *.mod
 *~
 mx.sulong/*.pyc
@@ -29,7 +30,6 @@ projects/com.oracle.truffle.llvm.test/flush.temp.ll
 
 projects/com.intel.llvm.ireditor/plugin.xml
 projects/com.intel.llvm.ireditor/plugin.xml_gen
-projects/com.intel.llvm.ireditor/.antlr-generator-3.2.0-patch.jar
 projects/com.intel.llvm.ireditor/build.properties
 projects/com.intel.llvm.ireditor/src_gen/**
 projects/com.intel.llvm.ireditor/xtend-gen/**
