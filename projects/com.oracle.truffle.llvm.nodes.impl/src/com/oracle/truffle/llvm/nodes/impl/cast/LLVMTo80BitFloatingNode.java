@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
+import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
@@ -101,6 +102,16 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
             return LLVM80BitFloat.fromUnsignedLong(from);
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
+    public abstract static class LLVMFloatToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
+            // TODO implement
+            throw new AssertionError(from);
         }
     }
 

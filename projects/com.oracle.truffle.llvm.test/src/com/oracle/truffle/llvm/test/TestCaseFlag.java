@@ -27,23 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.test;
 
-public class LLVMParserAsserts {
-
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError();
-            }
-        }
-        return objects;
-    }
-
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
-        }
-    }
-
+public enum TestCaseFlag {
+    UNDEFINED_RETURN_CODE
 }
