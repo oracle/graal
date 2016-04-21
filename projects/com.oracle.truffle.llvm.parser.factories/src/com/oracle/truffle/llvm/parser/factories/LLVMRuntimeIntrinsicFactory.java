@@ -32,19 +32,12 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
+import com.oracle.graal.replacements.amd64.AMD64MathSubstitutions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMASinFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMATanFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCosFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSinFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanhFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCallocFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
@@ -64,24 +57,27 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
 
         if (optConfig.intrinsifyCLibraryFunctions()) {
-            // math.h
-            intrinsics.put("@acos", LLVMACosFactory.getInstance());
-            intrinsics.put("@asin", LLVMASinFactory.getInstance());
-            intrinsics.put("@atan", LLVMATanFactory.getInstance());
-            intrinsics.put("@cos", LLVMCosFactory.getInstance());
-            intrinsics.put("@exp", LLVMExpFactory.getInstance());
-            intrinsics.put("@log", LLVMLogFactory.getInstance());
-            intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
-            intrinsics.put("@sin", LLVMSinFactory.getInstance());
-            intrinsics.put("@tan", LLVMTanFactory.getInstance());
-            intrinsics.put("@tanh", LLVMTanhFactory.getInstance());
-
-            // other libraries
-            intrinsics.put("@malloc", LLVMMallocFactory.getInstance());
-            intrinsics.put("@free", LLVMFreeFactory.getInstance());
-            intrinsics.put("@calloc", LLVMCallocFactory.getInstance());
+            intrinsifyCFunctions(intrinsics);
         }
         return intrinsics;
+    }
+
+    /**
+     * Intrinsifications of functions (e.g. the C function <code>sin</code>) especially make sense
+     * when Graal intrinsifies the corresponding Java method calls, e.g.
+     * {@link java.lang.Math#sin(double)}. Currently, the Graal intrinsifications for some
+     * trigonometric functions in {@link AMD64MathSubstitutions} are still twice as slow as their C
+     * counterparts. Hence, only the C standard library <code>sqrt</code> is intrinsified, since its
+     * Graal intrinsification in {@link StandardGraphBuilderPlugins} is implemented as efficient as
+     * the C function.
+     */
+    private static void intrinsifyCFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
+        intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
+
+        // other libraries
+        intrinsics.put("@malloc", LLVMMallocFactory.getInstance());
+        intrinsics.put("@free", LLVMFreeFactory.getInstance());
+        intrinsics.put("@calloc", LLVMCallocFactory.getInstance());
     }
 
 }

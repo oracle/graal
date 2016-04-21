@@ -40,96 +40,11 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMDoub
 public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMACos extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.acos(value);
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMASin extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.asin(value);
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMATan extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.atan(value);
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMCos extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.cos(value);
-        }
-
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMExp extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.exp(value);
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMLog extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.log(value);
-        }
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
     public abstract static class LLVMSqrt extends LLVMDoubleIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
             return Math.sqrt(value);
-        }
-
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMSin extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.sin(value);
-        }
-
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMTan extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.tan(value);
-        }
-
-    }
-
-    @NodeChild(type = LLVMDoubleNode.class)
-    public abstract static class LLVMTanh extends LLVMDoubleIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.tanh(value);
         }
 
     }
