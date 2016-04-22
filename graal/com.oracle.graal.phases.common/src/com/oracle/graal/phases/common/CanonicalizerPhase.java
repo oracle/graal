@@ -227,7 +227,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                             boolean improvedStamp = tryInferStamp(valueNode);
                             Constant constant = valueNode.stamp().asConstant();
                             if (constant != null && !(node instanceof ConstantNode)) {
-                                valueNode.replaceAtUsages(InputType.Value, ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph));
+                                ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph);
+                                Debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
+                                valueNode.replaceAtUsages(InputType.Value, stampConstant);
                                 GraphUtil.tryKillUnused(valueNode);
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization

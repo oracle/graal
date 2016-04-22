@@ -59,6 +59,19 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
     }
 
     @Override
+    public boolean isIdentityComparison() {
+        FloatStamp xStamp = (FloatStamp) x.stamp();
+        FloatStamp yStamp = (FloatStamp) y.stamp();
+        /*
+         * If both stamps have at most one 0.0 and it's the same 0.0 then this is an identity
+         * comparison. FloatStamp isn't careful about tracking the presence of -0.0 so assume that
+         * anything that includes 0.0 might include -0.0. So if either one is non-zero then it's an
+         * identity comparison.
+         */
+        return (!xStamp.contains(0.0) || !yStamp.contains(0.0));
+    }
+
+    @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode result = super.canonical(tool, forX, forY);
         if (result != this) {

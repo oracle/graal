@@ -28,7 +28,7 @@ import jdk.vm.ci.sparc.SPARC;
 
 import org.junit.Test;
 
-public class BC_drem extends BC_ddiv_drem_base {
+public class BC_drem extends BC_double_base {
 
     public static double test(double a, double b) {
         return a % b;

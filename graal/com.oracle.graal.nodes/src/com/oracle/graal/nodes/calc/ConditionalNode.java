@@ -150,7 +150,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                 }
             }
         }
-        if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
+        if (condition instanceof CompareNode && ((CompareNode) condition).isIdentityComparison()) {
             // optimize the pattern (x == y) ? x : y
             CompareNode compare = (CompareNode) condition;
             if ((compare.getX() == trueValue && compare.getY() == falseValue) || (compare.getX() == falseValue && compare.getY() == trueValue)) {

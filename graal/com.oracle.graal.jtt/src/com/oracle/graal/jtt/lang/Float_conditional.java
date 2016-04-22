@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.graal.jtt.bytecode;
+/*
+ */
+package com.oracle.graal.jtt.lang;
 
 import org.junit.Test;
 
-public class BC_fdiv extends BC_float_base {
+import com.oracle.graal.jtt.bytecode.BC_float_base;
 
-    public static float test(float a, float b) {
-        return a / b;
+public final class Float_conditional extends BC_float_base {
+
+    public static float test(float x, float y) {
+        if (x == y) {
+            return y;
+        }
+        return x;
+    }
+
+    public static float conditional(float x, float y) {
+        return x == y ? x : y;
     }
 
     @Test
-    public void fdiv() {
+    public void runEquals() throws Throwable {
         runTest("test", x, y);
     }
 
+    @Test
+    public void runConditional() throws Throwable {
+        runTest("conditional", x, y);
+    }
 }

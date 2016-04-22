@@ -151,6 +151,16 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         return null;
     }
 
+    /**
+     * Does this operation represent an identity check such that for x == y, x is exactly the same
+     * thing as y. This is generally true except for some floating point comparisons.
+     *
+     * @return true for identity comparisons
+     */
+    public boolean isIdentityComparison() {
+        return condition == Condition.EQ;
+    }
+
     protected abstract LogicNode duplicateModified(ValueNode newX, ValueNode newY);
 
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
