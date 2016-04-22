@@ -28,8 +28,8 @@ import com.oracle.graal.graph.NodeSourcePosition;
 
 /**
  * This provides a mapping between a half-open range of PCs in the generated code and a
- * {@link NodeSourcePosition} in the original program. Depending on the backend this information be
- * represented in different ways or not at all.
+ * {@link NodeSourcePosition} in the original program. Depending on the backend this information may
+ * be represented in different ways or not at all.
  */
 public final class SourceMapping {
 

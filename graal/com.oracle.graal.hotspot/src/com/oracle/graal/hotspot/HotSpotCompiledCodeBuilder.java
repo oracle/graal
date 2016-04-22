@@ -209,7 +209,7 @@ public class HotSpotCompiledCodeBuilder {
 
         /*
          * Translate the source mapping into appropriate info points. In HotSpot only one position
-         * can be really be represented and recording the end PC seems to give the best results and
+         * can really be represented and recording the end PC seems to give the best results and
          * corresponds with what C1 and C2 do.
          */
         for (SourceMapping source : target.getSourceMappings()) {
@@ -242,7 +242,7 @@ public class HotSpotCompiledCodeBuilder {
     }
 
     /**
-     * Verify that the captured receiver type agrees with the declared type of the method.
+     * Verifies that the captured receiver type agrees with the declared type of the method.
      */
     private static boolean verifySourcePositionReceivers(NodeSourcePosition start) {
         NodeSourcePosition pos = start;
