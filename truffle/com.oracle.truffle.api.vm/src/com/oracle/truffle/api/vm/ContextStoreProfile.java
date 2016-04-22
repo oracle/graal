@@ -59,7 +59,7 @@ final class ContextStoreProfile {
             store = dynamicStore;
         } else {
             // multiple context multiple threads
-            store = getThreadLocalStore();
+            store = getThreadLocalStore(threadStore);
         }
         return store;
     }
@@ -80,7 +80,7 @@ final class ContextStoreProfile {
         // fast path multiple threads
         ThreadLocal<ContextStore> tlstore = threadStore;
         if (tlstore != null) {
-            ContextStore currentstore = tlstore.get();
+            ContextStore currentstore = getThreadLocalStore(tlstore);
             if (currentstore != store) {
                 tlstore.set(store);
             }
@@ -133,8 +133,8 @@ final class ContextStoreProfile {
     }
 
     @TruffleBoundary
-    private ContextStore getThreadLocalStore() {
-        return threadStore.get();
+    private static ContextStore getThreadLocalStore(ThreadLocal<ContextStore> tls) {
+        return tls.get();
     }
 
 }
