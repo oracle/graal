@@ -155,8 +155,6 @@ meth public abstract !hasdefault java.lang.String version()
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
-cons protected init(com.oracle.truffle.api.source.SourceSection)
- anno 0 java.lang.Deprecated()
 innr public abstract interface static !annotation Child
 innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
@@ -184,12 +182,8 @@ meth public java.lang.String getDescription()
 meth public java.lang.String getLanguage()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
-meth public void assignSourceSection(com.oracle.truffle.api.source.SourceSection)
- anno 0 java.lang.Deprecated()
-meth public void clearSourceSection()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds ACCESSOR,GIL,IN_ATOMIC_BLOCK,nodeClass,parent,sourceSection
+hfds ACCESSOR,GIL,IN_ATOMIC_BLOCK,nodeClass,parent
 hcls AccessorNodes
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
