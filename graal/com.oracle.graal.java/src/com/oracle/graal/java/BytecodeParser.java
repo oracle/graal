@@ -371,11 +371,13 @@ import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.XorNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.extended.GuardedNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -400,7 +402,6 @@ import com.oracle.graal.nodes.java.NewMultiArrayNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
-import com.oracle.graal.nodes.java.TypeProfileNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -1126,12 +1127,16 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
-    protected LogicNode createInstanceOf(TypeReference type, ValueNode object, TypeProfileNode anchor) {
-        return InstanceOfNode.create(type, object, anchor);
+    protected LogicNode createInstanceOf(TypeReference type, ValueNode object) {
+        return InstanceOfNode.create(type, object);
     }
 
-    protected LogicNode createInstanceOfAllowNull(TypeReference type, ValueNode object, TypeProfileNode anchor) {
-        return InstanceOfNode.createAllowNull(type, object, anchor);
+    protected LogicNode createInstanceOf(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        return InstanceOfNode.create(type, object, profile, anchor);
+    }
+
+    protected LogicNode createInstanceOfAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        return InstanceOfNode.createAllowNull(type, object, profile, anchor);
     }
 
     protected ValueNode genConditional(ValueNode x) {
@@ -2188,7 +2193,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         ValueNode exception = frameState.stack[0];
                         FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                        append(new IfNode(graph.addOrUniqueWithInputs(createInstanceOf(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        append(new IfNode(graph.addOrUniqueWithInputs(createInstanceOf(checkedCatchType, exception)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
@@ -2207,7 +2212,7 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
             piNodeAnchor.setNext(catchSuccessor);
-            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception, null)), piNodeAnchor, nextDispatch, 0.5));
+            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception)), piNodeAnchor, nextDispatch, 0.5));
             assert ifNode.trueSuccessor() == piNodeAnchor;
             piNode.setGuard(ifNode.trueSuccessor());
         } else {
@@ -2982,7 +2987,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object));
                     if (typeCheck.isTautology()) {
                         castNode = object;
                     } else {
@@ -2993,11 +2998,11 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (castNode == null) {
-            TypeProfileNode anchor = TypeProfileNode.create(profile);
+            ValueAnchorNode anchor = new ValueAnchorNode(null);
             if (anchor != null) {
                 append(anchor);
             }
-            LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, anchor));
+            LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, profile, anchor));
             if (condition.isTautology()) {
                 castNode = object;
             } else {
@@ -3045,7 +3050,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
-                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object));
                     if (!typeCheck.isTautology()) {
                         append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
                     }
@@ -3054,11 +3059,11 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (instanceOfNode == null) {
-            TypeProfileNode anchor = TypeProfileNode.create(profile);
+            ValueAnchorNode anchor = new ValueAnchorNode(null);
             if (anchor != null) {
                 append(anchor);
             }
-            instanceOfNode = createInstanceOf(resolvedType, object, anchor);
+            instanceOfNode = createInstanceOf(resolvedType, object, profile, anchor);
         }
         frameState.push(JavaKind.Int, append(genConditional(genUnique(instanceOfNode))));
     }

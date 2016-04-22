@@ -93,9 +93,9 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
                 } else {
                     TypeReference type = TypeReference.createTrusted(assumptions, t);
                     if (allowNull) {
-                        return InstanceOfNode.createAllowNull(type, forObject, null);
+                        return InstanceOfNode.createAllowNull(type, forObject, null, null);
                     } else {
-                        return InstanceOfNode.create(type, forObject, null);
+                        return InstanceOfNode.create(type, forObject);
                     }
                 }
             }

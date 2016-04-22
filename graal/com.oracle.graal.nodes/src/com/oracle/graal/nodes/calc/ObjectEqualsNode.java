@@ -80,7 +80,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             ValueNode object = getClassNode.getObject();
             assert ((ObjectStamp) object.stamp()).nonNull();
             if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
-                return InstanceOfNode.create(TypeReference.createExactTrusted(type), object, null);
+                return InstanceOfNode.create(TypeReference.createExactTrusted(type), object);
             }
             return LogicConstantNode.forBoolean(false);
         }

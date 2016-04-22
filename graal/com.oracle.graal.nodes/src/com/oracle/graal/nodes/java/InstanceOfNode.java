@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.Virtualizable;
@@ -53,36 +54,43 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     protected final ObjectStamp checkedStamp;
-    @OptionalInput(InputType.Association) protected TypeProfileNode profile;
 
-    private InstanceOfNode(ObjectStamp checkedStamp, ValueNode object, TypeProfileNode profile) {
-        this(TYPE, checkedStamp, object, profile);
+    private JavaTypeProfile profile;
+    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
+
+    private InstanceOfNode(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        this(TYPE, checkedStamp, object, profile, anchor);
     }
 
-    protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ObjectStamp checkedStamp, ValueNode object, TypeProfileNode profile) {
+    protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         super(c, object);
         this.checkedStamp = checkedStamp;
         this.profile = profile;
+        this.anchor = anchor;
         assert checkedStamp != null;
     }
 
-    public static LogicNode createAllowNull(TypeReference type, ValueNode object, TypeProfileNode profile) {
+    public static LogicNode createAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         if (StampTool.isPointerNonNull(object)) {
-            return create(type, object, profile);
+            return create(type, object, profile, anchor);
         }
-        return createHelper(StampFactory.object(type), object, profile);
+        return createHelper(StampFactory.object(type), object, profile, anchor);
     }
 
-    public static LogicNode create(TypeReference type, ValueNode object, TypeProfileNode anchor) {
-        return createHelper(StampFactory.objectNonNull(type), object, anchor);
+    public static LogicNode create(TypeReference type, ValueNode object) {
+        return create(type, object, null, null);
     }
 
-    public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, TypeProfileNode profile) {
+    public static LogicNode create(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        return createHelper(StampFactory.objectNonNull(type), object, profile, anchor);
+    }
+
+    public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         LogicNode synonym = findSynonym(checkedStamp, object);
         if (synonym != null) {
             return synonym;
         } else {
-            return new InstanceOfNode(checkedStamp, object, profile);
+            return new InstanceOfNode(checkedStamp, object, profile, anchor);
         }
     }
 
@@ -136,7 +144,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public JavaTypeProfile profile() {
-        return (profile == null ? null : profile.getProfile());
+        return profile;
     }
 
     @Override
@@ -183,10 +191,10 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public void setProfile(JavaTypeProfile typeProfile) {
-        profile.setProfile(typeProfile);
+        this.profile = typeProfile;
     }
 
-    public TypeProfileNode getProfile() {
-        return profile;
+    public AnchoringNode getAnchor() {
+        return anchor;
     }
 }
