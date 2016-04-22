@@ -886,8 +886,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault eager} mode to
-     * produce a graph.
+     * Parses a Java method with {@linkplain GraphBuilderConfiguration#withEagerResolving(boolean)}
+     * set to true to produce a graph.
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
@@ -896,11 +896,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault eager} mode to
-     * produce a graph.
+     * Parses a Java method with {@linkplain GraphBuilderConfiguration#withEagerResolving(boolean)}
+     * set to true to produce a graph.
      */
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault(getDefaultGraphBuilderPlugins())), allowAssumptions);
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true)), allowAssumptions);
     }
 
     /**

@@ -256,10 +256,6 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
-    public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
-        return getDefault(plugins).withEagerResolving(true);
-    }
-
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
         return new GraphBuilderConfiguration(true, BytecodeExceptionMode.OmitAll, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }

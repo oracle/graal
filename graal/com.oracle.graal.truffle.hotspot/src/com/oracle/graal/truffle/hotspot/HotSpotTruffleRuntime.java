@@ -248,7 +248,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
         HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(plugins).withNodeSourcePosition(infoPoints);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withNodeSourcePosition(infoPoints);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);

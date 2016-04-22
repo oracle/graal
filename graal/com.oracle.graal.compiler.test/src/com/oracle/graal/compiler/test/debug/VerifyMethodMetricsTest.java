@@ -247,7 +247,8 @@ public class VerifyMethodMetricsTest {
         Providers providers = rt.getHostBackend().getProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
+        Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
         for (Method m : c.getDeclaredMethods()) {
