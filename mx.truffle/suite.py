@@ -423,11 +423,9 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.sl",
-        "com.oracle.truffle.sl.test"
       ],
       "exclude" : [
         "mx:JUNIT",
-        "mx:JMH"
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -437,6 +435,26 @@ suite = {
       "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_SL_TEST" : {
+      "subDir" : "truffle",
+      "javaCompliance" : "1.7",
+      "dependencies" : [
+        "com.oracle.truffle.sl.test"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+        "mx:JMH"
+      ],
+      "distDependencies" : [
+          "TRUFFLE_API",
+          "TRUFFLE_TCK",
+          "TRUFFLE_DSL_PROCESSOR",
+          "TRUFFLE_SL"
+      ],
+      "license" : "UPL",
+      "maven" : False
     },
 
      "TRUFFLE_DEBUG" : {
