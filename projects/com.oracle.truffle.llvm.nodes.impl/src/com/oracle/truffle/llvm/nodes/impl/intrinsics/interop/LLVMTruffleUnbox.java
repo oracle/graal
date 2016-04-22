@@ -52,7 +52,7 @@ public final class LLVMTruffleUnbox {
 
     private static Object doUnbox(VirtualFrame frame, Node foreignUnbox, LLVMTruffleObject value, ToLLVMNode toLLVM, Class<?> expectedType) {
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, frame, value.getObject());

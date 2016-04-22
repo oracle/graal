@@ -49,7 +49,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             return ForeignAccess.sendIsBoxed(foreignIsBoxed, frame, value.getObject());
@@ -63,7 +63,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             return ForeignAccess.sendIsExecutable(foreignIsExecutable, frame, value.getObject());
@@ -77,7 +77,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             return ForeignAccess.sendIsNull(foreignIsNull, frame, value.getObject());
@@ -91,7 +91,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             return ForeignAccess.sendHasSize(foreignHasSize, frame, value.getObject());

@@ -56,7 +56,7 @@ public final class LLVMTruffleRead {
     private static Object doRead(VirtualFrame frame, Node foreignRead, LLVMTruffleObject value, LLVMAddress id, ToLLVMNode toLLVM, Class<?> expectedType) {
         String name = LLVMTruffleIntrinsicUtil.readString(id);
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value.getObject(), name);
@@ -68,7 +68,7 @@ public final class LLVMTruffleRead {
 
     private static Object doReadIdx(VirtualFrame frame, Node foreignRead, LLVMTruffleObject value, int id, ToLLVMNode toLLVM, Class<?> expectedType) {
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value.getObject(), id);

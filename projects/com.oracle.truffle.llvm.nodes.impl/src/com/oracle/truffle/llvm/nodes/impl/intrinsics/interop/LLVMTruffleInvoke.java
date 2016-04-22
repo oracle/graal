@@ -66,7 +66,7 @@ public final class LLVMTruffleInvoke {
             args[j] = frame.getArguments()[i];
         }
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             Object rawValue = ForeignAccess.sendInvoke(foreignInvoke, frame, value.getObject(), name, args);

@@ -63,7 +63,7 @@ public final class LLVMTruffleExecute {
             args[j] = frame.getArguments()[i];
         }
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             Object rawValue = ForeignAccess.sendExecute(foreignExecute, frame, value.getObject(), args);

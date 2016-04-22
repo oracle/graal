@@ -31,14 +31,35 @@ package com.oracle.truffle.llvm.nodes.impl.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 @NodeChild(type = LLVMAddressNode.class)
 public abstract class LLVMI32LoadNode extends LLVMI32Node {
+    @Child protected Node foreignRead = Message.READ.createNode();
+    @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
+    protected static final Class<?> type = int.class;
+
+    protected int doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+        try {
+            int index = (int) (addr.getOffset() / LLVMI32Node.BYTE_SIZE);
+            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
+            return (int) toLLVM.convert(frame, value, type);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     public abstract static class LLVMI32DirectLoadNode extends LLVMI32LoadNode {
 
@@ -46,6 +67,12 @@ public abstract class LLVMI32LoadNode extends LLVMI32Node {
         public int executeI32(LLVMAddress addr) {
             return LLVMMemory.getI32(addr);
         }
+
+        @Specialization
+        public int executeI32(VirtualFrame frame, LLVMTruffleObject addr) {
+            return doForeignAccess(frame, addr);
+        }
+
     }
 
     public abstract static class LLVMI32ProfilingLoadNode extends LLVMI32LoadNode {
@@ -56,6 +83,11 @@ public abstract class LLVMI32LoadNode extends LLVMI32Node {
         public int executeI32(LLVMAddress addr) {
             int val = LLVMMemory.getI32(addr);
             return profile.profile(val);
+        }
+
+        @Specialization
+        public int executeI32(VirtualFrame frame, LLVMTruffleObject addr) {
+            return doForeignAccess(frame, addr);
         }
 
     }

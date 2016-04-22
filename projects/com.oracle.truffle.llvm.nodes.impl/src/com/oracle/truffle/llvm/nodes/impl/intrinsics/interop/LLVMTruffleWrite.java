@@ -55,7 +55,7 @@ public final class LLVMTruffleWrite {
     private static void doWrite(VirtualFrame frame, Node foreignWrite, LLVMTruffleObject value, LLVMAddress id, Object v) {
         String name = LLVMTruffleIntrinsicUtil.readString(id);
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             ForeignAccess.sendWrite(foreignWrite, frame, value.getObject(), name, v);
@@ -66,7 +66,7 @@ public final class LLVMTruffleWrite {
 
     private static void doWriteIdx(VirtualFrame frame, Node foreignWrite, LLVMTruffleObject value, int id, Object v) {
         try {
-            if (value.getIndex() != 0 || value.getName() != null) {
+            if (value.getOffset() != 0 || value.getName() != null) {
                 throw new IllegalAccessError("Pointee must be unmodified");
             }
             ForeignAccess.sendWrite(foreignWrite, frame, value.getObject(), id, v);
