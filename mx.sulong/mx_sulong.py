@@ -742,6 +742,19 @@ def getBitcodeLibrariesOption():
                 libraries.append(absBitcodeFile)
     return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
 
+def clangformatcheck(args=None):
+    """ Performs a format check on the include/truffle.h file """
+    return checkCFile(_suite.dir + '/include/truffle.h')
+
+def checkCFile(targetFile):
+    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={ColumnLimit: 150}', targetFile]).splitlines()
+    with open(targetFile) as f:
+        originalContent = f.read().splitlines()
+    if not formattedContent == originalContent:
+        print '\n'.join(formattedContent)
+        print '\nplease fix the formatting in', targetFile, 'to the format given above'
+        exit(-1)
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -777,5 +790,6 @@ mx.update_commands(_suite, {
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
     'su-gitlogcheck' : [logCheck, ''],
-    'su-mdlcheck' : [mdlCheck, '']
+    'su-mdlcheck' : [mdlCheck, ''],
+    'su-clangformatcheck' : [clangformatcheck, '']
 })
