@@ -257,7 +257,7 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getInfopointDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
@@ -273,7 +273,7 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, true, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, true, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     /**
