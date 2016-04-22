@@ -926,7 +926,7 @@ public class GraphDecoder {
             }
             int orderId = readOrderId(methodScope);
             Node value = ensureNodeCreated(methodScope, loopScope, orderId);
-            Edges.initializeNode(node, edges.getOffsets(), index, value);
+            edges.initializeNode(node, index, value);
             if (updateUsages && value != null && !value.isDeleted()) {
                 edges.update(node, null, value);
 
@@ -939,7 +939,7 @@ public class GraphDecoder {
             int size = methodScope.reader.getSVInt();
             if (size != -1) {
                 NodeList<Node> nodeList = new NodeInputList<>(node, size);
-                Edges.initializeList(node, edges.getOffsets(), index, nodeList);
+                edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
                     Node value = ensureNodeCreated(methodScope, loopScope, orderId);
@@ -1051,7 +1051,7 @@ public class GraphDecoder {
             }
             int orderId = readOrderId(methodScope);
             Node value = makeStubNode(methodScope, loopScope, orderId);
-            Edges.initializeNode(node, edges.getOffsets(), index, value);
+            edges.initializeNode(node, index, value);
             if (updatePredecessors && value != null) {
                 edges.update(node, null, value);
             }
@@ -1063,7 +1063,7 @@ public class GraphDecoder {
             int size = methodScope.reader.getSVInt();
             if (size != -1) {
                 NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
-                Edges.initializeList(node, edges.getOffsets(), index, nodeList);
+                edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
                     Node value = makeStubNode(methodScope, loopScope, orderId);
@@ -1109,7 +1109,7 @@ public class GraphDecoder {
                 assert index == edges.getCount() - 1 : "PhiNode has one variable size input (the values)";
                 if (decode) {
                     /* The values must not be null, so initialize with an empty list. */
-                    Edges.initializeList(node, edges.getOffsets(), index, new NodeInputList<>(node));
+                    edges.initializeList(node, index, new NodeInputList<>(node));
                 }
             }
             return true;
@@ -1330,7 +1330,7 @@ public class GraphDecoder {
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 * 
+                 *
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does
