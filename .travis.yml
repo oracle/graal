@@ -14,6 +14,7 @@ addons:
     - gfortran-4.6
     - libgmp3-dev
     - llvm-3.3
+    - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
 install:
@@ -34,6 +35,7 @@ branches:
   only:
     - master
 env:
+  - TEST_COMMAND='mx/mx su-clangformatcheck'
   - TEST_COMMAND='mx/mx eclipseformat --primary'
   - TEST_COMMAND='mx/mx su-mdlcheck'
   - TEST_COMMAND='mx/mx su-gitlogcheck'
