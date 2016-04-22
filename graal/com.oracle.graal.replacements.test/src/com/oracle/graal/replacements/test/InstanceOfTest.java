@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.TypeProfileNode;
+import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 /**
@@ -55,7 +55,7 @@ public class InstanceOfTest extends TypeCheckTest {
 
     @Override
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
-        TypeProfileNode ion = graph.getNodes().filter(TypeProfileNode.class).first();
+        InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
             ion.setProfile(profile);
         }
