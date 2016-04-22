@@ -256,24 +256,12 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
-    public static GraphBuilderConfiguration getInfopointDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
-    }
-
     public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
-    }
-
-    public static GraphBuilderConfiguration getInfopointEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return getDefault(plugins).withEagerResolving(true);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
         return new GraphBuilderConfiguration(true, BytecodeExceptionMode.OmitAll, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
-    }
-
-    public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, true, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     /**
