@@ -2,6 +2,7 @@
 #Version 
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.interop.AcceptMessage
+ anno 0 java.lang.Deprecated()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
@@ -15,6 +16,11 @@ meth public int getExpectedArity()
 meth public static java.lang.RuntimeException raise(int,int)
 supr com.oracle.truffle.api.interop.InteropException
 hfds actualArity,expectedArity,serialVersionUID
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.interop.CanResolve
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public final com.oracle.truffle.api.interop.ForeignAccess
 innr public abstract interface static Factory
@@ -31,6 +37,7 @@ meth public static boolean sendIsBoxed(com.oracle.truffle.api.nodes.Node,com.ora
 meth public static boolean sendIsExecutable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsNull(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory)
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory10,com.oracle.truffle.api.nodes.RootNode)
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang.Class<? extends com.oracle.truffle.api.interop.TruffleObject>,com.oracle.truffle.api.interop.ForeignAccess$Factory10)
 meth public static com.oracle.truffle.api.interop.TruffleObject getReceiver(com.oracle.truffle.api.frame.Frame)
 meth public static java.lang.Object sendGetSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -39,7 +46,7 @@ meth public static java.lang.Object sendUnbox(com.oracle.truffle.api.nodes.Node,
 meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
-hfds factory,initThread
+hfds factory,initThread,languageCheck
 hcls DelegatingFactory
 
 CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory
@@ -86,6 +93,19 @@ meth public static com.oracle.truffle.api.interop.Message valueOf(java.lang.Stri
 meth public static java.lang.String toString(com.oracle.truffle.api.interop.Message)
 supr java.lang.Object
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.interop.MessageResolution
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> language()
+meth public abstract java.lang.Class<?> receiverType()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.interop.Resolve
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String message()
+
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 meth public abstract com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
 
@@ -109,6 +129,12 @@ supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,suppliedValues
 
 CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)

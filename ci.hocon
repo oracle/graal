@@ -31,9 +31,21 @@ common : {
   timelimit : "30:00"
 }
 
+deploy-dry-run : ${common} {
+  capabilities : [linux, amd64, gate]
+  name : gate-deploy-dry-run
+  setup : [
+     ["mx", "--strict-compliance", "build"]
+  ]
+  run : [
+     ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  ]
+}
+
 
 builds = [
   ${common} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
   ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
   ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
+  ${deploy-dry-run}
 ]

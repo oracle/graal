@@ -22,10 +22,13 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.profiles.SeparateClassloaderTestRunner;
 import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(SeparateClassloaderTestRunner.class)
 public class ContextStoreProfileTest {
     @Test
     public void switchFromConstantToMultipleThreads() throws Exception {

@@ -2,6 +2,29 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.13
+22-Apr-2016
+* `AcceptMessage` has been deprecated, replaced by
+[MessageResolution](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/interop/MessageResolution.html) &
+[co](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/interop/Resolve.html). annotations.
+Now all message-oriented annotations need to be placed in a single source file.
+That simplifies readability as well as improves incremental compilation in certain systems.
+* Deprecated `Node.assignSourceSection` removed. This reduces the amount of memory
+occupied by [Node](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/Node.html)
+instance.
+* `PolyglotEngine.Value.execute` is now as fast as direct `CallTarget.call`.
+Using the [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
+abstraction now comes with no overhead. Just [JPDA debuggers](http://wiki.apidesign.org/wiki/Truffle#Debugging_from_NetBeans)
+need to
+[turn debugging on](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html#find-com.oracle.truffle.api.vm.PolyglotEngine-)
+explicitly.
+* Sharing of efficient code/AST between multiple instances of
+[PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
+is possible. Using more than one `PolyglotEngine` resulted in code de-opt previously.
+That isn't the case anymore. Future version of the API will provide explicit control
+over the set of engines that share the code.
+* Simple language JAR no longer contains test classes. There is a separate simple language tests distribution.
+
 ## Version 0.12
 * The Instrumentation Framework has been revised and has new APIs that are integrated into the PolyglotEngine.
 * Instrumentation support required of language implementations is specified as abstract methods on TruffleLanguage.

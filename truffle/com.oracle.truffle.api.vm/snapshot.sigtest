@@ -15,7 +15,7 @@ supr java.io.IOException
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine
 innr public Builder
 innr public Language
-innr public Value
+innr public abstract Value
 innr public final Instrument
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value eval(com.oracle.truffle.api.source.Source) throws java.io.IOException
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value findGlobalSymbol(java.lang.String)
@@ -26,8 +26,8 @@ meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder buildNew()
 meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder newBuilder()
 meth public void dispose()
 supr java.lang.Object
-hfds JAVA_INTEROP_ENABLED,LOG,SPI,config,disposed,err,executor,globals,handlers,in,initThread,instrumentationHandler,instrumenter,instruments,langs,out
-hcls SPIAccessor
+hfds JAVA_INTEROP_ENABLED,LOG,SPI,config,context,debugger,disposed,err,executor,globals,handlers,in,initThread,instrumentationHandler,instrumenter,instruments,langs,out
+hcls Access,DirectValue,ExecutorValue,SPIAccessor
 
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Builder
  outer com.oracle.truffle.api.vm.PolyglotEngine
@@ -65,16 +65,15 @@ meth public java.util.Set<java.lang.String> getMimeTypes()
 supr java.lang.Object
 hfds cache,env,info
 
-CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Value
+CLSS public abstract com.oracle.truffle.api.vm.PolyglotEngine$Value
  outer com.oracle.truffle.api.vm.PolyglotEngine
 meth public !varargs com.oracle.truffle.api.vm.PolyglotEngine$Value execute(java.lang.Object[]) throws java.io.IOException
 meth public !varargs com.oracle.truffle.api.vm.PolyglotEngine$Value invoke(java.lang.Object,java.lang.Object[]) throws java.io.IOException
  anno 0 java.lang.Deprecated()
 meth public <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>) throws java.io.IOException
 meth public java.lang.Object get() throws java.io.IOException
-meth public java.lang.String toString()
 supr java.lang.Object
-hfds compute,language,target
+hfds language,target
 
 CLSS public java.io.IOException
 cons public init()
