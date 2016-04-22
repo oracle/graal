@@ -62,6 +62,9 @@ def executeGate():
         with Task('TestPolglot', tasks) as t:
             if t: runPolyglotTestCases()
     with VM('server', 'product'):
+        with Task('TestInterop', tasks) as t:
+            if t: runInteropTestCases()
+    with VM('server', 'product'):
         with Task('TestSulong', tasks) as t:
             if t: runTruffleTestCases()
     with VM('server', 'product'):
@@ -87,6 +90,9 @@ def travis1(args=None):
     with VM('server', 'product'):
         with Task('TestPolglot', tasks) as t:
             if t: runPolyglotTestCases()
+    with VM('server', 'product'):
+        with Task('TestInterop', tasks) as t:
+            if t: runInteropTestCases()
     with VM('server', 'product'):
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
@@ -424,6 +430,7 @@ def runTests(args=None):
     runTruffleTestCases()
     runTypeTestCases()
     runPolyglotTestCases()
+    runInteropTestCases()
     runBenchmarkTestCases()
 
 def runBenchmarkTestCases(args=None):
@@ -473,6 +480,11 @@ def runPolyglotTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
+
+def runInteropTestCases(args=None):
+    """runs the interop test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
 
 def getCommonOptions(lib_args=None):
     return [
@@ -751,6 +763,7 @@ mx.update_commands(_suite, {
     'su-tests-nwcc' : [runNWCCTestCases, ''],
     'su-tests-types' : [runTypeTestCases, ''],
     'su-tests-polyglot' : [runPolyglotTestCases, ''],
+    'su-tests-interop' : [runInteropTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],

@@ -27,58 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.types.LLVMAddress;
 
-public interface LLVMIntrinsic {
+@NodeChild(type = LLVMAddressNode.class)
+public abstract class LLVMTruffleImport extends LLVMAddressIntrinsic {
 
-    @GenerateNodeFactory
-    abstract class LLVMVoidIntrinsic extends LLVMNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMAddressIntrinsic extends LLVMAddressNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMFloatIntrinsic extends LLVMFloatNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMDoubleIntrinsic extends LLVMDoubleNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMBooleanIntrinsic extends LLVMI1Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI8Intrinsic extends LLVMI8Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI32Intrinsic extends LLVMI32Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI64Intrinsic extends LLVMI64Node implements LLVMIntrinsic {
-
+    @Specialization
+    public Object executeIntrinsic(LLVMAddress value) {
+        String id = LLVMTruffleIntrinsicUtil.readString(value);
+        Object foreignObject = LLVMLanguage.INSTANCE.getEnvironment().importSymbol(id);
+        return foreignObject;
     }
 
 }

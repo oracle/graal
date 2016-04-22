@@ -27,58 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
 
-public interface LLVMIntrinsic {
+@NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+public abstract class LLVMTruffleGetSize extends LLVMI32Intrinsic {
 
-    @GenerateNodeFactory
-    abstract class LLVMVoidIntrinsic extends LLVMNode implements LLVMIntrinsic {
-
+    private Object getSize(VirtualFrame frame, TruffleObject value) {
+        try {
+            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value);
+            return toLLVM.convert(frame, rawValue, expectedType);
+        } catch (UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-    @GenerateNodeFactory
-    abstract class LLVMAddressIntrinsic extends LLVMAddressNode implements LLVMIntrinsic {
+    @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
+    @Child private ToLLVMNode toLLVM = new ToLLVMNode();
 
-    }
+    private static final Class<?> expectedType = int.class;
 
-    @GenerateNodeFactory
-    abstract class LLVMFloatIntrinsic extends LLVMFloatNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMDoubleIntrinsic extends LLVMDoubleNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMBooleanIntrinsic extends LLVMI1Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI8Intrinsic extends LLVMI8Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI32Intrinsic extends LLVMI32Node implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI64Intrinsic extends LLVMI64Node implements LLVMIntrinsic {
-
+    @Specialization
+    public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+        return (int) getSize(frame, value);
     }
 
 }
