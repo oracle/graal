@@ -35,6 +35,7 @@ import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +48,9 @@ import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.debug.internal.CounterImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Scope based debugging facility.
@@ -78,7 +82,11 @@ public class Debug {
         public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
         public boolean enableUnscopedCounters;
+        public boolean enableUnscopedMethodMetrics;
         public boolean enableUnscopedMemUseTrackers;
+        public boolean interceptCount;
+        public boolean interceptTime;
+        public boolean interceptMem;
     }
 
     @SuppressWarnings("all")
@@ -171,6 +179,10 @@ public class Debug {
         return ENABLED && DebugScope.getInstance().isLogEnabled(logLevel);
     }
 
+    public static boolean isMethodMeterEnabled() {
+        return ENABLED && DebugScope.getInstance().isMethodMeterEnabled();
+    }
+
     @SuppressWarnings("unused")
     public static Runnable decorateDebugRoot(Runnable runnable, String name, DebugConfig config) {
         return runnable;
@@ -261,6 +273,14 @@ public class Debug {
     public static Scope scope(Object name) {
         if (ENABLED) {
             return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null);
+        } else {
+            return null;
+        }
+    }
+
+    public static Scope methodMetricsScope(Object name, DebugScope.ExtraInfo metaInfo, boolean newId, Object... context) {
+        if (ENABLED) {
+            return DebugScope.getInstance().enhanceWithExtraInfo(convertFormatArg(name).toString(), metaInfo, newId, context);
         } else {
             return null;
         }
@@ -1084,7 +1104,7 @@ public class Debug {
 
     private static DebugMemUseTracker createMemUseTracker(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
-        return new MemUseTrackerImpl(name, !isUnconditionalMemUseTrackingEnabled);
+        return DebugValueFactory.createMemUseTracker(name, !isUnconditionalMemUseTrackingEnabled);
     }
 
     /**
@@ -1102,6 +1122,17 @@ public class Debug {
             return VOID_COUNTER;
         }
         return createCounter("%s", name, null);
+    }
+
+    /**
+     * Creates a {@link DebugMethodMetrics metric} that is enabled iff debugging is
+     * {@link #isEnabled() enabled}.
+     */
+    public static DebugMethodMetrics methodMetrics(ResolvedJavaMethod method) {
+        if (isMethodMeterEnabled() && method != null) {
+            return MethodMetricsImpl.getMethodMetrics(method);
+        }
+        return VOID_MM;
     }
 
     public static String applyFormattingFlagsAndWidth(String s, int flags, int width) {
@@ -1180,7 +1211,7 @@ public class Debug {
         if (!ENABLED && conditional) {
             return VOID_COUNTER;
         }
-        return new CounterImpl(name, conditional);
+        return DebugValueFactory.createCounter(name, conditional);
     }
 
     /**
@@ -1207,11 +1238,12 @@ public class Debug {
     }
 
     public static DebugConfig silentConfig() {
-        return fixedConfig(0, 0, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
+        return fixedConfig(0, 0, false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
     }
 
     public static DebugConfig fixedConfig(final int logLevel, final int dumpLevel, final boolean isCountEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
-                    final boolean isVerifyEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers, final PrintStream output) {
+                    final boolean isVerifyEnabled, final boolean isMMEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers,
+                    final PrintStream output) {
         return new DebugConfig() {
 
             @Override
@@ -1252,6 +1284,11 @@ public class Debug {
             @Override
             public boolean isVerifyEnabledForMethod() {
                 return isVerifyEnabled;
+            }
+
+            @Override
+            public boolean isMethodMeterEnabled() {
+                return isMMEnabled;
             }
 
             @Override
@@ -1313,6 +1350,67 @@ public class Debug {
         public long getCurrentValue() {
             return 0L;
         }
+    };
+
+    private static final DebugMethodMetrics VOID_MM = new DebugMethodMetrics() {
+
+        @Override
+        public void addToMetric(long value, String metricName) {
+        }
+
+        @Override
+        public void addToMetric(long value, String format, Object arg1) {
+        }
+
+        @Override
+        public void addToMetric(long value, String format, Object arg1, Object arg2) {
+        }
+
+        @Override
+        public void addToMetric(long value, String format, Object arg1, Object arg2, Object arg3) {
+        }
+
+        @Override
+        public void incrementMetric(String metricName) {
+        }
+
+        @Override
+        public void incrementMetric(String format, Object arg1) {
+        }
+
+        @Override
+        public void incrementMetric(String format, Object arg1, Object arg2) {
+        }
+
+        @Override
+        public void incrementMetric(String format, Object arg1, Object arg2, Object arg3) {
+        }
+
+        @Override
+        public long getCurrentMetricValue(String metricName) {
+            return 0;
+        }
+
+        @Override
+        public long getCurrentMetricValue(String format, Object arg1) {
+            return 0;
+        }
+
+        @Override
+        public long getCurrentMetricValue(String format, Object arg1, Object arg2) {
+            return 0;
+        }
+
+        @Override
+        public long getCurrentMetricValue(String format, Object arg1, Object arg2, Object arg3) {
+            return 0;
+        }
+
+        @Override
+        public ResolvedJavaMethod getMethod() {
+            return null;
+        }
+
     };
 
     private static final DebugMemUseTracker VOID_MEM_USE_TRACKER = new DebugMemUseTracker() {
@@ -1379,6 +1477,43 @@ public class Debug {
         enabledCounters = counters;
         enabledTimers = timers;
         isUnconditionalMemUseTrackingEnabled = params.enableUnscopedMemUseTrackers;
+        DebugValueFactory = initDebugValueFactory();
+    }
+
+    private static DebugValueFactory initDebugValueFactory() {
+        return new DebugValueFactory() {
+
+            @Override
+            public DebugTimer createTimer(String name, boolean conditional) {
+                return new TimerImpl(name, conditional, params.interceptTime);
+            }
+
+            @Override
+            public DebugCounter createCounter(String name, boolean conditional) {
+                return CounterImpl.create(name, conditional, params.interceptCount);
+            }
+
+            @Override
+            public DebugMethodMetrics createMethodMetrics(ResolvedJavaMethod method) {
+                return MethodMetricsImpl.getMethodMetrics(method);
+            }
+
+            @Override
+            public DebugMemUseTracker createMemUseTracker(String name, boolean conditional) {
+                return new MemUseTrackerImpl(name, conditional, params.interceptMem);
+            }
+        };
+    }
+
+    private static DebugValueFactory DebugValueFactory;
+
+    public static void setDebugValueFactory(DebugValueFactory factory) {
+        Objects.requireNonNull(factory);
+        DebugValueFactory = factory;
+    }
+
+    public static DebugValueFactory getDebugValueFactory() {
+        return DebugValueFactory;
     }
 
     private static boolean findMatch(Set<String> haystack, Set<String> haystackSubstrings, String needle) {
@@ -1409,6 +1544,11 @@ public class Debug {
 
     public static boolean isMethodFilteringEnabled() {
         return params.enableMethodFilter;
+    }
+
+    public static boolean areUnconditionalMethodMetricsEnabled() {
+        // we do not collect mm substrings
+        return params.enableUnscopedMethodMetrics;
     }
 
     protected static void parseCounterAndTimerSystemProperties(Set<String> counters, Set<String> timers, Set<String> countersSubstrings, Set<String> timersSubstrings) {
@@ -1540,7 +1680,7 @@ public class Debug {
         if (!ENABLED && conditional) {
             return VOID_TIMER;
         }
-        return new TimerImpl(name, conditional);
+        return DebugValueFactory.createTimer(name, conditional);
     }
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {

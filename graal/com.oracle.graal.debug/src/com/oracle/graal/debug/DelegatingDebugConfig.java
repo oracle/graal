@@ -61,6 +61,10 @@ public class DelegatingDebugConfig implements DebugConfig {
          */
         COUNT,
         /**
+         * @see Debug#isMethodMeterEnabled()
+         */
+        METHOD_METRICS,
+        /**
          * @see Debug#isMemUseTrackingEnabled()
          */
         TRACK_MEM_USE,
@@ -209,6 +213,15 @@ public class DelegatingDebugConfig implements DebugConfig {
     }
 
     @Override
+    public boolean isMethodMeterEnabled() {
+        Boolean fs = featureState.get(Feature.METHOD_METRICS);
+        if (fs == null) {
+            return delegate.isMethodMeterEnabled();
+        }
+        return fs.booleanValue();
+    }
+
+    @Override
     public RuntimeException interceptException(Throwable e) {
         Boolean fs = featureState.get(Feature.INTERCEPT);
         if (fs == null || fs) {
@@ -241,4 +254,5 @@ public class DelegatingDebugConfig implements DebugConfig {
     public void removeFromContext(Object o) {
         delegate.removeFromContext(o);
     }
+
 }

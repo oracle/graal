@@ -25,6 +25,7 @@ package com.oracle.graal.debug.internal;
 import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;
@@ -86,6 +87,15 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
+    /**
+     * Interface for an additional information object per scope. The information object will be
+     * given to child scopes, but can be explicitly set with
+     * {@link DebugScope#enhanceWithExtraInfo(CharSequence, ExtraInfo, boolean, Object...)}
+     */
+    public interface ExtraInfo {
+
+    }
+
     private static final ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
     private static final ThreadLocal<DebugScope> lastClosedTL = new ThreadLocal<>();
     private static final ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
@@ -104,12 +114,18 @@ public final class DebugScope implements Debug.Scope {
     private String qualifiedName;
     private final String unqualifiedName;
 
+    private final ExtraInfo extraInfo;
+
+    private static final AtomicLong uniqueScopeId = new AtomicLong();
+    private final long scopeId;
+
     private static final char SCOPE_SEP = '.';
 
     private boolean countEnabled;
     private boolean timeEnabled;
     private boolean memUseTrackingEnabled;
     private boolean verifyEnabled;
+    private boolean methodMetricsEnabled;
 
     private int currentDumpLevel;
     private int currentLogLevel;
@@ -134,17 +150,19 @@ public final class DebugScope implements Debug.Scope {
     static final Object[] EMPTY_CONTEXT = new Object[0];
 
     private DebugScope(Thread thread) {
-        this(thread.getName(), null, false);
+        this(thread.getName(), null, uniqueScopeId.incrementAndGet(), null, false);
         computeValueMap(thread.getName());
         DebugValueMap.registerTopLevel(getValueMap());
     }
 
-    private DebugScope(String unqualifiedName, DebugScope parent, boolean sandbox, Object... context) {
+    private DebugScope(String unqualifiedName, DebugScope parent, long scopeId, ExtraInfo metaInfo, boolean sandbox, Object... context) {
         this.parent = parent;
         this.sandbox = sandbox;
         this.parentConfig = getConfig();
         this.context = context;
+        this.scopeId = scopeId;
         this.unqualifiedName = unqualifiedName;
+        this.extraInfo = metaInfo;
         if (parent != null) {
             logScopeName = !unqualifiedName.equals("");
         } else {
@@ -250,6 +268,10 @@ public final class DebugScope implements Debug.Scope {
         return timeEnabled;
     }
 
+    public boolean isMethodMeterEnabled() {
+        return methodMetricsEnabled;
+    }
+
     public boolean isMemUseTrackingEnabled() {
         return memUseTrackingEnabled;
     }
@@ -258,6 +280,14 @@ public final class DebugScope implements Debug.Scope {
         if (isLogEnabled(logLevel)) {
             getLastUsedIndent().log(logLevel, msg, args);
         }
+    }
+
+    public ExtraInfo getExtraInfo() {
+        return extraInfo;
+    }
+
+    public long scopeId() {
+        return scopeId;
     }
 
     public void dump(int dumpLevel, Object object, String formatString, Object... args) {
@@ -315,11 +345,18 @@ public final class DebugScope implements Debug.Scope {
     public DebugScope scope(CharSequence name, DebugConfig sandboxConfig, Object... newContextObjects) {
         DebugScope newScope = null;
         if (sandboxConfig != null) {
-            newScope = new DebugScope(name.toString(), this, true, newContextObjects);
+            newScope = new DebugScope(name.toString(), this, uniqueScopeId.incrementAndGet(), null, true, newContextObjects);
             configTL.set(sandboxConfig);
         } else {
-            newScope = this.createChild(name.toString(), newContextObjects);
+            newScope = this.createChild(name.toString(), this.extraInfo, newContextObjects);
         }
+        instanceTL.set(newScope);
+        newScope.updateFlags();
+        return newScope;
+    }
+
+    public DebugScope enhanceWithExtraInfo(CharSequence name, ExtraInfo newInfo, boolean newId, Object... newContext) {
+        DebugScope newScope = createChild(name.toString(), newInfo, newId ? uniqueScopeId.incrementAndGet() : this.scopeId, newContext);
         instanceTL.set(newScope);
         newScope.updateFlags();
         return newScope;
@@ -359,9 +396,8 @@ public final class DebugScope implements Debug.Scope {
             memUseTrackingEnabled = false;
             timeEnabled = false;
             verifyEnabled = false;
-
             currentDumpLevel = 0;
-
+            methodMetricsEnabled = false;
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
             output = TTY.out;
@@ -373,6 +409,7 @@ public final class DebugScope implements Debug.Scope {
             output = config.output();
             currentDumpLevel = config.getDumpLevel();
             currentLogLevel = config.getLogLevel();
+            methodMetricsEnabled = config.isMethodMeterEnabled();
         }
     }
 
@@ -404,8 +441,12 @@ public final class DebugScope implements Debug.Scope {
         getValueMap().setCurrentValue(index, l);
     }
 
-    private DebugScope createChild(String newName, Object[] newContext) {
-        return new DebugScope(newName, this, false, newContext);
+    private DebugScope createChild(String newName, ExtraInfo newInfo, Object[] newContext) {
+        return new DebugScope(newName, this, this.scopeId, newInfo, false, newContext);
+    }
+
+    private DebugScope createChild(String newName, ExtraInfo newInfo, long newId, Object[] newContext) {
+        return new DebugScope(newName, this, newId, newInfo, false, newContext);
     }
 
     public Iterable<Object> getCurrentContext() {

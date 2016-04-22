@@ -78,6 +78,11 @@ public interface DebugConfig {
     boolean isVerifyEnabledForMethod();
 
     /**
+     * @see Debug#isMethodMeterEnabled()
+     */
+    boolean isMethodMeterEnabled();
+
+    /**
      * Adds an object the context used by this configuration to do filtering.
      */
     void addToContext(Object o);
@@ -113,4 +118,5 @@ public interface DebugConfig {
      * Gets the modifiable collection of verify handlers registered with this configuration.
      */
     Collection<DebugVerifyHandler> verifyHandlers();
+
 }
