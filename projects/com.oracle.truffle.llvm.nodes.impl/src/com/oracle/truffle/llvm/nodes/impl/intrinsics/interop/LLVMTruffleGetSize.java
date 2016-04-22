@@ -35,18 +35,21 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
 @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
 public abstract class LLVMTruffleGetSize extends LLVMI32Intrinsic {
 
-    private Object getSize(VirtualFrame frame, TruffleObject value) {
+    private Object getSize(VirtualFrame frame, LLVMTruffleObject value) {
         try {
-            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value);
+            if (value.getIndex() != 0 || value.getName() != null) {
+                throw new IllegalAccessError("Pointee must be unmodified");
+            }
+            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value.getObject());
             return toLLVM.convert(frame, rawValue, expectedType);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
@@ -59,7 +62,7 @@ public abstract class LLVMTruffleGetSize extends LLVMI32Intrinsic {
     private static final Class<?> expectedType = int.class;
 
     @Specialization
-    public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+    public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
         return (int) getSize(frame, value);
     }
 

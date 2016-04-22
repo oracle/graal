@@ -27,25 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
+package com.oracle.truffle.llvm.types;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
-@NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMTruffleImport extends LLVMAddressIntrinsic {
+public final class LLVMTruffleObject {
+    private final TruffleObject object;
+    private final int index;
+    private final String name;
 
-    @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
-        String id = LLVMTruffleIntrinsicUtil.readString(value);
-        TruffleObject foreignObject = (TruffleObject) LLVMLanguage.INSTANCE.getEnvironment().importSymbol(id);
-        return new LLVMTruffleObject(foreignObject);
+    public LLVMTruffleObject(TruffleObject object, int index) {
+        this.object = object;
+        this.index = index;
+        this.name = null;
+    }
+
+    public LLVMTruffleObject(TruffleObject object, String name) {
+        this.object = object;
+        this.index = 0;
+        this.name = name;
+    }
+
+    public LLVMTruffleObject(TruffleObject object) {
+        this.object = object;
+        this.index = 0;
+        this.name = null;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public TruffleObject getObject() {
+        return object;
+    }
+
+    public String getName() {
+        return name;
     }
 
 }

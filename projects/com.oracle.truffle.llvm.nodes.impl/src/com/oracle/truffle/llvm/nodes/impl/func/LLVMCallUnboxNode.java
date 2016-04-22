@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
@@ -50,6 +49,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
@@ -169,7 +169,7 @@ public abstract class LLVMCallUnboxNode {
     public abstract static class LLVMAddressCallUnboxNode extends LLVMAddressNode {
 
         @Specialization
-        public TruffleObject executeTruffleObject(TruffleObject value) {
+        public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject value) {
             return value;
         }
 
