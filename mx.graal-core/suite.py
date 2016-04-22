@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "551e8475af2fc8769bc3ead07c9156fe0ccbe338",
+               "version" : "9c16d110f3aa63a17e3e2cf1b857e039c507078a",
                "urls" : [
                     {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -1080,7 +1080,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.truffle",
         "com.oracle.graal.compiler.test",
-        "truffle:TRUFFLE_SL",
+        "truffle:TRUFFLE_SL_TEST",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1321,7 +1321,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_TEST",
         "GRAAL_TRUFFLE",
-        "truffle:TRUFFLE_SL",
+        "truffle:TRUFFLE_SL_TEST",
       ],
     },
 
