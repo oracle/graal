@@ -223,7 +223,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             } else {
                 if (instanceOfNode.allowsNull()) {
                     ValueNode object = instanceOfNode.getValue();
-                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.getProfile()));
+                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.profile(), instanceOfNode.getAnchor()));
                     LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                     instanceOfNode.replaceAndDelete(newNode);
                 }

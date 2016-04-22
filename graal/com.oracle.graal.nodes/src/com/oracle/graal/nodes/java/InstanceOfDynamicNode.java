@@ -43,8 +43,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 /**
- * The {@code TypeProfileNode} represents a type check where the type being checked is not known at
- * compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)} .
+ * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
+ * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
+ * .
  */
 @NodeInfo
 public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
@@ -93,9 +94,9 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
                 } else {
                     TypeReference type = TypeReference.createTrusted(assumptions, t);
                     if (allowNull) {
-                        return InstanceOfNode.createAllowNull(type, forObject, null);
+                        return InstanceOfNode.createAllowNull(type, forObject, null, null);
                     } else {
-                        return InstanceOfNode.create(type, forObject, null);
+                        return InstanceOfNode.create(type, forObject);
                     }
                 }
             }
