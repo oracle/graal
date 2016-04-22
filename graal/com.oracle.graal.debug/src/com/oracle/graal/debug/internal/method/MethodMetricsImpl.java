@@ -241,8 +241,8 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
                     Set<Map.Entry<String, Long>> entries = table.entrySet();
                     for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
                         long value = entry.getValue();
-                        // report timers in ms
-                        if (entry.getKey().contains("Time") && (entry.getKey().endsWith("Accm") || entry.getKey().endsWith("Flat"))) {
+                        // report timers in ms and memory in
+                        if ((entry.getKey().endsWith("Accm") || entry.getKey().endsWith("Flat")) && !entry.getKey().toLowerCase().contains("mem")) {
                             value = value / 1000000;
                         }
                         if (value == 0) {

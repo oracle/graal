@@ -84,8 +84,7 @@ public class Debug {
         public boolean enableUnscopedCounters;
         public boolean enableUnscopedMethodMetrics;
         public boolean enableUnscopedMemUseTrackers;
-        public boolean enabledMethodFilter;
-        public boolean interceptMeter;
+        public boolean interceptCount;
         public boolean interceptTime;
         public boolean interceptMem;
     }
@@ -1491,7 +1490,7 @@ public class Debug {
 
             @Override
             public DebugCounter createCounter(String name, boolean conditional) {
-                return CounterImpl.create(name, conditional, params.interceptMeter);
+                return CounterImpl.create(name, conditional, params.interceptCount);
             }
 
             @Override

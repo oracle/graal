@@ -35,14 +35,14 @@ public class MethodMetricsInlineeScopeInfo extends MethodMetricsRootScopeInfo {
     }
 
     public static MethodMetricsInlineeScopeInfo create(ResolvedJavaMethod rootMethod) {
-        if (GraalDebugConfig.isMethodMetricsDebugValueInterceptionEnabled()) {
+        if (GraalDebugConfig.isGlobalMetricsInterceptedByMethodMetricsEnabled()) {
             return new MethodMetricsInlineeScopeInfo(rootMethod);
         }
         return null;
     }
 
     public static MethodMetricsInlineeScopeInfo create() {
-        if (GraalDebugConfig.isMethodMetricsDebugValueInterceptionEnabled()) {
+        if (GraalDebugConfig.isGlobalMetricsInterceptedByMethodMetricsEnabled()) {
             ExtraInfo rootInfo = DebugScope.getInstance().getExtraInfo();
             if (rootInfo instanceof MethodMetricsRootScopeInfo) {
                 return new MethodMetricsInlineeScopeInfo(((MethodMetricsRootScopeInfo) rootInfo).getRootMethod());

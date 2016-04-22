@@ -137,7 +137,7 @@ public class MethodMetricsTest10 extends MethodMetricsTest {
     protected OverrideScope getOScope() {
         Map<OptionValue<?>, Object> mapping = new HashMap<>();
         mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        mapping.put(GraalDebugConfig.Options.MethodMeterInterceptDebugValues, "X|X|O");
+        mapping.put(GraalDebugConfig.Options.GlobalMetricsInterceptedByMethodMetrics, "X|X|O");
         return OptionValue.override(mapping);
     }
 

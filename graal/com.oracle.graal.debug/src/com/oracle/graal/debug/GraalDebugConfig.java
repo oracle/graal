@@ -114,11 +114,14 @@ public class GraalDebugConfig implements DebugConfig {
         @Option(help = "Enable per method metrics that are collected across all compilations of a method." +
                        "Pattern for scope(s) in which method metering is enabled (see DebugFilter and Debug.metric).", type = OptionType.Debug)
         public static final OptionValue<String> MethodMeter = new OptionValue<>(null);
-        @Option(help = "If a global metric (DebugTimer, DebugMeter or DebugMemUseTracker) is enabled in the same scope as a method metric, " +
-                       "use the global metric to update the method counter for the current compilation." +
-                       "Format to specify DebugValue interception:X|O:X|O:X|O, " +
-                       "where X enables the interception of DebugMetrics(=[0]), DebugTimers(=[1]), DebugMemUseTracker(=[2]).", type = OptionType.Debug)
-        public static final OptionValue<String> MethodMeterInterceptDebugValues = new OptionValue<>(null);
+        @Option(help = "If a global metric (DebugTimer, DebugCounter or DebugMemUseTracker) is enabled in the same scope as a method metric, " +
+                       "use the global metric to update the method metric for the current compilation." +
+                       "This option enables the re-use of global metrics on per-compilation basis." +
+                       "Whenever a value is added to a global metric, the value is also added to a MethodMetric under the same name " +
+                       "as the global metric." +
+                       "This option incurs a small but constant overhead due to the context method lookup at each metric update." +
+                       "Format to specify GlobalMetric interception:(Timers|Counters|MemUseTrackers)(,Timers|,Counters|,MemUseTrackers)*", type = OptionType.Debug)
+        public static final OptionValue<String> GlobalMetricsInterceptedByMethodMetrics = new OptionValue<>(null);
         // @formatter:on
     }
 
@@ -130,8 +133,8 @@ public class GraalDebugConfig implements DebugConfig {
         return Options.DumpOnError.getValue() || Options.Dump.getValue() != null || Options.Log.getValue() != null || areScopedGlobalMetricsEnabled();
     }
 
-    public static boolean isMethodMetricsDebugValueInterceptionEnabled() {
-        return Options.MethodMeterInterceptDebugValues.getValue() != null;
+    public static boolean isGlobalMetricsInterceptedByMethodMetricsEnabled() {
+        return isNotEmpty(Options.GlobalMetricsInterceptedByMethodMetrics);
     }
 
     /**

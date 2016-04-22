@@ -36,11 +36,10 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
 import com.oracle.graal.lir.BailoutAndRestartBackendException;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -168,10 +167,7 @@ public class GraalCompiler {
      */
     @SuppressWarnings("try")
     public static <T extends CompilationResult> T compile(Request<T> r) {
-        // if the current compilation is not triggered from JVMCI we need a valid context root
-        // method for method metrics
-        try (Scope s = DebugScope.getInstance().getExtraInfo() instanceof MethodMetricsRootScopeInfo ? null
-                        : Debug.methodMetricsScope("GraalCompilerRoot", MethodMetricsRootScopeInfo.create(r.installedCodeOwner), true)) {
+        try (Scope s = MethodMetricsRootScopeInfo.createRootScopeIfAbsent(r.installedCodeOwner)) {
             assert !r.graph.isFrozen();
             try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);

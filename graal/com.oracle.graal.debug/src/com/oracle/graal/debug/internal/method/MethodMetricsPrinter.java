@@ -51,6 +51,10 @@ public interface MethodMetricsPrinter {
         // @formatter:on
     }
 
+    static boolean methodMetricsDumpingEnabled() {
+        return MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue() || MethodMetricsPrinter.Options.MethodMeterFile.getValue() != null;
+    }
+
     /**
      * Prints the metrics to a destination specified by the implementor of this interface.
      *

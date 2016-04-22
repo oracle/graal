@@ -25,9 +25,9 @@ package com.oracle.graal.debug;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * A set of debug metrics for all compilations of a {@link ResolvedJavaMethod}. A Method metrics
+ * A set of debug metrics for all compilations of a {@link ResolvedJavaMethod}. A method metrics
  * object is a container for several metrics per compilation of a method {@code <Method,List
- * <CompilationData>>}. metrics are stored on a per-method per-compilation basis.
+ * <CompilationData>>}. Metrics are stored on a per-method per-compilation basis.
  *
  * <pre>
  * DebugMethodMetrics m = Debug.methodMetrics(method);

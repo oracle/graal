@@ -144,16 +144,17 @@ plotLongestCompileTime <- function(nrOfMethods=10,interactive=FALSE){
   ggplot(timeSize,
          aes(
            x=timeSize$methodName,
-           y=factor(timeSize$time)
+           y=timeSize$time
          )    
-  )+
+  )+ 
     geom_bar(stat = "identity")+
+    geom_text(aes(label = time))+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 
     xlab("Method") +
     ylab("Times(ms)")
-  if(interactive){
+   if(interactive){
     ggplotly()
   }else{
     print(ggplot2::last_plot()) 
@@ -175,10 +176,11 @@ plotLongestCodeInstallTime <- function(nrOfMethods=10,interactive=FALSE){
   ggplot(timeSize,
          aes(
            x=timeSize$methodName,
-           y=factor(timeSize$time)
+           y=timeSize$time
          )    
   )+
     geom_bar(stat = "identity")+
+    geom_text(aes(label = time))+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 
@@ -203,10 +205,11 @@ plotLongestTime <- function(nrOfMethods=10,interactive=FALSE){
   ggplot(timeSize,
          aes(
            x=timeSize$methodName,
-           y=factor(timeSize$time)
+           y=timeSize$time
          )    
   )+
     geom_bar(stat = "identity")+
+    geom_text(aes(label = time))+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug.internal.method;
 
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.DebugScope.ExtraInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -39,6 +41,23 @@ public class MethodMetricsRootScopeInfo implements ExtraInfo {
 
     public static MethodMetricsRootScopeInfo create(ResolvedJavaMethod rootMethod) {
         return new MethodMetricsRootScopeInfo(rootMethod);
+    }
+
+    /**
+     * Creates and returns a {@link com.oracle.graal.debug.Debug.Scope scope} iff there is no
+     * existing {@linkplain com.oracle.graal.debug.internal.DebugScope.ExtraInfo extraInfo} object
+     * of type {@link MethodMetricsRootScopeInfo} present in the current {@link DebugScope scope}.
+     *
+     * @param method
+     * @return a new {@link com.oracle.graal.debug.Debug.Scope scope} or {@code null} iff there is
+     *         already an existing one on the scope
+     */
+    public static Debug.Scope createRootScopeIfAbsent(ResolvedJavaMethod method) {
+        /*
+         * if the current compilation is not triggered from JVMCI we need a valid context root
+         * method for method metrics
+         */
+        return DebugScope.getInstance().getExtraInfo() instanceof MethodMetricsRootScopeInfo ? null : Debug.methodMetricsScope("GraalCompilerRoot", MethodMetricsRootScopeInfo.create(method), true);
     }
 
 }
