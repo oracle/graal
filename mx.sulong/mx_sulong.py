@@ -51,7 +51,8 @@ def executeGate():
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
@@ -83,7 +84,8 @@ def travis1(args=None):
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
