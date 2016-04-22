@@ -23,6 +23,7 @@ explicitly.
 is possible. Using more than one `PolyglotEngine` resulted in code de-opt previously.
 That isn't the case anymore. Future version of the API will provide explicit control
 over the set of engines that share the code.
+* Simple language JAR no longer contains test classes. There is a separate simple language tests distribution.
 
 ## Version 0.12
 * The Instrumentation Framework has been revised and has new APIs that are integrated into the PolyglotEngine.
