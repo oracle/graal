@@ -92,6 +92,14 @@ public abstract class RootNode extends Node {
         return root;
     }
 
+    /**
+     * Returns source section specified when
+     * {@link #RootNode(java.lang.Class, com.oracle.truffle.api.source.SourceSection, com.oracle.truffle.api.frame.FrameDescriptor)
+     * constructing the node}.
+     *
+     * @return source section passed into the constructor
+     * @since 0.13
+     */
     @Override
     public SourceSection getSourceSection() {
         return sourceSection;
