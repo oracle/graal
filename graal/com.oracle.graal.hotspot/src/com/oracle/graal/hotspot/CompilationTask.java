@@ -165,6 +165,15 @@ public class CompilationTask {
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = getMethod();
 
+        // register the compilation id in the method metrics
+        if (Debug.isMethodMeterEnabled()) {
+            if (getEntryBCI() != JVMCICompiler.INVOCATION_ENTRY_BCI) {
+                Debug.methodMetrics(method).addToMetric(getId(), "CompilationIdOSR");
+            } else {
+                Debug.methodMetrics(method).addToMetric(getId(), "CompilationId");
+            }
+        }
+
         // Log a compilation event.
         CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 

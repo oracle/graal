@@ -56,7 +56,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
         ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
         ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
-        ResolvedJavaType mCCDebugType = context.getMetaAccess().lookupJavaType(DebugMethodMetrics.class);
+        ResolvedJavaType debugMethodMetricsType = context.getMetaAccess().lookupJavaType(DebugMethodMetrics.class);
 
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
@@ -71,7 +71,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                     verifyParameters(graph, t.arguments(), stringType, 1);
                 }
             }
-            if (callee.getDeclaringClass().equals(mCCDebugType)) {
+            if (callee.getDeclaringClass().equals(debugMethodMetricsType)) {
                 if (calleeName.equals("addToMetric") || calleeName.equals("getCurrentMetricValue") || calleeName.equals("incrementMetric")) {
                     verifyParameters(graph, t.arguments(), stringType, 1);
                 }

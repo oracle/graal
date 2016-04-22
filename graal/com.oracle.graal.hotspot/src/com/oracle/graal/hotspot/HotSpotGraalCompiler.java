@@ -86,10 +86,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
             DebugEnvironment.initialize(TTY.out);
         }
-
         CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
         try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());
-                        Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(request.getMethod()), true)) {
+                        Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(request.getMethod()), true, request.getMethod())) {
             return task.runCompilation();
         }
     }
