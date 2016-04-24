@@ -67,8 +67,8 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         }
     }
 
-    @ExplodeLoop
     protected ConditionProfile[] createProfiles(int length) {
+        CompilerAsserts.neverPartOfCompilation();
         ConditionProfile[] profiles = new ConditionProfile[length];
         for (int i = 0; i < profiles.length; i++) {
             profiles[i] = ConditionProfile.createCountingProfile();
