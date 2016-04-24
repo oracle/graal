@@ -4,7 +4,6 @@ from os.path import join
 import shutil
 import zipfile
 import subprocess
-import re
 
 import mx
 import mx_findbugs
@@ -12,6 +11,7 @@ import mx_findbugs
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner
 from mx_jvmci import VM, buildvms
+from mx_gitlogcheck import logCheck
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
@@ -35,10 +35,6 @@ _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
-
-gitLogOneLine = re.compile(r'^(?P<message>.*)$')
-titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
-pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
 
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
@@ -691,37 +687,6 @@ def gccBench(args=None):
 
 def standardLinkerCommands(args=None):
     return ['-lm', '-lgmp']
-
-def checkCommitMessage(quotedCommitMessage):
-    error = False
-    message = ''
-    commitMessage = quotedCommitMessage[1:-1]
-    if commitMessage[0].islower():
-        error = True
-        message = quotedCommitMessage + ' starts with a lower case character'
-    if titleWithEndingPunct.match(commitMessage):
-        error = True
-        message = quotedCommitMessage + ' ends with period, question mark, or exclamation mark'
-    if commitMessage.lower().split()[0] in pastTenseWords:
-        error = True
-        print quotedCommitMessage, 'starts with past tense word "' + commitMessage.lower().split()[0] + '"'
-    return (error, message)
-
-def logCheck(args=None):
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
-    foundErrors = []
-    for s in output.splitlines():
-        match = gitLogOneLine.match(s)
-        commitMessage = match.group('message')
-        (isError, curMessage) = checkCommitMessage(commitMessage)
-        if isError:
-            foundErrors.append(curMessage)
-    if foundErrors:
-        for curMessage in foundErrors:
-            print curMessage
-        print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
-        exit(-1)
-
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
