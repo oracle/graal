@@ -57,7 +57,7 @@ import com.oracle.graal.phases.Phase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 // intercepting metrics
-public class MethodMetricsTest9 extends MethodMetricsTest {
+public class MethodMetricsTestInterception01 extends MethodMetricsTest {
 
     @Override
     protected Phase additionalPhase() {
@@ -86,7 +86,6 @@ public class MethodMetricsTest9 extends MethodMetricsTest {
     protected OverrideScope getOScope() {
         Map<OptionValue<?>, Object> mapping = new HashMap<>();
         mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        mapping.put(GraalDebugConfig.Options.GlobalMetricsInterceptedByMethodMetrics, "X|X|O");
         return OptionValue.override(mapping);
     }
 

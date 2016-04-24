@@ -349,6 +349,7 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
 
     public static void addToCurrentScopeMethodMetrics(String metricName, long value) {
         DebugScope.ExtraInfo metaInfo = DebugScope.getInstance().getExtraInfo();
+
         if (metaInfo instanceof MethodMetricsRootScopeInfo) {
             ResolvedJavaMethod rootMethod = ((MethodMetricsRootScopeInfo) metaInfo).getRootMethod();
             if (metaInfo instanceof MethodMetricsInlineeScopeInfo) {
