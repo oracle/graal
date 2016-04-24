@@ -1,7 +1,3 @@
-char function(char test[]) {
-	return test[2];
-}
+char function(char test[]) { return test[2]; }
 
-int main() {
-	return function("asdf");
-}
+int main() { return function("asdf"); }

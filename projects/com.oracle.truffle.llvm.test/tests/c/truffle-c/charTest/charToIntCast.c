@@ -1,4 +1,4 @@
 int main() {
-	char val = 3;
-	return val;
+  char val = 3;
+  return val;
 }

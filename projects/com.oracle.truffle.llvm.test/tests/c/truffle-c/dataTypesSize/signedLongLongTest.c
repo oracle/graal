@@ -1,3 +1,1 @@
-int main() {
-	return sizeof(signed long long);
-}
+int main() { return sizeof(signed long long); }

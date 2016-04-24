@@ -1,6 +1,3 @@
-#define ADD(a,b) (a + b)
+#define ADD(a, b) (a + b)
 
-int main() {
-	return ADD(5, 3);
-}
-
+int main() { return ADD(5, 3); }

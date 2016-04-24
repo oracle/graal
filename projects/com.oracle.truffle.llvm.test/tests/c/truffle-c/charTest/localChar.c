@@ -1,5 +1,3 @@
 char local = 'a';
 
-int main() {
-	return local;
-}
+int main() { return local; }

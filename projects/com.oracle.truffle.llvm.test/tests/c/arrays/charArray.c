@@ -1,4 +1,1 @@
-int main () {
-	return "asdf"[2];
-}	
-
+int main() { return "asdf"[2]; }
