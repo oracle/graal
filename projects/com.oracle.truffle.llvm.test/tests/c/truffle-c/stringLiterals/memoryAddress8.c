@@ -1,13 +1,7 @@
 long adr = "asdf";
 
-long f1() {
-	return adr;
-}
+long f1() { return adr; }
 
-long f2() {
-	return "asdf";
-}
+long f2() { return "asdf"; }
 
-int main() {
-	return f1() == f2();
-}
+int main() { return f1() == f2(); }

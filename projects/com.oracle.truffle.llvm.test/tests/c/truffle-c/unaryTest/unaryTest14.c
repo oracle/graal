@@ -1,5 +1,4 @@
 int main() {
-	int a = ~~5;
-	return !(a == 5);
+  int a = ~~5;
+  return !(a == 5);
 }
-

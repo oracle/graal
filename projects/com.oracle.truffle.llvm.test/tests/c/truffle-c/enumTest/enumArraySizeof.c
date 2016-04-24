@@ -1,8 +1,10 @@
 enum test {
-	a, b, c
+  a,
+  b,
+  c
 };
 
 int main() {
-	enum test asdf[3];
-	return sizeof(asdf);
+  enum test asdf[3];
+  return sizeof(asdf);
 }

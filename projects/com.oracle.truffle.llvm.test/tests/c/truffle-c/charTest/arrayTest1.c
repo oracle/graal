@@ -1,7 +1,7 @@
-char arr[2] = {1,2};
+char arr[2] = { 1, 2 };
 
 int main() {
-	char *p;
-	p = arr;
-	return *(p + 1);
+  char *p;
+  p = arr;
+  return *(p + 1);
 }

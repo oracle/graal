@@ -1,16 +1,14 @@
 struct test {
-	int a;
+  int a;
 };
 
-struct test t = {0};
+struct test t = { 0 };
 
-int func() {
-	return t.a++;
-}
+int func() { return t.a++; }
 
 int main() {
-	int sum = 0;
-	sum += func();
-	sum += func();
-	return sum;
+  int sum = 0;
+  sum += func();
+  sum += func();
+  return sum;
 }

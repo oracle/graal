@@ -1,8 +1,3 @@
-static int function() {
-	return 12;
-}
+static int function() { return 12; }
 
-int main() {
-	return function();
-}
-
+int main() { return function(); }

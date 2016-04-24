@@ -1,6 +1,3 @@
-int a[3] = {1,2,3};
+int a[3] = { 1, 2, 3 };
 
-int main() {
-
-    return *a;
-}
+int main() { return *a; }

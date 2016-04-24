@@ -1,3 +1,1 @@
-int main() {
-	return sizeof(unsigned short);
-}
+int main() { return sizeof(unsigned short); }

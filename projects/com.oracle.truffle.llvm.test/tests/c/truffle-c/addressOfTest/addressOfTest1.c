@@ -1,7 +1,7 @@
 int main() {
-	int *p;
-	int a = 1;
+  int *p;
+  int a = 1;
 
-	p = &((((a))));
-	return *p;
+  p = &((((a))));
+  return *p;
 }

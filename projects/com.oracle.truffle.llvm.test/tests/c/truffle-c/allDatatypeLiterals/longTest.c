@@ -1,4 +1,4 @@
 int main() {
-	long a = 4L;
-	return (int) a;
+  long a = 4L;
+  return (int)a;
 }

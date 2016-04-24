@@ -1,8 +1,5 @@
-enum 
-{
-	test = 5
+enum {
+  test = 5
 };
 
-int main() {
-	return test;
-}
+int main() { return test; }

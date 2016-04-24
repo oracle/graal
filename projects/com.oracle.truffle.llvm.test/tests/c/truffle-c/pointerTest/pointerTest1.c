@@ -3,7 +3,6 @@ int *pa = &a;
 int **ppa = &pa;
 
 int main() {
-    *pa += 1;
-    return **ppa;
+  *pa += 1;
+  return **ppa;
 }
-

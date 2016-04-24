@@ -1,4 +1,4 @@
 int main() {
-	signed long a = 4L;
-	return a;
+  signed long a = 4L;
+  return a;
 }

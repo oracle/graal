@@ -1,5 +1,4 @@
 int main() {
-	bool test = true;
-	return (int) test;
+  bool test = true;
+  return (int)test;
 }
-

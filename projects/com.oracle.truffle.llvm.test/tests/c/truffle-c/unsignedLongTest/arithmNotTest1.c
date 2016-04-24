@@ -1,4 +1,4 @@
 int main() {
-	unsigned long test = 1;
-	return -test + 10;
+  unsigned long test = 1;
+  return -test + 10;
 }

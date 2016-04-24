@@ -1,8 +1,9 @@
 enum BOOLEAN {
-	t = 0, f = 1
+  t = 0,
+  f = 1
 };
 
 int main() {
-	enum BOOLEAN b = f;
-	return b;
+  enum BOOLEAN b = f;
+  return b;
 }
