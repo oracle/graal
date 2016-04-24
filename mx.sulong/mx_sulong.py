@@ -22,6 +22,8 @@ _testDir = join(_root, "com.oracle.truffle.llvm.test/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
+_testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
+
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
 
@@ -744,16 +746,30 @@ def getBitcodeLibrariesOption():
 
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
-    return checkCFile(_suite.dir + '/include/truffle.h')
+    checkCFile(_suite.dir + '/include/truffle.h')
+    checkCFiles(_testDir)
+
+def checkCFiles(targetDir):
+    error = False
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp'):
+                if not checkCFile(path + '/' + f):
+                    error = True
+    if error:
+        print "found formatting errors!"
+        exit(-1)
 
 def checkCFile(targetFile):
-    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={ColumnLimit: 150}', targetFile]).splitlines()
+    """ Checks the formatting of a C file and returns True if the formatting is okay """
+    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
     if not formattedContent == originalContent:
         print '\n'.join(formattedContent)
         print '\nplease fix the formatting in', targetFile, 'to the format given above'
-        exit(-1)
+        return False
+    return True
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
