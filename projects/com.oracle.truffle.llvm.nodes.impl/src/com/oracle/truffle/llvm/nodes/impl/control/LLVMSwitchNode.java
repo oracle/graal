@@ -102,7 +102,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
@@ -162,7 +161,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
@@ -225,7 +223,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
