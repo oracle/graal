@@ -1,0 +1,21 @@
+#!/usr/bin/python2.7
+
+# move this file to sulong/.git/hooks for automatic git message checks on git commit
+
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__) + '/../../mx.sulong/')
+from mx_gitlogcheck import checkCommitMessage
+
+commitMessageFile = sys.argv[1]
+
+with open(commitMessageFile) as f:
+    content = f.readlines()
+
+(error, message) = checkCommitMessage('"' + '\n'.join(content) + '"')
+
+if error:
+    print message
+    exit(-1)
+    
