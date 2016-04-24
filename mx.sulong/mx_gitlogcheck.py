@@ -3,9 +3,29 @@ import subprocess
 
 gitLogOneLine = re.compile(r'^(?P<message>.*)$')
 titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
-pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
+pastTenseWords = [
+    'closed',
+    'corrected',
+    'changed',
+    'enhanced',
+    'fixed',
+    'installed',
+    'implemented',
+    'improved',
+    'moved',
+    'merged',
+    'refactored',
+    'renamed',
+    'resolved',
+    'removed',
+    'replaced',
+    'simplified',
+    'substituted',
+    'used',
+]
 
 def checkCommitMessage(quotedCommitMessage):
+    """checks the syntax of a single commit message"""
     error = False
     message = ''
     commitMessage = quotedCommitMessage[1:-1]
@@ -21,6 +41,7 @@ def checkCommitMessage(quotedCommitMessage):
     return (error, message)
 
 def logCheck(args=None):
+    """checks the syntax of git log messages"""
     output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
     foundErrors = []
     for s in output.splitlines():
