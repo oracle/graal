@@ -13,8 +13,13 @@ ensure the request is processed in a timely manner.
 Before submitting a pull request please run "mx gate" to validate that
 your changes do not break tests and conform with the coding conventions.
 
-Please comply with the following guidelines for Commit messages and PR
-requests:
+Please comply with the guidelines for commit messages and PR
+requests listed below. The compliance with these guidelines is partially
+checked by the `su-gitlogcheck` command. You can add a client-side git
+hook that checks messages before issuing a commit by copying
+[mx.sulong/commit-msg](mx.sulong/commit-msg) to `.git/hooks`. This way,
+you do not have to rewrite the history of your commits after a gate check
+fails.
 
 Commit messages
 ================
