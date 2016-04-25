@@ -194,7 +194,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
             @SuppressWarnings("try")
             protected void run(StructuredGraph graph) {
                 // we are in an enhanced debug scope from graal compiler
-                // no we open multiple inlining scopes, record their time
+                // now we open multiple inlining scopes, record their time
                 try (DebugCloseable c1 = timer.start()) {
                     try (DebugCloseable c2 = scopedTimer.start()) {
                         try (DebugCloseable c3 = scopedScopedTimer.start()) {
@@ -216,7 +216,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
                     }
                 }
 
-                // no lets try different counters without the inline enhancement
+                // now lets try different counters without the inline enhancement
                 try (DebugCloseable c1 = timer1.start()) {
                     try (DebugCloseable c2 = scopedTimer1.start()) {
                         try (DebugCloseable c3 = scopedScopedTimer1.start()) {
