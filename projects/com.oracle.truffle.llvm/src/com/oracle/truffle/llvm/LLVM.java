@@ -105,11 +105,11 @@ public class LLVM {
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
                             }
-                            parserResult.getStaticInits().call();
                             context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
                             context.registerStaticInitializer(parserResult.getStaticInits());
                             context.registerStaticDestructor(parserResult.getStaticDestructors());
+                            parserResult.getStaticInits().call();
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
