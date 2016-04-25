@@ -49,8 +49,10 @@ import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
 import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
@@ -89,7 +91,9 @@ public class LLVM {
                     context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                     context.registerStaticInitializer(parserResult.getStaticInits());
                     context.registerStaticDestructor(parserResult.getStaticDestructors());
-                    parserResult.getStaticInits().call();
+                    if (!context.isParseOnly()) {
+                        parserResult.getStaticInits().call();
+                    }
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
 
                     final List<CallTarget> mainFunctions = new ArrayList<>();
@@ -104,6 +108,9 @@ public class LLVM {
                                 parserResult = parseString(source.getCode(), context);
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
+                            }
+                            if (!context.isParseOnly()) {
+                                parserResult.getStaticInits().call();
                             }
                             context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
@@ -123,7 +130,11 @@ public class LLVM {
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
-                return mainFunction;
+                if (context.isParseOnly()) {
+                    return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(mainFunction));
+                } else {
+                    return mainFunction;
+                }
             }
 
             private void parseDynamicBitcodeLibraries(LLVMContext context) {
@@ -142,8 +153,20 @@ public class LLVM {
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
                 LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
                 facade.setParserRuntime(runtime);
-                context.setMainArguments((Object[]) env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY));
-                context.setSourceFile((Source) env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY));
+                if (env != null) {
+                    Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
+                    if (mainArgs != null) {
+                        context.setMainArguments((Object[]) mainArgs);
+                    }
+                    Object sourceFile = env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY);
+                    if (sourceFile != null) {
+                        context.setSourceFile((Source) sourceFile);
+                    }
+                    Object parseOnly = env.getConfig().get(LLVMLanguage.PARSE_ONLY_KEY);
+                    if (parseOnly != null) {
+                        context.setParseOnly((boolean) parseOnly);
+                    }
+                }
                 context.getStack().allocate();
                 return context;
             }
