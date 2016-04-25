@@ -59,7 +59,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return "dacapo"
 
     def group(self):
-        return "graal"
+        return "Graal"
 
     def dacapoPath(self):
         dacapo = mx.get_env("DACAPO_CP")
@@ -249,7 +249,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return "specjvm2008"
 
     def group(self):
-        return "graal"
+        return "Graal"
 
     def specJvmPath(self):
         specjvm2008 = mx.get_env("SPECJVM2008")
