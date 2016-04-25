@@ -74,6 +74,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String MAIN_ARGS_KEY = "Sulong Main Args";
     public static final String LLVM_SOURCE_FILE_KEY = "Sulong Source File";
+    public static final String PARSE_ONLY_KEY = "Parse only";
 
     private com.oracle.truffle.api.TruffleLanguage.Env environment;
 
