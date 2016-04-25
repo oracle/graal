@@ -93,6 +93,10 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         return func;
     }
 
+    public static LLVMFunctionDescriptor create(int index) {
+        return new LLVMFunctionDescriptor(null, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false, index);
+    }
+
     public String getName() {
         return functionName;
     }
@@ -125,12 +129,12 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return getName().compareTo(o.getName());
+        return Integer.compare(functionId, o.getFunctionIndex());
     }
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + 11 * functionId;
+        return functionId;
     }
 
     @Override
