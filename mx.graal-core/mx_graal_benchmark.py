@@ -61,6 +61,9 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def group(self):
         return "Graal"
 
+    def subgroup(self):
+        return "graal-compiler"
+
     def dacapoPath(self):
         dacapo = mx.get_env("DACAPO_CP")
         if dacapo:
@@ -250,6 +253,9 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def group(self):
         return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
 
     def specJvmPath(self):
         specjvm2008 = mx.get_env("SPECJVM2008")
