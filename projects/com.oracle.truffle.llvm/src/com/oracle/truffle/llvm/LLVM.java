@@ -95,7 +95,6 @@ public class LLVM {
                         parserResult.getStaticInits().call();
                     }
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
-
                     final List<CallTarget> mainFunctions = new ArrayList<>();
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
 
@@ -109,14 +108,13 @@ public class LLVM {
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
                             }
-                            if (!context.isParseOnly()) {
-                                parserResult.getStaticInits().call();
-                            }
                             context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                             mainFunctions.add(parserResult.getMainFunction());
                             context.registerStaticInitializer(parserResult.getStaticInits());
                             context.registerStaticDestructor(parserResult.getStaticDestructors());
-                            parserResult.getStaticInits().call();
+                            if (!context.isParseOnly()) {
+                                parserResult.getStaticInits().call();
+                            }
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
