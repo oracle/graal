@@ -67,8 +67,8 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         }
     }
 
-    @ExplodeLoop
     protected ConditionProfile[] createProfiles(int length) {
+        CompilerAsserts.neverPartOfCompilation();
         ConditionProfile[] profiles = new ConditionProfile[length];
         for (int i = 0; i < profiles.length; i++) {
             profiles[i] = ConditionProfile.createCountingProfile();
@@ -102,7 +102,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
@@ -162,7 +161,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
@@ -225,7 +223,6 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
             return DEFAULT_LABEL_INDEX;
         }
 
-        @ExplodeLoop
         abstract boolean profile(int i, boolean value);
 
     }
