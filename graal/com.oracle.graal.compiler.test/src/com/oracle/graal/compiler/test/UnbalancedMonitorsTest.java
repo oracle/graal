@@ -80,7 +80,8 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
         ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(NAME), name);
         try {
             StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
-            GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(getMetaAccess())));
+            Plugins plugins = new Plugins(new InvocationPlugins(getMetaAccess()));
+            GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
             GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), null, graphBuilderConfig, optimisticOpts, null);
