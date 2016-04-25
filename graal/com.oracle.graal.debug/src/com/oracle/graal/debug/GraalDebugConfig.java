@@ -26,9 +26,9 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.graal.options.Option;
@@ -341,10 +341,11 @@ public class GraalDebugConfig implements DebugConfig {
         }
         Debug.setConfig(Debug.fixedConfig(Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log("Exception occurred in scope: %s", Debug.currentScope());
-        HashSet<Object> firstSeen = new HashSet<>();
+        Map<Object, Object> firstSeen = new IdentityHashMap<>();
         for (Object o : Debug.context()) {
             // Only dump a context object once.
-            if (firstSeen.add(o)) {
+            if (!firstSeen.containsKey(o)) {
+                firstSeen.put(o, o);
                 if (Options.DumpOnError.getValue()) {
                     Debug.dump(Debug.BASIC_LOG_LEVEL, o, "Exception: %s", e);
                 } else {
