@@ -149,12 +149,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
     public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
-        writeProperties(properties);
-        writeGraph(graph);
+        writeGraph(graph, properties);
         flush();
     }
 
-    private void writeGraph(Graph graph) throws IOException {
+    private void writeGraph(Graph graph, Map<Object, Object> properties) throws IOException {
         ScheduleResult scheduleResult = null;
         if (graph instanceof StructuredGraph) {
 
@@ -177,6 +176,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());
+        writeProperties(properties);
         writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);
     }
@@ -400,10 +400,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         } else if (obj instanceof Graph) {
             writeByte(PROPERTY_SUBGRAPH);
-            writeGraph((Graph) obj);
+            writeGraph((Graph) obj, null);
         } else if (obj instanceof CachedGraph) {
             writeByte(PROPERTY_SUBGRAPH);
-            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy());
+            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy(), null);
         } else if (obj != null && obj.getClass().isArray()) {
             Class<?> componentType = obj.getClass().getComponentType();
             if (componentType.isPrimitive()) {
