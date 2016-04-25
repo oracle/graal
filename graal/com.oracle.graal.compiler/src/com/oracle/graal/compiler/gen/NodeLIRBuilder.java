@@ -331,7 +331,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 if (begin instanceof AbstractMergeNode) {
                     AbstractMergeNode merge = (AbstractMergeNode) begin;
                     LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
-                    label.setIncomingValues(createPhiIn(merge));
+                    label.setPhiValues(createPhiIn(merge));
                     if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
                         TTY.println("Created PhiIn: " + label);
 
@@ -485,7 +485,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void visitEndNode(AbstractEndNode end) {
         AbstractMergeNode merge = end.merge();
         JumpOp jump = newJumpOp(getLIRBlock(merge));
-        jump.setOutgoingValues(createPhiOut(merge, end));
+        jump.setPhiValues(createPhiOut(merge, end));
         append(jump);
     }
 

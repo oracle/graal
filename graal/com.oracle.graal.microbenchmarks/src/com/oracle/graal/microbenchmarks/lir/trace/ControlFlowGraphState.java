@@ -20,46 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.alloc;
+package com.oracle.graal.microbenchmarks.lir.trace;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Setup;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.microbenchmarks.lir.GraalCompilerState;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 
 /**
- * Represents a list of sequentially executed {@code AbstractBlockBase blocks}.
+ * TODO(zapster) document me!
+ *
  */
-public class Trace<T extends AbstractBlockBase<T>> {
-    private final ArrayList<T> blocks;
-    private int id;
+public abstract class ControlFlowGraphState extends GraalCompilerState {
 
-    public Trace(Collection<T> blocks) {
-        this.blocks = new ArrayList<>(blocks);
+    public ControlFlowGraph cfg;
+
+    @Setup(Level.Trial)
+    public void beforeBenchmark() {
+        // setup graph
+        initializeMethod();
+        prepareRequest();
+        // compute cfg
+        this.cfg = ControlFlowGraph.compute(graph(), true, true, true, true);
     }
 
-    public Trace(ArrayList<T> blocks) {
-        this.blocks = blocks;
-    }
-
-    public ArrayList<T> getBlocks() {
-        return blocks;
-    }
-
-    public int size() {
-        return getBlocks().size();
-    }
-
-    @Override
-    public String toString() {
-        return "Trace" + blocks;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    void setId(int id) {
-        this.id = id;
-    }
 }

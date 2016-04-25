@@ -29,9 +29,11 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -113,7 +115,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
          * that have been split.
          */
         @SuppressWarnings("try")
-        private void resolveDataFlow(List<? extends AbstractBlockBase<?>> blocks) {
+        private void resolveDataFlow(ArrayList<? extends AbstractBlockBase<?>> blocks) {
             if (blocks.size() < 2) {
                 // no resolution necessary
                 return;
@@ -155,10 +157,10 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
         }
 
         private boolean containedInTrace(AbstractBlockBase<?> block) {
-            return currentTrace() == traceBuilderResult.getTraceForBlock(block);
+            return currentTrace().getId() == traceBuilderResult.getTraceForBlock(block).getId();
         }
 
-        private int currentTrace() {
+        private Trace<?> currentTrace() {
             return traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
         }
 

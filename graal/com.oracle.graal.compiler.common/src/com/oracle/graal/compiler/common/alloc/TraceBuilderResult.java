@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -30,32 +31,43 @@ import java.util.List;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 
 public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
-    private final List<Trace<T>> traces;
+    private final ArrayList<Trace<T>> traces;
     private final int[] blockToTrace;
 
-    TraceBuilderResult(List<Trace<T>> traces, int[] blockToTrace) {
+    static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> create(List<T> blocks, ArrayList<Trace<T>> traces, int[] blockToTrace) {
+        TraceBuilderResult<T> traceBuilderResult = new TraceBuilderResult<>(traces, blockToTrace);
+        traceBuilderResult.numberTraces(blocks);
+        return traceBuilderResult;
+    }
+
+    private TraceBuilderResult(ArrayList<Trace<T>> traces, int[] blockToTrace) {
         this.traces = traces;
         this.blockToTrace = blockToTrace;
     }
 
-    public int getTraceForBlock(AbstractBlockBase<?> block) {
-        return blockToTrace[block.getId()];
+    public Trace<T> getTraceForBlock(AbstractBlockBase<?> block) {
+        int traceNr = blockToTrace[block.getId()];
+        Trace<T> trace = traces.get(traceNr);
+        assert traceNr == trace.getId() : "Trace number mismatch: " + traceNr + " vs. " + trace.getId();
+        return trace;
     }
 
     public Trace<T> traceForBlock(AbstractBlockBase<?> block) {
         return getTraces().get(blockToTrace[block.getId()]);
     }
 
-    public List<Trace<T>> getTraces() {
+    public ArrayList<Trace<T>> getTraces() {
         return traces;
     }
 
-    public boolean incomingEdges(int traceNr) {
+    public boolean incomingEdges(Trace<?> trace) {
+        int traceNr = trace.getId();
         Iterator<T> traceIt = getTraces().get(traceNr).getBlocks().iterator();
         return incomingEdges(traceNr, traceIt);
     }
 
-    public boolean incomingSideEdges(int traceNr) {
+    public boolean incomingSideEdges(Trace<?> trace) {
+        int traceNr = trace.getId();
         Iterator<T> traceIt = getTraces().get(traceNr).getBlocks().iterator();
         if (!traceIt.hasNext()) {
             return false;
@@ -69,7 +81,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         while (trace.hasNext()) {
             T block = trace.next();
             for (T pred : block.getPredecessors()) {
-                if (getTraceForBlock(pred) != traceNr) {
+                if (getTraceForBlock(pred).getId() != traceNr) {
                     return true;
                 }
             }
@@ -78,12 +90,17 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     }
 
     public static <T extends AbstractBlockBase<T>> boolean verify(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
-        List<Trace<T>> traces = traceBuilderResult.getTraces();
+        ArrayList<Trace<T>> traces = traceBuilderResult.getTraces();
         assert verifyAllBlocksScheduled(traceBuilderResult, expectedLength) : "Not all blocks assigned to traces!";
-        for (Trace<T> trace : traces) {
+        for (int i = 0; i < traces.size(); i++) {
+            Trace<T> trace = traces.get(i);
+            assert trace.getId() == i : "Trace number mismatch: " + trace.getId() + " vs. " + i;
+
             T last = null;
             int blockNumber = 0;
             for (T current : trace.getBlocks()) {
+                T block = current;
+                assert traceBuilderResult.getTraceForBlock(block).getId() == i : "Trace number mismatch for block " + block + ": " + traceBuilderResult.getTraceForBlock(block) + " vs. " + i;
                 assert last == null || Arrays.asList(current.getPredecessors()).contains(last) : "Last block (" + last + ") not a predecessor of " + current;
                 assert current.getLinearScanNumber() == blockNumber : "Blocks not numbered correctly: " + current.getLinearScanNumber() + " vs. " + blockNumber;
                 last = current;
@@ -94,7 +111,7 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
     }
 
     private static <T extends AbstractBlockBase<T>> boolean verifyAllBlocksScheduled(TraceBuilderResult<T> traceBuilderResult, int expectedLength) {
-        List<Trace<T>> traces = traceBuilderResult.getTraces();
+        ArrayList<Trace<T>> traces = traceBuilderResult.getTraces();
         BitSet handled = new BitSet(expectedLength);
         for (Trace<T> trace : traces) {
             for (T block : trace.getBlocks()) {
@@ -105,10 +122,10 @@ public final class TraceBuilderResult<T extends AbstractBlockBase<T>> {
         return handled.cardinality() == expectedLength;
     }
 
-    void numberTraces() {
+    private void numberTraces(List<T> blocks) {
         for (int i = 0; i < traces.size(); i++) {
             traces.get(i).setId(i);
         }
+        assert verify(this, blocks.size());
     }
-
 }

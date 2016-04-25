@@ -717,7 +717,7 @@ class CFGPrinter extends CompilationPrinter {
 
     private void printBlockWithTrace(AbstractBlockBase<?> block, TraceBuilderResult<?> traceBuilderResult) {
         out.print(block.toString());
-        out.print("[T").print(traceBuilderResult.getTraceForBlock(block)).print("]");
+        out.print("[T").print(traceBuilderResult.getTraceForBlock(block).getId()).print("]");
     }
 
     private void printTraceEpilog() {
@@ -732,7 +732,8 @@ class CFGPrinter extends CompilationPrinter {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> s : block.getSuccessors()) {
-                int otherTraceId = traceBuilderResult.getTraceForBlock(s);
+                Trace<?> otherTrace = traceBuilderResult.getTraceForBlock(s);
+                int otherTraceId = otherTrace.getId();
                 if (trace.getId() != otherTraceId || isLoopBackEdge(block, s)) {
                     bs.set(otherTraceId);
                 }
@@ -749,9 +750,10 @@ class CFGPrinter extends CompilationPrinter {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> p : block.getPredecessors()) {
-                int otherTraceId = traceBuilderResult.getTraceForBlock(p);
+                Trace<?> otherTrace = traceBuilderResult.getTraceForBlock(p);
+                int otherTraceId = otherTrace.getId();
                 if (trace.getId() != otherTraceId || isLoopBackEdge(p, block)) {
-                    bs.set(traceBuilderResult.getTraceForBlock(p));
+                    bs.set(traceBuilderResult.getTraceForBlock(p).getId());
                 }
             }
         }

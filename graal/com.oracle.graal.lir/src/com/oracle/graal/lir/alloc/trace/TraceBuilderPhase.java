@@ -47,7 +47,7 @@ public class TraceBuilderPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use bidirectional trace builder.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(true);
+        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
         // @formatter:on
     }
 
@@ -65,7 +65,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         } else {
             traceBuilderResult = UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder);
         }
-        assert TraceBuilderResult.verify(traceBuilderResult, lirGenRes.getLIR().getControlFlowGraph().getBlocks().length);
+
         if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
             List<Trace<B>> traces = traceBuilderResult.getTraces();
             for (int i = 0; i < traces.size(); i++) {
