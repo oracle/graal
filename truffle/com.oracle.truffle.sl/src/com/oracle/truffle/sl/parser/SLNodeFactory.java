@@ -48,7 +48,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -204,12 +203,12 @@ public class SLNodeFactory {
         return (statement instanceof SLIfNode) || (statement instanceof SLWhileNode);
     }
 
-    private void flattenBlocks(Iterable<? extends Node> bodyNodes, List<SLStatementNode> flattenedNodes) {
-        for (Node n : bodyNodes) {
+    private void flattenBlocks(Iterable<? extends SLStatementNode> bodyNodes, List<SLStatementNode> flattenedNodes) {
+        for (SLStatementNode n : bodyNodes) {
             if (n instanceof SLBlockNode) {
-                flattenBlocks(n.getChildren(), flattenedNodes);
+                flattenBlocks(((SLBlockNode) n).getStatements(), flattenedNodes);
             } else {
-                flattenedNodes.add((SLStatementNode) n);
+                flattenedNodes.add(n);
             }
         }
     }
