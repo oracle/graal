@@ -58,6 +58,9 @@ public final class LLVMPaths {
     public static final File GCC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "gcc/gcc-5.2.0/gcc/testsuite");
     public static final File GCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "gcc/");
 
+    public static final File GCC_TEST_SUITE_COMPILE_TORTURE = new File(EXTERNAL_TEST_SUITES, "gcc/gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile");
+    public static final File GCC_TEST_SUITE_COMPILE_TORTURE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "gcc-compile/");
+
     // NWCC test suite
     public static final File NWCC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "nwcc/");
     public static final File NWCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "nwcc/");
