@@ -86,7 +86,7 @@ public class SLPolyglotEngineValueExecuteBenchmark {
 
     @Benchmark
     @OutputTimeUnit(TimeUnit.SECONDS)
-    public long executePlusDirectly() throws IOException {
+    public long executePlusDirectly() {
         long res = ((Number) slFunction.getCallTarget().call(new Object[]{1L, 2L})).longValue();
         if (res != 3) {
             throw new AssertionError();
