@@ -75,6 +75,9 @@ def executeGate():
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis1(args=None):
     tasks = []
@@ -105,6 +108,9 @@ def travis1(args=None):
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis2(args=None):
     tasks = []
@@ -486,6 +492,11 @@ def runInteropTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
 
+def runCompileTestCases(args=None):
+    """runs the compile (no execution) test cases of the GCC suite"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -760,6 +771,7 @@ mx.update_commands(_suite, {
     'su-tests-types' : [runTypeTestCases, ''],
     'su-tests-polyglot' : [runPolyglotTestCases, ''],
     'su-tests-interop' : [runInteropTestCases, ''],
+    'su-tests-compile' : [runCompileTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
