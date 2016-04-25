@@ -159,7 +159,7 @@ public class NativeLookup {
 
     private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
         Class<?> retType = getJavaClass(function.getReturnType());
-        Class<?>[] paramTypes = getJavaClassses(args, function.getParameterTypes());
+        Class<?>[] paramTypes = getJavaClassses(args);
         String functionName = function.getName().substring(1);
         NativeFunctionHandle functionHandle;
         if (functionName.equals("fork") || functionName.equals("pthread_create") || functionName.equals("pipe")) {
@@ -189,7 +189,7 @@ public class NativeLookup {
     }
 
     // TODO: are there cases where the nodes alone are not sufficient, and we also need the types??
-    private Class<?>[] getJavaClassses(LLVMExpressionNode[] args, @SuppressWarnings("unused") LLVMRuntimeType... llvmTypes) {
+    private Class<?>[] getJavaClassses(LLVMExpressionNode[] args) {
         Class<?>[] types = new Class<?>[args.length];
         for (int i = 0; i < args.length; i++) {
             types[i] = facade.getJavaClass(args[i]);
