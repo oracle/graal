@@ -29,9 +29,9 @@ def checkCommitMessage(quotedCommitMessage):
     error = False
     message = ''
     commitMessage = quotedCommitMessage[1:-1]
-    if commitMessage[0].islower():
+    if not commitMessage[0].isupper():
         error = True
-        message = quotedCommitMessage + ' starts with a lower case character'
+        message = quotedCommitMessage + ' does not start with an upper case character'
     if titleWithEndingPunct.match(commitMessage):
         error = True
         message = quotedCommitMessage + ' ends with period, question mark, or exclamation mark'
