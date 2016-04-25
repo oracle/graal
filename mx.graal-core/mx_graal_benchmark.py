@@ -154,6 +154,8 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "vm": "graal-vm",
+              "config.name": "default",
               "metric.name": "time",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
@@ -167,6 +169,8 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "vm": "graal-vm",
+              "config.name": "default",
               "metric.name": "warmup",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
@@ -180,6 +184,8 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "vm": "graal-vm",
+              "config.name": "default",
               "metric.name": "warmup",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
@@ -308,6 +314,8 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             r"^Score on (?P<benchmark>[a-zA-Z0-9\._]+): (?P<score>[0-9]+((,|\.)[0-9]+)?) ops/m$", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "vm": "graal-vm",
+              "config.name": "default",
               "metric.name": "throughput",
               "metric.value": ("<score>", float),
               "metric.unit": "op/min",

@@ -23,7 +23,7 @@
 
 #####  Globals  #####
 #
-# Determine a static csv file containing binary dump of graal method metrics
+# Determine a static csv file containing csv dump of graal method metrics
 DATA_PATH <- ""
 #
 # Raw data read from the dump file, must not be modified after read
@@ -87,7 +87,7 @@ phasesSum <- function(phaseName){
 plotPhases <- function(highestNPhase=10,highestNMethods=10,flat=TRUE,time=TRUE,compilationINDEX=0,interactive=FALSE){
   # e.g. plot phase times (of those methods with compilation id=0 and where the phases ran longests (sum))
   # data gathered via mx --vm jvmci dacapo -G:Count= -G:Time= -G:TrackMemUse= -G:MethodMeter= 
-  # -G:MethodMeterterceptDebugValues=X:X:X fop -n 40
+  # -G:GlobalMetricsInterceptedByMethodMetrics=Timers,Counters,MemUseTrackers fop -n 10
   # we look at one compilation only per method
   phases <- WIDE_DATA %>% 
     filter(compilationIndex==compilationINDEX) %>% 
@@ -119,7 +119,7 @@ plotPhases <- function(highestNPhase=10,highestNMethods=10,flat=TRUE,time=TRUE,c
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))+
     scale_size_area() + 
     xlab("Method") +
-    ylab(ifelse(time,"Time(ms)","Memory(kb)")) +
+    ylab(ifelse(time,"Time(ms)","Memory(Mb)")) +
     ggtitle(paste(highestNMethods," methods with the highest (sum per phase) ",highestNPhase," phase ",
                   ifelse(time,"PhaseTime","PhaseMemUse")))
   if(interactive){
@@ -130,6 +130,10 @@ plotPhases <- function(highestNPhase=10,highestNMethods=10,flat=TRUE,time=TRUE,c
 }
 
 plotLongestCompileTime <- function(nrOfMethods=10,interactive=FALSE){
+  # e.g. plot longest compile time (of those methods with compilation id=0 and where the phases ran longests (sum))
+  # data gathered via mx --vm jvmci dacapo -G:Count= -G:Time= -G:TrackMemUse= -G:MethodMeter= 
+  # -G:GlobalMetricsInterceptedByMethodMetrics=Timers,Counters,MemUseTrackers fop -n 10
+  # we look at one compilation only per method  
   timeSize <- WIDE_DATA %>% 
     filter(compilationIndex==0) %>% 
     select(methodName, matches("CompilationTime_Accm")) %>%
@@ -147,8 +151,8 @@ plotLongestCompileTime <- function(nrOfMethods=10,interactive=FALSE){
            y=timeSize$time
          )    
   )+ 
-    geom_bar(stat = "identity")+
-    geom_text(aes(label = time))+ 
+    geom_bar(stat = "identity",fill="gray")+
+    geom_text(aes(label = time),size=5)+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 
@@ -179,8 +183,8 @@ plotLongestCodeInstallTime <- function(nrOfMethods=10,interactive=FALSE){
            y=timeSize$time
          )    
   )+
-    geom_bar(stat = "identity")+
-    geom_text(aes(label = time))+ 
+    geom_bar(stat = "identity",fill="gray")+
+    geom_text(aes(label = time),size=5)+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 
@@ -208,8 +212,8 @@ plotLongestTime <- function(nrOfMethods=10,interactive=FALSE){
            y=timeSize$time
          )    
   )+
-    geom_bar(stat = "identity")+
-    geom_text(aes(label = time))+ 
+    geom_bar(stat = "identity",fill="gray")+
+    geom_text(aes(label = time),size=5)+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
     scale_size_area() + 
@@ -233,10 +237,11 @@ plotNrOfCompilations <- function(nrOfMethods=10,interactive=FALSE){
   ggplot(collapseCompilations,
          aes(
            x=collapseCompilations$methodName,
-           y=factor(collapseCompilations$compilations)
+           y=collapseCompilations$compilations
          )    
   )+
-    geom_bar(stat = "identity")+
+    geom_bar(stat = "identity",fill="gray")+
+    geom_text(aes(label = compilations+1),size=5)+ 
     theme_bw()+
     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))+
     scale_size_area() + 
