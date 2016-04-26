@@ -120,6 +120,7 @@ final class InstrumentationUtils {
             return "";
         }
 
+        @SuppressWarnings("deprecation")
         protected void printTree(PrintWriter p, Node node, int maxDepth, Node markNode, int level) {
             if (node == null) {
                 p.print("null");

@@ -31,7 +31,7 @@ import java.util.Iterator;
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
  * subclass of {@link Node} that is used.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class NodeClass {
@@ -59,27 +59,35 @@ public abstract class NodeClass {
     }
 
     /** @since 0.8 or earlier */
-    @SuppressWarnings("unused")
-    public NodeClass(Class<? extends Node> clazz) {
+    public NodeClass(@SuppressWarnings("unused") Class<? extends Node> clazz) {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor getNodeClassField();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor[] getCloneableFields();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor[] getFields();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor getParentField();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor[] getChildFields();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract NodeFieldAccessor[] getChildrenFields();
+
+    /** @since 0.14 */
+    protected abstract Iterable<NodeFieldAccessor> getNodeFields();
 
     /** @since 0.8 or earlier */
     public abstract Iterator<Node> makeIterator(Node node);
@@ -87,7 +95,7 @@ public abstract class NodeClass {
     /**
      * The {@link Class} this <code>NodeClass</code> has been {@link #NodeClass(java.lang.Class)
      * created for}.
-     * 
+     *
      * @return the clazz of node this <code>NodeClass</code> describes
      * @since 0.8 or earlier
      */

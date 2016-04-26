@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
  * Information about a {@link Node} class. A single instance of this class is allocated for every
  * subclass of {@link Node} that is used.
  */
+@SuppressWarnings("deprecation")
 final class NodeClassImpl extends NodeClass {
     private static final NodeFieldAccessor[] EMPTY_NODE_FIELD_ARRAY = new NodeFieldAccessor[0];
 
@@ -48,7 +50,6 @@ final class NodeClassImpl extends NodeClass {
     private final NodeFieldAccessor nodeClassField;
     private final NodeFieldAccessor[] childFields;
     private final NodeFieldAccessor[] childrenFields;
-    private final NodeFieldAccessor[] cloneableFields;
 
     private final Class<? extends Node> clazz;
 
@@ -83,7 +84,6 @@ final class NodeClassImpl extends NodeClass {
         this.parentField = parentFieldTmp;
         this.childFields = childFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
         this.childrenFields = childrenFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.cloneableFields = cloneableFieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
         this.clazz = clazz;
     }
 
@@ -124,11 +124,6 @@ final class NodeClassImpl extends NodeClass {
         return nodeClassField;
     }
 
-    @Override
-    public NodeFieldAccessor[] getCloneableFields() {
-        return cloneableFields;
-    }
-
     private static boolean isNodeType(Class<?> clazz) {
         return Node.class.isAssignableFrom(clazz) || (clazz.isInterface() && NodeInterface.class.isAssignableFrom(clazz));
     }
@@ -152,23 +147,8 @@ final class NodeClassImpl extends NodeClass {
     }
 
     @Override
-    public NodeFieldAccessor[] getFields() {
-        return fields;
-    }
-
-    @Override
     public NodeFieldAccessor getParentField() {
         return parentField;
-    }
-
-    @Override
-    public NodeFieldAccessor[] getChildFields() {
-        return childFields;
-    }
-
-    @Override
-    public NodeFieldAccessor[] getChildrenFields() {
-        return childrenFields;
     }
 
     @Override
@@ -196,6 +176,101 @@ final class NodeClassImpl extends NodeClass {
         return clazz;
     }
 
+    @Override
+    protected Iterable<NodeFieldAccessor> getNodeFields() {
+        return getNodeFields(null);
+    }
+
+    /**
+     * Functional interface equivalent to {@code Predicate<NodeFieldAccessor>}.
+     */
+    private interface NodeFieldFilter {
+        boolean test(NodeFieldAccessor field);
+    }
+
+    private Iterable<NodeFieldAccessor> getNodeFields(final NodeFieldFilter filter) {
+        return new Iterable<NodeFieldAccessor>() {
+            public Iterator<NodeFieldAccessor> iterator() {
+                return new Iterator<NodeFieldAccessor>() {
+                    private int cursor = -1;
+                    {
+                        forward();
+                    }
+
+                    private void forward() {
+                        for (int i = cursor + 1; i < fields.length; i++) {
+                            NodeFieldAccessor field = fields[i];
+                            if (filter == null || filter.test(field)) {
+                                cursor = i;
+                                return;
+                            }
+                        }
+                        cursor = fields.length;
+                    }
+
+                    public boolean hasNext() {
+                        assert cursor >= 0;
+                        return cursor < fields.length;
+                    }
+
+                    public NodeFieldAccessor next() {
+                        if (hasNext()) {
+                            NodeFieldAccessor next = fields[cursor];
+                            forward();
+                            return next;
+                        } else {
+                            throw new NoSuchElementException();
+                        }
+                    }
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        };
+    }
+
+    @Override
+    public NodeFieldAccessor[] getFields() {
+        return iterableToArray(getNodeFields());
+    }
+
+    @Override
+    public NodeFieldAccessor[] getChildFields() {
+        return iterableToArray(getNodeFields(new NodeFieldFilter() {
+            public boolean test(NodeFieldAccessor field) {
+                return field.isChildField();
+            }
+        }));
+    }
+
+    @Override
+    public NodeFieldAccessor[] getChildrenFields() {
+        return iterableToArray(getNodeFields(new NodeFieldFilter() {
+            public boolean test(NodeFieldAccessor field) {
+                return field.isChildrenField();
+            }
+        }));
+    }
+
+    @Override
+    public NodeFieldAccessor[] getCloneableFields() {
+        return iterableToArray(getNodeFields(new NodeFieldFilter() {
+            public boolean test(NodeFieldAccessor field) {
+                return field.isCloneableField();
+            }
+        }));
+    }
+
+    private static NodeFieldAccessor[] iterableToArray(Iterable<NodeFieldAccessor> fields) {
+        ArrayList<NodeFieldAccessor> fieldList = new ArrayList<>();
+        for (NodeFieldAccessor field : fields) {
+            fieldList.add(field);
+        }
+        return fieldList.toArray(EMPTY_NODE_FIELD_ARRAY);
+    }
+
     private static final class NodeIterator implements Iterator<Node> {
         private final NodeFieldAccessor[] childFields;
         private final NodeFieldAccessor[] childrenFields;
@@ -204,8 +279,8 @@ final class NodeClassImpl extends NodeClass {
         private int index;
 
         protected NodeIterator(NodeClassImpl nodeClass, Node node) {
-            this.childFields = nodeClass.getChildFields();
-            this.childrenFields = nodeClass.getChildrenFields();
+            this.childFields = nodeClass.childFields;
+            this.childrenFields = nodeClass.childrenFields;
             this.node = node;
             this.childrenCount = childrenCount();
             this.index = 0;
