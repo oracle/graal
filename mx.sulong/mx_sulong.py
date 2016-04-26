@@ -598,9 +598,13 @@ def link(args=None):
         n += 1
     if out is None:
         out = 'out.su'
+    if len(modules) == 1:
+        prefix = os.path.dirname(modules[0])
+    else:
+        prefix = os.path.commonprefix(modules)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for module in modules:
-            z.write(module)
+            z.write(module, module[len(prefix):])
         z.writestr('libs', '\n'.join(libraries))
 
 def compileWithClangPP(args=None):
