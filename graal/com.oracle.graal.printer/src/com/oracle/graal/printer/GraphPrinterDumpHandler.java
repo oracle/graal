@@ -238,39 +238,63 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         if (result == null) {
             result = new ArrayList<>();
             Object lastMethodOrGraph = null;
+            boolean graphSeen = false;
             for (Object o : Debug.context()) {
-                JavaMethod method = asJavaMethod(o);
-                if (method != null) {
-                    if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
-                        result.add(method.format("%H::%n(%p)"));
-                    } else {
-                        /*
-                         * This prevents multiple adjacent method context objects for the same
-                         * method from resulting in multiple IGV tree levels. This works on the
-                         * assumption that real inlining debug scopes will have a graph context
-                         * object between the inliner and inlinee context objects.
-                         */
-                    }
-                } else if (o instanceof DebugDumpScope) {
+                if (o == graph) {
+                    graphSeen = true;
+                }
+
+                if (o instanceof DebugDumpScope) {
                     DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                     if (debugDumpScope.decorator && !result.isEmpty()) {
                         result.set(result.size() - 1, debugDumpScope.name + ":" + result.get(result.size() - 1));
                     } else {
                         result.add(debugDumpScope.name);
                     }
+                } else {
+                    addMethodContext(result, o, lastMethodOrGraph);
                 }
                 if (o instanceof JavaMethod || o instanceof Graph) {
                     lastMethodOrGraph = o;
                 }
             }
+
             if (result.isEmpty()) {
                 result.add(graph.toString());
+                graphSeen = true;
             }
             // Reverse list such that inner method comes after outer method.
             Collections.reverse(result);
+            if (!graphSeen) {
+                /*
+                 * The graph isn't in any context but is being processed within another graph so add
+                 * it to the end of the scopes.
+                 */
+                if (asJavaMethod(graph) != null) {
+                    addMethodContext(result, graph, lastMethodOrGraph);
+                } else {
+                    result.add(graph.toString());
+                }
+            }
             inlineContextMap.put(graph, result);
         }
         return result;
+    }
+
+    private static void addMethodContext(List<String> result, Object o, Object lastMethodOrGraph) {
+        JavaMethod method = asJavaMethod(o);
+        if (method != null) {
+            if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
+                result.add(method.format("%H::%n(%p)"));
+            } else {
+                /*
+                 * This prevents multiple adjacent method context objects for the same method from
+                 * resulting in multiple IGV tree levels. This works on the assumption that real
+                 * inlining debug scopes will have a graph context object between the inliner and
+                 * inlinee context objects.
+                 */
+            }
+        }
     }
 
     private void openScope(String name, int inlineDepth, Map<Object, Object> properties) {
