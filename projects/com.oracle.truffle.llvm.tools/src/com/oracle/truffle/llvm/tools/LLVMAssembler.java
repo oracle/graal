@@ -33,9 +33,9 @@ import java.io.File;
 
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
-public final class LLVM_AS {
+public final class LLVMAssembler {
 
-    private LLVM_AS() {
+    private LLVMAssembler() {
     }
 
     public static void assembleToBitcodeFile(File irFile) {
