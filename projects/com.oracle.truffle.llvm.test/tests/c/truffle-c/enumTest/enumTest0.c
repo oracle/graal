@@ -1,8 +1,10 @@
 enum TEST {
-	A, B, C
+  A,
+  B,
+  C
 };
 
 int main() {
-	enum TEST t = B;
-	return t;
+  enum TEST t = B;
+  return t;
 }

@@ -1,8 +1,6 @@
-void function(char test[]) {
-	test[0] = 'A';
-}
+void function(char test[]) { test[0] = 'A'; }
 
 int main() {
-	char t[] = "asdf";
-	return t[0];
+  char t[] = "asdf";
+  return t[0];
 }

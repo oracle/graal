@@ -33,12 +33,26 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
+import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 
 public interface LLVMIntrinsic {
 
     @GenerateNodeFactory
+    abstract class LLVMVoidIntrinsic extends LLVMNode implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
     abstract class LLVMAddressIntrinsic extends LLVMAddressNode implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
+    abstract class LLVMFloatIntrinsic extends LLVMFloatNode implements LLVMIntrinsic {
 
     }
 
@@ -48,12 +62,22 @@ public interface LLVMIntrinsic {
     }
 
     @GenerateNodeFactory
-    abstract class LLVMVoidIntrinsic extends LLVMNode implements LLVMIntrinsic {
+    abstract class LLVMBooleanIntrinsic extends LLVMI1Node implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
+    abstract class LLVMI8Intrinsic extends LLVMI8Node implements LLVMIntrinsic {
 
     }
 
     @GenerateNodeFactory
     abstract class LLVMI32Intrinsic extends LLVMI32Node implements LLVMIntrinsic {
+
+    }
+
+    @GenerateNodeFactory
+    abstract class LLVMI64Intrinsic extends LLVMI64Node implements LLVMIntrinsic {
 
     }
 

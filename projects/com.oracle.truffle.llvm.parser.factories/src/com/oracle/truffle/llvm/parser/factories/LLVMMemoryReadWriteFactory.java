@@ -54,7 +54,7 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMLoadVectorNodeFactory.LLVML
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMLoadVectorNodeFactory.LLVMLoadI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVM80BitFloatStoreNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMAdressStoreNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMDoubleStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMFloatStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMFunctionStoreNodeGen;
@@ -194,7 +194,7 @@ public final class LLVMMemoryReadWriteFactory {
             case X86_FP80:
                 return LLVM80BitFloatStoreNodeGen.create(pointerNode, (LLVM80BitFloatNode) valueNode);
             case ADDRESS:
-                return LLVMAdressStoreNodeGen.create(pointerNode, (LLVMAddressNode) valueNode);
+                return LLVMAddressStoreNodeGen.create(pointerNode, (LLVMAddressNode) valueNode);
             case FUNCTION_ADDRESS:
                 return LLVMFunctionStoreNodeGen.create(pointerNode, (LLVMFunctionNode) valueNode);
             case STRUCT:

@@ -1,5 +1,4 @@
 int main() {
-	int i = 1;
-	return i-- + i++;
+  int i = 1;
+  return i-- + i++;
 }
-

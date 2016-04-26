@@ -285,6 +285,7 @@ public class TypeResolver extends LLVM_IRSwitch<ResolvedType> {
         String name = object.getName();
 
         Map<String, ResolvedNamedType> resolvedNamedTypes = resolvedNamedTypesCache.get(RESOLVED_NAMED_TYPES_CACHE_KEY, object.eResource(), new Provider<Map<String, ResolvedNamedType>>() {
+            @Override
             public Map<String, ResolvedNamedType> get() {
                 return new HashMap<>();
             }

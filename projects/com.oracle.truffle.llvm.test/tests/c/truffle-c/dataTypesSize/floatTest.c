@@ -1,3 +1,1 @@
-int main() {
-	return sizeof(float);
-}
+int main() { return sizeof(float); }

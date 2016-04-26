@@ -1,9 +1,9 @@
 union test {
-	int a;
+  int a;
 };
 
 int main() {
-	union test asdf;
-	asdf.a = 3;
-	return asdf.a;
+  union test asdf;
+  asdf.a = 3;
+  return asdf.a;
 }

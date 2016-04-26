@@ -1,12 +1,12 @@
 enum asdf {
-	val = 5
+  val = 5
 };
 
 struct test {
-	enum asdf t;
+  enum asdf t;
 };
 
 int main() {
-	struct test t = { .t = val };
-	return t.t;
+  struct test t = { .t = val };
+  return t.t;
 }

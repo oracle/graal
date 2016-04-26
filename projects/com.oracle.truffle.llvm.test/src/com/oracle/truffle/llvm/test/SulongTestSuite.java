@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -77,7 +78,7 @@ public class SulongTestSuite extends TestSuiteBase {
     private static List<TestCaseFiles[]> getFilesRecursively(File currentFolder) {
         List<TestCaseFiles> allBitcodeFiles = new ArrayList<>();
         List<File> byteCodeFiles = TestHelper.collectFilesWithExtension(currentFolder, ProgrammingLanguage.LLVM);
-        allBitcodeFiles.addAll(byteCodeFiles.stream().map(t -> TestCaseFiles.createFromBitCodeFile(t)).collect(Collectors.toList()));
+        allBitcodeFiles.addAll(byteCodeFiles.stream().map(t -> TestCaseFiles.createFromBitCodeFile(t, Collections.emptySet())).collect(Collectors.toList()));
         List<File> cFiles = TestHelper.collectFilesWithExtension(currentFolder, Clang.getSupportedLanguages());
         allBitcodeFiles.addAll(getClangCompiledFiles(cFiles, OptimizationLevel.NONE, false));
         List<TestCaseFiles> optimizedFiles = new ArrayList<>();
@@ -102,7 +103,7 @@ public class SulongTestSuite extends TestSuiteBase {
     private static List<TestCaseFiles> getClangCompiledFiles(List<File> cFiles, OptimizationLevel level, boolean filter) {
         List<TestCaseFiles> compiledFiles = cFiles.parallelStream().map(file -> {
             ClangOptions optimizationLevel = ClangOptions.builder().optimizationLevel(level);
-            return TestHelper.compileToLLVMIRWithClang(file, TestHelper.getTempLLFile(file, level.toString()), optimizationLevel);
+            return TestHelper.compileToLLVMIRWithClang(file, TestHelper.getTempLLFile(file, level.toString()), Collections.emptySet(), optimizationLevel);
         }).collect(Collectors.toList());
         if (filter) {
             return getFilteredOptStream(compiledFiles).collect(Collectors.toList());

@@ -76,9 +76,15 @@ public class TestGCCSuite extends TestSuiteBase {
                 throw new LLVMUnsupportedException(UnsupportedReason.CLANG_ERROR);
             }
             int truffleResult = LLVM.executeMain(byteCodeFile);
-            boolean pass = expectedResult == truffleResult;
+            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
+            boolean pass = true;
+            if (!undefinedReturnCode) {
+                pass &= expectedResult == truffleResult;
+            }
             recordTestCase(tuple, pass);
-            Assert.assertEquals(byteCodeFile.getAbsolutePath(), expectedResult, truffleResult);
+            if (!undefinedReturnCode) {
+                Assert.assertEquals(byteCodeFile.getAbsolutePath(), expectedResult, truffleResult);
+            }
         } catch (Throwable e) {
             recordError(tuple, e);
             throw e;

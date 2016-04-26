@@ -263,7 +263,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
         List<GlobalVariable> staticVars = new ArrayList<>();
         functionToLabelMapping = new HashMap<>();
         setTargetInfo(objects);
-        allocateGlobalsAndAliases(this, objects);
+        allocateGlobals(objects);
+        allocateAliases(objects);
         this.nativeLookup = new NativeLookup(facade);
         for (EObject object : objects) {
             if (object instanceof FunctionDef) {
@@ -299,6 +300,43 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return functionCallTargets;
     }
 
+    private void allocateAliases(List<EObject> objects) {
+        boolean resolvedAllAliases;
+        boolean madeProgress;
+        Object unresolvedAlias = null;
+        do {
+            resolvedAllAliases = true;
+            madeProgress = false;
+            for (EObject object : objects) {
+                if (object instanceof Alias) {
+                    Alias alias = (Alias) object;
+                    if (aliases.get(alias) == null) {
+                        GlobalValueDef aliasee = alias.getAliasee().getRef();
+                        Object globalVar;
+                        if (aliasee instanceof GlobalVariable) {
+                            globalVar = globalVars.get(aliasee);
+                        } else if (aliasee instanceof Alias) {
+                            globalVar = aliases.get(aliasee);
+                        } else {
+                            continue;
+                        }
+                        if (globalVar == null) {
+                            resolvedAllAliases = false;
+                            unresolvedAlias = alias.getName();
+                        } else {
+                            aliases.put(alias, globalVar);
+                            madeProgress = true;
+                        }
+                    }
+                }
+            }
+            if (!resolvedAllAliases && !madeProgress) {
+                LLVMLogger.info("Could not resolve all aliases (e.g., " + unresolvedAlias + ")");
+                break;
+            }
+        } while (!resolvedAllAliases);
+    }
+
     private static void setTargetInfo(List<EObject> objects) {
         for (EObject object : objects) {
             if (object instanceof TargetInfo) {
@@ -307,29 +345,17 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
-    private void allocateGlobalsAndAliases(LLVMVisitor visitor, List<EObject> objects) {
+    private void allocateGlobals(List<EObject> objects) {
         for (EObject object : objects) {
             if (object instanceof GlobalVariable) {
-                visitor.findOrAllocateGlobal((GlobalVariable) object);
-            }
-            if (object instanceof Alias) {
-                Alias alias = (Alias) object;
-                GlobalValueDef aliasee = alias.getAliasee().getRef();
-                Object globalVar;
-                if (aliasee instanceof GlobalVariable) {
-                    globalVar = globalVars.get(aliasee);
-                } else if (aliasee instanceof Alias) {
-                    globalVar = aliases.get(aliasee);
-                } else {
-                    continue;
-                }
-                LLVMParserAsserts.assertNotNull(globalVar);
-                aliases.put(alias, globalVar);
+                findOrAllocateGlobal((GlobalVariable) object);
             }
         }
     }
 
     private List<LLVMNode> addGlobalVars(LLVMVisitor visitor, List<GlobalVariable> globalVariables) {
+        frameDescriptor = globalFrameDescriptor = new FrameDescriptor();
+        stackPointerSlot = frameDescriptor.addFrameSlot(STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
         List<LLVMNode> globalVarNodes = new ArrayList<>();
         for (GlobalVariable globalVar : globalVariables) {
             LLVMNode globalVarWrite = visitor.visitGlobalVariable(globalVar);
@@ -361,7 +387,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 throw new AssertionError("destructors not yet supported!");
             }
         }
-        globalFrameDescriptor = frameDescriptor;
         return globalVarNodes;
     }
 
@@ -424,9 +449,13 @@ public class LLVMVisitor implements LLVMParserRuntime {
         if (globalVars.containsKey(globalVariable)) {
             return globalVars.get(globalVariable);
         } else {
-            Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
-            globalVars.put(globalVariable, allocation);
-            return allocation;
+            try {
+                Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
+                globalVars.put(globalVariable, allocation);
+                return allocation;
+            } catch (Throwable t) {
+                throw new AssertionError(globalVariable.getName());
+            }
         }
     }
 
@@ -867,7 +896,12 @@ public class LLVMVisitor implements LLVMParserRuntime {
             GlobalValueRef ref = (GlobalValueRef) currentRef;
             if (ref.getConstant() instanceof SimpleConstant) {
                 SimpleConstant simpleConstant = (SimpleConstant) ref.getConstant();
-                return Integer.parseInt(simpleConstant.getValue());
+                try {
+                    return Integer.parseInt(simpleConstant.getValue());
+                } catch (NumberFormatException e) {
+                    LLVMLogger.info("GEP index overflow (still parse as int");
+                    return (int) Long.parseLong(simpleConstant.getValue());
+                }
             }
         }
         return null;
@@ -1030,6 +1064,9 @@ public class LLVMVisitor implements LLVMParserRuntime {
             Object globalVar = aliases.get(ref);
             LLVMParserAsserts.assertNotNull(globalVar);
             return factoryFacade.createLiteral(globalVar, LLVMBaseType.ADDRESS);
+        } else if (aliasee.getBitcast() != null) {
+            GlobalValueRef constant = aliasee.getBitcast().getConstant();
+            return visitValueRef(constant, aliasee.getBitcast().getTargetType());
         } else {
             throw new AssertionError(aliaseeRef);
         }
