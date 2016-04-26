@@ -30,7 +30,6 @@ from argparse import ArgumentParser
 import sanitycheck
 import re
 import zipfile
-import shutil
 
 import mx
 from mx_gate import Task
@@ -41,6 +40,7 @@ from mx_graal_bench import dacapo
 import mx_gate
 import mx_unittest
 import mx_microbench
+from mx_javamodules import get_empty_module
 
 _suite = mx.suite('graal-core')
 
@@ -84,7 +84,7 @@ class JVMCIMode:
 
 _vm = JVMCIMode(jvmciMode='hosted')
 
-class BootClasspathDist(object):
+class BootLayerDist(object):
     """
     Extra info for a Distribution that must be put onto the boot class path.
     """
@@ -98,15 +98,15 @@ class BootClasspathDist(object):
         return self.dist().classpath_repr()
 
 _compilers = ['graal-economy', 'graal']
-_bootClasspathDists = [
-    BootClasspathDist('GRAAL'),
+_bootLayerDists = [
+    BootLayerDist('GRAAL'),
 ]
 
 def add_compiler(compilerName):
     _compilers.append(compilerName)
 
-def add_boot_classpath_dist(dist):
-    _bootClasspathDists.append(dist)
+def add_boot_layer_dist(dist):
+    _bootLayerDists.append(dist)
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
@@ -278,6 +278,54 @@ def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
 
 mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher)
 
+def _uniqify(alist):
+    """
+    Processes given list to remove all duplicate entries, preserving only the first unique instance for each entry.
+
+    :param list alist: the list to process
+    :return: `alist` with all duplicates removed
+    """
+    seen = set()
+    return [e for e in alist if e not in seen and seen.add(e) is None]
+
+def _packages_defined_by(classpathEntry):
+    """
+    Finds the packages defined by the ``*.class`` files available under `classpathEntry`.
+
+    :param str classpathEntry: an entry on a class path
+    """
+    pkgs = set()
+    if os.path.isdir(classpathEntry):
+        for root, _, filenames in os.walk(classpathEntry):
+            for f in filenames:
+                if f.endswith('.class'):
+                    pkg = root[len(classpathEntry) + 1:].replace(os.sep, '.')
+                    pkgs.add(pkg)
+    elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
+        with zipfile.ZipFile(classpathEntry, 'r') as zf:
+            for name in zf.namelist():
+                if name.endswith('.class') and '/' in name:
+                    pkg = name[0:name.rfind('/')].replace('/', '.')
+                    pkgs.add(pkg)
+    return pkgs
+
+def _find_intersecting_module(modulepath, packages, source):
+    """
+    Finds the module in `modulepath` that defines at least one package in `packages`.
+    There must be at most one such intersecting module.
+
+    :param list modulepath: a list of `JavaModuleDescriptor` objects
+    :param str packages: a set of package names
+    :param str source: who defines `packages`
+    """
+    intersectingModule = None
+    for jmd in modulepath:
+        if packages.intersection(jmd.packages):
+            if intersectingModule:
+                mx.abort(source + ' defines packages in ' + intersectingModule.name + ' and ' + jmd.name)
+            intersectingModule = jmd
+    return intersectingModule
+
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
     jacocoArgs = mx_gate.get_jacoco_agent_args()
@@ -307,50 +355,72 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
 
-    bcp = [mx.distribution('truffle:TRUFFLE_API').classpath_repr()]
-    if _jvmciModes[_vm.jvmciMode]:
-        bcp.extend([d.get_classpath_repr() for d in _bootClasspathDists])
-
     # Create modules for the boot class path distributions
-    modulesDir = mx.ensure_dir_exists(join(_suite.get_output_root(), 'modules'))
-    moduleDists = [mx.distribution('truffle:TRUFFLE_API')] + [d.dist() for d in _bootClasspathDists]
-    modulePath = []
-    for moduleDist in moduleDists:
-        moduleName = moduleDist.name.lower()
-        moduleDir = mx.ensure_dir_exists(join(modulesDir, moduleName))
-        moduleJar = join(modulesDir, moduleName + '.jar')
-        modulePath.append(moduleJar)
-        distJar = moduleDist.path
-        if not exists(moduleJar) or mx.TimeStampFile(distJar).isNewerThan(moduleJar):
-            moduleSource = join(moduleDir, 'module-info.java')
-            with open(moduleSource, 'w') as fp:
-                if moduleName == 'graal':
-                    print >> fp, 'module ' + moduleName + ' {'
-#                    print >> fp, '    requires public jdk.vm.ci;'
-#                    print >> fp, '    provides jdk.vm.ci.runtime.JVMCICompilerFactory with '
-#                    print >> fp, '             com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;'
-                    print >> fp, '}'
-                else:
-                    fp.write('module ' + moduleName + ' {  }')
-            with zipfile.ZipFile(distJar, 'r') as zf:
-                zf.extractall(path=moduleDir)
-            mx.run([_jdk.javac, '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=' + moduleName, '-d', moduleDir, moduleSource])
-            shutil.make_archive(moduleJar, 'zip', moduleDir)
-            os.rename(moduleJar + '.zip', moduleJar)
+    bootLayerDists = [mx.distribution('truffle:TRUFFLE_API')] + [d.dist() for d in _bootLayerDists]
+    modulepath = set()
+    addedExports = {}
+    bootcp = []
+    for dist in bootLayerDists:
+        jmd = dist.as_java_module(_jdk)
+        modulepath.update(jmd.modulepath())
+        bootcp.extend(dist.archived_deps())
+        bootcp.append(dist)
 
+    # If the class path contains classes that are also on the module path, then
+    # app classes (most likely) depend on resources in the modules. Since the unnamed
+    # module cannot see anything concealed in named modules, we need to:
+    # 1. Remove module classes from the app class path.
+    # 2. Patch classes that overlap with module-defined packages into the defining module (via -Xpatch).
+    # 3. Patch the remaining classes into an empty module.
+    # 4. Export concealed packages used by the remaining classes (via -XaddExports).
+    emptyModuleJar = ''
     cpIndex, cp = mx.find_classpath_arg(args)
     if cp:
-        bcp = frozenset([e.classpath_repr() for e in mx.classpath_entries([d.dist() for d in _bootClasspathDists] + [mx.distribution('truffle:TRUFFLE_API')], preferProjects=True)])
-        newCp = os.pathsep.join([e for e in cp.split(os.pathsep) if e not in bcp])
-        if cp != newCp:
-            # If classes in boot class path dists were also on the class path, then we need to either
-            # export all packages in these dists or -Xpatch them into the graal module
-            args[cpIndex] = newCp
-            del args[cpIndex - 1]
-            del args[cpIndex - 1]
-            args = ['-Xpatch:graal=' + newCp] + args
-    
-    args = ['-addmods', 'graal,jdk.vm.ci', '-XaddExports:jdk.vm.ci/jdk.vm.ci.runtime=graal', '-mp' , os.pathsep.join(modulePath)] + args
+        bootcp = _uniqify(bootcp)
+        cp = _uniqify(cp.split(os.pathsep))
+        bootcp = frozenset([e.classpath_repr() for e in bootcp])
+        # 1. Remove module classes from the app class path
+        appcp = [e for e in cp if e not in bootcp]
+        if cp != appcp:
+            patches = {}
+            cp = []
+            for e in appcp:
+                pkgs = _packages_defined_by(e)
+                patchedModule = _find_intersecting_module(modulepath, pkgs, e)
+                if patchedModule:
+                    patches.setdefault(patchedModule.name, []).append(e)
+                else:
+                    cp.append(e)
+
+            # 2. Patch classes that overlap with module-defined packages into the defining module
+            patches = ['-Xpatch:' + module + '=' + ':'.join(files) for (module, files) in patches.iteritems()]
+            args[cpIndex - 1:cpIndex + 1] = patches
+            if cp:
+                # 3. Patch the remaining classes into an empty module
+                emptyModuleName, emptyModuleJar = get_empty_module()
+                args = ['-addmods', emptyModuleName] + ['-Xpatch:' + emptyModuleName + '=' + ':'.join(cp)] + args
+                
+                # 4. Export concealed packages used by the remaining classes
+                pathToProject = { p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+                for e in cp:
+                    p = pathToProject.get(e, None)
+                    if p:
+                        concealed = p.get_concealed_imported_packages()
+                        for module, packages in concealed.iteritems():
+                            for package in packages:
+                                addedExports.setdefault(module + '/' + package, []).append(emptyModuleName)
+
+    args = ['-modulepath' , os.pathsep.join([m.jarpath for m in modulepath] + [emptyModuleJar])] + args
+
+    # Export concealed packages
+    for jmd in modulepath:
+        for module, packages in jmd.concealedRequires.iteritems():
+            # No need to explicitly export JVMCI - it's exported via reflection 
+            if module != 'jdk.vm.ci':
+                for package in packages:
+                    addedExports.setdefault(module + '/' + package, []).append(jmd.name)
+    for export, targets in addedExports.iteritems():
+        args = ['-XaddExports:' + export + '=' + ','.join(targets)] + args
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
@@ -359,7 +429,8 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
         if  len(ignoredArgs) > 0:
-            mx.log("Warning: The following options will be ignored by the vm because they come after the '-version' argument: " + ' '.join(ignoredArgs))
+            mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
+
     return jdk.processArgs(args, addDefaultArgs=addDefaultArgs)
 
 def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
@@ -367,6 +438,8 @@ def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeo
     args = _parseVmArgs(jdk, args, addDefaultArgs=addDefaultArgs)
 
     jvmciModeArgs = _jvmciModes[_vm.jvmciMode]
+    if '-XX:+UseJVMCICompiler' not in jvmciModeArgs and '-XX:+BootstrapJVMCI' in args:
+        mx.warn('-XX:+BootstrapJVMCI is ignored since -XX:+UseJVMCICompiler is not enabled')
     cmd = [jdk.java] + ['-' + get_vm()] + jvmciModeArgs + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
@@ -435,5 +508,5 @@ mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes
 def mx_post_parse_cmd_line(opts):
     if opts.jvmci_mode is not None:
         _vm.update(opts.jvmci_mode)
-    for dist in [d.dist() for d in _bootClasspathDists]:
+    for dist in [d.dist() for d in _bootLayerDists]:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))

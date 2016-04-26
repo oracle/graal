@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.services.Services;
+import com.oracle.graal.serviceprovider.GraalServices;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.debug.Debug;
@@ -111,7 +111,7 @@ public class MatchRuleRegistry {
      */
     public static Map<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeMatchRules> theClass) {
         HashMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = new HashMap<>();
-        Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
+        Iterable<MatchStatementSet> sl = GraalServices.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
             matchSets.put(rules.forClass(), rules);
         }

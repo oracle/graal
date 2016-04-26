@@ -54,13 +54,13 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -257,7 +257,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         static {
             DisassemblerProvider selected = null;
-            for (DisassemblerProvider d : Services.load(DisassemblerProvider.class)) {
+            for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
                 String name = d.getName().toLowerCase();
                 if (name.contains("hcf") || name.contains("hexcodefile")) {
                     selected = d;
