@@ -41,9 +41,9 @@ import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
 
 @NodeChildren({
-    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-    @NodeChild(value = "leftNode", type = LLVMI32VectorNode.class),
-    @NodeChild(value = "rightNode", type = LLVMI32VectorNode.class)})
+                @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
+                @NodeChild(value = "leftNode", type = LLVMI32VectorNode.class),
+                @NodeChild(value = "rightNode", type = LLVMI32VectorNode.class)})
 public abstract class LLVMI32VectorCompareNode extends LLVMI1VectorNode {
 
     @ExplodeLoop
