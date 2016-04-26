@@ -31,19 +31,16 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
-public class LLVMToolPaths {
+public final class LLVM_AS {
 
-    static final File PROJECT_ROOT = new File(LLVMOptions.getProjectRoot() + File.separator + LLVMToolPaths.class.getPackage().getName());
-    public static final File TOOLS_ROOT = new File(PROJECT_ROOT, "tools");
-    public static final File LLVM_ROOT = new File(TOOLS_ROOT, "llvm/bin");
+    private LLVM_AS() {
+    }
 
-    public static final File LLVM_ASSEMBLER = new File(LLVM_ROOT, "llvm-as");
-    public static final File LLVM_COMPILER = new File(LLVM_ROOT, "llc");
-    public static final File LLVM_CLANG = new File(LLVM_ROOT, "clang");
-    public static final File LLVM_CLANGPlusPlus = new File(LLVM_ROOT, "clang++");
-    public static final File LLVM_OPT = new File(LLVM_ROOT, "opt");
-    public static final File LLVM_DRAGONEGG = new File(TOOLS_ROOT, "/dragonegg/dragonegg-3.2.src/dragonegg.so");
+    public static void assembleToBitcodeFile(File irFile) {
+        String compilationCommand = LLVMToolPaths.LLVM_ASSEMBLER + " " + irFile.getAbsolutePath();
+        ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
+    }
 
 }
