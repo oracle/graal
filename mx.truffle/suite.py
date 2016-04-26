@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.13.0",
+  "mxversion" : "5.20.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -118,6 +118,13 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
+      "imports" : [
+        "com.sun.tools.javac.processing",
+        "com.sun.tools.javac.model",
+        "com.sun.tools.javac.util",
+        "com.sun.tools.javac.tree",
+        "com.sun.tools.javac.file",
+      ],
       "workingSets" : "Truffle,Codegen",
     },
 
