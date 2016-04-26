@@ -1,3 +1,1 @@
-int main() {
-	return ((~(unsigned long long) 0) >> 1) == -1;
-}
+int main() { return ((~(unsigned long long)0) >> 1) == -1; }

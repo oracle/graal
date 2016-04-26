@@ -1,24 +1,22 @@
-int main () {
+int main() {
 
-	int i;
-	int res = 12;
-	
-	goto L1;
-	
+  int i;
+  int res = 12;
 
-	while (i < 100) {
-	
-		if (i > 100) {
-			L1:
-			
-			res = 0;
-				
-			goto L2;
-		}
-		i++;
-	
-	}
-	
-	L2:
-	return res;
+  goto L1;
+
+  while (i < 100) {
+
+    if (i > 100) {
+    L1:
+
+      res = 0;
+
+      goto L2;
+    }
+    i++;
+  }
+
+L2:
+  return res;
 }

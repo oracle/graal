@@ -1,7 +1,6 @@
 int a;
 
 int main() {
-    a = 21;
-    return a;
+  a = 21;
+  return a;
 }
-

@@ -1,10 +1,8 @@
-int arr[2] = {1,2};
+int arr[2] = { 1, 2 };
 
-int * foo() {
-	return arr;
-}
+int *foo() { return arr; }
 
 int main() {
-	int *a = foo();
-	return a[0] + a[1];
+  int *a = foo();
+  return a[0] + a[1];
 }

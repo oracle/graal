@@ -1,4 +1,4 @@
 int main() {
-	static int a = 3;
-	return a;
+  static int a = 3;
+  return a;
 }

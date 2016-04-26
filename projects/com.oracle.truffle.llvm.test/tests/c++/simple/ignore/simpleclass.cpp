@@ -1,15 +1,12 @@
 class Test {
-	public:
-	int val;
-	int test();
+public:
+  int val;
+  int test();
 };
 
-int Test::test() {
-	return val;
-}
+int Test::test() { return val; }
 
 int main() {
-	Test t;
-	return t.test();
+  Test t;
+  return t.test();
 }
-

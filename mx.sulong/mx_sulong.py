@@ -3,6 +3,7 @@ import os
 from os.path import join
 import shutil
 import zipfile
+import subprocess
 
 import mx
 import mx_findbugs
@@ -10,6 +11,7 @@ import mx_findbugs
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner
 from mx_jvmci import VM, buildvms
+from mx_gitlogcheck import logCheck
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
@@ -19,6 +21,8 @@ _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testDir = join(_root, "com.oracle.truffle.llvm.test/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
+
+_testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
@@ -45,7 +49,8 @@ def executeGate():
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
@@ -55,6 +60,9 @@ def executeGate():
     with VM('server', 'product'):
         with Task('TestPolglot', tasks) as t:
             if t: runPolyglotTestCases()
+    with VM('server', 'product'):
+        with Task('TestInterop', tasks) as t:
+            if t: runInteropTestCases()
     with VM('server', 'product'):
         with Task('TestSulong', tasks) as t:
             if t: runTruffleTestCases()
@@ -67,6 +75,9 @@ def executeGate():
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis1(args=None):
     tasks = []
@@ -74,13 +85,17 @@ def travis1(args=None):
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
     with VM('server', 'product'):
         with Task('TestPolglot', tasks) as t:
             if t: runPolyglotTestCases()
+    with VM('server', 'product'):
+        with Task('TestInterop', tasks) as t:
+            if t: runInteropTestCases()
     with VM('server', 'product'):
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
@@ -93,6 +108,9 @@ def travis1(args=None):
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis2(args=None):
     tasks = []
@@ -418,6 +436,7 @@ def runTests(args=None):
     runTruffleTestCases()
     runTypeTestCases()
     runPolyglotTestCases()
+    runInteropTestCases()
     runBenchmarkTestCases()
 
 def runBenchmarkTestCases(args=None):
@@ -468,14 +487,23 @@ def runPolyglotTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
 
+def runInteropTestCases(args=None):
+    """runs the interop test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
+
+def runCompileTestCases(args=None):
+    """runs the compile (no execution) test cases of the GCC suite"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
         '-Dsulong.IntrinsifyCFunctions=false',
-        getBitcodeLibrariesOption(),
         getSearchPathOption(lib_args)
-    ]
+    ] + getBitcodeLibrariesOption()
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
@@ -515,7 +543,15 @@ def getRemoteClasspathOption():
     return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
-    return ['-Dgraal.TruffleBackgroundCompilation=false', '-Dsulong.IntrinsifyCFunctions=false', '-Dsulong.ExecutionCount=5', '-Dsulong.PerformanceWarningsAreFatal=true', '-Dgraal.TruffleTimeThreshold=1000000']
+    return [
+        '-Dgraal.TruffleBackgroundCompilation=false',
+        '-Dsulong.IntrinsifyCFunctions=false',
+        '-Dsulong.ExecutionCount=5',
+        '-Dsulong.PerformanceWarningsAreFatal=true',
+        '-Dgraal.TruffleTimeThreshold=1000000',
+        '-Xms4g',
+        '-Xmx4g'
+    ]
 
 def getLLVMRootOption():
     return "-Dsulong.ProjectRoot=" + _root
@@ -562,9 +598,13 @@ def link(args=None):
         n += 1
     if out is None:
         out = 'out.su'
+    if len(modules) == 1:
+        prefix = os.path.dirname(modules[0])
+    else:
+        prefix = os.path.commonprefix(modules)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for module in modules:
-            z.write(module)
+            z.write(module, module[len(prefix):])
         z.writestr('libs', '\n'.join(libraries))
 
 def compileWithClangPP(args=None):
@@ -614,12 +654,8 @@ def suBench(args=None):
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
     return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
-def suOptBench(args=None):
-    """runs a given benchmark with Sulong after optimizing it with opt"""
-    ensureLLVMBinariesExist()
-    vmArgs, other = truffle_extract_VM_args(args)
-    inputFile = other[0]
-    outputFile = 'test.ll'
+def compileWithClangOpt(inputFile, outputFile='test.ll'):
+    """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
@@ -630,7 +666,15 @@ def suOptBench(args=None):
     else:
         exit(ext + " is not supported!")
     opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
-    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), 'test.ll'] + vmArgs)
+
+def suOptBench(args=None):
+    """runs a given benchmark with Sulong after optimizing it with opt"""
+    ensureLLVMBinariesExist()
+    vmArgs, other = truffle_extract_VM_args(args)
+    inputFile = other[0]
+    outputFile = 'test.ll'
+    compileWithClangOpt(inputFile, outputFile)
+    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -659,31 +703,6 @@ def gccBench(args=None):
 def standardLinkerCommands(args=None):
     return ['-lm', '-lgmp']
 
-import subprocess
-import re
-
-titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
-pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
-
-def logCheck(args=None):
-    error = False
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', '--after="2016-04-08"'])
-    for s in output.splitlines():
-        withoutQuotes = s[1:-1]
-        if withoutQuotes[0].islower():
-            error = True
-            print s, 'starts with a lower case character'
-        if titleWithEndingPunct.match(withoutQuotes):
-            error = True
-            print s, 'ends with period, question mark, or exclamation mark'
-        for pastTenseWord in pastTenseWords:
-            if pastTenseWord in withoutQuotes.lower().split():
-                error = True
-                print s, 'contains past tense word', pastTenseWord
-    if error:
-        print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
-        exit(-1)
-
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
     for path, _, files in os.walk('.'):
@@ -701,9 +720,36 @@ def getBitcodeLibrariesOption():
                 bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
                 absBitcodeFile = path + '/' + bitcodeFile
                 if not os.path.isfile(absBitcodeFile):
-                    compileWithClang(['-S', '-emit-llvm', path + '/' + f, '-o', absBitcodeFile])
+                    compileWithClangOpt(path + '/' + f, absBitcodeFile)
                 libraries.append(absBitcodeFile)
-    return'-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)
+    return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
+
+def clangformatcheck(args=None):
+    """ Performs a format check on the include/truffle.h file """
+    checkCFile(_suite.dir + '/include/truffle.h')
+    checkCFiles(_testDir)
+
+def checkCFiles(targetDir):
+    error = False
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp'):
+                if not checkCFile(path + '/' + f):
+                    error = True
+    if error:
+        print "found formatting errors!"
+        exit(-1)
+
+def checkCFile(targetFile):
+    """ Checks the formatting of a C file and returns True if the formatting is okay """
+    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]).splitlines()
+    with open(targetFile) as f:
+        originalContent = f.read().splitlines()
+    if not formattedContent == originalContent:
+        print '\n'.join(formattedContent)
+        print '\nplease fix the formatting in', targetFile, 'to the format given above'
+        return False
+    return True
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
@@ -728,6 +774,8 @@ mx.update_commands(_suite, {
     'su-tests-nwcc' : [runNWCCTestCases, ''],
     'su-tests-types' : [runTypeTestCases, ''],
     'su-tests-polyglot' : [runPolyglotTestCases, ''],
+    'su-tests-interop' : [runInteropTestCases, ''],
+    'su-tests-compile' : [runCompileTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
@@ -739,5 +787,6 @@ mx.update_commands(_suite, {
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
     'su-gitlogcheck' : [logCheck, ''],
-    'su-mdlcheck' : [mdlCheck, '']
+    'su-mdlcheck' : [mdlCheck, ''],
+    'su-clangformatcheck' : [clangformatcheck, '']
 })

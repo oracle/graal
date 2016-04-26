@@ -11,6 +11,20 @@ packages are on the classpath and all necessary options set. You can
 determine them by using `-v` in the mx Sulong command to make mx
 output information on how it executed the command.
 
+## Debugging:
+
+To debug the execution of a bitcode file in Eclipse, first start an mx
+command with the `-d` flag, e.g.:
+
+    $ mx -d su-run test.ll
+    Listening for transport dt_socket at address: 8000
+
+In Eclipse, set a breakpoint, navigate to
+`Run->Debug->Remote Java Application` and select one
+of the debug configurations, e.g.,`truffle-attach-localhost-8000`.
+After clicking `Debug`, execution starts and the program should stop at
+the specified breakpoint.
+
 ## Useful Plugins:
 
 * Use [checkstyle](http://checkstyle.sourceforge.net/) to highlight

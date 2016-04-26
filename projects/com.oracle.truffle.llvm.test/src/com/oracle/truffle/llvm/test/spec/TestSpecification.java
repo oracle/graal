@@ -29,30 +29,29 @@
  */
 package com.oracle.truffle.llvm.test.spec;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class TestSpecification {
 
-    private final List<File> includedFiles;
-    private final List<File> excludedFiles;
+    private final List<SpecificationEntry> includedFiles;
+    private final List<SpecificationEntry> excludedFiles;
 
-    public TestSpecification(List<File> includeFiles, List<File> excludeFiles) {
+    public TestSpecification(List<SpecificationEntry> includeFiles, List<SpecificationEntry> excludeFiles) {
         includedFiles = includeFiles;
         excludedFiles = excludeFiles;
     }
 
-    public List<File> getIncludedFiles() {
+    public List<SpecificationEntry> getIncludedFiles() {
         return includedFiles;
     }
 
-    public List<File> getExcludedFiles() {
+    public List<SpecificationEntry> getExcludedFiles() {
         return excludedFiles;
     }
 
-    public List<File> getIncludedWithoutExcludedFiles() {
-        List<File> copyIncluded = new ArrayList<>(includedFiles);
+    public List<SpecificationEntry> getIncludedWithoutExcludedFiles() {
+        List<SpecificationEntry> copyIncluded = new ArrayList<>(includedFiles);
         copyIncluded.removeAll(excludedFiles);
         return copyIncluded;
     }

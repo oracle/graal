@@ -1,9 +1,6 @@
 int test() {
-	static int a = 3;
-	return a++;
+  static int a = 3;
+  return a++;
 }
 
-int main() {
-	return test() + test() + test();
-}
-
+int main() { return test() + test() + test(); }

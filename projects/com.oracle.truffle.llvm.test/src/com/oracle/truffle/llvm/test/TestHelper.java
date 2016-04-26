@@ -34,7 +34,9 @@ import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
@@ -93,28 +95,33 @@ public class TestHelper {
         return collected;
     }
 
-    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile) {
-        return compileToLLVMIRWithClang(toBeCompiled, destinationFile, expectedFile, ClangOptions.builder());
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile, Set<TestCaseFlag> flags) {
+        return compileToLLVMIRWithClang(toBeCompiled, destinationFile, expectedFile, flags, ClangOptions.builder());
     }
 
-    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile, ClangOptions builder) {
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, File expectedFile, Set<TestCaseFlag> flags, ClangOptions builder) {
         Clang.compileToLLVMIR(toBeCompiled, destinationFile, builder);
-        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, expectedFile);
+        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, expectedFile, flags);
     }
 
     public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile) {
         Clang.compileToLLVMIR(toBeCompiled, destinationFile, ClangOptions.builder());
-        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile);
+        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, Collections.emptySet());
     }
 
-    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, ClangOptions builder) {
+    public static TestCaseFiles compileToLLVMIRWithClang(File toBeCompiled, File destinationFile, Set<TestCaseFlag> flags, ClangOptions builder) {
         Clang.compileToLLVMIR(toBeCompiled, destinationFile, builder);
-        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile);
+        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, flags);
     }
 
     public static TestCaseFiles compileToLLVMIRWithGCC(File toBeCompiled, File destinationFile) {
         GCC.compileToLLVMIR(toBeCompiled, destinationFile);
-        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile);
+        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, Collections.emptySet());
+    }
+
+    public static TestCaseFiles compileToLLVMIRWithGCC(File toBeCompiled, File destinationFile, Set<TestCaseFlag> flags) {
+        GCC.compileToLLVMIR(toBeCompiled, destinationFile);
+        return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, flags);
     }
 
     public static File getTempLLFile(File toBeCompiled, String optionName) {

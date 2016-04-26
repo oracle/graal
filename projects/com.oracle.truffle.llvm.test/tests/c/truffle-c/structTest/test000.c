@@ -1,12 +1,8 @@
-struct tiny
-{
+struct tiny {
   int c;
 };
 
-
-
-main ()
-{
+main() {
   struct tiny x[3];
   x[0].c = 10;
   x[1].c = 11;
@@ -15,4 +11,3 @@ main ()
 
   return a.c;
 }
-

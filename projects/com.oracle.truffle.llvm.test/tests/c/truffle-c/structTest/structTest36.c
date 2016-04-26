@@ -1,8 +1,8 @@
 struct test {
-	int a;
+  int a;
 };
 
 int main() {
-	static struct test t = { .a = 3};
-	return t.a;
+  static struct test t = { .a = 3 };
+  return t.a;
 }

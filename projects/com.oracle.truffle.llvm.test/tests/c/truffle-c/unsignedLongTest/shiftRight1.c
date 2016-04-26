@@ -1,4 +1,4 @@
 int main() {
-	unsigned long t1 = -1;
-	return t1 >> 62;
+  unsigned long t1 = -1;
+  return t1 >> 62;
 }

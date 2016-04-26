@@ -1,8 +1,8 @@
 union {
-	int a;
+  int a;
 } test;
 
 int main() {
-	test.a = 4;
-	return test.a;
+  test.a = 4;
+  return test.a;
 }
