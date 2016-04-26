@@ -33,6 +33,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -131,12 +132,19 @@ public abstract class Accessor {
         public abstract void probeAST(RootNode rootNode);
     }
 
+    protected abstract static class Frames {
+        protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
+
+        protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+    }
+
     private static Accessor.LanguageSupport API;
     private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
     private static Accessor.OldInstrumentSupport INSTRUMENT;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
+    private static Accessor.Frames FRAMES;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -227,6 +235,11 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             DEBUG = this.debugSupport();
+        } else if (this.getClass().getSimpleName().endsWith("Frame")) {
+            if (FRAMES != null) {
+                throw new IllegalStateException();
+            }
+            FRAMES = this.framesSupport();
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -277,6 +290,14 @@ public abstract class Accessor {
 
     static Accessor.Nodes nodesAccess() {
         return NODES;
+    }
+
+    protected Accessor.Frames framesSupport() {
+        return FRAMES;
+    }
+
+    static Accessor.Frames framesAccess() {
+        return FRAMES;
     }
 
     /**
