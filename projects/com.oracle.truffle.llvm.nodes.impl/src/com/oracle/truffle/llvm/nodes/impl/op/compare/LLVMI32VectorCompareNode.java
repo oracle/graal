@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.op.compare;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI1VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
@@ -45,6 +46,7 @@ import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
     @NodeChild(value = "rightNode", type = LLVMI32VectorNode.class)})
 public abstract class LLVMI32VectorCompareNode extends LLVMI1VectorNode {
 
+    @ExplodeLoop
     protected LLVMI1Vector executeI1VectorBody(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
         int length = left.getLength();
         boolean[] values = new boolean[length];
