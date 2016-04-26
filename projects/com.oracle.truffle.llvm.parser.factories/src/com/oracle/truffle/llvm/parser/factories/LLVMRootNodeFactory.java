@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -43,11 +46,32 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 public class LLVMRootNodeFactory {
 
-    public static LLVMGlobalRootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Object[] args,
-                    Source sourceFile, LLVMRuntimeType[] mainTypes) {
-        return new LLVMGlobalRootNode(runtime.getStackPointerSlot(), runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                        mainCallTarget,
-                        createArgs(sourceFile, args, mainTypes));
+    public static LLVMGlobalRootNode createGlobalRootNode(
+            LLVMParserRuntime runtime,
+            RootCallTarget mainCallTarget,
+            Object[] args,
+            Source sourceFile,
+            LLVMRuntimeType[] mainTypes) {
+        return createGlobalRootNode(
+                LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                runtime.getStackPointerSlot(),
+                runtime.getGlobalFrameDescriptor(),
+                mainCallTarget,
+                args,
+                sourceFile,
+                mainTypes);
+    }
+
+    public static LLVMGlobalRootNode createGlobalRootNode(
+            LLVMContext context,
+            FrameSlot stack,
+            FrameDescriptor frame,
+            RootCallTarget mainCallTarget,
+            Object[] args,
+            Source sourceFile,
+            LLVMRuntimeType[] mainTypes) {
+        Object[] arguments = createArgs(sourceFile, args, mainTypes);
+        return new LLVMGlobalRootNode(stack, frame, context, mainCallTarget, arguments);
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, LLVMRuntimeType[] llvmRuntimeTypes) {
