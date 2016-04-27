@@ -134,6 +134,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMObjectNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
@@ -197,7 +198,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMTypeHelper.setParserRuntime(this);
     }
 
-    public class ParserResult {
+    private class ParserResult implements LLVMParserResult {
 
         private final RootCallTarget mainFunction;
         private final RootCallTarget staticInits;
@@ -211,18 +212,22 @@ public class LLVMVisitor implements LLVMParserRuntime {
             this.parsedFunctions = parsedFunctions;
         }
 
+        @Override
         public RootCallTarget getMainFunction() {
             return mainFunction;
         }
 
+        @Override
         public Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions() {
             return parsedFunctions;
         }
 
+        @Override
         public RootCallTarget getStaticInits() {
             return staticInits;
         }
 
+        @Override
         public RootCallTarget getStaticDestructors() {
             return staticDestructors;
         }
@@ -237,7 +242,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return null;
     }
 
-    public ParserResult getMain(Model model, NodeFactoryFacade facade) {
+    public LLVMParserResult getMain(Model model, NodeFactoryFacade facade) {
         Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions = visit(model, facade);
         LLVMFunctionDescriptor mainFunction = searchFunction(parsedFunctions, "@main");
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);
