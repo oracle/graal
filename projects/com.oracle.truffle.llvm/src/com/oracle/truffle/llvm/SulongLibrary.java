@@ -62,7 +62,7 @@ public class SulongLibrary {
                     continue;
                 }
 
-                if (!(zipEntry.getName().equals("libs") || zipEntry.getName().endsWith(LLVMLanguage.LLVM_BITCODE_EXTENSION))) {
+                if (!(zipEntry.getName().equals("libs") || zipEntry.getName().endsWith(LLVMLanguage.LLVM_IR_EXTENSION))) {
                     continue;
                 }
 
