@@ -91,7 +91,7 @@ public class LLVMMemory {
         int bytes = bitWidth / Byte.SIZE;
         byte[] loadedBytes = new byte[bytes];
         LLVMAddress currentAddress = addr;
-        for (int i = 0; i < loadedBytes.length; i++) {
+        for (int i = loadedBytes.length - 1; i >= 0; i--) {
             loadedBytes[i] = getI8(currentAddress);
             currentAddress = currentAddress.increment(Byte.BYTES);
         }
@@ -151,7 +151,11 @@ public class LLVMMemory {
 
     public static void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
-        LLVMMemory.putByteArray(addr, bytes);
+        LLVMAddress currentAddress = addr;
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            putI8(currentAddress, bytes[i]);
+            currentAddress = currentAddress.increment(Byte.BYTES);
+        }
     }
 
     static void putByteArray(LLVMAddress addr, byte[] bytes) {
