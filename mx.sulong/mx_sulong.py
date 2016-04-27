@@ -501,7 +501,6 @@ def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
-        '-Dsulong.IntrinsifyCFunctions=false',
         getSearchPathOption(lib_args)
     ] + getBitcodeLibrariesOption()
 
@@ -540,12 +539,12 @@ def compilationSucceedsOption():
     return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
+    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
     return [
         '-Dgraal.TruffleBackgroundCompilation=false',
-        '-Dsulong.IntrinsifyCFunctions=false',
+        '-Dsulong.IntrinsifyCFunctions=true',
         '-Dsulong.ExecutionCount=5',
         '-Dsulong.PerformanceWarningsAreFatal=true',
         '-Dgraal.TruffleTimeThreshold=1000000',
