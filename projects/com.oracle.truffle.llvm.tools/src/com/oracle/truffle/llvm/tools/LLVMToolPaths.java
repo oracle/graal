@@ -39,6 +39,7 @@ public class LLVMToolPaths {
     public static final File TOOLS_ROOT = new File(PROJECT_ROOT, "tools");
     public static final File LLVM_ROOT = new File(TOOLS_ROOT, "llvm/bin");
 
+    public static final File LLVM_ASSEMBLER = new File(LLVM_ROOT, "llvm-as");
     public static final File LLVM_COMPILER = new File(LLVM_ROOT, "llc");
     public static final File LLVM_CLANG = new File(LLVM_ROOT, "clang");
     public static final File LLVM_CLANGPlusPlus = new File(LLVM_ROOT, "clang++");

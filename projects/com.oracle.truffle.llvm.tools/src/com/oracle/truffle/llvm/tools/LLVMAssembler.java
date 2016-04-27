@@ -27,22 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.c;
+package com.oracle.truffle.llvm.tools;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
+import java.io.File;
 
-@NodeChildren({@NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI64Node.class)})
-public abstract class LLVMCalloc extends LLVMAddressIntrinsic {
+import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
-    @Specialization
-    public LLVMAddress executeIntrinsic(long numberItems, long size) {
-        return LLVMHeap.allocateZeroedMemory(numberItems * size);
+public final class LLVMAssembler {
+
+    private LLVMAssembler() {
+    }
+
+    public static void assembleToBitcodeFile(File irFile) {
+        String compilationCommand = LLVMToolPaths.LLVM_ASSEMBLER + " " + irFile.getAbsolutePath();
+        ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
     }
 
 }

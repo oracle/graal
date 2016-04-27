@@ -70,7 +70,10 @@ public final class LLVMVectorFactory {
     }
 
     public static LLVMVectorNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMI32Node index) {
-        LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(vectorType);
+        return createInsertElement(resultType, (LLVMAddressNode) runtime.allocateVectorResult(vectorType), vector, element, index);
+    }
+
+    public static LLVMVectorNode createInsertElement(LLVMBaseType resultType, LLVMAddressNode target, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMI32Node index) {
         switch (resultType) {
             case I1_VECTOR:
                 return LLVMI1InsertElementNodeGen.create(target, (LLVMI1VectorNode) vector, (LLVMI1Node) element, index);
@@ -108,14 +111,14 @@ public final class LLVMVectorFactory {
         }
     }
 
-    public static LLVMVectorNode createShuffleVector(LLVMBaseType llvmType, LLVMAddressNode target, LLVMExpressionNode vector1, LLVMExpressionNode vector2, LLVMI32VectorNode mask) {
-        switch (llvmType) {
+    public static LLVMVectorNode createShuffleVector(LLVMBaseType resultType, LLVMAddressNode target, LLVMExpressionNode vector1, LLVMExpressionNode vector2, LLVMI32VectorNode mask) {
+        switch (resultType) {
             case I8_VECTOR:
                 return LLVMShuffleI8VectorNodeGen.create(target, (LLVMI8VectorNode) vector1, (LLVMI8VectorNode) vector2, mask);
             case I32_VECTOR:
                 return LLVMShuffleI32VectorNodeGen.create(target, (LLVMI32VectorNode) vector1, (LLVMI32VectorNode) vector2, mask);
             default:
-                throw new AssertionError(llvmType);
+                throw new AssertionError(resultType);
         }
     }
 

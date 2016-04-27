@@ -37,18 +37,30 @@ import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMDoubleVectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMFloatVectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI16VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI64VectorNode;
+import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 public abstract class LLVMExtractElementNode {
+
+    @NodeChildren({@NodeChild(type = LLVMI8VectorNode.class), @NodeChild(type = LLVMI32Node.class)})
+    public abstract static class LLVMI8ExtractElementNode extends LLVMI8Node {
+
+        @Specialization
+        public byte executeI8(LLVMI8Vector vector, int index) {
+            return vector.getValue(index);
+        }
+    }
 
     @NodeChildren({@NodeChild(type = LLVMI16VectorNode.class), @NodeChild(type = LLVMI32Node.class)})
     public abstract static class LLVMI16ExtractElementNode extends LLVMI16Node {
