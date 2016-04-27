@@ -85,7 +85,7 @@ public class LLVM {
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
                 parseDynamicBitcodeLibraries(context);
                 CallTarget mainFunction;
-                if (code.getMimeType().equals(LLVMLanguage.LLVM_MIME_TYPE)) {
+                if (code.getMimeType().equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
                     ParserResult parserResult = parseFile(code.getPath(), context);
                     mainFunction = parserResult.getMainFunction();
                     context.getFunctionRegistry().register(parserResult.getParsedFunctions());
@@ -235,15 +235,15 @@ public class LLVM {
     }
 
     public static int executeMain(String codeString, Object... args) {
-        Source fromText = Source.fromText(codeString, "code string").withMimeType(LLVMLanguage.LLVM_MIME_TYPE);
+        Source fromText = Source.fromText(codeString, "code string").withMimeType(LLVMLanguage.LLVM_IR_MIME_TYPE);
         LLVMLogger.info("current code string: " + codeString);
         return evaluateFromSource(fromText, args);
     }
 
     private static int evaluateFromSource(Source fileSource, Object... args) {
         Builder engineBuilder = PolyglotEngine.newBuilder();
-        engineBuilder.config(LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
-        engineBuilder.config(LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
+        engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
+        engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
         PolyglotEngine vm = engineBuilder.build();
         try {
             Integer result = vm.eval(fileSource).as(Integer.class);
