@@ -38,10 +38,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCallocFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMMallocFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleHasSizeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsBoxedFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsExecutableFactory;
@@ -193,11 +190,6 @@ public class LLVMRuntimeIntrinsicFactory {
      */
     private static void intrinsifyCFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
         intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
-
-        // other libraries
-        intrinsics.put("@malloc", LLVMMallocFactory.getInstance());
-        intrinsics.put("@free", LLVMFreeFactory.getInstance());
-        intrinsics.put("@calloc", LLVMCallocFactory.getInstance());
     }
 
 }
