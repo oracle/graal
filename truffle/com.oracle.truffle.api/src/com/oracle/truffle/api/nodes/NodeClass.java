@@ -87,7 +87,7 @@ public abstract class NodeClass {
     public abstract NodeFieldAccessor[] getChildrenFields();
 
     /** @since 0.14 */
-    protected abstract Iterable<NodeFieldAccessor> getNodeFields();
+    protected abstract Iterable<? extends NodeField> getNodeFields();
 
     /** @since 0.8 or earlier */
     public abstract Iterator<Node> makeIterator(Node node);
@@ -100,4 +100,31 @@ public abstract class NodeClass {
      * @since 0.8 or earlier
      */
     public abstract Class<? extends Node> getType();
+
+    /** @since 0.14 */
+    protected interface NodeField {
+        /** @since 0.14 */
+        void putObject(Node receiver, Object value);
+
+        /** @since 0.14 */
+        Object getObject(Node receiver);
+
+        /** @since 0.14 */
+        Object getValue(Node receiver);
+
+        /** @since 0.14 */
+        Class<?> getFieldType();
+
+        /** @since 0.14 */
+        String getName();
+
+        /** @since 0.14 */
+        boolean isChildField();
+
+        /** @since 0.14 */
+        boolean isChildrenField();
+
+        /** @since 0.14 */
+        boolean isCloneableField();
+    }
 }

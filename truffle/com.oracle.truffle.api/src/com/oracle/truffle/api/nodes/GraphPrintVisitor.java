@@ -50,11 +50,10 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class GraphPrintVisitor implements Closeable {
@@ -489,15 +488,19 @@ public class GraphPrintVisitor implements Closeable {
 
     private void readNodeProperties(Node node) {
         NodeClass nodeClass = NodeClass.get(node);
-        for (NodeFieldAccessor field : nodeClass.getNodeFields()) {
-            if (field.getKind() == NodeFieldKind.DATA) {
+        for (NodeClass.NodeField field : nodeClass.getNodeFields()) {
+            if (isDataField(field)) {
                 String key = field.getName();
                 if (!getElementByObject(node).getProperties().containsKey(key)) {
-                    Object value = field.loadValue(node);
+                    Object value = field.getValue(node);
                     setNodeProperty(node, key, value);
                 }
             }
         }
+    }
+
+    private static boolean isDataField(NodeClass.NodeField field) {
+        return !field.isChildField() && !field.isChildrenField();
     }
 
     final void connectNodes(Object a, Object b, String label) {
@@ -564,19 +567,19 @@ public class GraphPrintVisitor implements Closeable {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node);
 
-        for (NodeFieldAccessor field : nodeClass.getNodeFields()) {
-            NodeFieldKind kind = field.getKind();
-            if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
-                Object value = field.loadValue(node);
+        for (NodeClass.NodeField field : nodeClass.getNodeFields()) {
+            if (field.isChildField()) {
+                Object value = field.getObject(node);
                 if (value != null) {
-                    if (kind == NodeFieldKind.CHILD) {
-                        nodes.put(field.getName(), (Node) value);
-                    } else if (kind == NodeFieldKind.CHILDREN) {
-                        Object[] children = (Object[]) value;
-                        for (int i = 0; i < children.length; i++) {
-                            if (children[i] != null) {
-                                nodes.put(field.getName() + "[" + i + "]", (Node) children[i]);
-                            }
+                    nodes.put(field.getName(), (Node) value);
+                }
+            } else if (field.isChildrenField()) {
+                Object value = field.getObject(node);
+                if (value != null) {
+                    Object[] children = (Object[]) value;
+                    for (int i = 0; i < children.length; i++) {
+                        if (children[i] != null) {
+                            nodes.put(field.getName() + "[" + i + "]", (Node) children[i]);
                         }
                     }
                 }
@@ -598,7 +601,7 @@ public class GraphPrintVisitor implements Closeable {
     public class GraphPrintAdapter {
         /**
          * Default constructor.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public GraphPrintAdapter() {
