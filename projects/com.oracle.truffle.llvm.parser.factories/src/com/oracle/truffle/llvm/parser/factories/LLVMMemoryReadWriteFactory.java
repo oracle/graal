@@ -102,8 +102,8 @@ public final class LLVMMemoryReadWriteFactory {
             return createLoadVector(resultType, loadTarget, resolvedResultType.asVector().getSize());
         } else {
             int bits = resultType == LLVMBaseType.I_VAR_BITWIDTH
-                    ? resolvedResultType.getBits().intValue()
-                    : 0;
+                            ? resolvedResultType.getBits().intValue()
+                            : 0;
 
             return createLoad(resultType, loadTarget, runtime.getOptimizationConfiguration(), bits);
         }

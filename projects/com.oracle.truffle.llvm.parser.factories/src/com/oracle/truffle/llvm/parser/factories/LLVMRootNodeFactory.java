@@ -47,29 +47,29 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 public class LLVMRootNodeFactory {
 
     public static LLVMGlobalRootNode createGlobalRootNode(
-            LLVMParserRuntime runtime,
-            RootCallTarget mainCallTarget,
-            Object[] args,
-            Source sourceFile,
-            LLVMRuntimeType[] mainTypes) {
+                    LLVMParserRuntime runtime,
+                    RootCallTarget mainCallTarget,
+                    Object[] args,
+                    Source sourceFile,
+                    LLVMRuntimeType[] mainTypes) {
         return createGlobalRootNode(
-                LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                runtime.getStackPointerSlot(),
-                runtime.getGlobalFrameDescriptor(),
-                mainCallTarget,
-                args,
-                sourceFile,
-                mainTypes);
+                        LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        runtime.getStackPointerSlot(),
+                        runtime.getGlobalFrameDescriptor(),
+                        mainCallTarget,
+                        args,
+                        sourceFile,
+                        mainTypes);
     }
 
     public static LLVMGlobalRootNode createGlobalRootNode(
-            LLVMContext context,
-            FrameSlot stack,
-            FrameDescriptor frame,
-            RootCallTarget mainCallTarget,
-            Object[] args,
-            Source sourceFile,
-            LLVMRuntimeType[] mainTypes) {
+                    LLVMContext context,
+                    FrameSlot stack,
+                    FrameDescriptor frame,
+                    RootCallTarget mainCallTarget,
+                    Object[] args,
+                    Source sourceFile,
+                    LLVMRuntimeType[] mainTypes) {
         Object[] arguments = createArgs(sourceFile, args, mainTypes);
         return new LLVMGlobalRootNode(stack, frame, context, mainCallTarget, arguments);
     }

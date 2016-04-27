@@ -52,7 +52,8 @@ public class LLVMBranchFactory {
         return createConditionalBranch(runtime.getOptimizationConfiguration(), trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
     }
 
-    public static LLVMTerminatorNode createConditionalBranch(LLVMOptimizationConfiguration configuration, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes) {
+    public static LLVMTerminatorNode createConditionalBranch(LLVMOptimizationConfiguration configuration, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMNode[] truePhiWriteNodes,
+                    LLVMNode[] falsePhiWriteNodes) {
         if (configuration.injectBranchProbabilitiesForConditionalBranch()) {
             return LLVMBrConditionalInjectionNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, (LLVMI1Node) conditionNode);
         } else {

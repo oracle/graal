@@ -189,7 +189,7 @@ public final class LLVMCastsFactory {
     }
 
     private static LLVMExpressionNode cast(LLVMCastsFactory factory, LLVMBaseType fromType, LLVMExpressionNode fromNode) {
-         switch (fromType) {
+        switch (fromType) {
             case I1:
                 return factory.castFromI1((LLVMI1Node) fromNode);
             case I8:

@@ -73,7 +73,8 @@ public class LLVMSelectFactory {
         return createSelect(llvmType, (LLVMI1Node) condition, trueValue, falseValue, runtime.getOptimizationConfiguration());
     }
 
-    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue, LLVMOptimizationConfiguration configuration) {
+    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue,
+                    LLVMOptimizationConfiguration configuration) {
         if (configuration.injectBranchProbabilitiesForSelect()) {
             switch (llvmType) {
                 case I1:
