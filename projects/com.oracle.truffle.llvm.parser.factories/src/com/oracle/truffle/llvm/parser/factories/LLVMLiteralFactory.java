@@ -36,7 +36,6 @@ import java.util.List;
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.types.ResolvedType;
-import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
@@ -285,8 +284,8 @@ public final class LLVMLiteralFactory {
         return i1ZeroInits;
     }
 
-    public static LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, LLVMAddressNode target, ResolvedVectorType type) {
-        switch (LLVMTypeHelper.getLLVMType(type)) {
+    public static LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, LLVMAddressNode target, LLVMBaseType type) {
+        switch (type) {
             case I1_VECTOR:
                 LLVMI1Node[] i1Vals = listValues.stream().map(n -> (LLVMI1Node) n).toArray(LLVMI1Node[]::new);
                 return LLVMVectorI1LiteralNodeGen.create(i1Vals, target);

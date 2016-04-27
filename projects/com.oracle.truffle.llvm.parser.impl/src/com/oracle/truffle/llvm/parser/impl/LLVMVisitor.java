@@ -1085,7 +1085,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         ResolvedVectorType type = (ResolvedVectorType) resolve(constant);
         List<LLVMExpressionNode> listValues = visitConstantList(list);
         LLVMExpressionNode target = allocateVectorResult(constant);
-        return factoryFacade.createVectorLiteralNode(listValues, target, type);
+        return factoryFacade.createVectorLiteralNode(listValues, target, LLVMTypeHelper.getLLVMType(type));
     }
 
     private List<LLVMExpressionNode> visitConstantList(ConstantList list) throws AssertionError {

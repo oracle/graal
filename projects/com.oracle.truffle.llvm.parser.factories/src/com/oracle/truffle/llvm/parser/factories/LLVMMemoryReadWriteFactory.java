@@ -88,6 +88,7 @@ import com.oracle.truffle.llvm.nodes.impl.memory.load.LLVMI8LoadNodeFactory.LLVM
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
 public final class LLVMMemoryReadWriteFactory {
 
@@ -96,7 +97,20 @@ public final class LLVMMemoryReadWriteFactory {
 
     public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget, LLVMParserRuntime runtime) {
         LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType);
-        if (runtime.getOptimizationConfiguration().valueProfileMemoryReads()) {
+
+        if (resolvedResultType.isVector()) {
+            return createLoadVector(resultType, loadTarget, resolvedResultType.asVector().getSize());
+        } else {
+            int bits = resultType == LLVMBaseType.I_VAR_BITWIDTH
+                            ? resolvedResultType.getBits().intValue()
+                            : 0;
+
+            return createLoad(resultType, loadTarget, runtime.getOptimizationConfiguration(), bits);
+        }
+    }
+
+    public static LLVMExpressionNode createLoad(LLVMBaseType resultType, LLVMAddressNode loadTarget, LLVMOptimizationConfiguration configuration, int bits) {
+        if (configuration.valueProfileMemoryReads()) {
             switch (resultType) {
                 case I1:
                     return new LLVMI1UninitializedLoadNode(loadTarget);
@@ -128,8 +142,7 @@ public final class LLVMMemoryReadWriteFactory {
             case I64:
                 return LLVMI64DirectLoadNodeGen.create(loadTarget);
             case I_VAR_BITWIDTH:
-                int bitWidth = resolvedResultType.getBits().intValue();
-                return LLVMIVarBitDirectLoadNodeGen.create(loadTarget, bitWidth);
+                return LLVMIVarBitDirectLoadNodeGen.create(loadTarget, bits);
             case FLOAT:
                 return LLVMFloatDirectLoadNodeGen.create(loadTarget);
             case DOUBLE:
@@ -147,34 +160,37 @@ public final class LLVMMemoryReadWriteFactory {
             default:
                 break;
         }
-        if (resolvedResultType.isVector()) {
-            int size = resolvedResultType.asVector().getSize();
-            switch (resultType) {
-                case I1_VECTOR:
-                    return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
-                case I8_VECTOR:
-                    return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
-                case I16_VECTOR:
-                    return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
-                case I32_VECTOR:
-                    return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
-                case I64_VECTOR:
-                    return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
-                case FLOAT_VECTOR:
-                    return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
-                case DOUBLE_VECTOR:
-                    return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
-                default:
-                    throw new AssertionError(resultType);
-            }
-        } else {
-            throw new AssertionError(resultType);
+
+        throw new AssertionError(resultType);
+    }
+
+    public static LLVMExpressionNode createLoadVector(LLVMBaseType resultType, LLVMAddressNode loadTarget, int size) {
+        switch (resultType) {
+            case I1_VECTOR:
+                return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
+            case I8_VECTOR:
+                return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
+            case I16_VECTOR:
+                return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
+            case I32_VECTOR:
+                return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
+            case I64_VECTOR:
+                return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
+            case FLOAT_VECTOR:
+                return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
+            case DOUBLE_VECTOR:
+                return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
+            default:
+                throw new AssertionError(resultType);
         }
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(type);
-        switch (llvmType) {
+        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type), LLVMTypeHelper.getByteSize(type));
+    }
+
+    public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {
+        switch (type) {
             case I1:
                 return LLVMI1StoreNodeGen.create(pointerNode, (LLVMI1Node) valueNode);
             case I8:
@@ -199,14 +215,14 @@ public final class LLVMMemoryReadWriteFactory {
                 return LLVMFunctionStoreNodeGen.create(pointerNode, (LLVMFunctionNode) valueNode);
             case STRUCT:
             case ARRAY:
-                return LLVMStructStoreNodeGen.create(pointerNode, (LLVMAddressNode) valueNode, LLVMTypeHelper.getByteSize(type));
+                return LLVMStructStoreNodeGen.create(pointerNode, (LLVMAddressNode) valueNode, size);
             default:
                 break;
         }
-        if (type.isVector()) {
+        if (LLVMTypeHelper.isVectorType(type)) {
             return LLVMStoreVectorNodeGen.create(pointerNode, (LLVMVectorNode) valueNode);
         } else {
-            throw new AssertionError(llvmType);
+            throw new AssertionError(type);
         }
     }
 
