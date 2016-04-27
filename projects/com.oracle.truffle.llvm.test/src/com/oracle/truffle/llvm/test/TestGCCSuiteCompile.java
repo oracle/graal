@@ -67,7 +67,7 @@ public class TestGCCSuiteCompile extends TestSuiteBase {
         try {
             LLVMLogger.info("original file: " + tuple.getOriginalFile());
             Builder engineBuilder = PolyglotEngine.newBuilder();
-            engineBuilder.config(LLVMLanguage.LLVM_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
+            engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
             PolyglotEngine build = engineBuilder.build();
             build.eval(Source.fromFileName(tuple.getBitCodeFile().getAbsolutePath()));
             recordTestCase(tuple, true);
