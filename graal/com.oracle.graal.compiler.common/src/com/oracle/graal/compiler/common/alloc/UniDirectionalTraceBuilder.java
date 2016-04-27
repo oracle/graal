@@ -77,7 +77,7 @@ public final class UniDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock, List<T> blocks, TrivialTracePredicate pred) {
-        try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
+        try (Indent indent = Debug.logAndIndent("UniDirectionalTraceBuilder: start trace building: %s", startBlock)) {
             ArrayList<Trace<T>> traces = buildTraces(startBlock);
             return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);
         }

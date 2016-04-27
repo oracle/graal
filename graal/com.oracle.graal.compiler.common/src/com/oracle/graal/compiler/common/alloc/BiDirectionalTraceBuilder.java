@@ -71,16 +71,15 @@ public final class BiDirectionalTraceBuilder<T extends AbstractBlockBase<T>> {
 
     @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock, List<T> blocks, TrivialTracePredicate pred) {
-        try (Indent indent = Debug.logAndIndent("start trace building: %s", startBlock)) {
-            ArrayList<Trace<T>> traces = buildTraces(startBlock);
+        try (Indent indent = Debug.logAndIndent("BiDirectionalTraceBuilder: start trace building")) {
+            ArrayList<Trace<T>> traces = buildTraces();
+            assert traces.get(0).getBlocks().get(0).equals(startBlock) : "The first traces always contains the start block";
             return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);
         }
     }
 
-    protected ArrayList<Trace<T>> buildTraces(T startBlock) {
+    protected ArrayList<Trace<T>> buildTraces() {
         ArrayList<Trace<T>> traces = new ArrayList<>();
-        // add start block
-        worklist.add(startBlock);
         // process worklist
         while (!worklist.isEmpty()) {
             T block = worklist.pollFirst();
