@@ -26,10 +26,10 @@ package com.oracle.truffle.api.nodes;
 
 import java.lang.reflect.Field;
 
-import sun.misc.Unsafe;
-
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+
+import sun.misc.Unsafe;
 
 /**
  * Information about a field in a {@link Node} class.
@@ -135,6 +135,12 @@ public abstract class NodeFieldAccessor {
     /** @since 0.8 or earlier */
     public abstract Object loadValue(Node node);
 
+    /** @since 0.14 */
+    @Override
+    public String toString() {
+        return getDeclaringClass().getName() + "." + getName();
+    }
+
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessor {
@@ -152,8 +158,12 @@ public abstract class NodeFieldAccessor {
             if (!type.isPrimitive() && value == null || type.isInstance(value)) {
                 unsafe.putObject(receiver, getOffset(), value);
             } else {
-                throw new IllegalArgumentException();
+                throw illegalArgumentException(value);
             }
+        }
+
+        private IllegalArgumentException illegalArgumentException(Object value) {
+            return new IllegalArgumentException("Cannot set " + getType().getName() + " field " + toString() + " to " + (value == null ? "null" : value.getClass().getName()));
         }
 
         /** @since 0.8 or earlier */

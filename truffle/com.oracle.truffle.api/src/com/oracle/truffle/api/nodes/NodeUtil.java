@@ -216,7 +216,6 @@ public final class NodeUtil {
         for (NodeClass.NodeField nodeField : nodeClass.getNodeFields()) {
             if (nodeField.isChildField()) {
                 if (nodeField.getObject(parent) == oldChild) {
-                    assert assertAssignable(nodeField, newChild);
                     if (adopt) {
                         parent.adoptHelper(newChild);
                     }
@@ -229,11 +228,14 @@ public final class NodeUtil {
                     Object[] array = (Object[]) arrayObject;
                     for (int i = 0; i < array.length; i++) {
                         if (array[i] == oldChild) {
-                            assert assertAssignable(nodeField, newChild);
                             if (adopt) {
                                 parent.adoptHelper(newChild);
                             }
-                            array[i] = newChild;
+                            try {
+                                array[i] = newChild;
+                            } catch (ArrayStoreException e) {
+                                throw replaceChildIllegalArgumentException(nodeField, array.getClass(), newChild);
+                            }
                             return true;
                         }
                     }
@@ -244,26 +246,8 @@ public final class NodeUtil {
         return false;
     }
 
-    private static boolean assertAssignable(NodeClass.NodeField field, Object newValue) {
-        if (newValue == null) {
-            return true;
-        }
-        if (field.isChildField()) {
-            if (field.getFieldType().isAssignableFrom(newValue.getClass())) {
-                return true;
-            } else {
-                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field: \"" + field.getName() + "\" of type " + field.getFieldType().getName();
-                return false;
-            }
-        } else if (field.isChildrenField()) {
-            if (field.getFieldType().getComponentType().isAssignableFrom(newValue.getClass())) {
-                return true;
-            } else {
-                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field: \"" + field.getName() + "\" of type " + field.getFieldType().getName();
-                return false;
-            }
-        }
-        throw new IllegalArgumentException();
+    private static IllegalArgumentException replaceChildIllegalArgumentException(NodeClass.NodeField nodeField, Class<?> fieldType, Node newChild) {
+        return new IllegalArgumentException("Cannot set element of " + fieldType.getName() + " field " + nodeField + " to " + (newChild == null ? "null" : newChild.getClass().getName()));
     }
 
     /**
