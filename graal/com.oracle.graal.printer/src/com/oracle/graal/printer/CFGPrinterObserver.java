@@ -35,13 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
-
+import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.DisassemblerProvider;
 import com.oracle.graal.compiler.common.alloc.Trace;
@@ -55,12 +49,18 @@ import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.java.BciBlockMapping;
-import com.oracle.graal.java.BytecodeDisassembler;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
