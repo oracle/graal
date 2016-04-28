@@ -330,9 +330,9 @@ def _automatic_module_name(modulejar):
     """
     Derives the name of an automatic module from an automatic module jar according to
     specification of java.lang.module.ModuleFinder.of(Path... entries).
-    
+
     :param str modulejar: the path to a jar file treated as an automatic module
-    :return: the name of the automatic module derived from `modulejar` 
+    :return: the name of the automatic module derived from `modulejar`
     """
 
     # Drop directory prefix and .jar (or .zip) suffix
@@ -342,7 +342,7 @@ def _automatic_module_name(modulejar):
     hyphen = name.find('-')
     if hyphen != -1:
         name = name[0:hyphen]
-    
+
 
     # Finally clean up the module name
     name = re.sub('[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
@@ -352,7 +352,7 @@ def _automatic_module_name(modulejar):
 
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
-    
+
     argsPrefix = []
     jacocoArgs = mx_gate.get_jacoco_agent_args()
     if jacocoArgs:
@@ -403,7 +403,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     # 4. Patch the remaining class path entries into an empty automatic module.
     # 5. Export concealed packages used by the automatic modules (via -XaddExports).
     automaticModuleJars = []
-    automaticModuleNames = [] 
+    automaticModuleNames = []
     cpIndex, cp = mx.find_classpath_arg(args)
     if cp:
         bootcp = _uniqify(bootcp)
@@ -440,7 +440,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + ':'.join(cp))
 
                 # Export concealed packages used by the empty module
-                pathToProject = { p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+                pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
                 for e in cp:
                     p = pathToProject.get(e, None)
                     if p:
@@ -448,7 +448,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                         for module, packages in concealed.iteritems():
                             for package in packages:
                                 addedExports.setdefault(module + '/' + package, []).append(emptyModuleName)
-                
+
     if automaticModuleNames:
         argsPrefix.append('-addmods')
         argsPrefix.append(','.join(automaticModuleNames))
@@ -462,7 +462,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     # Export concealed packages
     for jmd in modulepath:
         for module, packages in jmd.concealedRequires.iteritems():
-            # No need to explicitly export JVMCI - it's exported via reflection 
+            # No need to explicitly export JVMCI - it's exported via reflection
             if module != 'jdk.vm.ci':
                 for package in packages:
                     addedExports.setdefault(module + '/' + package, []).append(jmd.name)
