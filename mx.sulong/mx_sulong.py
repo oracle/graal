@@ -9,7 +9,7 @@ import mx
 import mx_findbugs
 
 from mx_unittest import unittest
-from mx_gate import Task, add_gate_runner
+from mx_gate import Task, add_gate_runner, gate_clean
 from mx_jvmci import VM, buildvms
 from mx_gitlogcheck import logCheck
 
@@ -81,6 +81,15 @@ def executeGate():
 
 def travis1(args=None):
     tasks = []
+    with Task('BuildJavaWithEcj', tasks) as t:
+        if t:
+            if mx.get_env('JDT'):
+                mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
+                gate_clean([], tasks, name='CleanAfterEcjBuild')
+            else:
+                mx._warn_or_abort('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.', args.strict_mode)
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('BuildHotSpotGraalServer: product', tasks) as t:
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
