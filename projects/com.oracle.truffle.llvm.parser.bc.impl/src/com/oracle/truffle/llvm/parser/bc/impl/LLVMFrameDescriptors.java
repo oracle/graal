@@ -137,6 +137,7 @@ public final class LLVMFrameDescriptors {
         @Override
         public void visit(GlobalVariable variable) {
         }
+
         @Override
         public void visit(FunctionDeclaration method) {
         }

@@ -71,7 +71,7 @@ import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public final class LLVMPhiManager implements ModelVisitor  {
+public final class LLVMPhiManager implements ModelVisitor {
 
     public static LLVMPhiManager generate(Model model) {
         LLVMPhiManager visitor = new LLVMPhiManager();
