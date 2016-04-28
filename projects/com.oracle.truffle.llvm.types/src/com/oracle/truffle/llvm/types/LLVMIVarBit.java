@@ -37,7 +37,6 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.types.floating.BinaryHelper;
 
 // see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
 public abstract class LLVMIVarBit {
@@ -376,8 +375,8 @@ public abstract class LLVMIVarBit {
         @Override
         public LLVMIVarBit logicalRightShift(LLVMIVarBit right) {
             int shiftAmount = right.getIntValue();
-            long mask = BinaryHelper.getBitMask((long) getBits() - shiftAmount);
-            BigInteger result = new BigInteger(arr).shiftRight(shiftAmount).and(BigInteger.valueOf(mask));
+            BigInteger mask = BigInteger.valueOf(-1).shiftLeft(getBits() - shiftAmount).not();
+            BigInteger result = new BigInteger(arr).shiftRight(shiftAmount).and(mask);
             return asIVar(result);
         }
 
