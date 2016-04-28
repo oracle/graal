@@ -159,7 +159,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         visitor.getNullers());
     }
 
-    private List<LLVMNode> createParameters(FrameDescriptor frame, List<FunctionParameter> parameters) {
+    private static List<LLVMNode> createParameters(FrameDescriptor frame, List<FunctionParameter> parameters) {
         List<LLVMNode> parameterNodes = new ArrayList<>();
 
         LLVMExpressionNode stack = LLVMFunctionFactory.createFunctionArgNode(0, LLVMBaseType.ADDRESS);

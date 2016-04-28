@@ -386,7 +386,7 @@ public final class LLVMBitcodeHelper {
         }
     }
 
-    public static LLVMExpressionNode toConstantLiteralNode(Symbol value, int align) {
+    public static LLVMExpressionNode toConstantLiteralNode(Symbol value, @SuppressWarnings("unused") int align) {
         if (value instanceof IntegerConstant) {
             IntegerConstant constant = (IntegerConstant) value;
             int bits = ((IntegerType) (constant).getType()).getBitCount();
@@ -656,7 +656,7 @@ public final class LLVMBitcodeHelper {
                     currentAddress = LLVMGetElementPtrFactory.create(
                                     LLVMBaseType.I32,
                                     currentAddress,
-                                    new LLVMI32LiteralNode((int) idx),
+                                    new LLVMI32LiteralNode(idx),
                                     LLVMBitcodeHelper.getSize(type, align));
                 }
             }
@@ -770,7 +770,7 @@ public final class LLVMBitcodeHelper {
                         if (elementSize == 0) {
                             nodes[i] = new LLVMEmptyStructWriteNode();
                         } else {
-                            LLVMExpressionNode struct = toConstantZeroNode((StructureType) element, align, context, stack);
+                            LLVMExpressionNode struct = toConstantZeroNode(element, align, context, stack);
                             nodes[i] = new LLVMCompoundStructWriteNode((LLVMAddressNode) struct, elementSize);
                         }
                         break;

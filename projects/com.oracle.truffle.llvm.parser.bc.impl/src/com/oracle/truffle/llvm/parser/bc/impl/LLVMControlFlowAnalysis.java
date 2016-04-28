@@ -102,12 +102,12 @@ public final class LLVMControlFlowAnalysis {
 
         public Set<Block> predecessor(Block block) {
             Set<Block> set = predecessors.get(block);
-            return set == null ? Collections.EMPTY_SET : set;
+            return set == null ? Collections.emptySet() : set;
         }
 
         public Set<Block> successor(Block block) {
             Set<Block> set = successors.get(block);
-            return set == null ? Collections.EMPTY_SET : set;
+            return set == null ? Collections.emptySet() : set;
         }
     }
 

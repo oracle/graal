@@ -133,7 +133,6 @@ import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
-import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -260,7 +259,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                         currentAddress = LLVMGetElementPtrFactory.create(
                                         LLVMBaseType.I32,
                                         currentAddress,
-                                        new LLVMI32LiteralNode((int) idx),
+                                        new LLVMI32LiteralNode(idx),
                                         LLVMBitcodeHelper.getSize(type, align));
                     }
                 }
@@ -355,7 +354,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         LLVMAddressNode target = null;
         if (operation.getType() instanceof VectorType) {
-            target = (LLVMAddressNode) LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(operation, 0), operation.getType().getAlignment(), method.getContext(), method.getStackSlot());
+            target = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(operation, 0), operation.getType().getAlignment(), method.getContext(), method.getStackSlot());
         }
 
         LLVMBaseType type = LLVMBitcodeHelper.toBaseType(operation.getType());
@@ -437,7 +436,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (compare.getType() instanceof VectorType) {
             Type type = compare.getType();
-            LLVMAddressNode target = (LLVMAddressNode) LLVMAllocaInstructionNodeGen.create(type.sizeof(), type.getAlignment(), method.getContext(), method.getStackSlot());
+            LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(type.sizeof(), type.getAlignment(), method.getContext(), method.getStackSlot());
 
             result = LLVMBitcodeHelper.toCompareVectorNode(
                             compare.getOperator(),
@@ -573,7 +572,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode element = resolve(insert.getValue());
         LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(insert.getType());
 
-        LLVMAddressNode target = (LLVMAddressNode) LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(insert, 0), insert.getType().getAlignment(), method.getContext(),
+        LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(insert, 0), insert.getType().getAlignment(), method.getContext(),
                         method.getStackSlot());
 
         LLVMExpressionNode result = LLVMVectorFactory.createInsertElement(resultType, target, vector, element, index);
@@ -687,7 +686,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode result;
         if (select.getType() instanceof VectorType) {
             VectorType type = (VectorType) select.getType();
-            LLVMAddressNode target = (LLVMAddressNode) LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(type, 0), type.getAlignment(), method.getContext(), method.getStackSlot());
+            LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(type, 0), type.getAlignment(), method.getContext(), method.getStackSlot());
 
             result = LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
         } else {
@@ -706,7 +705,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         LLVMBaseType type = LLVMBitcodeHelper.toBaseType(shuffle.getType());
 
-        LLVMAddressNode destination = (LLVMAddressNode) LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(shuffle, 0), shuffle.getType().getAlignment(), method.getContext(),
+        LLVMAddressNode destination = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(shuffle, 0), shuffle.getType().getAlignment(), method.getContext(),
                         method.getStackSlot());
 
         LLVMExpressionNode result = LLVMVectorFactory.createShuffleVector(type, destination, vector1, vector2, mask);

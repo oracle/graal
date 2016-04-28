@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.bc.impl;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,39 +60,37 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final FrameDescriptor frame;
 
-    private final Map<Block, List<FrameSlot>> slots;
+    private final Map<Block, List<FrameSlot>> slotsToNull;
 
     private final List<LLVMStackFrameNuller[]> nullers = new ArrayList<>();
 
     private final List<LLVMBasicBlockNode> blocks = new ArrayList<>();
 
-    private final Map<String, LLVMExpressionNode> map = new HashMap();
-
     private final Map<String, Integer> labels;
 
     private final Map<Block, List<Phi>> phis;
 
-    private final List<LLVMNode> block = new ArrayList<>();
+    private final List<LLVMNode> instructions = new ArrayList<>();
 
-    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<Block, List<FrameSlot>> slots, Map<String, Integer> labels, Map<Block, List<Phi>> phis) {
+    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<Block, List<FrameSlot>> slotsToNull, Map<String, Integer> labels, Map<Block, List<Phi>> phis) {
         this.module = module;
         this.frame = frame;
-        this.slots = slots;
+        this.slotsToNull = slotsToNull;
         this.labels = labels;
         this.phis = phis;
     }
 
     public void addInstruction(LLVMNode node) {
-        block.add(node);
+        instructions.add(node);
     }
 
     public void addTerminatingInstruction(LLVMTerminatorNode node) {
         blocks.add(new LLVMBasicBlockNode(getBlock(), node));
-        block.add(node);
+        instructions.add(node);
     }
 
     public LLVMNode[] getBlock() {
-        return block.toArray(new LLVMNode[block.size()]);
+        return instructions.toArray(new LLVMNode[instructions.size()]);
     }
 
     public LLVMBasicBlockNode[] getBlocks() {
@@ -142,13 +139,13 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     @Override
     public void visit(Block block) {
-        this.block.clear();
+        this.instructions.clear();
 
         block.accept(new LLVMBitcodeInstructionVisitor(this, block));
-        nullers.add(createNullers(slots.get(block)));
+        nullers.add(createNullers(slotsToNull.get(block)));
     }
 
-    private LLVMStackFrameNuller[] createNullers(List<FrameSlot> slots) {
+    private static LLVMStackFrameNuller[] createNullers(List<FrameSlot> slots) {
         if (slots == null || slots.isEmpty()) {
             return new LLVMStackFrameNuller[0];
         }

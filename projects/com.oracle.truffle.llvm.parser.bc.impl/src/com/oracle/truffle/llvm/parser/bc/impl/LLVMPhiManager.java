@@ -81,7 +81,7 @@ public final class LLVMPhiManager implements ModelVisitor {
         return visitor;
     }
 
-    private final Map<String, Map<Block, List<Phi>>> edges = new HashMap();
+    private final Map<String, Map<Block, List<Phi>>> edges = new HashMap<>();
 
     private LLVMPhiManager() {
     }
@@ -124,7 +124,7 @@ public final class LLVMPhiManager implements ModelVisitor {
 
         private final Map<Block, List<Phi>> edges = new HashMap<>();
 
-        private Block block = null;
+        private Block currentBlock = null;
 
         LLVMPhiManagerFunctionVisitor() {
         }
@@ -135,7 +135,7 @@ public final class LLVMPhiManager implements ModelVisitor {
 
         @Override
         public void visit(Block block) {
-            this.block = block;
+            this.currentBlock = block;
             block.accept(this);
         }
 
@@ -204,7 +204,7 @@ public final class LLVMPhiManager implements ModelVisitor {
                     references = new ArrayList<>();
                     edges.put(blk, references);
                 }
-                references.add(new Phi(block, phi, phi.getValue(i)));
+                references.add(new Phi(currentBlock, phi, phi.getValue(i)));
             }
         }
 
