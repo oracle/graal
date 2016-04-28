@@ -236,7 +236,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue, runtime);
+        return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);
     }
 
     @Override
