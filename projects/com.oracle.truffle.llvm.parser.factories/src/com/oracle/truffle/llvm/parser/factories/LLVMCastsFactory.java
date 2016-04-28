@@ -283,7 +283,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromI8Vector(LLVMAddressNode target, LLVMI8VectorNode fromNode) {
+    private LLVMExpressionNode castFromI8Vector(@SuppressWarnings("unused") LLVMAddressNode target, LLVMI8VectorNode fromNode) {
         if (targetType == LLVMBaseType.I8_VECTOR) {
             return fromNode;
         }
