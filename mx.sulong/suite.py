@@ -200,7 +200,7 @@ suite = {
     "LLVM_BITCODE_FOR_JAVA" : {
       "path" : "lib/llvm-bcj-1.0-SNAPSHOT.jar",
       "urls" : [
-        "https://github.com/beehive-lab/llvm-bcj/blob/master/bin/llvm-bcj-1.0-SNAPSHOT.jar?raw=true",
+        "https://github.com/beehive-lab/llvm-bcj/releases/download/1.0-SNAPSHOT/llvm-bcj-1.0-SNAPSHOT.jar",
       ],
       "sha1" : "b7366a5c109595f307c4c358afcc0a5e8a70442f",
       "maven" : {
