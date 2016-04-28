@@ -24,23 +24,25 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.FieldReadEnabledInImmutableCode;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
 import com.oracle.graal.replacements.WordOperationPlugin;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This plugin handles the HotSpot-specific customizations of bytecode parsing:
@@ -54,7 +56,7 @@ import com.oracle.graal.word.Word;
  * <p>
  * Constant folding of field loads.
  */
-public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
+public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     protected final WordOperationPlugin wordOperationPlugin;
 
     public HotSpotNodePlugin(WordOperationPlugin wordOperationPlugin) {
@@ -70,9 +72,9 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     }
 
     @Override
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
+    public StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull) {
         if (b.parsingIntrinsic()) {
-            return wordOperationPlugin.interceptParameter(b, index, stamp);
+            return wordOperationPlugin.interceptType(b, declaredType, nonNull);
         }
         return null;
     }

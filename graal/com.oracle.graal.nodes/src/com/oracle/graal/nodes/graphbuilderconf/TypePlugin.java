@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,13 @@
 package com.oracle.graal.nodes.graphbuilderconf;
 
 import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.nodes.calc.FloatingNode;
 
-public interface ParameterPlugin extends GraphBuilderPlugin {
+import jdk.vm.ci.meta.JavaType;
 
-    FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp);
+public interface TypePlugin extends GraphBuilderPlugin {
+
+    /**
+     * Intercept the type of arguments or return values.
+     */
+    StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull);
 }
