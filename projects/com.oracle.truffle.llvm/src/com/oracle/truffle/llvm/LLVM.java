@@ -58,9 +58,9 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
-import com.oracle.truffle.llvm.parser.impl.LLVMVisitor.ParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
@@ -86,7 +86,7 @@ public class LLVM {
                 parseDynamicBitcodeLibraries(context);
                 CallTarget mainFunction;
                 if (code.getMimeType().equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
-                    ParserResult parserResult = parseFile(code.getPath(), context);
+                    LLVMParserResult parserResult = parseFile(code.getPath(), context);
                     mainFunction = parserResult.getMainFunction();
                     context.getFunctionRegistry().register(parserResult.getParsedFunctions());
                     context.registerStaticInitializer(parserResult.getStaticInits());
@@ -102,7 +102,7 @@ public class LLVM {
                         library.readContents(dependentLibrary -> {
                             throw new UnsupportedOperationException();
                         }, source -> {
-                            ParserResult parserResult;
+                            LLVMParserResult parserResult;
                             try {
                                 parserResult = parseString(source.getCode(), context);
                             } catch (IOException e) {
@@ -139,7 +139,7 @@ public class LLVM {
                 String[] dynamicLibraryPaths = LLVMOptions.getDynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
-                        ParserResult result = parseFile(s, context);
+                        LLVMParserResult result = parseFile(s, context);
                         context.getFunctionRegistry().register(result.getParsedFunctions());
                     }
                 }
@@ -194,7 +194,7 @@ public class LLVM {
         System.exit(status);
     }
 
-    public static ParserResult parseString(String source, LLVMContext context) throws IOException {
+    public static LLVMParserResult parseString(String source, LLVMContext context) throws IOException {
         final File file = File.createTempFile("sulong", ".ll");
 
         try {
@@ -208,7 +208,7 @@ public class LLVM {
         }
     }
 
-    public static ParserResult parseFile(String filePath, LLVMContext context) {
+    public static LLVMParserResult parseFile(String filePath, LLVMContext context) {
         LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
         Injector injector = setup.createInjectorAndDoEMFRegistration();
         XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
