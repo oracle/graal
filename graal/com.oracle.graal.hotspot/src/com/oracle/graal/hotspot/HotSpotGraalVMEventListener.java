@@ -30,10 +30,10 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotVMEventListener;
+import jdk.vm.ci.hotspot.services.HotSpotVMEventListener;
 
 @ServiceProvider(HotSpotVMEventListener.class)
-public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
+public class HotSpotGraalVMEventListener extends HotSpotVMEventListener {
 
     private static final ArrayList<HotSpotGraalRuntime> runtimes = new ArrayList<>();
 

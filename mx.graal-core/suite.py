@@ -1408,6 +1408,10 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "jvmci:JVMCI_SERVICES",
+        "jvmci:JVMCI_API",
+        "jvmci:JVMCI_HOTSPOT",
+        "jvmci:JVMCI_HOTSPOTVMCONFIG"
       ],
     },
   },

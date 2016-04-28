@@ -32,8 +32,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.runtime.JVMCICompilerFactory;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -47,6 +45,8 @@ import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
 import com.oracle.graal.test.SubprocessUtil;
 
+import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
+
 /**
  * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
  * Graal should not be initialized unless there is an actual compilation request.
@@ -57,7 +57,7 @@ public class LazyInitializationTest {
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
 
     public LazyInitializationTest() {
-        hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.HotSpotVMEventListener");
+        hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
         hotSpotGraalCompilerFactoryOptions = forNameOrNull("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory$Options");
     }
 

@@ -8,7 +8,8 @@ import jdk.vm.ci.services.Services;
 
 /**
  * A mechanism for accessing service providers that abstracts over whether Graal is running on
- * JVMCI-8 or JVMCI-9.
+ * JVMCI-8 or JVMCI-9. In JVMCI-8, a JVMCI specific mechanism is used to lookup services via the
+ * hidden JVMCI class loader. in JVMCI-9, the standard {@link ServiceLoader} mechanism is used.
  */
 public class GraalServices {
 
@@ -20,10 +21,11 @@ public class GraalServices {
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
      *
-     * @throws SecurityException if on JDK8 or earlier and a security manager is present and it
-     *             denies {@code RuntimePermission("jvmci")}
+     * @throws SecurityException if on JDK8 and a security manager is present and it denies
+     *             {@code RuntimePermission("jvmci")}
      */
     public static <S> Iterable<S> load(Class<S> service) {
+        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
         return JDK8OrEarlier ? Services.load(service) : ServiceLoader.load(service);
     }
 
@@ -33,8 +35,12 @@ public class GraalServices {
      * @param service the service whose provider is being requested
      * @param required specifies if an {@link InternalError} should be thrown if no provider of
      *            {@code service} is available
+     * @return the requested provider if available else {@code null}
+     * @throws SecurityException if on JDK8 and a security manager is present and it denies
+     *             {@code RuntimePermission("jvmci")}
      */
     public static <S> S loadSingle(Class<S> service, boolean required) {
+        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
         if (JDK8OrEarlier) {
             return Services.loadSingle(service, required);
         }

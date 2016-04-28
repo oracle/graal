@@ -45,8 +45,8 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.inittimer.InitTimer;
-import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
+import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
 
 public abstract class HotSpotGraalCompilerFactory extends JVMCICompilerFactory {
 
