@@ -145,7 +145,6 @@ public class LLVMOptions {
         OPTIMIZATION_BRANCH_PROBABILITIES("InjectBranchProbabilities", "Injects branch probabilities for the basic block successors", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INJECT_PROBS_SWITCH("InjectProbabilitySwitch", "Inject branch probabilities for switch", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", "5", LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_LIFE_TIME_ANALYSIS(
                         "EnableLifetimeAnalysis",
@@ -307,10 +306,6 @@ public class LLVMOptions {
 
     public static boolean intrinsifyCLibraryFunctions() {
         return getParsedProperty(Property.OPTIMIZATION_INTRINSIFY_C_FUNCTIONS);
-    }
-
-    public static boolean injectBranchProbabilitiesForConditionalBranch() {
-        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
     }
 
     public static boolean injectBranchProbabilities() {

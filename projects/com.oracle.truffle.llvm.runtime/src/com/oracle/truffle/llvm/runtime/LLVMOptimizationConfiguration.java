@@ -50,9 +50,4 @@ public interface LLVMOptimizationConfiguration {
      */
     boolean intrinsifyCLibraryFunctions();
 
-    /**
-     * Record branch probabilities for the LLVM <code>br</code> instruction.
-     */
-    boolean injectBranchProbabilitiesForConditionalBranch();
-
 }
