@@ -31,12 +31,24 @@ public class ObjectHashCodeNode extends AbstractTestNode {
 
     @CompilationFinal private Object o1;
 
+    private boolean alwaysFalse;
+
     public ObjectHashCodeNode(Object o1) {
         this.o1 = o1;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        return o1.hashCode();
+        Object value;
+        if (alwaysFalse) {
+            value = null;
+        } else {
+            value = o1;
+        }
+        /*
+         * The exact type of value is Object, but Graal still thinks it can be null too - so the
+         * code that inserts a null check is tested too.
+         */
+        return value.hashCode();
     }
 }
