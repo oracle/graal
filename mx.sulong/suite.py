@@ -239,7 +239,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-   "com.oracle.truffle.llvm.types" : {
+    "com.oracle.truffle.llvm.types" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -252,7 +252,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-   "com.oracle.truffle.llvm.types.test" : {
+    "com.oracle.truffle.llvm.types.test" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -277,7 +277,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-  "com.oracle.truffle.llvm.nodes" : {
+    "com.oracle.truffle.llvm.nodes" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -314,7 +314,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-     "com.oracle.truffle.llvm.parser" : {
+    "com.oracle.truffle.llvm.parser" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -330,7 +330,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-     "com.oracle.truffle.llvm.parser.impl" : {
+    "com.oracle.truffle.llvm.parser.impl" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -343,7 +343,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-     "com.oracle.truffle.llvm" : {
+    "com.oracle.truffle.llvm" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -357,7 +357,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-   "com.oracle.truffle.llvm.parser.factories" : {
+    "com.oracle.truffle.llvm.parser.factories" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -369,7 +369,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
-   "com.oracle.truffle.llvm.nativeint" : {
+
+    "com.oracle.truffle.llvm.nativeint" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -450,4 +451,3 @@ suite = {
   },
  }
 }
-
