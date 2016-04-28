@@ -399,13 +399,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
-        "com.oracle.truffle.llvm.nodes",
-        "com.oracle.truffle.llvm.nodes.impl",
-        "com.oracle.truffle.llvm.parser",
         "com.oracle.truffle.llvm.parser.factories",
-        "com.oracle.truffle.llvm.runtime",
-        "com.oracle.truffle.llvm.types",
         "LLVM_BITCODE_FOR_JAVA",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
