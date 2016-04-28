@@ -27,21 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.c;
+package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import java.util.Map;
 
-@NodeChild(type = LLVMI64Node.class)
-public abstract class LLVMMalloc extends LLVMAddressIntrinsic {
+public interface LLVMParserResult {
 
-    @Specialization
-    public LLVMAddress executeIntrinsic(long value) {
-        return LLVMHeap.allocateMemory(value);
-    }
+    RootCallTarget getMainFunction();
 
+    Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions();
+
+    RootCallTarget getStaticInits();
+
+    RootCallTarget getStaticDestructors();
 }

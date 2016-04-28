@@ -83,7 +83,7 @@ double truffle_unbox_d(void *object);
 bool truffle_unbox_b(void *object);
 
 // Read
-void * truffle_read(void *object, const char *name);
+void *truffle_read(void *object, const char *name);
 int truffle_read_i(void *object, const char *name);
 long truffle_read_l(void *object, const char *name);
 char truffle_read_c(void *object, const char *name);
@@ -99,7 +99,6 @@ float truffle_read_idx_f(void *object, int idx);
 double truffle_read_idx_d(void *object, int idx);
 bool truffle_read_idx_b(void *object, int idx);
 
-
 // Write
 void truffle_write(void *object, const char *name, void *value);
 void truffle_write_i(void *object, const char *name, int value);
@@ -109,7 +108,6 @@ void truffle_write_f(void *object, const char *name, float value);
 void truffle_write_d(void *object, const char *name, double value);
 void truffle_write_b(void *object, const char *name, bool value);
 
-
 void truffle_write_idx(void *object, int idx, void *value);
 void truffle_write_idx_i(void *object, int idx, int value);
 void truffle_write_idx_l(void *object, int idx, long value);
@@ -117,7 +115,6 @@ void truffle_write_idx_c(void *object, int idx, char value);
 void truffle_write_idx_f(void *object, int idx, float value);
 void truffle_write_idx_d(void *object, int idx, double value);
 void truffle_write_idx_b(void *object, int idx, bool value);
-
 
 #if defined(__cplusplus)
 }

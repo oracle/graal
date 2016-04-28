@@ -4,14 +4,14 @@ from os.path import join
 import shutil
 import zipfile
 import subprocess
-import re
 
 import mx
 import mx_findbugs
 
 from mx_unittest import unittest
-from mx_gate import Task, add_gate_runner
+from mx_gate import Task, add_gate_runner, gate_clean
 from mx_jvmci import VM, buildvms
+from mx_gitlogcheck import logCheck
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
@@ -21,6 +21,8 @@ _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testDir = join(_root, "com.oracle.truffle.llvm.test/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
+
+_testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
@@ -33,10 +35,6 @@ _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
-
-gitLogOneLine = re.compile(r'^(?P<message>.*)$')
-titleWithEndingPunct = re.compile(r'^(.*)[\.!?]$')
-pastTenseWords = ['installed', 'implemented', 'fixed', 'merged', 'improved', 'simplified', 'enhanced', 'changed', 'removed', 'replaced', 'substituted', 'corrected', 'used', 'moved', 'refactored']
 
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
@@ -51,7 +49,8 @@ def executeGate():
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
@@ -76,14 +75,27 @@ def executeGate():
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis1(args=None):
     tasks = []
+    with Task('BuildJavaWithEcj', tasks) as t:
+        if t:
+            if mx.get_env('JDT'):
+                mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
+                gate_clean([], tasks, name='CleanAfterEcjBuild')
+            else:
+                mx._warn_or_abort('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.', args.strict_mode)
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('BuildHotSpotGraalServer: product', tasks) as t:
         if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
     with VM('server', 'product'):
         with Task('Findbugs', tasks) as t:
-            if t: mx_findbugs.findbugs([])
+            if t and mx_findbugs.findbugs([]) != 0:
+                t.abort('FindBugs warnings were found')
     with VM('server', 'product'):
         with Task('TestBenchmarks', tasks) as t:
             if t: runBenchmarkTestCases()
@@ -105,6 +117,9 @@ def travis1(args=None):
     with VM('server', 'product'):
         with Task('TestNWCC', tasks) as t:
             if t: runNWCCTestCases()
+    with VM('server', 'product'):
+        with Task('TestGCCSuiteCompile', tasks) as t:
+            if t: runCompileTestCases()
 
 def travis2(args=None):
     tasks = []
@@ -486,11 +501,15 @@ def runInteropTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
 
+def runCompileTestCases(args=None):
+    """runs the compile (no execution) test cases of the GCC suite"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
-        '-Dsulong.IntrinsifyCFunctions=false',
         getSearchPathOption(lib_args)
     ] + getBitcodeLibrariesOption()
 
@@ -529,12 +548,12 @@ def compilationSucceedsOption():
     return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
 
 def getRemoteClasspathOption():
-    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Dsulong.IntrinsifyCFunctions=false -Djvmci.Compiler=graal"
+    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
     return [
         '-Dgraal.TruffleBackgroundCompilation=false',
-        '-Dsulong.IntrinsifyCFunctions=false',
+        '-Dsulong.IntrinsifyCFunctions=true',
         '-Dsulong.ExecutionCount=5',
         '-Dsulong.PerformanceWarningsAreFatal=true',
         '-Dgraal.TruffleTimeThreshold=1000000',
@@ -587,9 +606,13 @@ def link(args=None):
         n += 1
     if out is None:
         out = 'out.su'
+    if len(modules) == 1:
+        prefix = os.path.dirname(modules[0])
+    else:
+        prefix = os.path.commonprefix(modules)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for module in modules:
-            z.write(module)
+            z.write(module, module[len(prefix):])
         z.writestr('libs', '\n'.join(libraries))
 
 def compileWithClangPP(args=None):
@@ -688,37 +711,6 @@ def gccBench(args=None):
 def standardLinkerCommands(args=None):
     return ['-lm', '-lgmp']
 
-def checkCommitMessage(quotedCommitMessage):
-    error = False
-    message = ''
-    commitMessage = quotedCommitMessage[1:-1]
-    if commitMessage[0].islower():
-        error = True
-        message = quotedCommitMessage + ' starts with a lower case character'
-    if titleWithEndingPunct.match(commitMessage):
-        error = True
-        message = quotedCommitMessage + ' ends with period, question mark, or exclamation mark'
-    if commitMessage.lower().split()[0] in pastTenseWords:
-        error = True
-        print quotedCommitMessage, 'starts with past tense word "' + commitMessage.lower().split()[0] + '"'
-    return (error, message)
-
-def logCheck(args=None):
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
-    foundErrors = []
-    for s in output.splitlines():
-        match = gitLogOneLine.match(s)
-        commitMessage = match.group('message')
-        (isError, curMessage) = checkCommitMessage(commitMessage)
-        if isError:
-            foundErrors.append(curMessage)
-    if foundErrors:
-        for curMessage in foundErrors:
-            print curMessage
-        print "\nFound illegal git log messages! Please check CONTRIBUTING.md for commit message guidelines."
-        exit(-1)
-
-
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
     for path, _, files in os.walk('.'):
@@ -739,6 +731,33 @@ def getBitcodeLibrariesOption():
                     compileWithClangOpt(path + '/' + f, absBitcodeFile)
                 libraries.append(absBitcodeFile)
     return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
+
+def clangformatcheck(args=None):
+    """ Performs a format check on the include/truffle.h file """
+    checkCFile(_suite.dir + '/include/truffle.h')
+    checkCFiles(_testDir)
+
+def checkCFiles(targetDir):
+    error = False
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp'):
+                if not checkCFile(path + '/' + f):
+                    error = True
+    if error:
+        print "found formatting errors!"
+        exit(-1)
+
+def checkCFile(targetFile):
+    """ Checks the formatting of a C file and returns True if the formatting is okay """
+    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]).splitlines()
+    with open(targetFile) as f:
+        originalContent = f.read().splitlines()
+    if not formattedContent == originalContent:
+        print '\n'.join(formattedContent)
+        print '\nplease fix the formatting in', targetFile, 'to the format given above'
+        return False
+    return True
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
@@ -764,6 +783,7 @@ mx.update_commands(_suite, {
     'su-tests-types' : [runTypeTestCases, ''],
     'su-tests-polyglot' : [runPolyglotTestCases, ''],
     'su-tests-interop' : [runInteropTestCases, ''],
+    'su-tests-compile' : [runCompileTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
@@ -775,5 +795,6 @@ mx.update_commands(_suite, {
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
     'su-gitlogcheck' : [logCheck, ''],
-    'su-mdlcheck' : [mdlCheck, '']
+    'su-mdlcheck' : [mdlCheck, ''],
+    'su-clangformatcheck' : [clangformatcheck, '']
 })

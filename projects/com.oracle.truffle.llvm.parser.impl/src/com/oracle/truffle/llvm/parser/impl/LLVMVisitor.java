@@ -134,6 +134,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMObjectNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
@@ -197,32 +198,36 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMTypeHelper.setParserRuntime(this);
     }
 
-    public class ParserResult {
+    private class ParserResult implements LLVMParserResult {
 
         private final RootCallTarget mainFunction;
         private final RootCallTarget staticInits;
         private final RootCallTarget staticDestructors;
         private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
 
-        public ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
+        ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
             this.mainFunction = mainFunction;
             this.staticInits = staticInits;
             this.staticDestructors = staticDestructors;
             this.parsedFunctions = parsedFunctions;
         }
 
+        @Override
         public RootCallTarget getMainFunction() {
             return mainFunction;
         }
 
+        @Override
         public Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions() {
             return parsedFunctions;
         }
 
+        @Override
         public RootCallTarget getStaticInits() {
             return staticInits;
         }
 
+        @Override
         public RootCallTarget getStaticDestructors() {
             return staticDestructors;
         }
@@ -237,7 +242,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         return null;
     }
 
-    public ParserResult getMain(Model model, NodeFactoryFacade facade) {
+    public LLVMParserResult getMain(Model model, NodeFactoryFacade facade) {
         Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions = visit(model, facade);
         LLVMFunctionDescriptor mainFunction = searchFunction(parsedFunctions, "@main");
         LLVMNode[] staticInits = globalNodes.toArray(new LLVMNode[globalNodes.size()]);
@@ -354,6 +359,8 @@ public class LLVMVisitor implements LLVMParserRuntime {
     }
 
     private List<LLVMNode> addGlobalVars(LLVMVisitor visitor, List<GlobalVariable> globalVariables) {
+        frameDescriptor = globalFrameDescriptor = new FrameDescriptor();
+        stackPointerSlot = frameDescriptor.addFrameSlot(STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
         List<LLVMNode> globalVarNodes = new ArrayList<>();
         for (GlobalVariable globalVar : globalVariables) {
             LLVMNode globalVarWrite = visitor.visitGlobalVariable(globalVar);
@@ -385,7 +392,6 @@ public class LLVMVisitor implements LLVMParserRuntime {
                 throw new AssertionError("destructors not yet supported!");
             }
         }
-        globalFrameDescriptor = frameDescriptor;
         return globalVarNodes;
     }
 
@@ -1084,7 +1090,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         ResolvedVectorType type = (ResolvedVectorType) resolve(constant);
         List<LLVMExpressionNode> listValues = visitConstantList(list);
         LLVMExpressionNode target = allocateVectorResult(constant);
-        return factoryFacade.createVectorLiteralNode(listValues, target, type);
+        return factoryFacade.createVectorLiteralNode(listValues, target, LLVMTypeHelper.getLLVMType(type));
     }
 
     private List<LLVMExpressionNode> visitConstantList(ConstantList list) throws AssertionError {

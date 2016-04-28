@@ -1,4 +1,4 @@
 int main() {
-	double a = 5.0;
-	return (int) a;
+  double a = 5.0;
+  return (int)a;
 }

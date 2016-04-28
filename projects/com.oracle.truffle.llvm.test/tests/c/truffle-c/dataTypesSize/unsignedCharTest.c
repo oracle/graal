@@ -1,3 +1,1 @@
-int main() {
-	return sizeof(unsigned char);
-}
+int main() { return sizeof(unsigned char); }

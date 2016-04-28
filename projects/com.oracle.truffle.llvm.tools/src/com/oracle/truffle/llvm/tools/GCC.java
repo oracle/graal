@@ -40,7 +40,7 @@ public final class GCC extends CompilerBase {
     }
 
     public static void compileObjectToMachineCode(File objectFile, File executable) {
-        String linkCommand = "gcc " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
+        String linkCommand = "gcc-4.6 " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
         ProcessUtil.executeNativeCommandZeroReturn(linkCommand);
         executable.setExecutable(true);
     }

@@ -2,13 +2,10 @@
 struct str {
   char a;
   int b[];
-} a3 = {
-  'o',
-  {1, 2}
-};
+} a3 = { 'o', { 1, 2 } };
 
 /*
- * 
+ *
 
 struct {
   char a;
@@ -20,7 +17,4 @@ struct {
 
  * */
 
-int main() {
-
-	return a3.b[0] + a3.b[1] ;
-}
+int main() { return a3.b[0] + a3.b[1]; }

@@ -40,6 +40,8 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI1VectorNode;
+import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMProfilingSelectNodeFactory.LLVM80BitFloatProfilingSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMProfilingSelectNodeFactory.LLVMAddressProfilingSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMProfilingSelectNodeFactory.LLVMDoubleProfilingSelectNodeGen;
@@ -60,13 +62,20 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMSelectNodeFactory.LLVMI1Sel
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMSelectNodeFactory.LLVMI32SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMSelectNodeFactory.LLVMI64SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMVectorSelectNodeFactory.LLVMI32VectorSelectNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
 public class LLVMSelectFactory {
 
-    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue, LLVMParserRuntime runtime) {
-        if (runtime.getOptimizationConfiguration().injectBranchProbabilitiesForSelect()) {
+    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue, LLVMParserRuntime runtime) {
+        return createSelect(llvmType, (LLVMI1Node) condition, trueValue, falseValue, runtime.getOptimizationConfiguration());
+    }
+
+    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMI1Node condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue,
+                    LLVMOptimizationConfiguration configuration) {
+        if (configuration.injectBranchProbabilitiesForSelect()) {
             switch (llvmType) {
                 case I1:
                     return LLVMI1ProfilingSelectNodeGen.create(condition, (LLVMI1Node) trueValue, (LLVMI1Node) falseValue);
@@ -116,6 +125,15 @@ public class LLVMSelectFactory {
                 default:
                     throw new AssertionError(llvmType);
             }
+        }
+    }
+
+    public static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMAddressNode target, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+        switch (llvmType) {
+            case I32_VECTOR:
+                return LLVMI32VectorSelectNodeGen.create(target, (LLVMI1VectorNode) condition, (LLVMI32VectorNode) trueValue, (LLVMI32VectorNode) falseValue);
+            default:
+                throw new AssertionError(llvmType);
         }
     }
 

@@ -1,3 +1,1 @@
-int main() {
-	return 1UL >= 0UL;
-}
+int main() { return 1UL >= 0UL; }
