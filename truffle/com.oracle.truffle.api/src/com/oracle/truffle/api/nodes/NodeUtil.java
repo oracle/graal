@@ -39,7 +39,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -274,16 +273,17 @@ public final class NodeUtil {
      * @since 0.8 or earlier
      */
     @SuppressWarnings("deprecation")
+    @Deprecated
     public static NodeFieldAccessor findChildField(Node parent, Node child) {
         assert child != null;
         NodeClass parentNodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor field : parentNodeClass.getFields()) {
-            if (field.getKind() == NodeFieldKind.CHILD) {
+            if (field.getKind() == NodeFieldAccessor.NodeFieldKind.CHILD) {
                 if (field.getObject(parent) == child) {
                     return field;
                 }
-            } else if (field.getKind() == NodeFieldKind.CHILDREN) {
+            } else if (field.getKind() == NodeFieldAccessor.NodeFieldKind.CHILDREN) {
                 Object arrayObject = field.getObject(parent);
                 if (arrayObject != null) {
                     Object[] array = (Object[]) arrayObject;
@@ -304,17 +304,24 @@ public final class NodeUtil {
      * @since 0.8 or earlier
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
-        assert newChild != null;
+        Objects.requireNonNull(oldChild);
         if (parent != null) {
-            final NodeFieldAccessor field = findChildField(parent, oldChild);
-            if (field != null) {
-                switch (field.getKind()) {
-                    case CHILD:
-                        return field.getType().isAssignableFrom(newChild.getClass());
-                    case CHILDREN:
-                        return field.getType().getComponentType().isAssignableFrom(newChild.getClass());
-                    default:
-                        throw new IllegalStateException();
+            NodeClass nodeClass = parent.getNodeClass();
+            for (NodeClass.NodeField field : nodeClass.getNodeFields()) {
+                if (field.isChildField()) {
+                    if (field.getObject(parent) == oldChild) {
+                        return field.getFieldType().isAssignableFrom(newChild.getClass());
+                    }
+                } else if (field.isChildrenField()) {
+                    Object arrayObject = field.getObject(parent);
+                    if (arrayObject != null) {
+                        Object[] array = (Object[]) arrayObject;
+                        for (int i = 0; i < array.length; i++) {
+                            if (array[i] == oldChild) {
+                                return field.getFieldType().getComponentType().isAssignableFrom(newChild.getClass());
+                            }
+                        }
+                    }
                 }
             }
         }

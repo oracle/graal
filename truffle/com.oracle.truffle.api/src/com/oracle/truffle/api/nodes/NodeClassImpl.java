@@ -33,7 +33,6 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
@@ -63,10 +62,10 @@ final class NodeClassImpl extends NodeClass {
         try {
             Field field = Node.class.getDeclaredField("parent");
             assert Node.class.isAssignableFrom(field.getType());
-            parentFieldTmp = NodeFieldAccessor.create(NodeFieldKind.PARENT, field);
+            parentFieldTmp = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.PARENT, field);
             field = Node.class.getDeclaredField("nodeClass");
             assert NodeClass.class.isAssignableFrom(field.getType());
-            nodeClassFieldTmp = NodeFieldAccessor.create(NodeFieldKind.NODE_CLASS, field);
+            nodeClassFieldTmp = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.NODE_CLASS, field);
         } catch (NoSuchFieldException e) {
             throw new AssertionError("Node field not found", e);
         }
@@ -94,12 +93,12 @@ final class NodeClassImpl extends NodeClass {
                 continue;
             } else if (field.getAnnotation(Child.class) != null) {
                 checkChildField(field);
-                nodeField = NodeFieldAccessor.create(NodeFieldKind.CHILD, field);
+                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.CHILD, field);
             } else if (field.getAnnotation(Children.class) != null) {
                 checkChildrenField(field);
-                nodeField = NodeFieldAccessor.create(NodeFieldKind.CHILDREN, field);
+                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.CHILDREN, field);
             } else {
-                nodeField = NodeFieldAccessor.create(NodeFieldKind.DATA, field);
+                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.DATA, field);
             }
             fieldsList.add((NodeField) nodeField);
         }

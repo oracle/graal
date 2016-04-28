@@ -63,26 +63,32 @@ public abstract class NodeClass {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor getNodeClassField();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor[] getCloneableFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor[] getFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor getParentField();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor[] getChildFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     public abstract NodeFieldAccessor[] getChildrenFields();
 
