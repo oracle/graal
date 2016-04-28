@@ -37,7 +37,6 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.types.floating.BinaryHelper;
 
 // see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
 public abstract class LLVMIVarBit {
