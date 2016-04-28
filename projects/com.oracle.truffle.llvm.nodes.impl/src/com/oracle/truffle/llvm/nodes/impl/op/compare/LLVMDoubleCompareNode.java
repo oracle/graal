@@ -51,53 +51,45 @@ public abstract class LLVMDoubleCompareNode extends LLVMI1Node {
         return true;
     }
 
-    public int compare(double val1, double val2) {
-        if (val1 == val2) {
-            return 0;
-        } else {
-            return Double.compare(val1, val2);
-        }
-    }
-
     public abstract static class LLVMDoubleOltNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) < 0;
+            return areOrdered(val1, val2) && val1 < val2;
         }
     }
 
     public abstract static class LLVMDoubleOgtNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) > 0;
+            return areOrdered(val1, val2) && val1 > val2;
         }
     }
 
     public abstract static class LLVMDoubleOgeNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) >= 0;
+            return areOrdered(val1, val2) && val1 >= val2;
         }
     }
 
     public abstract static class LLVMDoubleOleNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) <= 0;
+            return areOrdered(val1, val2) && val1 <= val2;
         }
     }
 
     public abstract static class LLVMDoubleOeqNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) == 0;
+            return areOrdered(val1, val2) && val1 == val2;
         }
     }
 
     public abstract static class LLVMDoubleOneNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && compare(val1, val2) != 0;
+            return areOrdered(val1, val2) && val1 != val2;
         }
     }
 
@@ -111,42 +103,42 @@ public abstract class LLVMDoubleCompareNode extends LLVMI1Node {
     public abstract static class LLVMDoubleUeqNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) == 0;
+            return !areOrdered(val1, val2) || val1 == val2;
         }
     }
 
     public abstract static class LLVMDoubleUgtNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) > 0;
+            return !areOrdered(val1, val2) || val1 > val2;
         }
     }
 
     public abstract static class LLVMDoubleUgeNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) >= 0;
+            return !areOrdered(val1, val2) || val1 >= val2;
         }
     }
 
     public abstract static class LLVMDoubleUleNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) <= 0;
+            return !areOrdered(val1, val2) || val1 <= val2;
         }
     }
 
     public abstract static class LLVMDoubleUltNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) < 0;
+            return !areOrdered(val1, val2) || val1 < val2;
         }
     }
 
     public abstract static class LLVMDoubleUneNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || compare(val1, val2) != 0;
+            return !areOrdered(val1, val2) || val1 != val2;
         }
     }
 
