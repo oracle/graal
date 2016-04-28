@@ -35,8 +35,38 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import uk.ac.man.cs.llvm.ir.model.*;
-import uk.ac.man.cs.llvm.ir.model.elements.*;
+import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
+import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
+import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
+import uk.ac.man.cs.llvm.ir.model.Model;
+import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
+import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CallInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CastInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CompareInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ConditionalBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.GetElementPointerInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.IndirectBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.LoadInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.PhiInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ReturnInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SelectInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ShuffleVectorInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class LLVMControlFlowAnalysis {
@@ -85,7 +115,7 @@ public final class LLVMControlFlowAnalysis {
 
         private final Map<String, LLVMControlFlow> dependencies = new HashMap<>();
 
-        public LLVMControlFlowVisitor() {
+        LLVMControlFlowVisitor() {
         }
 
         public Map<String, LLVMControlFlow> dependencies() {
@@ -126,7 +156,7 @@ public final class LLVMControlFlowAnalysis {
 
         private Set<Block> workspace;
 
-        public LLVMControlFlowFunctionVisitor() {
+        LLVMControlFlowFunctionVisitor() {
         }
 
         public Map<Block, Set<Block>> predecessors() {

@@ -29,18 +29,55 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMControlFlowAnalysis.LLVMControlFlow;
 
-import uk.ac.man.cs.llvm.ir.model.*;
-import uk.ac.man.cs.llvm.ir.model.elements.*;
+import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
+import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
+import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
+import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
+import uk.ac.man.cs.llvm.ir.model.Model;
+import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
+import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CallInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CastInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CompareInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ConditionalBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.GetElementPointerInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.IndirectBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.LoadInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.PhiInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ReturnInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SelectInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ShuffleVectorInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class LLVMFrameDescriptors {
+public final class LLVMFrameDescriptors {
 
     public static LLVMFrameDescriptors generate(Model model) {
         LLVMControlFlowAnalysis cfg = LLVMControlFlowAnalysis.generate(model);
@@ -81,7 +118,7 @@ public class LLVMFrameDescriptors {
 
         private final Map<String, Map<Block, List<FrameSlot>>> slots = new HashMap<>();
 
-        public LLVMFrameDescriptorsVisitor(LLVMControlFlowAnalysis cfg) {
+        LLVMFrameDescriptorsVisitor(LLVMControlFlowAnalysis cfg) {
             this.cfg = cfg;
         }
 
@@ -137,7 +174,7 @@ public class LLVMFrameDescriptors {
 
         private Block entry = null;
 
-        private LLVMFrameDescriptorsFunctionVisitor(FrameDescriptor frame, LLVMControlFlow cfg) {
+        LLVMFrameDescriptorsFunctionVisitor(FrameDescriptor frame, LLVMControlFlow cfg) {
             this.frame = frame;
             this.cfg = cfg;
         }

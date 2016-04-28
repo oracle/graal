@@ -33,7 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.nodes.base.*;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
@@ -51,23 +52,92 @@ import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.*;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMDoubleLiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMFloatLiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI16LiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.factories.*;
-import com.oracle.truffle.llvm.parser.instructions.*;
+import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMBranchFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMIntrinsicFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMSelectFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMSwitchFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMVectorFactory;
+import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
-import uk.ac.man.cs.llvm.ir.model.*;
-import uk.ac.man.cs.llvm.ir.model.constants.*;
-import uk.ac.man.cs.llvm.ir.model.elements.*;
-import uk.ac.man.cs.llvm.ir.types.*;
+import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
+import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
+import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
+import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CallInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CastInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CompareInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ConditionalBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.GetElementPointerInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.IndirectBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.LoadInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.PhiInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ReturnInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SelectInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ShuffleVectorInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
+import uk.ac.man.cs.llvm.ir.types.ArrayType;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
+import uk.ac.man.cs.llvm.ir.types.FunctionType;
+import uk.ac.man.cs.llvm.ir.types.IntegerType;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.PointerType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
+import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
@@ -156,7 +226,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 int align = 0;
                 if (ptr.getBasePointer() instanceof ValueSymbol) {
                     align = ((ValueSymbol) ptr.getBasePointer()).getAlign();
-                } else if(ptr.getBasePointer() instanceof CastConstant) {
+                } else if (ptr.getBasePointer() instanceof CastConstant) {
                     align = ((ValueSymbol) ((CastConstant) ptr.getBasePointer()).getValue()).getAlign();
                 }
 
@@ -206,13 +276,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 switch (bits) {
                     case 1:
                         return new LLVMI1LiteralNode(constant.getValue() != 0);
-                    case 8:
+                    case Byte.SIZE:
                         return new LLVMI8LiteralNode((byte) constant.getValue());
-                    case 16:
+                    case Short.SIZE:
                         return new LLVMI16LiteralNode((short) constant.getValue());
-                    case 32:
+                    case Integer.SIZE:
                         return new LLVMI32LiteralNode((int) constant.getValue());
-                    case 64:
+                    case Long.SIZE:
                         return new LLVMI64LiteralNode(constant.getValue());
                     default:
                         return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(bits, constant.getValue()));

@@ -35,8 +35,40 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import uk.ac.man.cs.llvm.ir.model.*;
-import uk.ac.man.cs.llvm.ir.model.elements.*;
+import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
+import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
+import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
+import uk.ac.man.cs.llvm.ir.model.Model;
+import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
+import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.BranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CallInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CastInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.CompareInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ConditionalBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ExtractValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.GetElementPointerInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.IndirectBranchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertElementInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.InsertValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.LoadInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.PhiInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ReturnInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SelectInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ShuffleVectorInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class LLVMPhiManager implements ModelVisitor  {
@@ -94,7 +126,7 @@ public final class LLVMPhiManager implements ModelVisitor  {
 
         private Block block = null;
 
-        public LLVMPhiManagerFunctionVisitor() {
+        LLVMPhiManagerFunctionVisitor() {
         }
 
         public Map<Block, List<Phi>> getEdges() {
@@ -217,7 +249,7 @@ public final class LLVMPhiManager implements ModelVisitor  {
 
         private final Symbol value;
 
-        public Phi(Block block, ValueSymbol phi, Symbol value) {
+        Phi(Block block, ValueSymbol phi, Symbol value) {
             this.block = block;
             this.phi = phi;
             this.value = value;

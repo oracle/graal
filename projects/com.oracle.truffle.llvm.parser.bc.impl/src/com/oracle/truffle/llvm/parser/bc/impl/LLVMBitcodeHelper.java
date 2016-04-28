@@ -102,12 +102,35 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
-import uk.ac.man.cs.llvm.ir.model.*;
-import uk.ac.man.cs.llvm.ir.model.constants.*;
+import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.constants.ArrayConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.Constant;
+import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.CastOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;
-import uk.ac.man.cs.llvm.ir.types.*;
+import uk.ac.man.cs.llvm.ir.types.ArrayType;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
+import uk.ac.man.cs.llvm.ir.types.FunctionType;
+import uk.ac.man.cs.llvm.ir.types.IntegerType;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.PointerType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
+import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public final class LLVMBitcodeHelper {
 
@@ -121,13 +144,13 @@ public final class LLVMBitcodeHelper {
     public static int getAlignment(Symbol symbol, int align) {
         return getAlignment(symbol.getType(), align);
     }
-        
+
     public static int getAlignment(Type type, int align) {
         int definedAlignment = type.getAlignment();
         int defaultAlignment = align == 0 ? Integer.MAX_VALUE : 1 << (align - 1);
         return Math.min(definedAlignment, defaultAlignment);
     }
-    
+
     public static int getPaddingSize(Symbol symbol, int align, int address) {
         return getPaddingSize(symbol.getType(), align, address);
     }
@@ -187,13 +210,13 @@ public final class LLVMBitcodeHelper {
             switch (((IntegerType) type).getBitCount()) {
                 case 1:
                     return LLVMBaseType.I1;
-                case 8:
+                case Byte.SIZE:
                     return LLVMBaseType.I8;
-                case 16:
+                case Short.SIZE:
                     return LLVMBaseType.I16;
-                case 32:
+                case Integer.SIZE:
                     return LLVMBaseType.I32;
-                case 64:
+                case Long.SIZE:
                     return LLVMBaseType.I64;
                 default:
                     return LLVMBaseType.I_VAR_BITWIDTH;
@@ -260,7 +283,7 @@ public final class LLVMBitcodeHelper {
         return llvmtypes;
     }
 
-    public static LLVMExpressionNode toBinaryOperatorNode(BinaryOperator operator, LLVMBaseType type, LLVMExpressionNode lhs , LLVMExpressionNode rhs) {
+    public static LLVMExpressionNode toBinaryOperatorNode(BinaryOperator operator, LLVMBaseType type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         LLVMArithmeticInstructionType opA = LLVMBitcodeHelper.toArithmeticInstructionType(operator);
         if (opA != null) {
             return LLVMArithmeticFactory.createArithmeticOperation(lhs, rhs, opA, type, null);
@@ -370,13 +393,13 @@ public final class LLVMBitcodeHelper {
             switch (bits) {
                 case 1:
                     return new LLVMI1LiteralNode(constant.getValue() != 0);
-                case 8:
+                case Byte.SIZE:
                     return new LLVMI8LiteralNode((byte) constant.getValue());
-                case 16:
+                case Short.SIZE:
                     return new LLVMI16LiteralNode((short) constant.getValue());
-                case 32:
+                case Integer.SIZE:
                     return new LLVMI32LiteralNode((int) constant.getValue());
-                case 64:
+                case Long.SIZE:
                     return new LLVMI64LiteralNode(constant.getValue());
                 default:
                     return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(bits, constant.getValue()));
@@ -419,7 +442,7 @@ public final class LLVMBitcodeHelper {
             if (constant.isCString()) {
                 values.add(new LLVMI8LiteralNode((byte) 0));
             }
-            return toArray(new IntegerType(8), 1, values, context, stack);
+            return toArray(new IntegerType(Byte.SIZE), 1, values, context, stack);
         }
         if (value instanceof ArrayConstant) {
             ArrayConstant array = (ArrayConstant) value;
@@ -652,13 +675,13 @@ public final class LLVMBitcodeHelper {
             switch (vbr) {
                 case 1:
                     return new LLVMI1LiteralNode(false);
-                case 8:
+                case Byte.SIZE:
                     return new LLVMI8LiteralNode((byte) 0);
-                case 16:
+                case Short.SIZE:
                     return new LLVMI16LiteralNode((short) 0);
-                case 32:
+                case Integer.SIZE:
                     return new LLVMI32LiteralNode(0);
-                case 64:
+                case Long.SIZE:
                     return new LLVMI64LiteralNode(0L);
                 default:
                     return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(vbr, 0L));
@@ -803,12 +826,12 @@ public final class LLVMBitcodeHelper {
             switch (((IntegerType) type).getBitCount()) {
                 case 1:
                     return FrameSlotKind.Boolean;
-                case 8:
+                case Byte.SIZE:
                     return FrameSlotKind.Byte;
-                case 16:
-                case 32:
+                case Short.SIZE:
+                case Integer.SIZE:
                     return FrameSlotKind.Int;
-                case 64:
+                case Long.SIZE:
                     return FrameSlotKind.Long;
                 default:
                     break;
@@ -854,13 +877,13 @@ public final class LLVMBitcodeHelper {
             switch (((IntegerType) type).getBitCount()) {
                 case 1:
                     return LLVMRuntimeType.I1;
-                case 8:
+                case Byte.SIZE:
                     return LLVMRuntimeType.I8;
-                case 16:
+                case Short.SIZE:
                     return LLVMRuntimeType.I16;
-                case 32:
+                case Integer.SIZE:
                     return LLVMRuntimeType.I32;
-                case 64:
+                case Long.SIZE:
                     return LLVMRuntimeType.I64;
                 default:
                     return LLVMRuntimeType.I_VAR_BITWIDTH;
