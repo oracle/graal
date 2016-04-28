@@ -205,7 +205,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         private final RootCallTarget staticDestructors;
         private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
 
-        public ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
+        ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
             this.mainFunction = mainFunction;
             this.staticInits = staticInits;
             this.staticDestructors = staticDestructors;
