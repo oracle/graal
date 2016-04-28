@@ -326,11 +326,37 @@ def _find_intersecting_module(modulepath, packages, source):
             intersectingModule = jmd
     return intersectingModule
 
+def _automatic_module_name(modulejar):
+    """
+    Derives the name of an automatic module from an automatic module jar according to
+    specification of java.lang.module.ModuleFinder.of(Path... entries).
+    
+    :param str modulejar: the path to a jar file treated as an automatic module
+    :return: the name of the automatic module derived from `modulejar` 
+    """
+
+    # Drop directory prefix and .jar (or .zip) suffix
+    name = os.path.basename(modulejar)[0:-4]
+
+    # Find first occurrence of -${NUMBER}. or -${NUMBER}$
+    hyphen = name.find('-')
+    if hyphen != -1:
+        name = name[0:hyphen]
+    
+
+    # Finally clean up the module name
+    name = re.sub('[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
+    name = re.sub('(\\.)(\\1)+', '.', name) # collapse repeating dots
+    name = re.sub('^\\.', '', name) # drop leading dots
+    return re.sub('\\.$', '', name) # drop trailing dots
+
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
+    
+    argsPrefix = []
     jacocoArgs = mx_gate.get_jacoco_agent_args()
     if jacocoArgs:
-        args = jacocoArgs + args
+        argsPrefix.extend(jacocoArgs)
 
     # Support for -G: options
     def translateGOption(arg):
@@ -347,10 +373,12 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
             arg = '-Dgraal.' + arg[len('-G:'):]
         return arg
+
     # add default graal.options.file and translate -G: options
     options_file = join(mx.primary_suite().dir, 'graal.options')
-    options_file_arg = ['-Dgraal.options.file=' + options_file] if exists(options_file) else []
-    args = options_file_arg + map(translateGOption, args)
+    if exists(options_file):
+        argsPrefix.append('-Dgraal.options.file=' + options_file)
+    args = [translateGOption(a) for a in args]
 
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
@@ -369,38 +397,49 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     # If the class path contains classes that are also on the module path, then
     # app classes (most likely) depend on resources in the modules. Since the unnamed
     # module cannot see anything concealed in named modules, we need to:
-    # 1. Remove module classes from the app class path.
-    # 2. Patch classes that overlap with module-defined packages into the defining module (via -Xpatch).
-    # 3. Patch the remaining classes into an empty module.
-    # 4. Export concealed packages used by the remaining classes (via -XaddExports).
-    emptyModuleJar = ''
+    # 1. Remove module class path entries from the app class path.
+    # 2. Patch class path entries that overlap with module-defined packages into the defining module (via -Xpatch).
+    # 3. Convert remaining non-distribution jar class path entries to automatic modules
+    # 4. Patch the remaining class path entries into an empty automatic module.
+    # 5. Export concealed packages used by the automatic modules (via -XaddExports).
+    automaticModuleJars = []
+    automaticModuleNames = [] 
     cpIndex, cp = mx.find_classpath_arg(args)
     if cp:
         bootcp = _uniqify(bootcp)
         cp = _uniqify(cp.split(os.pathsep))
         bootcp = frozenset([e.classpath_repr() for e in bootcp])
-        # 1. Remove module classes from the app class path
+        # Remove module class path entries from the app class path
         appcp = [e for e in cp if e not in bootcp]
         if cp != appcp:
             patches = {}
             cp = []
+            distJars = set([d.path for d in mx.dependencies() if d.isJARDistribution()])
             for e in appcp:
                 pkgs = _packages_defined_by(e)
                 patchedModule = _find_intersecting_module(modulepath, pkgs, e)
                 if patchedModule:
                     patches.setdefault(patchedModule.name, []).append(e)
-                else:
+                elif os.path.isdir(e) or e in distJars:
                     cp.append(e)
+                elif e.endswith('.zip') or e.endswith('.jar'):
+                    # Convert remaining jar/zip class path entries to automatic modules
+                    automaticModuleJars.append(e)
+                    automaticModuleNames.append(_automatic_module_name(e))
+                else:
+                    mx.abort("Cannot handle class path entry that is neither a jar nor a directory: " + e)
 
-            # 2. Patch classes that overlap with module-defined packages into the defining module
+            # Patch class path entries that overlap with module-defined packages into the defining module
             patches = ['-Xpatch:' + module + '=' + ':'.join(files) for (module, files) in patches.iteritems()]
             args[cpIndex - 1:cpIndex + 1] = patches
             if cp:
-                # 3. Patch the remaining classes into an empty module
+                # Patch the remaining class path entries into an empty automatic module.
                 emptyModuleName, emptyModuleJar = get_empty_module()
-                args = ['-addmods', emptyModuleName] + ['-Xpatch:' + emptyModuleName + '=' + ':'.join(cp)] + args
-                
-                # 4. Export concealed packages used by the remaining classes
+                automaticModuleJars.append(emptyModuleJar)
+                automaticModuleNames.append(emptyModuleName)
+                argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + ':'.join(cp))
+
+                # Export concealed packages used by the empty module
                 pathToProject = { p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
                 for e in cp:
                     p = pathToProject.get(e, None)
@@ -409,8 +448,16 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                         for module, packages in concealed.iteritems():
                             for package in packages:
                                 addedExports.setdefault(module + '/' + package, []).append(emptyModuleName)
+                
+    if automaticModuleNames:
+        argsPrefix.append('-addmods')
+        argsPrefix.append(','.join(automaticModuleNames))
+        # Assume all named modules read all automatic modules
+        for m in modulepath:
+            argsPrefix.append('-XaddReads:' + m.name + '=' + ','.join(automaticModuleNames))
 
-    args = ['-modulepath' , os.pathsep.join([m.jarpath for m in modulepath] + [emptyModuleJar])] + args
+    argsPrefix.append('-modulepath')
+    argsPrefix.append(os.pathsep.join([m.jarpath for m in modulepath] + automaticModuleJars))
 
     # Export concealed packages
     for jmd in modulepath:
@@ -420,18 +467,18 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 for package in packages:
                     addedExports.setdefault(module + '/' + package, []).append(jmd.name)
     for export, targets in addedExports.iteritems():
-        args = ['-XaddExports:' + export + '=' + ','.join(targets)] + args
+        argsPrefix.append('-XaddExports:' + export + '=' + ','.join(targets))
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
-    args = ['-Djvmci.Compiler=' + jvmciCompiler] + args
+    argsPrefix.append('-Djvmci.Compiler=' + jvmciCompiler)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
         if  len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
-    return jdk.processArgs(args, addDefaultArgs=addDefaultArgs)
+    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
 def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
 
