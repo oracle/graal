@@ -85,6 +85,7 @@ import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.phases.verify.VerifyCallerSensitiveMethods;
 import com.oracle.graal.phases.verify.VerifyDebugUsage;
 import com.oracle.graal.phases.verify.VerifyUsageWithEquals;
+import com.oracle.graal.phases.verify.VerifyVirtualizableUsage;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.GraalTest;
 
@@ -273,6 +274,7 @@ public class CheckGraalInvariants extends GraalTest {
         }
         new VerifyDebugUsage().apply(graph, context);
         new VerifyCallerSensitiveMethods().apply(graph, context);
+        new VerifyVirtualizableUsage().apply(graph, context);
     }
 
     private static boolean matches(String[] filters, String s) {
