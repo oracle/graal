@@ -343,12 +343,11 @@ def _automatic_module_name(modulejar):
     if m:
         name = name[0:m.start()]
 
-
     # Finally clean up the module name
-    name = re.sub('[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
-    name = re.sub('(\\.)(\\1)+', '.', name) # collapse repeating dots
-    name = re.sub('^\\.', '', name) # drop leading dots
-    return re.sub('\\.$', '', name) # drop trailing dots
+    name = re.sub(r'[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
+    name = re.sub(r'(\.)(\1)+', '.', name) # collapse repeating dots
+    name = re.sub(r'^\.', '', name) # drop leading dots
+    return re.sub(r'\.$', '', name) # drop trailing dots
 
 def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module):
     """
@@ -449,7 +448,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
             # Patch class path entries that overlap with module-defined packages into the defining module
             patchArgs = []
             for module, classpathEntries in patches.iteritems():
-                patchArgs.append('-Xpatch:' + module + '=' + ':'.join(classpathEntries))
+                patchArgs.append('-Xpatch:' + module + '=' + os.pathsep.join(classpathEntries))
                 for classpathEntry in classpathEntries:
                     _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, module)
 
@@ -459,7 +458,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 emptyModuleName, emptyModuleJar = get_empty_module()
                 automaticModuleJars.append(emptyModuleJar)
                 automaticModuleNames.append(emptyModuleName)
-                argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + ':'.join(cp))
+                argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + os.pathsep.join(cp))
 
                 # Export concealed packages used by the empty module
                 for classpathEntry in cp:
