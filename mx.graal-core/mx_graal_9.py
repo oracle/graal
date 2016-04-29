@@ -339,9 +339,9 @@ def _automatic_module_name(modulejar):
     name = os.path.basename(modulejar)[0:-4]
 
     # Find first occurrence of -${NUMBER}. or -${NUMBER}$
-    hyphen = name.find('-')
-    if hyphen != -1:
-        name = name[0:hyphen]
+    m = re.search(r'-(\d+(\.|$))', name)
+    if m:
+        name = name[0:m.start()]
 
 
     # Finally clean up the module name
@@ -349,6 +349,22 @@ def _automatic_module_name(modulejar):
     name = re.sub('(\\.)(\\1)+', '.', name) # collapse repeating dots
     name = re.sub('^\\.', '', name) # drop leading dots
     return re.sub('\\.$', '', name) # drop trailing dots
+
+def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module):
+    """
+    Adds exports for concealed packages imported by the project whose output directory matches `classpathEntry`.
+
+    :param str classpathEntry: a class path entry
+    :param dict pathToProject: map from an output directory to its defining `JavaProject`
+    :param dict exports: map from a module/package specifier to the set of modules it must be exported to
+    :param str module: the name of the module containing the classes in `classpathEntry`
+    """
+    project = pathToProject.get(classpathEntry, None)
+    if project:
+        concealed = project.get_concealed_imported_packages()
+        for concealingModule, packages in concealed.iteritems():
+            for package in packages:
+                exports.setdefault(concealingModule + '/' + package, set()).add(module)
 
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
@@ -408,30 +424,36 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if cp:
         bootcp = _uniqify(bootcp)
         cp = _uniqify(cp.split(os.pathsep))
-        bootcp = frozenset([e.classpath_repr() for e in bootcp])
+        bootcp = frozenset([classpathEntry.classpath_repr() for classpathEntry in bootcp])
         # Remove module class path entries from the app class path
-        appcp = [e for e in cp if e not in bootcp]
+        appcp = [classpathEntry for classpathEntry in cp if classpathEntry not in bootcp]
         if cp != appcp:
+            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
             patches = {}
             cp = []
             distJars = set([d.path for d in mx.dependencies() if d.isJARDistribution()])
-            for e in appcp:
-                pkgs = _packages_defined_by(e)
-                patchedModule = _find_intersecting_module(modulepath, pkgs, e)
+            for classpathEntry in appcp:
+                pkgs = _packages_defined_by(classpathEntry)
+                patchedModule = _find_intersecting_module(modulepath, pkgs, classpathEntry)
                 if patchedModule:
-                    patches.setdefault(patchedModule.name, []).append(e)
-                elif os.path.isdir(e) or e in distJars:
-                    cp.append(e)
-                elif e.endswith('.zip') or e.endswith('.jar'):
+                    patches.setdefault(patchedModule.name, []).append(classpathEntry)
+                elif os.path.isdir(classpathEntry) or classpathEntry in distJars:
+                    cp.append(classpathEntry)
+                elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
                     # Convert remaining jar/zip class path entries to automatic modules
-                    automaticModuleJars.append(e)
-                    automaticModuleNames.append(_automatic_module_name(e))
+                    automaticModuleJars.append(classpathEntry)
+                    automaticModuleNames.append(_automatic_module_name(classpathEntry))
                 else:
-                    mx.abort("Cannot handle class path entry that is neither a jar nor a directory: " + e)
+                    mx.abort("Cannot handle class path entry that is neither a jar nor a directory: " + classpathEntry)
 
             # Patch class path entries that overlap with module-defined packages into the defining module
-            patches = ['-Xpatch:' + module + '=' + ':'.join(files) for (module, files) in patches.iteritems()]
-            args[cpIndex - 1:cpIndex + 1] = patches
+            patchArgs = []
+            for module, classpathEntries in patches.iteritems():
+                patchArgs.append('-Xpatch:' + module + '=' + ':'.join(classpathEntries))
+                for classpathEntry in classpathEntries:
+                    _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, module)
+
+            args[cpIndex - 1:cpIndex + 1] = patchArgs
             if cp:
                 # Patch the remaining class path entries into an empty automatic module.
                 emptyModuleName, emptyModuleJar = get_empty_module()
@@ -440,14 +462,8 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + ':'.join(cp))
 
                 # Export concealed packages used by the empty module
-                pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
-                for e in cp:
-                    p = pathToProject.get(e, None)
-                    if p:
-                        concealed = p.get_concealed_imported_packages()
-                        for module, packages in concealed.iteritems():
-                            for package in packages:
-                                addedExports.setdefault(module + '/' + package, []).append(emptyModuleName)
+                for classpathEntry in cp:
+                    _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, emptyModuleName)
 
     if automaticModuleNames:
         argsPrefix.append('-addmods')
@@ -465,9 +481,9 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
             # No need to explicitly export JVMCI - it's exported via reflection
             if module != 'jdk.vm.ci':
                 for package in packages:
-                    addedExports.setdefault(module + '/' + package, []).append(jmd.name)
+                    addedExports.setdefault(module + '/' + package, set()).add(jmd.name)
     for export, targets in addedExports.iteritems():
-        argsPrefix.append('-XaddExports:' + export + '=' + ','.join(targets))
+        argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
