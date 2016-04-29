@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.bytecode;
 
 import static com.oracle.graal.bytecode.Bytecodes.ALOAD;
 import static com.oracle.graal.bytecode.Bytecodes.ANEWARRAY;
@@ -75,18 +75,13 @@ import static com.oracle.graal.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.graal.bytecode.Bytecodes.RET;
 import static com.oracle.graal.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.graal.bytecode.Bytecodes.TABLESWITCH;
+
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import com.oracle.graal.bytecode.BytecodeLookupSwitch;
-import com.oracle.graal.bytecode.BytecodeStream;
-import com.oracle.graal.bytecode.BytecodeSwitch;
-import com.oracle.graal.bytecode.BytecodeTableSwitch;
-import com.oracle.graal.bytecode.Bytecodes;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.
@@ -98,12 +93,23 @@ public class BytecodeDisassembler {
      */
     private final boolean multiline;
 
-    public BytecodeDisassembler(boolean multiline) {
+    private final boolean newLine;
+
+    public BytecodeDisassembler(boolean multiline, boolean newLine) {
         this.multiline = multiline;
+        this.newLine = newLine;
+    }
+
+    public BytecodeDisassembler(boolean multiline) {
+        this(multiline, true);
     }
 
     public BytecodeDisassembler() {
-        this(true);
+        this(true, true);
+    }
+
+    public static String disassembleOne(ResolvedJavaMethod method, int bci) {
+        return new BytecodeDisassembler(false, false).disassemble(method, bci, bci);
     }
 
     /**
@@ -283,7 +289,9 @@ public class BytecodeDisassembler {
                 }
                 // @formatter:on
                 }
-                buf.append(String.format("%n"));
+                if (newLine) {
+                    buf.append(String.format("%n"));
+                }
             }
             stream.next();
             opcode = stream.currentBC();
