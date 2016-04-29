@@ -27,6 +27,8 @@ package com.oracle.truffle.api.nodes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -71,6 +73,16 @@ final class NodeClassImpl extends NodeClass {
         }
 
         collectInstanceFields(clazz, fieldsList);
+
+        Collections.sort(fieldsList, new Comparator<NodeField>() {
+            public int compare(NodeField o1, NodeField o2) {
+                return Integer.compare(order(o1), order(o2));
+            }
+
+            private int order(NodeField nodeField) {
+                return nodeField.isChildField() ? 0 : (nodeField.isChildrenField() ? 1 : (nodeField.isCloneableField() ? 2 : 3));
+            }
+        });
 
         this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
         this.nodeClassField = nodeClassFieldTmp;
@@ -254,6 +266,11 @@ final class NodeClassImpl extends NodeClass {
             fieldList.add((NodeFieldAccessor) field);
         }
         return fieldList.toArray(new NodeFieldAccessor[0]);
+    }
+
+    @Override
+    boolean nodeFieldsOrderedByKind() {
+        return true;
     }
 
     private static final class NodeIterator implements Iterator<Node> {

@@ -167,6 +167,8 @@ public final class NodeUtil {
                 if (cloneable != null && cloneable == field.getObject(orig)) {
                     field.putObject(clone, ((NodeCloneable) cloneable).clone());
                 }
+            } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
         return clone;
@@ -193,6 +195,8 @@ public final class NodeUtil {
                         }
                     }
                 }
+            } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
         return nodes;
@@ -240,6 +244,8 @@ public final class NodeUtil {
                         }
                     }
                 }
+            } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
 
@@ -306,6 +312,8 @@ public final class NodeUtil {
                             }
                         }
                     }
+                } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                    break;
                 }
             }
         }
@@ -344,6 +352,8 @@ public final class NodeUtil {
                         }
                     }
                 }
+            } else if (parentNodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
 
@@ -369,6 +379,8 @@ public final class NodeUtil {
                         return false;
                     }
                 }
+            } else if (parentNodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
 
@@ -628,6 +640,8 @@ public final class NodeUtil {
                     }
                     index++;
                 }
+            } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
         return defaultName;
