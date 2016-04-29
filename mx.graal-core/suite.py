@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.0",
+  "mxversion" : "5.20.1",
   "name" : "graal-core",
 
   "imports" : {
@@ -605,9 +605,9 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-          "com.oracle.graal.replacements",
-          "com.oracle.graal.lir.aarch64",
-          ],
+        "com.oracle.graal.replacements",
+        "com.oracle.graal.lir.aarch64",
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -621,10 +621,10 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-          "com.oracle.graal.replacements",
-          "com.oracle.graal.lir.amd64",
-          "com.oracle.graal.compiler",
-          ],
+        "com.oracle.graal.replacements",
+        "com.oracle.graal.lir.amd64",
+        "com.oracle.graal.compiler",
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -638,9 +638,9 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-          "com.oracle.graal.replacements",
-          "com.oracle.graal.compiler",
-          ],
+        "com.oracle.graal.replacements",
+        "com.oracle.graal.compiler",
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Replacements,SPARC",
