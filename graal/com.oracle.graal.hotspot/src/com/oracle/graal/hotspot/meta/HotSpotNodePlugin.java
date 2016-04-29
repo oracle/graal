@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
 import com.oracle.graal.replacements.WordOperationPlugin;
 import com.oracle.graal.word.Word;
@@ -49,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * {@link Word}-type rewriting for {@link GraphBuilderContext#parsingIntrinsic intrinsic} functions
  * (snippets and method substitutions), by forwarding to the {@link WordOperationPlugin}. Note that
- * we forward the {@link NodePlugin} and {@link ParameterPlugin} methods, but not the
+ * we forward the {@link NodePlugin} and {@link TypePlugin} methods, but not the
  * {@link InlineInvokePlugin} methods implemented by {@link WordOperationPlugin}. The latter is not
  * necessary because HotSpot only uses the {@link Word} type in methods that are force-inlined,
  * i.e., there are never non-inlined invokes that involve the {@link Word} type.
