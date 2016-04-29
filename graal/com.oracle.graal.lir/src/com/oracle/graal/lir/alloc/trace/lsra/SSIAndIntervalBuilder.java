@@ -26,7 +26,6 @@ import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitCallerSavedRegisters;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -102,9 +101,7 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
             if (process(trace)) {
                 IntervalData intervalData = getIntervalData(trace);
                 Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), "SSI building Trace%d %s", trace.getId(), trace);
-                FixedInterval[] fixedIntervals = intervalData.fixedIntervals();
-                TraceInterval[] intervals = intervalData.intervals();
-                Debug.dump(INTERVAL_DUMP_LEVEL, new TraceIntervalDumper(Arrays.copyOf(fixedIntervals, fixedIntervals.length), Arrays.copyOf(intervals, intervals.length)), "SSI building Trace%d %s",
+                Debug.dump(INTERVAL_DUMP_LEVEL, intervalData, "SSI building Trace%d %s",
                                 trace.getId(), trace);
             }
         }

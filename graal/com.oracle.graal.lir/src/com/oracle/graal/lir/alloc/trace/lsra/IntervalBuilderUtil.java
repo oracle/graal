@@ -69,6 +69,18 @@ public final class IntervalBuilderUtil {
         }
     }
 
+    protected static void setSpillSlot(LIRInstruction op, TraceInterval interval, AllocatableValue spillSlot) {
+        if (interval.spillSlot() == null) {
+            interval.setSpillSlot(spillSlot);
+            interval.setSpillState(SpillState.StartInMemory);
+            if (Debug.isLogEnabled()) {
+                Debug.log("operation at opId %d: added spill slot %s to interval %s", op.id(), spillSlot, interval);
+            }
+        } else if (Debug.isLogEnabled()) {
+            Debug.log("operation at opId %d: has already a slot assigned %s", op.id(), interval.spillSlot());
+        }
+    }
+
     protected static void numberInstruction(IntervalData intervalData, AbstractBlockBase<?> block, LIRInstruction op, int index) {
         int opId = index << 1;
         assert op.id() == -1 || op.id() == opId : "must match";
