@@ -130,28 +130,4 @@ public final class DebugBreakpointTest {
         db.setLineBreakpoint(0, line1, false);
         db.setLineBreakpoint(0, line1, false);
     }
-
-    @Test(expected = IllegalStateException.class)
-    public void modifyDisposed1() throws IOException {
-        final LineLocation line1 = testSource.createLineLocation(1);
-        final Breakpoint b = db.setLineBreakpoint(0, line1, false);
-        b.dispose();
-        b.setCondition("a");
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void modifyDisposed2() throws IOException {
-        final LineLocation line1 = testSource.createLineLocation(1);
-        final Breakpoint b = db.setLineBreakpoint(0, line1, false);
-        b.dispose();
-        b.setEnabled(false);
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void modifyDisposed3() throws IOException {
-        final LineLocation line1 = testSource.createLineLocation(1);
-        final Breakpoint b = db.setLineBreakpoint(0, line1, false);
-        b.dispose();
-        b.setIgnoreCount(1);
-    }
 }

@@ -110,7 +110,6 @@ public abstract class Breakpoint {
      *
      * @param enabled <code>true</code> to activate the breakpoint, <code>false</code> to deactivate
      *            it so that it has no effect.
-     * @throws IllegalStateException if the breakpoint has been disposed
      * @since 0.9
      */
     public abstract void setEnabled(boolean enabled);
@@ -129,7 +128,6 @@ public abstract class Breakpoint {
      *            evaluated in the lexical context at the breakpoint location.
      * @throws IOException if condition is invalid
      * @throws UnsupportedOperationException if the breakpoint does not support conditions
-     * @throws IllegalStateException if the breakpoint has been disposed
      * @since 0.9
      */
     public abstract void setCondition(String expr) throws IOException;
@@ -162,7 +160,6 @@ public abstract class Breakpoint {
      * is evaluated first: if {@code false} it is not considered to be a hit. In other words, the
      * ignore count is for successful conditions only.
      *
-     * @throws IllegalStateException if the breakpoint has been disposed
      * @since 0.9
      */
     public abstract void setIgnoreCount(int ignoreCount);
