@@ -23,6 +23,7 @@ _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
 _testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
+_interopTestDir = _testDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
@@ -736,6 +737,7 @@ def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
     checkCFile(_suite.dir + '/include/truffle.h')
     checkCFiles(_testDir)
+    checkCFiles(_interopTestDir)
 
 def checkCFiles(targetDir):
     error = False

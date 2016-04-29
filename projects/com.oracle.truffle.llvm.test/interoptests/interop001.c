@@ -1,5 +1,3 @@
-#include<truffle.h>
+#include <truffle.h>
 
-int main() {
-	return 42;
-}
+int main() { return 42; }
