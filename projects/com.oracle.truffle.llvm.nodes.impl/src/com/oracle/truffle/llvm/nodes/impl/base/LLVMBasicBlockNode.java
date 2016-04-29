@@ -65,17 +65,10 @@ public class LLVMBasicBlockNode extends LLVMNode {
 
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
-        if (CompilerDirectives.inInterpreter()) {
-            incrementTotalCount();
-        }
         for (LLVMNode statement : statements) {
             statement.executeVoid(frame);
         }
-        int successorIndex = termInstruction.executeGetSuccessorIndex(frame);
-        if (CompilerDirectives.inInterpreter()) {
-            incrementSuccessorCount(successorIndex);
-        }
-        return successorIndex;
+        return termInstruction.executeGetSuccessorIndex(frame);
     }
 
     private void incrementTotalCount() {
@@ -108,14 +101,23 @@ public class LLVMBasicBlockNode extends LLVMNode {
      * @return the probability between 0 and 1
      */
     public double getBranchProbability(int successorIndex) {
-        if (totalExecutionCount == 0) {
-            // this branch was never executed yet, do not compile it
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return 0;
+        double successorBranchProbability;
+        if (successorCount[successorIndex] == 0) {
+            successorBranchProbability = 0;
         } else {
-            double successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
-            assert Double.isFinite(successorBranchProbability);
-            return successorBranchProbability;
+            successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
+        }
+        assert successorBranchProbability >= 0 && successorBranchProbability <= 1;
+        return successorBranchProbability;
+    }
+
+    public void increaseBranchProbabilityDeoptIfZero(int successorIndex) {
+        if (successorCount[successorIndex] == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        if (CompilerDirectives.inInterpreter()) {
+            incrementSuccessorCount(successorIndex);
+            incrementTotalCount();
         }
     }
 }
