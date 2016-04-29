@@ -450,7 +450,7 @@ suite = {
     "com.oracle.graal.bytecode" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : deps(["jvmci:JVMCI_API"]),
+      "dependencies" : ["jvmci:JVMCI_API"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Java",
