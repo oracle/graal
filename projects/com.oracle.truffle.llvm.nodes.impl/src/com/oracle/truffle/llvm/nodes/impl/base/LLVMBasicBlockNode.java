@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -47,6 +49,9 @@ public class LLVMBasicBlockNode extends LLVMNode {
     @Children private final LLVMNode[] statements;
     @Child private LLVMTerminatorNode termInstruction;
 
+    @CompilationFinal private final long[] successorCount;
+    @CompilationFinal private long totalExecutionCount = 0;
+
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
@@ -55,14 +60,35 @@ public class LLVMBasicBlockNode extends LLVMNode {
     public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction) {
         this.statements = statements;
         this.termInstruction = termInstruction;
+        successorCount = new long[termInstruction.getSuccessors().length];
     }
 
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
+        if (CompilerDirectives.inInterpreter()) {
+            incrementTotalCount();
+        }
         for (LLVMNode statement : statements) {
             statement.executeVoid(frame);
         }
-        return termInstruction.executeGetSuccessorIndex(frame);
+        int successorIndex = termInstruction.executeGetSuccessorIndex(frame);
+        if (CompilerDirectives.inInterpreter()) {
+            incrementSuccessorCount(successorIndex);
+        }
+        return successorIndex;
+    }
+
+    private void incrementTotalCount() {
+        if (totalExecutionCount != Long.MAX_VALUE) {
+            totalExecutionCount++;
+        }
+    }
+
+    private void incrementSuccessorCount(int successorIndex) {
+        long currentCount = successorCount[successorIndex];
+        if (currentCount != Long.MAX_VALUE && totalExecutionCount != Long.MAX_VALUE) {
+            successorCount[successorIndex]++;
+        }
     }
 
     /**
@@ -73,5 +99,23 @@ public class LLVMBasicBlockNode extends LLVMNode {
      */
     public int[] getSuccessors() {
         return termInstruction.getSuccessors();
+    }
+
+    /**
+     * Gets the branch probability of the given successor.
+     *
+     * @param successorIndex
+     * @return the probability between 0 and 1
+     */
+    public double getBranchProbability(int successorIndex) {
+        if (totalExecutionCount == 0) {
+            // this branch was never executed yet, do not compile it
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return 0;
+        } else {
+            double successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
+            assert Double.isFinite(successorBranchProbability);
+            return successorBranchProbability;
+        }
     }
 }

@@ -142,10 +142,8 @@ public class LLVMOptions {
         OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_VALUE_PROFILE_FUNCTION_ARGS("ValueProfileFunctionArgs", "Enable value profiling for function arguments", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INJECT_PROBS_SELECT("InjectProbabilitySelect", "Inject branch probabilities for select", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INJECT_PROBS_SWITCH("InjectProbabilitySwitch", "Inject branch probabilities for switch", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+        OPTIMIZATION_BRANCH_PROBABILITIES("InjectBranchProbabilities", "Injects branch probabilities for the basic block successors", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INJECT_PROBS_COND_BRANCH("InjectProbabilityBr", "Inject branch probabilities for conditional branches", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", "5", LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
         OPTIMIZATION_LIFE_TIME_ANALYSIS(
                         "EnableLifetimeAnalysis",
@@ -301,20 +299,12 @@ public class LLVMOptions {
         return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_VALUE_PROFILE_MEMORY_READS);
     }
 
-    public static boolean injectBranchProbabilitiesForSelect() {
-        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_SELECT);
-    }
-
-    public static boolean injectBranchProbabilitiesForSwitch() {
-        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_SWITCH);
-    }
-
     public static boolean intrinsifyCLibraryFunctions() {
         return getParsedProperty(Property.OPTIMIZATION_INTRINSIFY_C_FUNCTIONS);
     }
 
-    public static boolean injectBranchProbabilitiesForConditionalBranch() {
-        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_INJECT_PROBS_COND_BRANCH);
+    public static boolean injectBranchProbabilities() {
+        return !disableSpeculativeOptimizations() && (boolean) getParsedProperty(Property.OPTIMIZATION_BRANCH_PROBABILITIES);
     }
 
     public static boolean printNativeCallStats() {
