@@ -34,7 +34,13 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
@@ -50,12 +56,23 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 @NodeChildren(value = {@NodeChild(type = LLVMAddressNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMNode {
+
+    @Child protected Node foreignWrite = Message.WRITE.createNode();
+
+    protected void doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr, int stride, Object value) {
+        try {
+            ForeignAccess.sendWrite(foreignWrite, frame, addr.getObject(), (int) (addr.getOffset() / stride), value);
+        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     @NodeChild(type = LLVMI1Node.class, value = "valueNode")
     public abstract static class LLVMI1StoreNode extends LLVMStoreNode {
@@ -93,6 +110,11 @@ public abstract class LLVMStoreNode extends LLVMNode {
         @Specialization
         public void execute(LLVMAddress address, int value) {
             LLVMMemory.putI32(address, value);
+        }
+
+        @Specialization
+        public void execute(VirtualFrame frame, LLVMTruffleObject address, int value) {
+            doForeignAccess(frame, address, LLVMI32Node.BYTE_SIZE, value);
         }
 
     }
@@ -133,6 +155,11 @@ public abstract class LLVMStoreNode extends LLVMNode {
         @Specialization
         public void execute(LLVMAddress address, double value) {
             LLVMMemory.putDouble(address, value);
+        }
+
+        @Specialization
+        public void execute(VirtualFrame frame, LLVMTruffleObject address, double value) {
+            doForeignAccess(frame, address, LLVMDoubleNode.BYTE_SIZE, value);
         }
 
     }

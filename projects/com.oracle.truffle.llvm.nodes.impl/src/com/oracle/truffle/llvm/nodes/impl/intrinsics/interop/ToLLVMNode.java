@@ -39,7 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-final class ToLLVMNode extends Node {
+public final class ToLLVMNode extends Node {
 
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unboxed = Message.UNBOX.createNode();
