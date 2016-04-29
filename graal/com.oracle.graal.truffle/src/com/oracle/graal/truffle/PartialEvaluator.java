@@ -71,6 +71,7 @@ import com.oracle.graal.replacements.CachingPEGraphDecoder;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
 import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
@@ -92,7 +93,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -390,7 +390,7 @@ public class PartialEvaluator {
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
 
-        for (TruffleInvocationPluginProvider p : Services.load(TruffleInvocationPluginProvider.class)) {
+        for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
             p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
         }
     }

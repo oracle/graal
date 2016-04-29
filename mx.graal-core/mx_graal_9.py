@@ -25,10 +25,11 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import join, exists, abspath
+from os.path import join, exists
 from argparse import ArgumentParser
 import sanitycheck
 import re
+import zipfile
 
 import mx
 from mx_gate import Task
@@ -39,6 +40,7 @@ from mx_graal_bench import dacapo
 import mx_gate
 import mx_unittest
 import mx_microbench
+from mx_javamodules import get_empty_module
 
 _suite = mx.suite('graal-core')
 
@@ -82,7 +84,7 @@ class JVMCIMode:
 
 _vm = JVMCIMode(jvmciMode='hosted')
 
-class BootClasspathDist(object):
+class BootLayerDist(object):
     """
     Extra info for a Distribution that must be put onto the boot class path.
     """
@@ -96,15 +98,15 @@ class BootClasspathDist(object):
         return self.dist().classpath_repr()
 
 _compilers = ['graal-economy', 'graal']
-_bootClasspathDists = [
-    BootClasspathDist('GRAAL'),
+_bootLayerDists = [
+    BootLayerDist('GRAAL'),
 ]
 
 def add_compiler(compilerName):
     _compilers.append(compilerName)
 
-def add_boot_classpath_dist(dist):
-    _bootClasspathDists.append(dist)
+def add_boot_layer_dist(dist):
+    _bootLayerDists.append(dist)
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
@@ -276,11 +278,100 @@ def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
 
 mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher)
 
+def _uniqify(alist):
+    """
+    Processes given list to remove all duplicate entries, preserving only the first unique instance for each entry.
+
+    :param list alist: the list to process
+    :return: `alist` with all duplicates removed
+    """
+    seen = set()
+    return [e for e in alist if e not in seen and seen.add(e) is None]
+
+def _packages_defined_by(classpathEntry):
+    """
+    Finds the packages defined by the ``*.class`` files available under `classpathEntry`.
+
+    :param str classpathEntry: an entry on a class path
+    """
+    pkgs = set()
+    if os.path.isdir(classpathEntry):
+        for root, _, filenames in os.walk(classpathEntry):
+            for f in filenames:
+                if f.endswith('.class'):
+                    pkg = root[len(classpathEntry) + 1:].replace(os.sep, '.')
+                    pkgs.add(pkg)
+    elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
+        with zipfile.ZipFile(classpathEntry, 'r') as zf:
+            for name in zf.namelist():
+                if name.endswith('.class') and '/' in name:
+                    pkg = name[0:name.rfind('/')].replace('/', '.')
+                    pkgs.add(pkg)
+    return pkgs
+
+def _find_intersecting_module(modulepath, packages, source):
+    """
+    Finds the module in `modulepath` that defines at least one package in `packages`.
+    There must be at most one such intersecting module.
+
+    :param list modulepath: a list of `JavaModuleDescriptor` objects
+    :param str packages: a set of package names
+    :param str source: who defines `packages`
+    """
+    intersectingModule = None
+    for jmd in modulepath:
+        if packages.intersection(jmd.packages):
+            if intersectingModule:
+                mx.abort(source + ' defines packages in ' + intersectingModule.name + ' and ' + jmd.name)
+            intersectingModule = jmd
+    return intersectingModule
+
+def _automatic_module_name(modulejar):
+    """
+    Derives the name of an automatic module from an automatic module jar according to
+    specification of java.lang.module.ModuleFinder.of(Path... entries).
+
+    :param str modulejar: the path to a jar file treated as an automatic module
+    :return: the name of the automatic module derived from `modulejar`
+    """
+
+    # Drop directory prefix and .jar (or .zip) suffix
+    name = os.path.basename(modulejar)[0:-4]
+
+    # Find first occurrence of -${NUMBER}. or -${NUMBER}$
+    m = re.search(r'-(\d+(\.|$))', name)
+    if m:
+        name = name[0:m.start()]
+
+    # Finally clean up the module name
+    name = re.sub(r'[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
+    name = re.sub(r'(\.)(\1)+', '.', name) # collapse repeating dots
+    name = re.sub(r'^\.', '', name) # drop leading dots
+    return re.sub(r'\.$', '', name) # drop trailing dots
+
+def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module):
+    """
+    Adds exports for concealed packages imported by the project whose output directory matches `classpathEntry`.
+
+    :param str classpathEntry: a class path entry
+    :param dict pathToProject: map from an output directory to its defining `JavaProject`
+    :param dict exports: map from a module/package specifier to the set of modules it must be exported to
+    :param str module: the name of the module containing the classes in `classpathEntry`
+    """
+    project = pathToProject.get(classpathEntry, None)
+    if project:
+        concealed = project.get_concealed_imported_packages()
+        for concealingModule, packages in concealed.iteritems():
+            for package in packages:
+                exports.setdefault(concealingModule + '/' + package, set()).add(module)
+
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
+
+    argsPrefix = []
     jacocoArgs = mx_gate.get_jacoco_agent_args()
     if jacocoArgs:
-        args = jacocoArgs + args
+        argsPrefix.extend(jacocoArgs)
 
     # Support for -G: options
     def translateGOption(arg):
@@ -297,42 +388,120 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
                 mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
             arg = '-Dgraal.' + arg[len('-G:'):]
         return arg
+
     # add default graal.options.file and translate -G: options
     options_file = join(mx.primary_suite().dir, 'graal.options')
-    options_file_arg = ['-Dgraal.options.file=' + options_file] if exists(options_file) else []
-    args = options_file_arg + map(translateGOption, args)
+    if exists(options_file):
+        argsPrefix.append('-Dgraal.options.file=' + options_file)
+    args = [translateGOption(a) for a in args]
 
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
 
-    bcp = [mx.distribution('truffle:TRUFFLE_API').classpath_repr()]
-    if _jvmciModes[_vm.jvmciMode]:
-        bcp.extend([d.get_classpath_repr() for d in _bootClasspathDists])
+    # Create modules for the boot class path distributions
+    bootLayerDists = [mx.distribution('truffle:TRUFFLE_API')] + [d.dist() for d in _bootLayerDists]
+    modulepath = set()
+    addedExports = {}
+    bootcp = []
+    for dist in bootLayerDists:
+        jmd = dist.as_java_module(_jdk)
+        modulepath.update(jmd.modulepath())
+        bootcp.extend(dist.archived_deps())
+        bootcp.append(dist)
 
-    args = ['-Xbootclasspath/p:' + os.pathsep.join(bcp)] + args
-
-    # Remove JVMCI from class path. It's only there to support compilation.
+    # If the class path contains classes that are also on the module path, then
+    # app classes (most likely) depend on resources in the modules. Since the unnamed
+    # module cannot see anything concealed in named modules, we need to:
+    # 1. Remove module class path entries from the app class path.
+    # 2. Patch class path entries that overlap with module-defined packages into the defining module (via -Xpatch).
+    # 3. Convert remaining non-distribution jar class path entries to automatic modules
+    # 4. Patch the remaining class path entries into an empty automatic module.
+    # 5. Export concealed packages used by the automatic modules (via -XaddExports).
+    automaticModuleJars = []
+    automaticModuleNames = []
     cpIndex, cp = mx.find_classpath_arg(args)
     if cp:
-        jvmciLib = mx.library('JVMCI').path
-        cp = os.pathsep.join([e for e in cp.split(os.pathsep) if e != jvmciLib])
-        args[cpIndex] = cp
+        bootcp = _uniqify(bootcp)
+        cp = _uniqify(cp.split(os.pathsep))
+        bootcp = frozenset([classpathEntry.classpath_repr() for classpathEntry in bootcp])
+        # Remove module class path entries from the app class path
+        appcp = [classpathEntry for classpathEntry in cp if classpathEntry not in bootcp]
+        if cp != appcp:
+            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+            patches = {}
+            cp = []
+            distJars = set([d.path for d in mx.dependencies() if d.isJARDistribution()])
+            for classpathEntry in appcp:
+                pkgs = _packages_defined_by(classpathEntry)
+                patchedModule = _find_intersecting_module(modulepath, pkgs, classpathEntry)
+                if patchedModule:
+                    patches.setdefault(patchedModule.name, []).append(classpathEntry)
+                elif os.path.isdir(classpathEntry) or classpathEntry in distJars:
+                    cp.append(classpathEntry)
+                elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
+                    # Convert remaining jar/zip class path entries to automatic modules
+                    automaticModuleJars.append(classpathEntry)
+                    automaticModuleNames.append(_automatic_module_name(classpathEntry))
+                else:
+                    mx.abort("Cannot handle class path entry that is neither a jar nor a directory: " + classpathEntry)
+
+            # Patch class path entries that overlap with module-defined packages into the defining module
+            patchArgs = []
+            for module, classpathEntries in patches.iteritems():
+                patchArgs.append('-Xpatch:' + module + '=' + os.pathsep.join(classpathEntries))
+                for classpathEntry in classpathEntries:
+                    _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, module)
+
+            args[cpIndex - 1:cpIndex + 1] = patchArgs
+            if cp:
+                # Patch the remaining class path entries into an empty automatic module.
+                emptyModuleName, emptyModuleJar = get_empty_module()
+                automaticModuleJars.append(emptyModuleJar)
+                automaticModuleNames.append(emptyModuleName)
+                argsPrefix.append('-Xpatch:' + emptyModuleName + '=' + os.pathsep.join(cp))
+
+                # Export concealed packages used by the empty module
+                for classpathEntry in cp:
+                    _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, emptyModuleName)
+
+    if automaticModuleNames:
+        argsPrefix.append('-addmods')
+        argsPrefix.append(','.join(automaticModuleNames))
+        # Assume all named modules read all automatic modules
+        for m in modulepath:
+            argsPrefix.append('-XaddReads:' + m.name + '=' + ','.join(automaticModuleNames))
+
+    argsPrefix.append('-modulepath')
+    argsPrefix.append(os.pathsep.join([m.jarpath for m in modulepath] + automaticModuleJars))
+
+    # Export concealed packages
+    for jmd in modulepath:
+        for module, packages in jmd.concealedRequires.iteritems():
+            # No need to explicitly export JVMCI - it's exported via reflection
+            if module != 'jdk.vm.ci':
+                for package in packages:
+                    addedExports.setdefault(module + '/' + package, set()).add(jmd.name)
+    for export, targets in addedExports.iteritems():
+        argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
 
     # Set the default JVMCI compiler
     jvmciCompiler = _compilers[-1]
-    args = ['-Djvmci.Compiler=' + jvmciCompiler] + args
+    argsPrefix.append('-Djvmci.Compiler=' + jvmciCompiler)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
         if  len(ignoredArgs) > 0:
-            mx.log("Warning: The following options will be ignored by the vm because they come after the '-version' argument: " + ' '.join(ignoredArgs))
-    return jdk.processArgs(args, addDefaultArgs=addDefaultArgs)
+            mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
+
+    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
 def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
 
     args = _parseVmArgs(jdk, args, addDefaultArgs=addDefaultArgs)
 
     jvmciModeArgs = _jvmciModes[_vm.jvmciMode]
+    if '-XX:+UseJVMCICompiler' not in jvmciModeArgs and '-XX:+BootstrapJVMCI' in args:
+        mx.warn('-XX:+BootstrapJVMCI is ignored since -XX:+UseJVMCICompiler is not enabled')
     cmd = [jdk.java] + ['-' + get_vm()] + jvmciModeArgs + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
@@ -401,81 +570,5 @@ mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes
 def mx_post_parse_cmd_line(opts):
     if opts.jvmci_mode is not None:
         _vm.update(opts.jvmci_mode)
-    for dist in [d.dist() for d in _bootClasspathDists]:
+    for dist in [d.dist() for d in _bootLayerDists]:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
-
-def _update_JVMCI_library():
-    """
-    Updates the "path" and "sha1" attributes of the "JVMCI" library to
-    refer to a jvmci.jar created from the JVMCI classes in JDK9.
-    """
-    suiteDict = _suite.suiteDict
-    jvmciLib = suiteDict['libraries']['JVMCI']
-    d = join(_suite.get_output_root(), abspath(_jdk.home)[1:])
-    path = join(d, 'jvmci.jar')
-
-    explodedModule = join(_jdk.home, 'modules', 'jdk.vm.ci')
-    if exists(explodedModule):
-        jarInputs = {}
-        newestJarInput = None
-        for root, _, files in os.walk(explodedModule):
-            relpath = root[len(explodedModule) + 1:]
-            for f in files:
-                arcname = join(relpath, f).replace(os.sep, '/')
-                jarInput = join(root, f)
-                jarInputs[arcname] = jarInput
-                t = mx.TimeStampFile(jarInput)
-                if newestJarInput is None or t.isNewerThan(newestJarInput):
-                    newestJarInput = t
-        if not exists(path) or newestJarInput.isNewerThan(path):
-            with mx.Archiver(path, kind='zip') as arc:
-                for arcname, jarInput in jarInputs.iteritems():
-                    with open(jarInput, 'rb') as fp:
-                        contents = fp.read()
-                        arc.zf.writestr(arcname, contents)
-    else:
-        # Use the jdk.internal.jimage utility since it's the only way
-        # to partially read .jimage files as the JDK9 jimage tool
-        # does not support partial extraction.
-        bootmodules = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
-        if not exists(bootmodules):
-            mx.abort('Could not find JVMCI classes at ' + bootmodules + ' or ' + explodedModule)
-        if not exists(path) or mx.TimeStampFile(bootmodules).isNewerThan(path):
-            mx.ensure_dir_exists(d)
-            javaSource = join(d, 'ExtractJVMCI.java')
-            with open(javaSource, 'w') as fp:
-                print >> fp, """import java.io.FileOutputStream;
-    import java.util.jar.JarEntry;
-    import java.util.jar.JarOutputStream;
-    import jdk.internal.jimage.BasicImageReader;
-
-    public class ExtractJVMCI {
-    public static void main(String[] args) throws Exception {
-        BasicImageReader image = BasicImageReader.open(args[0]);
-        String[] names = image.getEntryNames();
-        if (names.length == 0) {
-            return;
-        }
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(args[1]))) {
-            for (String name : names) {
-                if (name.startsWith("/jdk.vm.ci/")) {
-                    String ename = name.substring("/jdk.vm.ci/".length());
-                    JarEntry je = new JarEntry(ename);
-                    jos.putNextEntry(je);
-                    jos.write(image.getResource(name));
-                    jos.closeEntry();
-                }
-            }
-        }
-    }
-    }
-    """
-            mx.run([_jdk.javac, '-d', d, javaSource])
-            mx.run([_jdk.java, '-cp', d, 'ExtractJVMCI', bootmodules, path])
-            if not exists(path):
-                mx.abort('Could not find the JVMCI classes in ' + bootmodules)
-
-    jvmciLib['path'] = path
-    jvmciLib['sha1'] = mx.sha1OfFile(path)
-
-_update_JVMCI_library()
