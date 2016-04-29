@@ -542,7 +542,7 @@ def getSearchPathOption(lib_args=None):
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
 def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', getLLVMRootOption()]
+    return getCommonOptions() + ['-Xss56m', getLLVMRootOption(), '-ea', '-esa']
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
