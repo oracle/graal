@@ -34,6 +34,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 
 public abstract class LLVMDoubleNode extends LLVMExpressionNode {
 
+    public static final int BYTE_SIZE = 8;
+
     public abstract double executeDouble(VirtualFrame frame);
 
     @Override

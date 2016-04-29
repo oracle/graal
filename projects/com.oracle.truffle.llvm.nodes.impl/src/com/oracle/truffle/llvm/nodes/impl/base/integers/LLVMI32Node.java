@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 public abstract class LLVMI32Node extends LLVMExpressionNode {
 
     public static final long MASK = 0xffffffffL;
+    public static final int BYTE_SIZE = 4;
 
     public abstract int executeI32(VirtualFrame frame);
 

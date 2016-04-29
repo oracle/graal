@@ -211,6 +211,38 @@ public final class LLVMInteropTest {
         Assert.assertEquals(3, run(file, to, "foreign"));
     }
 
+    @Test
+    public void test019() {
+        String file = "interop019";
+        TruffleObject to = JavaInterop.asTruffleObject(new int[]{40, 41, 42, 43, 44});
+        Assert.assertEquals(210, run(file, to, "foreign"));
+    }
+
+    @Test
+    public void test020() {
+        String file = "interop020";
+        int[] arr = new int[]{40, 41, 42, 43, 44};
+        TruffleObject to = JavaInterop.asTruffleObject(arr);
+        run(file, to, "foreign");
+        Assert.assertArrayEquals(new int[]{30, 31, 32, 33, 34}, arr);
+    }
+
+    @Test
+    public void test021() {
+        String file = "interop021";
+        TruffleObject to = JavaInterop.asTruffleObject(new double[]{40, 41, 42, 43, 44});
+        Assert.assertEquals(210, run(file, to, "foreign"));
+    }
+
+    @Test
+    public void test022() {
+        String file = "interop022";
+        double[] arr = new double[]{40, 41, 42, 43, 44};
+        TruffleObject to = JavaInterop.asTruffleObject(arr);
+        run(file, to, "foreign");
+        Assert.assertArrayEquals(new double[]{30, 31, 32, 33, 34}, arr, 0.1);
+    }
+
     public static final class ClassA {
         public boolean valueBool = true;
         public byte valueB = 40;
