@@ -387,7 +387,6 @@ import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
@@ -1165,14 +1164,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
-        StampPair stamp = null;
-        for (TypePlugin type : graphBuilderConfig.getPlugins().getTypePlugins()) {
-            stamp = type.interceptType(this, field.getType(), false);
-            if (stamp != null) {
-                break;
-            }
-        }
-
+        StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
             return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
         } else {
@@ -1407,13 +1399,7 @@ public class BytecodeParser implements GraphBuilderContext {
             profile = profilingInfo.getTypeProfile(bci());
         }
 
-        StampPair returnStamp = null;
-        for (TypePlugin plugin : graphBuilderConfig.getPlugins().getTypePlugins()) {
-            returnStamp = plugin.interceptType(this, returnType, false);
-            if (returnStamp != null) {
-                break;
-            }
-        }
+        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
         if (returnStamp == null) {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }

@@ -72,7 +72,6 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
@@ -165,12 +164,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             FloatingNode receiver = null;
             StampPair receiverStamp = null;
             if (plugins != null) {
-                for (TypePlugin plugin : plugins.getTypePlugins()) {
-                    receiverStamp = plugin.interceptType(parser, originalType, true);
-                    if (receiverStamp != null) {
-                        break;
-                    }
-                }
+                receiverStamp = plugins.getOverridingStamp(parser, originalType, true);
             }
             if (receiverStamp == null) {
                 receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
@@ -203,12 +197,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             JavaKind kind = type.getJavaKind();
             StampPair stamp = null;
             if (plugins != null) {
-                for (TypePlugin plugin : plugins.getTypePlugins()) {
-                    stamp = plugin.interceptType(parser, type, false);
-                    if (stamp != null) {
-                        break;
-                    }
-                }
+                stamp = plugins.getOverridingStamp(parser, type, false);
             }
             if (stamp == null) {
                 stamp = StampFactory.forDeclaredType(assumptions, type, false);
