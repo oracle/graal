@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package com.oracle.graal.nodes.graphbuilderconf;
 
-public interface WordBase {
+import com.oracle.graal.compiler.common.type.StampPair;
 
-    long rawValue();
+import jdk.vm.ci.meta.JavaType;
+
+/**
+ * Plugin for overriding types in the bytecode parser. This can be used to modify the standard
+ * behavior of Java type resolution, e.g. to introduce trusted interface types with special
+ * semantics.
+ */
+public interface TypePlugin extends GraphBuilderPlugin {
+
+    /**
+     * Intercept the type of arguments or return values.
+     */
+    StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull);
 }

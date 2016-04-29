@@ -118,7 +118,7 @@ public class HotSpotGraphBuilderPlugins {
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin);
 
-        plugins.appendParameterPlugin(nodePlugin);
+        plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
 

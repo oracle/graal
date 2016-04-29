@@ -147,7 +147,7 @@ public final class TypeReference {
                 // Returns Object[].class
                 return type.getSuperclass().getArrayClass();
             }
-            if (type.isInterface() && !type.isTrustedInterfaceType()) {
+            if (type.isInterface()) {
                 return null;
             }
         }
