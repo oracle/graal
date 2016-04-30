@@ -81,6 +81,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
                 for (int i = 0; i < successors.length; i++) {
                     if (injectBranchProbabilities) {
                         if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
+                            bb.increaseBranchProbabilityDeoptIfZero(i);
                             bci = successors[i];
                             continue outer;
                         }
