@@ -32,6 +32,25 @@ import mx
 import mx_benchmark
 
 
+class GraalCoreVm(mx_benchmark.JvmciVm):
+    def name(self):
+        return "graal-core"
+
+    def dimensions(self, cwd, args, code, out):
+        return {
+            "host-vm": "jvmci",
+            "host-vm-config": self.name(),
+            "guest-vm": "unknown",
+            "guest-vm-config": "unknown"
+        }
+
+    def postProcessCommandLineArgs(self, suiteArgs):
+        return ["-Djvmci.Compiler=graal"] + suiteArgs
+
+
+mx_benchmark.add_java_vm("jvmci", GraalCoreVm())
+
+
 _dacapoIterations = {
     "avrora"    : 20,
     "batik"     : 40,
@@ -80,15 +99,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def validateReturnCode(self, retcode):
         return retcode == 0
-
-    def vmAndRunArgs(self, bmSuiteArgs):
-        return mx_benchmark.splitArgs(bmSuiteArgs, "--")
-
-    def vmArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[0]
-
-    def runArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[1]
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
@@ -200,7 +210,9 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
+
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+
 
 _allSpecJVM2008Benchs = [
     'startup.helloworld',
@@ -243,6 +255,7 @@ _allSpecJVM2008Benchs = [
     'xml.validation'
 ]
 
+
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """SpecJVM2008 benchmark suite implementation.
 
@@ -278,15 +291,6 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return mx.get_env("SPECJVM2008")
-
-    def vmAndRunArgs(self, bmSuiteArgs):
-        return mx_benchmark.splitArgs(bmSuiteArgs, "--")
-
-    def vmArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[0]
-
-    def runArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[1]
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
