@@ -1,3 +1,4 @@
+sudo: required
 language: java
 python:
   - "2.7"
@@ -19,8 +20,8 @@ addons:
     - gcc-4.6-plugin-dev
 install:
   - gem install mdl
-  - sudo pip install astroid==1.1.0
-  - sudo pip install pylint==1.1.0
+  - pip install astroid==1.1.0 --user `whoami`
+  - pip install pylint==1.1.0 --user `whoami`
   - git clone https://github.com/graalvm/mx
   - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
   - mv ecj-4.5.1.jar mx/ecj.jar
