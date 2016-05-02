@@ -26,6 +26,7 @@ import java.util.Formatter;
 
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import jdk.vm.ci.services.Services;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.api.runtime.GraalRuntime;
@@ -39,6 +40,7 @@ public class Graal {
     private static final GraalRuntime runtime = initializeRuntime();
 
     private static GraalRuntime initializeRuntime() {
+        Services.exportJVMCITo(Graal.class);
         JVMCICompiler compiler = JVMCI.getRuntime().getCompiler();
         if (compiler instanceof GraalJVMCICompiler) {
             GraalJVMCICompiler graal = (GraalJVMCICompiler) compiler;
