@@ -310,20 +310,20 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
-     * input edges of this node.
+     * Returns an {@link NodeIterable iterable} which can be used to traverse all non-null input
+     * edges of this node.
      *
-     * @return an {@link NodeClassIterable iterable} for all non-null input edges.
+     * @return an {@link NodeIterable iterable} for all non-null input edges.
      */
-    public NodeClassIterable inputs() {
+    public NodeIterable<Node> inputs() {
         return nodeClass.getInputIterable(this);
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
-     * input edges of this node.
+     * Returns an {@link Iterable iterable} which can be used to traverse all non-null input edges
+     * of this node.
      *
-     * @return an {@link NodeClassIterable iterable} for all non-null input edges.
+     * @return an {@link Iterable iterable} for all non-null input edges.
      */
     public Iterable<Position> inputPositions() {
         return nodeClass.getInputEdges().getPositionsIterable(this);
@@ -354,21 +354,21 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
-     * successor edges of this node.
+     * Returns an {@link NodeIterable iterable} which can be used to traverse all non-null successor
+     * edges of this node.
      *
-     * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
+     * @return an {@link NodeIterable iterable} for all non-null successor edges.
      */
-    public NodeClassIterable successors() {
+    public NodeIterable<Node> successors() {
         assert !this.isDeleted();
         return nodeClass.getSuccessorIterable(this);
     }
 
     /**
-     * Returns an {@link NodeClassIterable iterable} which can be used to traverse all successor
-     * edge positions of this node.
+     * Returns an {@link Iterable iterable} which can be used to traverse all successor edge
+     * positions of this node.
      *
-     * @return an {@link NodeClassIterable iterable} for all successor edge positoins.
+     * @return an {@link Iterable iterable} for all successor edge positoins.
      */
     public Iterable<Position> successorPositions() {
         return nodeClass.getSuccessorEdges().getPositionsIterable(this);

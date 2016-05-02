@@ -59,9 +59,9 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.GraalGraphJVMCIError;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.graph.NodeSourcePosition;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.lir.FullInfopointOp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
@@ -381,7 +381,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             }
 
             if (!gen.hasBlockEnd(block)) {
-                NodeClassIterable successors = block.getEndNode().successors();
+                NodeIterable<Node> successors = block.getEndNode().successors();
                 assert successors.count() == block.getSuccessorCount();
                 if (block.getSuccessorCount() != 1) {
                     /*

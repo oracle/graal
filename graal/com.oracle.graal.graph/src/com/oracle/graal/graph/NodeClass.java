@@ -38,6 +38,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -59,6 +60,7 @@ import com.oracle.graal.graph.Node.EdgeVisitor;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.graph.Node.Successor;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.Simplifiable;
@@ -856,7 +858,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      * An iterator of this type will not return null values, unless edges are modified concurrently.
      * Concurrent modifications are detected by an assertion on a best-effort basis.
      */
-    private static class RawEdgesIterator implements NodePosIterator {
+    private static class RawEdgesIterator implements Iterator<Node> {
         protected final Node node;
         protected long mask;
         protected Node nextValue;
@@ -994,12 +996,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
     }
 
-    public NodeClassIterable getSuccessorIterable(final Node node) {
+    public NodeIterable<Node> getSuccessorIterable(final Node node) {
         long mask = this.successorIteration;
-        return new NodeClassIterable() {
+        return new NodeIterable<Node>() {
 
             @Override
-            public NodePosIterator iterator() {
+            public Iterator<Node> iterator() {
                 if (MODIFICATION_COUNTS_ENABLED) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
@@ -1009,12 +1011,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         };
     }
 
-    public NodeClassIterable getInputIterable(final Node node) {
+    public NodeIterable<Node> getInputIterable(final Node node) {
         long mask = this.inputsIteration;
-        return new NodeClassIterable() {
+        return new NodeIterable<Node>() {
 
             @Override
-            public NodePosIterator iterator() {
+            public Iterator<Node> iterator() {
                 if (MODIFICATION_COUNTS_ENABLED) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {

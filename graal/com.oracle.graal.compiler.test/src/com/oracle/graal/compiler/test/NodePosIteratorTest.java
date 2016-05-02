@@ -29,11 +29,10 @@ import org.junit.Test;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.NodeSuccessorList;
 import com.oracle.graal.graph.Position;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.EndNode;
@@ -71,9 +70,9 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         n.i1 = i1;
         n.i2 = i2;
 
-        NodeClassIterable inputs = n.inputs();
+        NodeIterable<Node> inputs = n.inputs();
 
-        NodePosIterator iterator = inputs.iterator();
+        Iterator<Node> iterator = inputs.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), i1);
@@ -142,8 +141,8 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         n.s2 = s2;
         n.stail = new NodeSuccessorList<>(n, new Node[]{s3, s4});
 
-        NodeClassIterable successors = n.successors();
-        NodePosIterator iterator = successors.iterator();
+        NodeIterable<Node> successors = n.successors();
+        Iterator<Node> iterator = successors.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), s1);

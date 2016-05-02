@@ -24,12 +24,12 @@ package com.oracle.graal.phases.common;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
@@ -144,7 +144,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     }
 
     private static AbstractBeginNode findMinimumUsagesSuccessor(ControlSplitNode controlSplit) {
-        NodePosIterator successors = controlSplit.successors().iterator();
+        Iterator<Node> successors = controlSplit.successors().iterator();
         AbstractBeginNode min = (AbstractBeginNode) successors.next();
         int minUsages = min.getUsageCount();
         while (successors.hasNext()) {
