@@ -164,7 +164,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             FloatingNode receiver = null;
             StampPair receiverStamp = null;
             if (plugins != null) {
-                receiverStamp = plugins.getOverridingStamp(parser, originalType, true);
+                receiverStamp = plugins.getOverridingStamp(parser.parsingIntrinsic(), originalType, true);
             }
             if (receiverStamp == null) {
                 receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
@@ -197,7 +197,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             JavaKind kind = type.getJavaKind();
             StampPair stamp = null;
             if (plugins != null) {
-                stamp = plugins.getOverridingStamp(parser, type, false);
+                stamp = plugins.getOverridingStamp(parser.parsingIntrinsic(), type, false);
             }
             if (stamp == null) {
                 stamp = StampFactory.forDeclaredType(assumptions, type, false);
