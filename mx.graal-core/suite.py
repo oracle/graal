@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.1",
+  "mxversion" : "5.20.4",
   "name" : "graal-core",
 
   "imports" : {
@@ -1392,6 +1392,10 @@ suite = {
         "jvmci:JVMCI_API",
         "jvmci:JVMCI_HOTSPOT",
         "jvmci:JVMCI_HOTSPOTVMCONFIG"
+      ],
+      # The root(s) of the module jar's contents
+      "moduledeps" : [
+        "GRAAL_TRUFFLE_HOTSPOT",
       ],
     },
   },
