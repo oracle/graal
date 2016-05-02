@@ -87,7 +87,7 @@ _vm = JVMCIMode(jvmciMode='hosted')
 class GraalModuleDescriptor(object):
     """
     Describes the module containing Graal.
-    
+
     :param str distName: name of the `JARDistribution` that creates the Graal module jar
     """
     def __init__(self, name):
@@ -96,7 +96,7 @@ class GraalModuleDescriptor(object):
     def dist(self):
         """
         Gets the `JARDistribution` that creates the Graal module jar.
-        
+
         :rtype: `JARDistribution
         """
         return mx.distribution(self._name)
@@ -104,7 +104,7 @@ class GraalModuleDescriptor(object):
     def get_module_jar(self):
         """
         Gets the path to the module jar file.
-        
+
         :rtype: str
         """
         return as_java_module(self.dist(), _jdk).jarpath
@@ -435,7 +435,7 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
             # Graal onto the boot class path. In JDK9, the -Xpatch argument must be used
             # instead to give all class path entries visibility to Graal classes.
             args[cpIndex - 1:cpIndex + 1] = ['-Xpatch:' + module.name + '=' + os.pathsep.join(filtered_cp)]
-            
+
             # Need to export concealed JDK packages used by the class path entries
             pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
             for classpathEntry in filtered_cp:
