@@ -47,9 +47,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.LinkedList;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +64,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import org.junit.After;
 
 public class SLDebugTest {
     private Debugger debugger;
