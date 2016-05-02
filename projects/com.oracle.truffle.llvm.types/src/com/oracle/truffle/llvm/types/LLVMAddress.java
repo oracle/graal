@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.types;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
+
+@ValueType
 public final class LLVMAddress {
 
     public static final int WORD_LENGTH_BIT = 64;
