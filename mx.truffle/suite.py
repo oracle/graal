@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.1",
+  "mxversion" : "5.20.4",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -49,6 +49,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
+      "uses" : ["com.oracle.truffle.api.TruffleRuntimeAccess"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -76,6 +77,7 @@ suite = {
         "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
+      "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -191,6 +193,7 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.dsl"
       ],
+      "exports" : ["com.oracle.truffle.api.interop.java"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
