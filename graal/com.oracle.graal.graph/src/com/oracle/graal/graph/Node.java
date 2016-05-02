@@ -946,9 +946,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public boolean verifyEdges() {
         verifyInputs();
-        NodePosIterator iterator = inputs().withNullIterator();
-        while (iterator.hasNext()) {
-            Position pos = iterator.nextPosition();
+        for (Position pos : inputPositions()) {
             Node input = pos.get(this);
             assertTrue(pos.isInputOptional() || input != null, "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
             assertTrue(input == null || input.usages().contains(this), "missing usage in input %s", input);
@@ -960,9 +958,13 @@ public abstract class Node implements Cloneable, Formattable {
         for (Node usage : usages()) {
             assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
             assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
+            boolean foundThis = false;
             for (Position pos : usage.inputPositions()) {
-                if (pos.get(usage) == this && pos.getInputType() != InputType.Unchecked) {
-                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type %s from %s to %s (%s)", pos.getInputType(), usage, this, pos.getName());
+                if (pos.get(usage) == this) {
+                    foundThis = true;
+                    if (pos.getInputType() != InputType.Unchecked) {
+                        assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type %s from %s to %s (%s)", pos.getInputType(), usage, this, pos.getName());
+                    }
                 }
             }
             assertTrue(foundThis, "missing input in usage %s", usage);
