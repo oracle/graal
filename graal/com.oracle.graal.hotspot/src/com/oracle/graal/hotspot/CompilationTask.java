@@ -54,10 +54,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.hotspot.events.EmptyEventProvider;
-import jdk.vm.ci.hotspot.events.EventProvider;
-import jdk.vm.ci.hotspot.events.EventProvider.CompilationEvent;
-import jdk.vm.ci.hotspot.events.EventProvider.CompilerFailureEvent;
+import jdk.vm.ci.hotspot.services.EventProvider;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
 
@@ -72,7 +69,7 @@ public class CompilationTask {
     static {
         EventProvider provider = Services.loadSingle(EventProvider.class, false);
         if (provider == null) {
-            eventProvider = new EmptyEventProvider();
+            eventProvider = EventProvider.createEmptyEventProvider();
         } else {
             eventProvider = provider;
         }
@@ -175,7 +172,7 @@ public class CompilationTask {
         }
 
         // Log a compilation event.
-        CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
+        EventProvider.CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 
         // If there is already compiled code for this method on our level we simply return.
         // JVMCI compiles are always at the highest compile level, even in non-tiered mode so we
@@ -264,7 +261,7 @@ public class CompilationTask {
             return CompilationRequestResult.failure(bailout.getMessage(), true);
         } catch (Throwable t) {
             // Log a failure event.
-            CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
+            EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
             if (event.shouldWrite()) {
                 event.setCompileId(getId());
                 event.setMessage(t.getMessage());

@@ -28,24 +28,17 @@ import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.reflect.Constructor;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.calc.IntegerBelowNode;
 import com.oracle.graal.nodes.calc.IntegerEqualsNode;
 import com.oracle.graal.nodes.calc.IntegerLessThanNode;
@@ -58,7 +51,7 @@ import com.oracle.graal.nodes.extended.JavaWriteNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
+import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
@@ -72,11 +65,20 @@ import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.WordTypes;
 import com.oracle.graal.word.nodes.WordCastNode;
 
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 /**
  * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that
  * need special handling for {@link Word} types.
  */
-public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineInvokePlugin {
+public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
     protected final JavaKind wordKind;
     protected final SnippetReflectionProvider snippetReflection;
@@ -109,12 +111,22 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     @Override
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
-        ResolvedJavaType type = StampTool.typeOrNull(stamp.getTrustedStamp());
-        if (wordTypes.isWord(type)) {
-            return new ParameterNode(index, StampPair.createSingle(wordTypes.getWordStamp(type)));
+    public StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull) {
+        Stamp wordStamp = null;
+        if (declaredType instanceof ResolvedJavaType) {
+            ResolvedJavaType resolved = (ResolvedJavaType) declaredType;
+            if (wordTypes.isWord(resolved)) {
+                wordStamp = wordTypes.getWordStamp(resolved);
+            } else if (resolved.isArray() && wordTypes.isWord(resolved.getElementalType())) {
+                TypeReference trusted = TypeReference.createTrustedWithoutAssumptions(resolved);
+                wordStamp = StampFactory.object(trusted, nonNull);
+            }
         }
-        return null;
+        if (wordStamp != null) {
+            return StampPair.createSingle(wordStamp);
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -126,9 +138,9 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        if (field.getType() instanceof ResolvedJavaType && wordTypes.isWord((ResolvedJavaType) field.getType())) {
-            LoadFieldNode loadFieldNode = LoadFieldNode.create(b.getAssumptions(), receiver, field);
-            loadFieldNode.setStamp(wordTypes.getWordStamp((ResolvedJavaType) field.getType()));
+        StampPair wordStamp = interceptType(b, field.getType(), false);
+        if (wordStamp != null) {
+            LoadFieldNode loadFieldNode = LoadFieldNode.createOverrideStamp(wordStamp, receiver, field);
             b.addPush(field.getJavaKind(), loadFieldNode);
             return true;
         }

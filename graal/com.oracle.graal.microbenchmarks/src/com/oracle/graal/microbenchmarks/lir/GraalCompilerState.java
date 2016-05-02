@@ -455,6 +455,10 @@ public abstract class GraalCompilerState {
         return graph;
     }
 
+    protected LIR getLIR() {
+        return lirGenRes.getLIR();
+    }
+
     public abstract static class Compile extends GraalCompilerState {
 
         @Setup(Level.Trial)

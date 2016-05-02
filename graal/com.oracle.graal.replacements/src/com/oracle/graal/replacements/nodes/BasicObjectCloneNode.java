@@ -24,11 +24,6 @@ package com.oracle.graal.replacements.nodes;
 
 import java.util.Collections;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -45,6 +40,11 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
 public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
@@ -68,17 +68,13 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         return arguments.get(0);
     }
 
-    protected static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
-    }
-
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
-    protected static ResolvedJavaType getConcreteType(Stamp stamp, MetaAccessProvider metaAccess) {
+    protected static ResolvedJavaType getConcreteType(Stamp stamp) {
         if (!(stamp instanceof ObjectStamp)) {
             return null;
         }
@@ -86,9 +82,13 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         if (objectStamp.type() == null) {
             return null;
         } else if (objectStamp.isExactType()) {
-            return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
+            return objectStamp.type().isAllocationCloneable() ? objectStamp.type() : null;
         }
         return null;
+    }
+
+    protected LoadFieldNode genLoadFieldNode(Assumptions assumptions, ValueNode originalAlias, ResolvedJavaField field) {
+        return LoadFieldNode.create(assumptions, originalAlias, field);
     }
 
     @Override
@@ -96,7 +96,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         ValueNode originalAlias = tool.getAlias(getObject());
         if (originalAlias instanceof VirtualObjectNode) {
             VirtualObjectNode originalVirtual = (VirtualObjectNode) originalAlias;
-            if (isCloneableType(originalVirtual.type(), tool.getMetaAccessProvider())) {
+            if (originalVirtual.type().isAllocationCloneable()) {
                 ValueNode[] newEntryState = new ValueNode[originalVirtual.entryCount()];
                 for (int i = 0; i < newEntryState.length; i++) {
                     newEntryState[i] = tool.getEntry(originalVirtual, i);
@@ -106,7 +106,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
-            ResolvedJavaType type = getConcreteType(originalAlias.stamp(), tool.getMetaAccessProvider());
+            ResolvedJavaType type = getConcreteType(originalAlias.stamp());
             if (type != null && !type.isArray()) {
                 VirtualInstanceNode newVirtual = createVirtualInstanceNode(type, true);
                 ResolvedJavaField[] fields = newVirtual.getFields();
@@ -114,7 +114,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
                 ValueNode[] state = new ValueNode[fields.length];
                 final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                 for (int i = 0; i < fields.length; i++) {
-                    state[i] = loads[i] = LoadFieldNode.create(graph().getAssumptions(), originalAlias, fields[i]);
+                    state[i] = loads[i] = genLoadFieldNode(graph().getAssumptions(), originalAlias, fields[i]);
                     tool.addNode(loads[i]);
                 }
                 tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), false);

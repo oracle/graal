@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.phases.verify;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.TrustedInterface;
-
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -38,12 +31,19 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.VerifyPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+
 /**
  * For certain types, object identity should not be used for object equality check. This phase
  * checks the correct usage of the given type. Equality checks with == or != (except null checks)
  * results in an {@link AssertionError}.
- *
- * Note that only {@link TrustedInterface}s can be verified.
  */
 public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
 
@@ -54,7 +54,18 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
 
     public VerifyUsageWithEquals(Class<?> restrictedClass) {
         this.restrictedClass = restrictedClass;
-        assert !restrictedClass.isInterface() || TrustedInterface.class.isAssignableFrom(restrictedClass);
+        assert !restrictedClass.isInterface() || isTrustedInterface(restrictedClass);
+    }
+
+    private static final Class<?>[] trustedInterfaceTypes = {JavaType.class, JavaField.class, JavaMethod.class};
+
+    private static boolean isTrustedInterface(Class<?> cls) {
+        for (Class<?> trusted : trustedInterfaceTypes) {
+            if (trusted.isAssignableFrom(cls)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

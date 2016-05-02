@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.test;
 
-import jdk.vm.ci.meta.TrustedInterface;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,7 +37,7 @@ public class ObjectStampTest extends AbstractObjectStampTest {
         Assert.assertEquals(StampFactory.object(), notTrusted);
     }
 
-    private interface TrustedI extends TrustedInterface {
+    private interface TrustedI {
 
     }
 

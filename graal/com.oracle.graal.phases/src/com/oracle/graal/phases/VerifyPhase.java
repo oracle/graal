@@ -42,6 +42,10 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
             super(message);
         }
 
+        public VerificationError(String format, Object... args) {
+            super(String.format(format, args));
+        }
+
         public VerificationError(String message, Throwable cause) {
             super(message, cause);
         }

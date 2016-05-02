@@ -35,18 +35,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Launcher;
-
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitutionRegistry;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
@@ -787,9 +786,10 @@ public class InvocationPlugins {
      */
     public static Class<?> resolveClass(String className, boolean optional) {
         try {
-            // Need to use launcher class path to handle classes
-            // that are not on the boot class path
-            ClassLoader cl = Launcher.getLauncher().getClassLoader();
+            // Need to use the system class loader to handle classes
+            // loaded by the application class loader which is not
+            // delegated to by the JVMCI class loader.
+            ClassLoader cl = ClassLoader.getSystemClassLoader();
             return Class.forName(className, false, cl);
         } catch (ClassNotFoundException e) {
             if (optional) {

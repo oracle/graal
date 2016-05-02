@@ -32,18 +32,24 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
  */
 public class Trace<T extends AbstractBlockBase<T>> {
     private final ArrayList<T> blocks;
-    private int id;
+    private final ArrayList<Trace<T>> successors;
+    private int id = -1;
 
     public Trace(Collection<T> blocks) {
-        this.blocks = new ArrayList<>(blocks);
+        this(new ArrayList<>(blocks));
     }
 
     public Trace(ArrayList<T> blocks) {
         this.blocks = blocks;
+        this.successors = new ArrayList<>();
     }
 
     public ArrayList<T> getBlocks() {
         return blocks;
+    }
+
+    public ArrayList<Trace<T>> getSuccessors() {
+        return successors;
     }
 
     public int size() {
@@ -56,6 +62,7 @@ public class Trace<T extends AbstractBlockBase<T>> {
     }
 
     public int getId() {
+        assert id != -1 : "id not initialized!";
         return id;
     }
 

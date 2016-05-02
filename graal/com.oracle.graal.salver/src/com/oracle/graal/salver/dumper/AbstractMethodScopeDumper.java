@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 
-import com.oracle.graal.java.BytecodeDisassembler;
+import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.salver.data.DataDict;
 import com.oracle.graal.salver.data.DataList;
 import com.oracle.graal.salver.util.MethodContext;

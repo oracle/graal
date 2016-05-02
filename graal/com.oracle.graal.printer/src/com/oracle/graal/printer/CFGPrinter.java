@@ -31,13 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -49,7 +43,6 @@ import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.java.BciBlockMapping;
-import com.oracle.graal.java.BytecodeDisassembler;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.debug.IntervalDumper;
@@ -69,6 +62,13 @@ import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Utility for printing Graal IR at various compilation phases.

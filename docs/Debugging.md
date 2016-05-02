@@ -147,7 +147,7 @@ Assuming you have a Java program `P1` where you know there is one method `M1`
 very frequently called and thus gets marked for compilation and is compiled by Graal.
 You want to know if your novel optimization is applied on `M1` and also how often,
 thus you invoke the VM and enable debug counters with `-G:Count=MyCompilerPhase`
-and to filter for the specific method you enable method filtering with `-G:MethodFitler=P1.M1`.
+and to filter for the specific method you enable method filtering with `-G:MethodFilter=P1.M1`.
 Assuming you get a counter value of `5` then you do not know if `M1` was compiled
 once and the optimization triggered `5` times or if `M1` was compiled 5 times and
 the optimization always triggered just once (depending on your optimization and
@@ -223,7 +223,6 @@ PhaseTime_LoweringPhase_Accm                        =                    1
 PhaseTime_MidTier_Accm                              =                    3
 PhaseTime_PhaseSuite_Accm                           =                    2
 PhaseTime_PhaseSuite_Flat                           =                    1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ==========================================================================
 ```
 

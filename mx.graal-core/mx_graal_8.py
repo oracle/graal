@@ -95,6 +95,7 @@ class GraalJDKDeployedDist(JvmciJDKDeployedDist):
 jdkDeployedDists += [
     GraalJDKDeployedDist('GRAAL_OPTIONS'),
     GraalJDKDeployedDist('GRAAL_NODEINFO'),
+    GraalJDKDeployedDist('GRAAL_SERVICEPROVIDER'),
     GraalJDKDeployedDist('GRAAL_API'),
     GraalJDKDeployedDist('GRAAL_COMPILER'),
     GraalJDKDeployedDist('GRAAL_RUNTIME'),

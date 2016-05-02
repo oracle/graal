@@ -32,20 +32,6 @@ import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
 import java.util.zip.CRC32;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
-import sun.reflect.ConstantPool;
-import sun.reflect.Reflection;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
@@ -94,7 +80,21 @@ import com.oracle.graal.replacements.NodeIntrinsificationProvider;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
 import com.oracle.graal.replacements.WordOperationPlugin;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.reflect.ConstantPool;
+import sun.reflect.Reflection;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -118,7 +118,7 @@ public class HotSpotGraphBuilderPlugins {
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin);
 
-        plugins.appendParameterPlugin(nodePlugin);
+        plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
 
@@ -143,7 +143,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32Plugins(invocationPlugins, config);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
 
-                for (NodeIntrinsicPluginFactory factory : Services.load(NodeIntrinsicPluginFactory.class)) {
+                for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
                 }
 
