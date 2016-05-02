@@ -71,9 +71,9 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     }
 
     @Override
-    public StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull) {
-        if (b.parsingIntrinsic()) {
-            return wordOperationPlugin.interceptType(b, declaredType, nonNull);
+    public StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull) {
+        if (parsingIntrinsic) {
+            return wordOperationPlugin.interceptType(parsingIntrinsic, declaredType, nonNull);
         }
         return null;
     }

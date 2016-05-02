@@ -187,7 +187,7 @@ public class GraphKit {
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
-        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(null, returnType, false);
+        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(true, returnType, false);
         if (returnStamp == null) {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }
