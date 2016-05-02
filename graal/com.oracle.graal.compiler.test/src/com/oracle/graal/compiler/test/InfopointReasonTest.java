@@ -83,7 +83,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
             }
         }
         assertTrue(graphLineSPs > 0);
-        PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault(getDefaultGraphBuilderPlugins()));
+        PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true));
         final CompilationResult cr = compileGraph(graph, graph.method(), getProviders(), getBackend(), graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), getSuites(),
                         getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         int lineSPs = 0;

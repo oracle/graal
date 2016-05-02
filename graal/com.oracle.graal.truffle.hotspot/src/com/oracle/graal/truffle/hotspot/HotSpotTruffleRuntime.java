@@ -38,21 +38,6 @@ import java.util.WeakHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
-
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.target.Backend;
@@ -81,6 +66,7 @@ import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.CompilationPolicy;
 import com.oracle.graal.truffle.CounterAndTimeBasedCompilationPolicy;
 import com.oracle.graal.truffle.DefaultTruffleCompiler;
@@ -96,6 +82,21 @@ import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -226,7 +227,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
-        for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
+        for (OptimizedCallTargetInstrumentationFactory factory : GraalServices.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 factory.init(config(), getHotSpotProviders().getRegisters());
                 return factory;
@@ -248,7 +249,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
         HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
-        GraphBuilderConfiguration config = infoPoints ? GraphBuilderConfiguration.getInfopointEagerDefault(plugins) : GraphBuilderConfiguration.getEagerDefault(plugins);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withNodeSourcePosition(infoPoints);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);

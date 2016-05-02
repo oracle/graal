@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * A {@link ParameterPlugin} that binds constant values to some parameters.

@@ -255,33 +255,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.RawConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.TriState;
-import jdk.vm.ci.runtime.JVMCICompiler;
-
+import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
@@ -406,6 +380,33 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.OptimisticOptimizations;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.LocationIdentity;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.RawConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -627,7 +628,7 @@ public class BytecodeParser implements GraphBuilderContext {
     @SuppressWarnings("try")
     protected void buildRootMethod() {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, method, graph);
-        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins());
 
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
             build(graph.start(), startFrameState);
@@ -1163,7 +1164,12 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
-        return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
+        StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(parsingIntrinsic(), field.getType(), false);
+        if (stamp == null) {
+            return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
+        } else {
+            return LoadFieldNode.createOverrideStamp(stamp, receiver, field);
+        }
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
@@ -1392,7 +1398,13 @@ public class BytecodeParser implements GraphBuilderContext {
         if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
             profile = profilingInfo.getTypeProfile(bci());
         }
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false), profile));
+
+        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(parsingIntrinsic(), returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
+        }
+
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile));
 
         Invoke invoke;
         if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
@@ -1555,7 +1567,10 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
+    public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+        if (receiver != null) {
+            receiver.get();
+        }
         boolean res = inline(targetMethod, substitute, true, args);
         assert res : "failed to inline " + substitute;
         return res;

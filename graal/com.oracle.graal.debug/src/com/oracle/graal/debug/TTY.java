@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import jdk.vm.ci.services.Services;
+import com.oracle.graal.serviceprovider.GraalServices;
 
 /**
  * A collection of static methods for printing debug and informational output to a global
@@ -104,7 +104,7 @@ public class TTY {
      */
     public static final PrintStream out;
     static {
-        TTYStreamProvider p = Services.loadSingle(TTYStreamProvider.class, false);
+        TTYStreamProvider p = GraalServices.loadSingle(TTYStreamProvider.class, false);
         out = p == null ? System.out : p.getStream();
     }
 

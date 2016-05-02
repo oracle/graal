@@ -479,7 +479,7 @@ final class TraceInterval extends IntervalHint {
 
     public void setSpillSlot(AllocatableValue slot) {
         assert isStackSlotValue(slot);
-        assert splitParent().spillSlot == null || (isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "connot overwrite existing spill slot";
+        assert spillSlot() == null || (isVirtualStackSlot(spillSlot()) && isStackSlot(slot)) : String.format("cannot overwrite existing spill slot %s of interval %s with %s", spillSlot(), this, slot);
         splitParent().spillSlot = slot;
     }
 

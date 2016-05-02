@@ -27,10 +27,10 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFE
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.REEXECUTABLE;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
-import static com.oracle.graal.hotspot.replacements.HotSpotSymbolConstant.vmSymbol;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.LocationIdentity.any;
 
+import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -39,7 +39,7 @@ import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.hotspot.word.SymbolPointer;
+import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -54,6 +54,15 @@ public class CreateExceptionStub extends SnippetStub {
         super(snippetMethodName, providers, linkage);
     }
 
+    @Fold
+    static String getInternalClassName(Class<?> cls) {
+        return cls.getName().replace('.', '/');
+    }
+
+    private static Word classAsCString(Class<?> cls) {
+        return CStringConstant.cstring(getInternalClassName(cls));
+    }
+
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception) {
         Word message = null;
         return createException(threadRegister, exception, message);
@@ -61,36 +70,36 @@ public class CreateExceptionStub extends SnippetStub {
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, Word message) {
         Word thread = registerAsWord(threadRegister);
-        throwAndPostJvmtiException(THROW_AND_POST_JVMTI_EXCEPTION, thread, vmSymbol(exception), message);
+        throwAndPostJvmtiException(THROW_AND_POST_JVMTI_EXCEPTION, thread, classAsCString(exception), message);
         return clearPendingException(thread);
     }
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer klass) {
         Word thread = registerAsWord(threadRegister);
-        throwKlassExternalNameException(THROW_KLASS_EXTERNAL_NAME_EXCEPTION, thread, vmSymbol(exception), klass);
+        throwKlassExternalNameException(THROW_KLASS_EXTERNAL_NAME_EXCEPTION, thread, classAsCString(exception), klass);
         return clearPendingException(thread);
     }
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer objKlass, KlassPointer targetKlass) {
         Word thread = registerAsWord(threadRegister);
-        throwClassCastException(THROW_CLASS_CAST_EXCEPTION, thread, vmSymbol(exception), objKlass, targetKlass);
+        throwClassCastException(THROW_CLASS_CAST_EXCEPTION, thread, classAsCString(exception), objKlass, targetKlass);
         return clearPendingException(thread);
     }
 
-    private static final ForeignCallDescriptor THROW_AND_POST_JVMTI_EXCEPTION = new ForeignCallDescriptor("throw_and_post_jvmti_exception", void.class, Word.class, SymbolPointer.class, Word.class);
-    private static final ForeignCallDescriptor THROW_KLASS_EXTERNAL_NAME_EXCEPTION = new ForeignCallDescriptor("throw_klass_external_name_exception", void.class, Word.class, SymbolPointer.class,
+    private static final ForeignCallDescriptor THROW_AND_POST_JVMTI_EXCEPTION = new ForeignCallDescriptor("throw_and_post_jvmti_exception", void.class, Word.class, Word.class, Word.class);
+    private static final ForeignCallDescriptor THROW_KLASS_EXTERNAL_NAME_EXCEPTION = new ForeignCallDescriptor("throw_klass_external_name_exception", void.class, Word.class, Word.class,
                     KlassPointer.class);
-    private static final ForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = new ForeignCallDescriptor("throw_class_cast_exception", void.class, Word.class, SymbolPointer.class, KlassPointer.class,
+    private static final ForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = new ForeignCallDescriptor("throw_class_cast_exception", void.class, Word.class, Word.class, KlassPointer.class,
                     KlassPointer.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    private static native void throwAndPostJvmtiException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, Word message);
+    private static native void throwAndPostJvmtiException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, Word type, Word message);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    private static native void throwKlassExternalNameException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, KlassPointer klass);
+    private static native void throwKlassExternalNameException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, Word type, KlassPointer klass);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    private static native void throwClassCastException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, SymbolPointer type, KlassPointer objKlass, KlassPointer targetKlass);
+    private static native void throwClassCastException(@ConstantNodeParameter ForeignCallDescriptor d, Word thread, Word type, KlassPointer objKlass, KlassPointer targetKlass);
 
     public static void registerForeignCalls(HotSpotVMConfig c, HotSpotForeignCallsProviderImpl foreignCalls) {
         foreignCalls.registerForeignCall(THROW_AND_POST_JVMTI_EXCEPTION, c.throwAndPostJvmtiExceptionAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, any());

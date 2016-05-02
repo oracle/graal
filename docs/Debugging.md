@@ -39,7 +39,7 @@ try (Scope s = Debug.scope("CodeInstall", method)) {
 }
 ```
 
-The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `-G:Log` GraalVM option. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `-G:Dump`, `-G:Time` and `-G:Meter` options.
+The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `-G:Log` GraalVM option. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `-G:Dump`, `-G:Time` and `-G:Count` options.
 
 ## Graal specific VM options
 
@@ -147,7 +147,7 @@ Assuming you have a Java program `P1` where you know there is one method `M1`
 very frequently called and thus gets marked for compilation and is compiled by Graal.
 You want to know if your novel optimization is applied on `M1` and also how often,
 thus you invoke the VM and enable debug counters with `-G:Count=MyCompilerPhase`
-and to filter for the specific method you enable method filtering with `-G:MethodFitler=P1.M1`.
+and to filter for the specific method you enable method filtering with `-G:MethodFilter=P1.M1`.
 Assuming you get a counter value of `5` then you do not know if `M1` was compiled
 once and the optimization triggered `5` times or if `M1` was compiled 5 times and
 the optimization always triggered just once (depending on your optimization and
@@ -209,7 +209,6 @@ mx --vm jvmci dacapo
   -G:GlobalMetricsInterceptedByMethodMetrics=Timers
   -G:MethodMeterPrintAscii=true
   -G:MethodFilter=Long.bitCount fop -n 10
-
  // Output
  ==========================================================================
 HotSpotMethod<Long.bitCount(long)>
@@ -224,19 +223,19 @@ PhaseTime_LoweringPhase_Accm                        =                    1
 PhaseTime_MidTier_Accm                              =                    3
 PhaseTime_PhaseSuite_Accm                           =                    2
 PhaseTime_PhaseSuite_Flat                           =                    1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ==========================================================================
 ```
+
 However when using the interception there are several non-trivial things to remember:
 * Time Reporting: Time is collected in nanoseconds with the most accurate timer on the given platform, however a certain phase might be so fast that rounding to milliseconds will generate a 0 value for the reported time. Zero values are ignored during dumping.
 * Compilation Policy: Timing is heavily influenced by several factors including:
- * TieredCompilation: If Graal is run in tiered mode and compiled by C1 the first compilations will be slower due to the fact that Graal still runs in the interpreter.
- * Type Profile: Certain debugging options of Graal might result in scenarios where a certain non-Graal method is hot and enqueued for Graal compilation as Graal itself heavily calls it e.g. enabling the flag `-G:PrintAfterCompilation` will format method names with `String.format` which can result in a compilation request to Graal to compile `String.format` although the application itself never calls `String.format`.
+    * TieredCompilation: If Graal is run in tiered mode and compiled by C1 the first compilations will be slower due to the fact that Graal still runs in the interpreter.
+    * Type Profile: Certain debugging options of Graal might result in scenarios where a certain non-Graal method is hot and enqueued for Graal compilation as Graal itself heavily calls it e.g. enabling the flag `-G:PrintAfterCompilation` will format method names with `String.format` which can result in a compilation request to Graal to compile `String.format` although the application itself never calls `String.format`.
 
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-G:Log`, `-G:Dump`, `-G:Meter`, or `-G:Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-G:MethodFilter` option to specifying a method filter. The matching logic for this option is described in [MethodFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/MethodFilter.java#L33-L92).
+Specifying one of the debug scope options (i.e., `-G:Log`, `-G:Dump`, `-G:Count`, or `-G:Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-G:MethodFilter` option to specifying a method filter. The matching logic for this option is described in [MethodFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/MethodFilter.java#L33-L92).
 
 ## Dumping
 

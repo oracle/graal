@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -40,6 +37,10 @@ import com.oracle.graal.nodes.spi.ValueProxy;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.nodes.virtual.VirtualArrayNode;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
@@ -148,13 +149,9 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(array());
-        ValueNode length = GraphUtil.arrayLength(alias);
-        if (length != null) {
-            ValueNode lengthAlias = tool.getAlias(length);
-            if (!lengthAlias.isAlive()) {
-                lengthAlias = graph().addOrUnique(lengthAlias);
-            }
-            tool.replaceWithValue(lengthAlias);
+        if (alias instanceof VirtualArrayNode) {
+            VirtualArrayNode virtualArray = (VirtualArrayNode) alias;
+            tool.replaceWithValue(ConstantNode.forInt(virtualArray.entryCount(), graph()));
         }
     }
 }

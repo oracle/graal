@@ -30,14 +30,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
+import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.graph.Position;
-import com.oracle.graal.java.BytecodeDisassembler;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.BeginNode;
@@ -50,6 +48,8 @@ import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.schedule.SchedulePhase;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the

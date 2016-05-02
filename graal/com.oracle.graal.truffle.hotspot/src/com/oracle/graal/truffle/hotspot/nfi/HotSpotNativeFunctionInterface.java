@@ -22,19 +22,16 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import static jdk.vm.ci.common.UnsafeUtil.createCString;
-import static jdk.vm.ci.common.UnsafeUtil.writeCString;
-
 import java.lang.reflect.Field;
-
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import sun.misc.Unsafe;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
@@ -185,5 +182,34 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
                 throw new RuntimeException("exception while trying to get Unsafe", e);
             }
         }
+    }
+
+    /**
+     * Copies the contents of a {@link String} to a native memory buffer as a {@code '\0'}
+     * terminated C string. The native memory buffer is allocated via
+     * {@link Unsafe#allocateMemory(long)}. The caller is responsible for releasing the buffer when
+     * it is no longer needed via {@link Unsafe#freeMemory(long)}.
+     *
+     * @return the native memory pointer of the C string created from {@code s}
+     */
+    private static long createCString(Unsafe unsafe, String s) {
+        return writeCString(unsafe, s, unsafe.allocateMemory(s.length() + 1));
+    }
+
+    /**
+     * Writes the contents of a {@link String} to a native memory buffer as a {@code '\0'}
+     * terminated C string. The caller is responsible for ensuring the buffer is at least
+     * {@code s.length() + 1} bytes long. The caller is also responsible for releasing the buffer
+     * when it is no longer.
+     *
+     * @return the value of {@code buf}
+     */
+    private static long writeCString(Unsafe unsafe, String s, long buf) {
+        int size = s.length();
+        for (int i = 0; i < size; i++) {
+            unsafe.putByte(buf + i, (byte) s.charAt(i));
+        }
+        unsafe.putByte(buf + size, (byte) '\0');
+        return buf;
     }
 }

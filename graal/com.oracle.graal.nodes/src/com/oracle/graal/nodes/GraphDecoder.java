@@ -1317,34 +1317,52 @@ public class GraphDecoder {
              * initial check for isMarked when we added a node to the list.
              */
             if (!visited.isMarked(succ)) {
-                FixedNode next = ((FixedWithNextNode) succ).next();
-                /* Skip over unnecessary BeginNodes, which will be deleted only later on. */
-                while (next instanceof BeginNode) {
-                    next = ((BeginNode) next).next();
-                }
+                insertLoopExit(methodScope, loopBegin, succ);
+            }
+        }
+    }
 
+    private static void insertLoopExit(MethodScope methodScope, LoopBeginNode loopBegin, Node exitSuccessor) {
+        FixedNode next = ((FixedWithNextNode) exitSuccessor).next();
+        while (true) {
+            if (next instanceof BeginNode) {
+                /* Skip over unnecessary BeginNodes, which will be deleted only later on. */
+                next = ((BeginNode) next).next();
+
+            } else if (next instanceof EndNode) {
                 /*
                  * A LoopExit needs a valid FrameState that captures the state at the point where we
                  * exit the loop. During graph decoding, we create a FrameState for every exploded
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 *
+                 */
+                EndNode loopExplosionEnd = (EndNode) next;
+                AbstractMergeNode loopExplosionMerge = loopExplosionEnd.merge();
+                if (methodScope.loopExplosionMerges.contains(loopExplosionMerge)) {
+                    LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
+                    next.replaceAtPredecessor(loopExit);
+                    loopExit.setNext(next);
+                    assignLoopExitState(methodScope, loopExit, loopExplosionMerge, loopExplosionEnd);
+                    /* Done, successfully inserted a LoopExitNode. */
+                    return;
+
+                } else {
+                    /*
+                     * Keep looking down the graph for a MergeNode that is marked in
+                     * loopExplosionMerges.
+                     */
+                    next = loopExplosionMerge.next();
+                }
+
+            } else {
+                /*
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does
                  * not insert a LoopExit in such cases, we also do not have to insert a LoopExit.
                  */
-                if (next instanceof EndNode) {
-                    EndNode loopExplosionEnd = (EndNode) next;
-                    AbstractMergeNode loopExplosionMerge = loopExplosionEnd.merge();
-                    if (methodScope.loopExplosionMerges.contains(loopExplosionMerge)) {
-                        LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
-                        next.replaceAtPredecessor(loopExit);
-                        loopExit.setNext(next);
-                        assignLoopExitState(methodScope, loopExit, loopExplosionMerge, loopExplosionEnd);
-                    }
-                }
+                return;
             }
         }
     }

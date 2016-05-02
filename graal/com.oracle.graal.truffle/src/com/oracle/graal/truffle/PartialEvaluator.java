@@ -22,6 +22,18 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
+
+import java.lang.invoke.MethodHandle;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -59,6 +71,7 @@ import com.oracle.graal.replacements.CachingPEGraphDecoder;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.replacements.ReplacementsImpl;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
 import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
@@ -73,25 +86,13 @@ import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
-
-import java.lang.invoke.MethodHandle;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -151,7 +152,7 @@ public class PartialEvaluator {
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
-            Debug.dump(Debug.INFO_LOG_LEVEL, callTarget, "%s", callTarget);
+            Debug.dump(Debug.BASIC_LOG_LEVEL, callTarget, "%s", callTarget);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -389,7 +390,7 @@ public class PartialEvaluator {
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
 
-        for (TruffleInvocationPluginProvider p : Services.load(TruffleInvocationPluginProvider.class)) {
+        for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
             p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
         }
     }

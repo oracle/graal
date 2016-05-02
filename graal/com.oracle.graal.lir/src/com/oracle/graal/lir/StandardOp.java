@@ -45,6 +45,7 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.ssa.SSAUtil;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
@@ -68,6 +69,12 @@ public class StandardOp {
         void clearOutgoingValues();
 
         void forEachOutgoingValue(InstructionValueProcedure proc);
+
+        /**
+         * The number of {@link SSAUtil phi} operands in the {@link #getOutgoingValue outgoing}
+         * array.
+         */
+        int getPhiSize();
     }
 
     public interface NullCheck {
@@ -96,28 +103,43 @@ public class StandardOp {
          * instruction of a block, the registers are defined here in the label.
          */
         @Def({REG, STACK}) private Value[] incomingValues;
-        private int size;
-
         private final Label label;
         private final boolean align;
+        private int numbPhis;
 
         public LabelOp(Label label, boolean align) {
             super(TYPE);
             this.label = label;
             this.align = align;
             this.incomingValues = Value.NO_VALUES;
-            size = 0;
+            this.numbPhis = 0;
+        }
+
+        public void setPhiValues(Value[] values) {
+            setIncomingValues(values);
+            setNumberOfPhis(values.length);
+        }
+
+        private void setNumberOfPhis(int numPhis) {
+            assert numbPhis == 0;
+            numbPhis = numPhis;
+        }
+
+        /**
+         * @see BlockEndOp#getPhiSize
+         */
+        public int getPhiSize() {
+            return numbPhis;
         }
 
         public void setIncomingValues(Value[] values) {
             assert this.incomingValues.length == 0;
             assert values != null;
             this.incomingValues = values;
-            size = values.length;
         }
 
         public int getIncomingSize() {
-            return size;
+            return incomingValues.length;
         }
 
         public Value getIncomingValue(int idx) {
@@ -127,22 +149,22 @@ public class StandardOp {
 
         public void clearIncomingValues() {
             incomingValues = Value.NO_VALUES;
-            size = 0;
         }
 
         public void addIncomingValues(Value[] values) {
-            int t = size + values.length;
-            if (t >= incomingValues.length) {
-                Value[] newArray = new Value[t];
-                System.arraycopy(incomingValues, 0, newArray, 0, size);
-                incomingValues = newArray;
+            if (incomingValues.length == 0) {
+                setIncomingValues(values);
+                return;
             }
-            System.arraycopy(values, 0, incomingValues, size, values.length);
-            size = t;
+            int t = incomingValues.length + values.length;
+            Value[] newArray = new Value[t];
+            System.arraycopy(incomingValues, 0, newArray, 0, incomingValues.length);
+            System.arraycopy(values, 0, newArray, incomingValues.length, values.length);
+            incomingValues = newArray;
         }
 
         private boolean checkRange(int idx) {
-            return idx < size;
+            return idx < incomingValues.length;
         }
 
         @Override
@@ -176,12 +198,26 @@ public class StandardOp {
         public static final EnumSet<OperandFlag> outgoingFlags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
         @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
-        private int size;
+        private int numberOfPhis;
 
         protected AbstractBlockEndOp(LIRInstructionClass<? extends AbstractBlockEndOp> c) {
             super(c);
             this.outgoingValues = Value.NO_VALUES;
-            size = 0;
+        }
+
+        public void setPhiValues(Value[] values) {
+            setOutgoingValues(values);
+            setNumberOfPhis(values.length);
+        }
+
+        private void setNumberOfPhis(int numPhis) {
+            assert numberOfPhis == 0;
+            numberOfPhis = numPhis;
+        }
+
+        @Override
+        public int getPhiSize() {
+            return numberOfPhis;
         }
 
         @Override
@@ -189,12 +225,11 @@ public class StandardOp {
             assert this.outgoingValues.length == 0;
             assert values != null;
             this.outgoingValues = values;
-            size = values.length;
         }
 
         @Override
         public int getOutgoingSize() {
-            return size;
+            return outgoingValues.length;
         }
 
         @Override
@@ -206,24 +241,24 @@ public class StandardOp {
         @Override
         public void clearOutgoingValues() {
             outgoingValues = Value.NO_VALUES;
-            size = 0;
         }
 
         @Override
         public int addOutgoingValues(Value[] values) {
-            int t = size + values.length;
-            if (t >= outgoingValues.length) {
-                Value[] newArray = new Value[t];
-                System.arraycopy(outgoingValues, 0, newArray, 0, size);
-                outgoingValues = newArray;
+            if (outgoingValues.length == 0) {
+                setOutgoingValues(values);
+                return values.length;
             }
-            System.arraycopy(values, 0, outgoingValues, size, values.length);
-            size = t;
+            int t = outgoingValues.length + values.length;
+            Value[] newArray = new Value[t];
+            System.arraycopy(outgoingValues, 0, newArray, 0, outgoingValues.length);
+            System.arraycopy(values, 0, newArray, outgoingValues.length, values.length);
+            outgoingValues = newArray;
             return t;
         }
 
         private boolean checkRange(int idx) {
-            return idx < size;
+            return idx < outgoingValues.length;
         }
 
         @Override

@@ -27,10 +27,6 @@ import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import sun.misc.Launcher;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
@@ -44,6 +40,10 @@ import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LocationIdentity;
 
 // JaCoCo Exclude
 
@@ -59,9 +59,10 @@ public class CipherBlockChainingSubstitutions {
     private static final Class<?> feedbackCipherClass;
     static {
         try {
-            // Need to use launcher class path as com.sun.crypto.provider.AESCrypt
-            // is normally not on the boot class path
-            ClassLoader cl = Launcher.getLauncher().getClassLoader();
+            // Need to use the system class loader as com.sun.crypto.provider.FeedbackCipher
+            // is normally loaded by the extension class loader which is not delegated
+            // to by the JVMCI class loader.
+            ClassLoader cl = ClassLoader.getSystemClassLoader();
 
             feedbackCipherClass = Class.forName("com.sun.crypto.provider.FeedbackCipher", true, cl);
             embeddedCipherOffset = UNSAFE.objectFieldOffset(feedbackCipherClass.getDeclaredField("embeddedCipher"));

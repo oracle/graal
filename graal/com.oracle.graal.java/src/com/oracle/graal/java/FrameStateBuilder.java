@@ -70,6 +70,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
@@ -154,25 +155,35 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, ParameterPlugin[] parameterPlugins) {
+    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, Plugins plugins) {
 
         int javaIndex = 0;
         int index = 0;
         ResolvedJavaType originalType = method.getDeclaringClass();
         if (!method.isStatic()) {
             // add the receiver
-            ValueNode receiver = null;
-            StampPair receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
-            for (ParameterPlugin plugin : parameterPlugins) {
-                receiver = plugin.interceptParameter(parser, index, receiverStamp);
-                if (receiver != null) {
-                    break;
+            FloatingNode receiver = null;
+            StampPair receiverStamp = null;
+            if (plugins != null) {
+                receiverStamp = plugins.getOverridingStamp(parser.parsingIntrinsic(), originalType, true);
+            }
+            if (receiverStamp == null) {
+                receiverStamp = StampFactory.forDeclaredType(assumptions, originalType, true);
+            }
+
+            if (plugins != null) {
+                for (ParameterPlugin plugin : plugins.getParameterPlugins()) {
+                    receiver = plugin.interceptParameter(parser, index, receiverStamp);
+                    if (receiver != null) {
+                        break;
+                    }
                 }
             }
             if (receiver == null) {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
             }
-            locals[javaIndex] = graph.addWithoutUnique(receiver);
+
+            locals[javaIndex] = graph.unique(receiver);
             javaIndex = 1;
             index = 1;
         }
@@ -185,18 +196,28 @@ public final class FrameStateBuilder implements SideEffectsState {
                 type = type.resolve(accessingClass);
             }
             JavaKind kind = type.getJavaKind();
-            StampPair stamp = StampFactory.forDeclaredType(assumptions, type, false);
-            ValueNode param = null;
-            for (ParameterPlugin plugin : parameterPlugins) {
-                param = plugin.interceptParameter(parser, index, stamp);
-                if (param != null) {
-                    break;
+            StampPair stamp = null;
+            if (plugins != null) {
+                stamp = plugins.getOverridingStamp(parser.parsingIntrinsic(), type, false);
+            }
+            if (stamp == null) {
+                stamp = StampFactory.forDeclaredType(assumptions, type, false);
+            }
+
+            FloatingNode param = null;
+            if (plugins != null) {
+                for (ParameterPlugin plugin : plugins.getParameterPlugins()) {
+                    param = plugin.interceptParameter(parser, index, stamp);
+                    if (param != null) {
+                        break;
+                    }
                 }
             }
             if (param == null) {
                 param = new ParameterNode(index, stamp);
             }
-            locals[javaIndex] = graph.addWithoutUnique(param);
+
+            locals[javaIndex] = graph.unique(param);
             javaIndex++;
             if (kind.needsTwoSlots()) {
                 locals[javaIndex] = TWO_SLOT_MARKER;

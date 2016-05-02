@@ -69,6 +69,10 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field);
     }
 
+    public static LoadFieldNode createOverrideStamp(StampPair stamp, ValueNode object, ResolvedJavaField field) {
+        return new LoadFieldNode(stamp, object, field);
+    }
+
     @Override
     public ValueNode getValue() {
         return object();

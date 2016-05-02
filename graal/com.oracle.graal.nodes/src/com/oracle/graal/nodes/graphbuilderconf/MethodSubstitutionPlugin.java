@@ -169,10 +169,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     @Override
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
         ResolvedJavaMethod subst = getSubstitute(b.getMetaAccess());
-        if (receiver != null) {
-            receiver.get();
-        }
-        return b.intrinsify(targetMethod, subst, argsIncludingReceiver);
+        return b.intrinsify(targetMethod, subst, receiver, argsIncludingReceiver);
     }
 
     @Override

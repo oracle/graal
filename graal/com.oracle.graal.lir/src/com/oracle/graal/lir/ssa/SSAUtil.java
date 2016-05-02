@@ -58,14 +58,14 @@ import com.oracle.graal.lir.ValueConsumer;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- * 
+ *
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- * 
+ *
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -97,6 +97,7 @@ public final class SSAUtil {
         LabelOp label = phiIn(lir, merge);
 
         assert label.getIncomingSize() == jump.getOutgoingSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getIncomingSize(), jump.getOutgoingSize());
+        assert label.getPhiSize() == jump.getPhiSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getPhiSize(), jump.getPhiSize());
 
         for (int i = 0; i < label.getIncomingSize(); i++) {
             visitor.visit(label.getIncomingValue(i), jump.getOutgoingValue(i));

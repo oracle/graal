@@ -76,7 +76,7 @@ public class GraalDebugInitializationParticipant implements DebugInitializationP
                 parseMethodMetricsDebugValueInterception(params);
             }
         }
-        if (GraalDebugConfig.isNotEmpty(GraalDebugConfig.Options.MethodMeter)) {
+        if (GraalDebugConfig.isNotEmpty(GraalDebugConfig.Options.MethodMeter) || params.enableUnscopedMethodMetrics) {
             if (!MethodMetricsPrinter.methodMetricsDumpingEnabled()) {
                 TTY.println("WARNING: MethodMeter is enabled but MethodMeter dumping is disabled. Output will not contain MethodMetrics.");
             }

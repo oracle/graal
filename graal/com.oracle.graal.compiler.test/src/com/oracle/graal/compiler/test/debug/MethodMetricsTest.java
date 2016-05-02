@@ -49,12 +49,10 @@ import com.oracle.graal.debug.DelegatingDebugConfig;
 import com.oracle.graal.debug.DelegatingDebugConfig.Feature;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.calc.BinaryNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
@@ -120,69 +118,6 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
 
     }
 
-    static class CFApplications {
-
-        public static int cf01(int count) {
-            int a = 0;
-            int b = 0;
-            int c = 0;
-            l1: for (int i = 0; i <= count; i++) {
-                if (i > 5) {
-                    for (int j = 0; j < i; j++) {
-                        a += i;
-                        if (a > 500) {
-                            break l1;
-                        }
-                    }
-                } else if (i > 7) {
-                    b += i;
-                } else {
-                    c += i;
-                }
-            }
-            return a + b + c;
-        }
-
-        public static int cf02(int arg) {
-            int a = 0;
-            for (int i = 0; i < arg; i++) {
-                a += i;
-            }
-            return a;
-        }
-
-        private static int cnt;
-
-        public static String cf03(int arg) {
-            cnt = 0;
-            int count = arg;
-            for (int i = 0; i < arg; i++) {
-                count++;
-                foo();
-            }
-            return "ok" + count + "-" + cnt;
-        }
-
-        public static void foo() {
-            cnt++;
-        }
-
-        public static int cf04(int count) {
-            int i1 = 1;
-            int i2 = 2;
-            int i3 = 3;
-            int i4 = 4;
-
-            for (int i = 0; i < count; i++) {
-                i1 = i2;
-                i2 = i3;
-                i3 = i4;
-                i4 = i1;
-            }
-            return i1 + i2 * 10 + i3 * 100 + i4 * 1000;
-        }
-    }
-
     public static final Class<?>[] testSignature = new Class<?>[]{int.class, int.class};
     public static final Object[] testArgs = new Object[]{10, 10};
 
@@ -242,30 +177,6 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
             }
         }
 
-        static class CountingLoopBeginsAndIfs extends Phase {
-            @Override
-            protected void run(StructuredGraph graph) {
-                ResolvedJavaMethod method = graph.method();
-                DebugMethodMetrics mm = Debug.methodMetrics(method);
-                mm.addToMetric(graph.getNodes().filter(LoopBeginNode.class).count(), "LoopBegins");
-                mm.addToMetric(graph.getNodes().filter(IfNode.class).count(), "Ifs");
-            }
-        }
-
-        static class CountingMorePhase extends Phase {
-            @Override
-            protected void run(StructuredGraph graph) {
-                ResolvedJavaMethod method = graph.method();
-                DebugMethodMetrics mm = Debug.methodMetrics(method);
-                mm.addToMetric(graph.getNodes().filter(LoopBeginNode.class).count(), "LoopBegins");
-                mm.addToMetric(graph.getNodes().filter(IfNode.class).count(), "Ifs");
-                mm.addToMetric(graph.getNodes().filter(x -> x instanceof BinaryNode || x instanceof FixedBinaryNode).count(), "BinOps");
-                mm.addToMetric(graph.getNodes().filter(SubNode.class).count(), "Subs");
-                mm.addToMetric(graph.getNodes().filter(InvokeNode.class).count(), "Invokes");
-                mm.incrementMetric("PhaseRunsOnMethod");
-            }
-        }
-
         static class ScopeTestPhase extends Phase {
             // typically those global metrics would be static final, but we need new timers every
             // invocation if we override the debugvaluefactory
@@ -283,7 +194,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
             @SuppressWarnings("try")
             protected void run(StructuredGraph graph) {
                 // we are in an enhanced debug scope from graal compiler
-                // no we open multiple inlining scopes, record their time
+                // now we open multiple inlining scopes, record their time
                 try (DebugCloseable c1 = timer.start()) {
                     try (DebugCloseable c2 = scopedTimer.start()) {
                         try (DebugCloseable c3 = scopedScopedTimer.start()) {
@@ -305,7 +216,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
                     }
                 }
 
-                // no lets try different counters without the inline enhancement
+                // now lets try different counters without the inline enhancement
                 try (DebugCloseable c1 = timer1.start()) {
                     try (DebugCloseable c2 = scopedTimer1.start()) {
                         try (DebugCloseable c3 = scopedScopedTimer1.start()) {
