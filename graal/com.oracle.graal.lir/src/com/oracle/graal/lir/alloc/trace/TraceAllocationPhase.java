@@ -58,7 +58,8 @@ public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase
     }
 
     @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> sortedBlocks, TraceAllocationContext context) {
+    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> sortedBlocks,
+                    TraceAllocationContext context) {
         TraceBuilderResult<B> resultTraces = getTraceBuilderResult(context);
         Trace<B> trace = resultTraces.getTraces().get(resultTraces.getTraceForBlock(sortedBlocks.get(0)));
         run(target, lirGenRes, codeEmittingOrder, trace, context);

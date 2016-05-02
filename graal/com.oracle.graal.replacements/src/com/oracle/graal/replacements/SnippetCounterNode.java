@@ -89,6 +89,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
         add(counter, 1);
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
             SnippetCounterSnippets.Templates templates = tool.getReplacements().getSnippetTemplateCache(SnippetCounterSnippets.Templates.class);

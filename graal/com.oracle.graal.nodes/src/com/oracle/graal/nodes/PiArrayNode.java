@@ -42,12 +42,13 @@ public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
     public static final NodeClass<PiArrayNode> TYPE = NodeClass.create(PiArrayNode.class);
     @Input ValueNode length;
 
+    @Override
     public ValueNode length() {
         return length;
     }
 
     public PiArrayNode(ValueNode object, ValueNode length, Stamp stamp) {
-        super(TYPE, object, stamp);
+        super(TYPE, object, stamp, null);
         this.length = length;
     }
 

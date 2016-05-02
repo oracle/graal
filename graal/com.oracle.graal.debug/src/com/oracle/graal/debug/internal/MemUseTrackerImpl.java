@@ -28,8 +28,10 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugMemUseTracker;
 import com.oracle.graal.debug.Management;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 
-public final class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMemUseTracker {
+public class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMemUseTracker {
+    private final boolean intercepting;
 
     public static long getCurrentThreadAllocatedBytes() {
         return Management.getCurrentThreadAllocatedBytes();
@@ -40,7 +42,7 @@ public final class MemUseTrackerImpl extends AccumulatedDebugValue implements De
      */
     private static final ThreadLocal<CloseableCounterImpl> currentTracker = new ThreadLocal<>();
 
-    public MemUseTrackerImpl(String name, boolean conditional) {
+    public MemUseTrackerImpl(String name, boolean conditional, boolean intercepting) {
         super(name, conditional, new DebugValue(name + "_Flat", conditional) {
 
             @Override
@@ -48,12 +50,13 @@ public final class MemUseTrackerImpl extends AccumulatedDebugValue implements De
                 return valueToString(value);
             }
         });
+        this.intercepting = intercepting;
     }
 
     @Override
     public DebugCloseable start() {
         if (!isConditional() || Debug.isMemUseTrackingEnabled()) {
-            MemUseCloseableCounterImpl result = new MemUseCloseableCounterImpl(this);
+            CloseableCounterImpl result = intercepting ? new MemUseInterceptingCloseableCounterImpl(this) : new MemUseCloseableCounterImpl(this);
             currentTracker.set(result);
             return result;
         } else {
@@ -85,6 +88,38 @@ public final class MemUseTrackerImpl extends AccumulatedDebugValue implements De
         public void close() {
             super.close();
             currentTracker.set(parent);
+        }
+    }
+
+    private static final class MemUseInterceptingCloseableCounterImpl extends CloseableCounterImpl implements DebugCloseable {
+
+        private MemUseInterceptingCloseableCounterImpl(AccumulatedDebugValue counter) {
+            super(currentTracker.get(), counter);
+        }
+
+        @Override
+        long getCounterValue() {
+            return getCurrentThreadAllocatedBytes();
+        }
+
+        @Override
+        public void close() {
+            super.close();
+            currentTracker.set(parent);
+        }
+
+        @Override
+        protected void interceptDifferenceAccm(long difference) {
+            if (Debug.isMethodMeterEnabled()) {
+                MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.getName(), difference);
+            }
+        }
+
+        @Override
+        protected void interceptDifferenceFlat(long difference) {
+            if (Debug.isMethodMeterEnabled()) {
+                MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.flat.getName(), difference);
+            }
         }
     }
 }

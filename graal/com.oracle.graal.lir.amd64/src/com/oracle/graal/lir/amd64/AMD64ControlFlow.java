@@ -354,7 +354,8 @@ public class AMD64ControlFlow {
         masm.bind(endLabel);
     }
 
-    private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue,
+                    Value falseValue) {
         // check that we don't overwrite an input operand before it is used.
         assert !result.equals(trueValue);
 

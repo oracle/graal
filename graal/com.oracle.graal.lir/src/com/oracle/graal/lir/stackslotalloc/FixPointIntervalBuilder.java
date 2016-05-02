@@ -36,7 +36,7 @@ import java.util.Set;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
@@ -62,7 +62,7 @@ final class FixPointIntervalBuilder {
     /**
      * The number of allocated stack slots.
      */
-    private static final DebugMetric uninitializedSlots = Debug.metric("StackSlotAllocator[uninitializedSlots]");
+    private static final DebugCounter uninitializedSlots = Debug.counter("StackSlotAllocator[uninitializedSlots]");
 
     FixPointIntervalBuilder(LIR lir, StackInterval[] stackSlotMap, int maxOpId) {
         this.lir = lir;
@@ -207,6 +207,7 @@ final class FixPointIntervalBuilder {
         }
 
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction inst, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
@@ -220,6 +221,7 @@ final class FixPointIntervalBuilder {
         };
 
         InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
+            @Override
             public void visitValue(LIRInstruction inst, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
@@ -238,7 +240,7 @@ final class FixPointIntervalBuilder {
             if (flags.contains(OperandFlag.UNINITIALIZED)) {
                 // Stack slot is marked uninitialized so we have to assume it is live all
                 // the time.
-                if (Debug.isMeterEnabled() && !(interval.from() == 0 && interval.to() == maxOpId)) {
+                if (Debug.isCountEnabled() && !(interval.from() == 0 && interval.to() == maxOpId)) {
                     uninitializedSlots.increment();
                 }
                 interval.addFrom(0);
@@ -256,6 +258,7 @@ final class FixPointIntervalBuilder {
         void addRegisterHint(final LIRInstruction op, VirtualStackSlot targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
             if (flags.contains(OperandFlag.HINT)) {
                 InstructionValueProcedure proc = new InstructionValueProcedure() {
+                    @Override
                     public Value doValue(LIRInstruction instruction, Value registerHint, OperandMode vaueMode, EnumSet<OperandFlag> valueFlags) {
                         if (isVirtualStackSlot(registerHint)) {
                             StackInterval from = getOrCreateInterval((VirtualStackSlot) registerHint);

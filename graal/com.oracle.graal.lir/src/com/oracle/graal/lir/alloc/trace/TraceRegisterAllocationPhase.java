@@ -34,15 +34,18 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
+import com.oracle.graal.lir.alloc.trace.lsra.IntervalData;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceIntervalMap;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.phases.AllocationStage;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
@@ -53,8 +56,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * An implementation of a Trace Register Allocator as described in <a
- * href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef Eisl.
+ * An implementation of a Trace Register Allocator as described in
+ * <a href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef
+ * Eisl.
  */
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
@@ -76,8 +80,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
     private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
 
-    private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
-    private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
+    private static final DebugCounter trivialTracesCounter = Debug.counter("TraceRA[trivialTraces]");
+    private static final DebugCounter tracesCounter = Debug.counter("TraceRA[traces]");
 
     @Override
     @SuppressWarnings("try")
@@ -91,13 +95,14 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
-        Debug.dump(lir, "Before TraceRegisterAllocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
+        TraceIntervalMap intervalMap = getIntervalMap(context);
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
-                    tracesMetric.increment();
-                    if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
-                        trivialTracesMetric.increment();
+                    tracesCounter.increment();
+                    if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
+                        trivialTracesCounter.increment();
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
@@ -105,7 +110,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
                                         cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                        IntervalData intervalData = getAndDelete(intervalMap, trace);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig, intervalData);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
@@ -114,10 +120,27 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        Debug.dump(lir, "After trace allocation");
+        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
+    }
+
+    private static <B extends AbstractBlockBase<B>> IntervalData getAndDelete(TraceIntervalMap intervalMap, Trace<B> trace) {
+        if (intervalMap == null) {
+            return null;
+        }
+        IntervalData intervalData = intervalMap.get(trace);
+        // remove entry
+        intervalMap.put(trace, null);
+        return intervalData;
+    }
+
+    private static TraceIntervalMap getIntervalMap(AllocationContext context) {
+        if (!AllocationStage.Options.TraceRACombinedSSIConstruction.getValue()) {
+            return null;
+        }
+        return context.contextRemove(TraceIntervalMap.class);
     }
 
     @SuppressWarnings("unchecked")

@@ -83,6 +83,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
         public abstract AbstractBlockBase<?> getCurrentBlock();
 
+        @Override
         public abstract void close();
 
     }
@@ -220,7 +221,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     <I extends LIRInstruction> I append(I op);
 
-    void setInfo(BytecodePosition position);
+    void setSourcePosition(BytecodePosition position);
 
     void emitJump(LabelRef label);
 

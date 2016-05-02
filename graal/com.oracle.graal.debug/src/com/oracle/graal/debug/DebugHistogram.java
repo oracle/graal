@@ -56,6 +56,7 @@ public interface DebugHistogram {
             this.value = value;
         }
 
+        @Override
         public int compareTo(CountedValue o) {
             if (count < o.count) {
                 return 1;

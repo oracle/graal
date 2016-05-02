@@ -25,9 +25,7 @@ package com.oracle.graal.truffle.test;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.SourceStackTrace;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.replacements.PEGraphDecoder;
@@ -47,6 +45,7 @@ import com.oracle.graal.truffle.test.nodes.RecursionTestNode;
 import com.oracle.graal.truffle.test.nodes.RootTestNode;
 import com.oracle.graal.truffle.test.nodes.StoreLocalTestNode;
 import com.oracle.graal.truffle.test.nodes.StringEqualsNode;
+import com.oracle.graal.truffle.test.nodes.SynchronizedExceptionMergeNode;
 import com.oracle.graal.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -55,18 +54,6 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
         return 42;
-    }
-
-    @Before
-    public void before() {
-        InstrumentationTestMode.set(true);
-    }
-
-    @Override
-    @After
-    public void after() {
-        super.after();
-        InstrumentationTestMode.set(false);
     }
 
     @Test
@@ -246,5 +233,20 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         int actual = (Integer) compilable.call(new Object[0]);
         int expected = testObject.hashCode();
         Assert.assertEquals(expected, actual);
+    }
+
+    @Test
+    public void synchronizedExceptionMerge() {
+        /*
+         * Multiple non-inlineable methods with exception edges called from a synchronized method
+         * lead to a complicated Graal graph that involves the BytecodeFrame.UNWIND_BCI. This test
+         * checks that partial evaluation handles that case correctly.
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new SynchronizedExceptionMergeNode();
+        RootNode rootNode = new RootTestNode(fd, "synchronizedExceptionMerge", result);
+        OptimizedCallTarget compilable = compileHelper("synchronizedExceptionMerge", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
     }
 }

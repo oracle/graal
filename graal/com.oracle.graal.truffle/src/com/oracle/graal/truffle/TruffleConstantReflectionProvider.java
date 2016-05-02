@@ -46,26 +46,32 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         this.metaAccess = metaAccess;
     }
 
+    @Override
     public Boolean constantEquals(Constant x, Constant y) {
         return graalConstantReflection.constantEquals(x, y);
     }
 
+    @Override
     public Integer readArrayLength(JavaConstant array) {
         return graalConstantReflection.readArrayLength(array);
     }
 
+    @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
         return graalConstantReflection.readArrayElement(array, index);
     }
 
+    @Override
     public JavaConstant readConstantArrayElement(JavaConstant array, int index) {
         return graalConstantReflection.readConstantArrayElement(array, index);
     }
 
+    @Override
     public JavaConstant readConstantArrayElementForOffset(JavaConstant array, long offset) {
         return graalConstantReflection.readConstantArrayElementForOffset(array, offset);
     }
 
+    @Override
     public JavaConstant readConstantFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         if (!field.isStatic() && receiver.isNonNull()) {
             JavaType fieldType = field.getType();
@@ -92,40 +98,48 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
     private boolean verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
         assert field.getAnnotation(Child.class) == null || constant.isNull() ||
                         metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : "@Child field value must be a Node: " + field +
-                        ", but was: " + constant;
+                                        ", but was: " + constant;
         assert field.getAnnotation(Children.class) == null || constant.isNull() || metaAccess.lookupJavaType(constant).isArray() : "@Children field value must be an array: " + field + ", but was: " +
                         constant;
         return true;
     }
 
+    @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return graalConstantReflection.readFieldValue(field, receiver);
     }
 
+    @Override
     public JavaConstant readStableFieldValue(ResolvedJavaField field, JavaConstant receiver, boolean isDefaultStable) {
         return graalConstantReflection.readStableFieldValue(field, receiver, isDefaultStable);
     }
 
+    @Override
     public JavaConstant boxPrimitive(JavaConstant source) {
         return graalConstantReflection.boxPrimitive(source);
     }
 
+    @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         return graalConstantReflection.unboxPrimitive(source);
     }
 
+    @Override
     public JavaConstant forString(String value) {
         return graalConstantReflection.forString(value);
     }
 
+    @Override
     public ResolvedJavaType asJavaType(Constant constant) {
         return graalConstantReflection.asJavaType(constant);
     }
 
+    @Override
     public MethodHandleAccessProvider getMethodHandleAccess() {
         return graalConstantReflection.getMethodHandleAccess();
     }
 
+    @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return graalConstantReflection.getMemoryAccessProvider();
     }

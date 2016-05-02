@@ -34,6 +34,7 @@ import com.oracle.graal.jtt.JTTTest;
 public class Thread_join02 extends JTTTest {
 
     private static class TestClass implements Runnable {
+        @Override
         public void run() {
             try {
                 Thread.sleep(200);

@@ -96,10 +96,12 @@ public class AMD64HotSpotMove {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return input;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -157,10 +159,12 @@ public class AMD64HotSpotMove {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return input;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }

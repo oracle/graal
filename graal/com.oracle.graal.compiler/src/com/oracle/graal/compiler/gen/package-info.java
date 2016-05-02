@@ -21,8 +21,7 @@
  * questions.
  */
 /**
- * This package contains the port of the LIRGenerator which translates
- * HIR instructions to LIR instructions for the backend.
+ * This package contains the port of the LIRGenerator which translates HIR instructions to LIR
+ * instructions for the backend.
  */
 package com.oracle.graal.compiler.gen;
-

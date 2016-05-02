@@ -46,12 +46,12 @@ public interface DebugConfig {
     boolean isLogEnabledForMethod();
 
     /**
-     * Determines if metering is enabled in the {@linkplain Debug#currentScope() current debug
+     * Determines if counting is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
      *
-     * @see Debug#metric(CharSequence)
+     * @see Debug#counter(CharSequence)
      */
-    boolean isMeterEnabled();
+    boolean isCountEnabled();
 
     /**
      * Determines if memory use tracking is enabled in the {@linkplain Debug#currentScope() current
@@ -76,6 +76,11 @@ public interface DebugConfig {
      * @see Debug#isVerifyEnabledForMethod()
      */
     boolean isVerifyEnabledForMethod();
+
+    /**
+     * @see Debug#isMethodMeterEnabled()
+     */
+    boolean isMethodMeterEnabled();
 
     /**
      * Adds an object the context used by this configuration to do filtering.
@@ -113,4 +118,5 @@ public interface DebugConfig {
      * Gets the modifiable collection of verify handlers registered with this configuration.
      */
     Collection<DebugVerifyHandler> verifyHandlers();
+
 }

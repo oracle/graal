@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -45,8 +45,8 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 
 public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 
-    private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
-    private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
+    private static final DebugCounter betterSpillPos = Debug.counter("BetterSpillPosition");
+    private static final DebugCounter betterSpillPosWithLowerProbability = Debug.counter("BetterSpillPositionWithLowerProbability");
 
     private final LinearScan allocator;
 
@@ -112,17 +112,17 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
                 interval.setSpillState(SpillState.StoreAtDefinition);
                 return;
             }
-            Debug.log(3, "Spill block candidate (initial): %s", spillBlock);
+            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Spill block candidate (initial): %s", spillBlock);
             // move out of loops
             if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
                 spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
             }
-            Debug.log(3, "Spill block candidate (after loop optimizaton): %s", spillBlock);
+            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Spill block candidate (after loop optimizaton): %s", spillBlock);
 
             /*
              * The spill block is the begin of the first split child (aka the value is on the
              * stack).
-             * 
+             *
              * The problem is that if spill block has more than one predecessor, the values at the
              * end of the predecessors might differ. Therefore, we would need a spill move in all
              * predecessors. To avoid this we spill in the dominator.
@@ -136,7 +136,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
                 spillBlock = dom;
             }
             if (defBlock.equals(spillBlock)) {
-                Debug.log(3, "Definition is the best choice: %s", defBlock);
+                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Definition is the best choice: %s", defBlock);
                 // definition is the best choice
                 interval.setSpillState(SpillState.StoreAtDefinition);
                 return;
@@ -148,7 +148,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             }
 
             if (defBlock.probability() <= spillBlock.probability()) {
-                Debug.log(3, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock, spillBlock.probability());
+                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock,
+                                spillBlock.probability());
                 // better spill block has the same probability -> do nothing
                 interval.setSpillState(SpillState.StoreAtDefinition);
                 return;
@@ -165,7 +166,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
             AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
             LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
-            Debug.log(3, "Insert spill move %s", move);
+            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Insert spill move %s", move);
             move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
             /*
              * We can use the insertion buffer directly because we always insert at position 1.
@@ -190,6 +191,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             block = allocator.blockForId(range.from);
         }
 
+        @Override
         public AbstractBlockBase<?> next() {
             AbstractBlockBase<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
@@ -209,6 +211,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             return currentBlock;
         }
 
+        @Override
         public boolean hasNext() {
             return block != null;
         }
@@ -216,6 +219,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
 
     private Iterable<AbstractBlockBase<?>> blocksForInterval(Interval interval) {
         return new Iterable<AbstractBlockBase<?>>() {
+            @Override
             public Iterator<AbstractBlockBase<?>> iterator() {
                 return new IntervalBlockIterator(interval);
             }

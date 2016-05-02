@@ -40,7 +40,7 @@ import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -67,7 +67,7 @@ import com.oracle.graal.nodes.util.GraphUtil;
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
-    private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
+    private static final DebugCounter CORRECTED_PROBABILITIES = Debug.counter("CorrectedProbabilities");
 
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;

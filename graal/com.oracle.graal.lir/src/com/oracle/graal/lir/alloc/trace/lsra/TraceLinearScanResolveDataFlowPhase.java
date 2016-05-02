@@ -35,7 +35,7 @@ import java.util.ListIterator;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp;
@@ -162,8 +162,8 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             return traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
         }
 
-        private static final DebugMetric numSSIResolutionMoves = Debug.metric("SSI LSRA[numSSIResolutionMoves]");
-        private static final DebugMetric numStackToStackMoves = Debug.metric("SSI LSRA[numStackToStackMoves]");
+        private static final DebugCounter numSSIResolutionMoves = Debug.counter("SSI LSRA[numSSIResolutionMoves]");
+        private static final DebugCounter numStackToStackMoves = Debug.counter("SSI LSRA[numStackToStackMoves]");
 
         private class MappingCollector implements PhiValueVisitor {
             final TraceLocalMoveResolver moveResolver;
@@ -177,6 +177,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 assert fromId >= 0;
             }
 
+            @Override
             public void visit(Value phiIn, Value phiOut) {
                 assert !isRegister(phiOut) : "Out is a register: " + phiOut;
                 assert !isRegister(phiIn) : "In is a register: " + phiIn;

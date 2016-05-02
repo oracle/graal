@@ -24,17 +24,16 @@ package com.oracle.graal.debug.internal;
 
 import static com.oracle.graal.debug.DebugCloseable.VOID_CLOSEABLE;
 
-import java.lang.management.ThreadMXBean;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Management;
+import com.oracle.graal.debug.TimeSource;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 
 public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer {
-
-    private static final ThreadMXBean threadMXBean = Management.getThreadMXBean();
+    private final boolean intercepting;
 
     /**
      * Records the most recent active timer.
@@ -53,29 +52,27 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
             return valueToString(value);
         }
 
+        @Override
         public TimeUnit getTimeUnit() {
             return accm.getTimeUnit();
         }
 
+        @Override
         public DebugCloseable start() {
             return accm.start();
         }
     }
 
-    public TimerImpl(String name, boolean conditional) {
+    public TimerImpl(String name, boolean conditional, boolean intercepting) {
         super(name, conditional, new FlatTimer(name, conditional));
         ((FlatTimer) flat).accm = this;
+        this.intercepting = intercepting;
     }
 
     @Override
     public DebugCloseable start() {
         if (!isConditional() || Debug.isTimeEnabled()) {
-            AbstractTimer result;
-            if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
-                result = new CpuTimeTimer(this);
-            } else {
-                result = new SystemNanosTimer(this);
-            }
+            AbstractTimer result = intercepting ? new InterceptingTimer(this) : new Timer(this);
             currentTimer.set(result);
             return result;
         } else {
@@ -87,6 +84,7 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
     }
 
+    @Override
     public DebugTimer getFlat() {
         return (FlatTimer) flat;
     }
@@ -96,11 +94,12 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         return valueToString(value);
     }
 
+    @Override
     public TimeUnit getTimeUnit() {
         return TimeUnit.NANOSECONDS;
     }
 
-    private abstract static class AbstractTimer extends CloseableCounterImpl implements DebugCloseable {
+    private abstract class AbstractTimer extends CloseableCounterImpl implements DebugCloseable {
 
         private AbstractTimer(AccumulatedDebugValue counter) {
             super(currentTimer.get(), counter);
@@ -113,27 +112,43 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         }
     }
 
-    private final class SystemNanosTimer extends AbstractTimer {
+    private final class Timer extends AbstractTimer {
 
-        SystemNanosTimer(TimerImpl timer) {
+        private Timer(TimerImpl timer) {
             super(timer);
         }
 
         @Override
         protected long getCounterValue() {
-            return System.nanoTime();
+            return TimeSource.getTimeNS();
         }
+
     }
 
-    private final class CpuTimeTimer extends AbstractTimer {
+    private final class InterceptingTimer extends AbstractTimer {
 
-        CpuTimeTimer(TimerImpl timer) {
+        private InterceptingTimer(TimerImpl timer) {
             super(timer);
         }
 
         @Override
         protected long getCounterValue() {
-            return threadMXBean.getCurrentThreadCpuTime();
+            return TimeSource.getTimeNS();
+        }
+
+        @Override
+        protected void interceptDifferenceAccm(long difference) {
+            if (Debug.isMethodMeterEnabled()) {
+                MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.getName(), difference);
+            }
+        }
+
+        @Override
+        protected void interceptDifferenceFlat(long difference) {
+            if (Debug.isMethodMeterEnabled()) {
+                MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.flat.getName(), difference);
+            }
         }
     }
+
 }

@@ -103,6 +103,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         }
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         ValueNode constant = tryConstantFold(array(), index(), tool.getMetaAccess(), tool.getConstantReflection());
         if (constant != null) {

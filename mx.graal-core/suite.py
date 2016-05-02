@@ -39,7 +39,7 @@ suite = {
             {
                "name" : "jvmci",
                "optional" : "true",
-               "version" : "62804a7d3877709d4d421650a6471a15f0d2cec6",
+               "version" : "1c62a8bac25ab47053fee37e33e463a954782114",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -47,7 +47,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "1996803c8f0a63d6e19721061f738efacfcb5c80",
+               "version" : "9c16d110f3aa63a17e3e2cf1b857e039c507078a",
                "urls" : [
                     {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -1080,7 +1080,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.truffle",
         "com.oracle.graal.compiler.test",
-        "truffle:TRUFFLE_SL",
+        "truffle:TRUFFLE_SL_TEST",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1321,7 +1321,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_TEST",
         "GRAAL_TRUFFLE",
-        "truffle:TRUFFLE_SL",
+        "truffle:TRUFFLE_SL_TEST",
       ],
     },
 

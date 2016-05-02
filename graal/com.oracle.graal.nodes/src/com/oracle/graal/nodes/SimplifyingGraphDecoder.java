@@ -83,6 +83,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             return false;
         }
 
+        @Override
         public Assumptions getAssumptions() {
             return assumptions;
         }

@@ -31,7 +31,7 @@ import java.util.List;
 import jdk.vm.ci.code.BytecodeFrame;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
@@ -121,13 +121,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
     private static final class CountingClosure implements VirtualClosure {
         int count;
 
+        @Override
         public void apply(VirtualState node) {
             count++;
         }
     }
 
     private static class IsolatedInitialization {
-        static final DebugMetric UNSWITCH_SPLIT_WITH_PHIS = Debug.metric("UnswitchSplitWithPhis");
+        static final DebugCounter UNSWITCH_SPLIT_WITH_PHIS = Debug.counter("UnswitchSplitWithPhis");
     }
 
     @Override

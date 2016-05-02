@@ -51,10 +51,12 @@ class NodeUsageIterator implements Iterator<Node> {
         advance();
     }
 
+    @Override
     public boolean hasNext() {
         return current != null;
     }
 
+    @Override
     public Node next() {
         Node result = current;
         if (result == null) {

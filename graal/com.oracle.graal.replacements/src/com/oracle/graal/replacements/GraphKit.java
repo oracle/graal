@@ -97,7 +97,9 @@ public class GraphKit {
         this.lastFixedNode = graph.start();
 
         structures = new ArrayList<>();
-        /* Add a dummy element, so that the access of the last element never leads to an exception. */
+        /*
+         * Add a dummy element, so that the access of the last element never leads to an exception.
+         */
         structures.add(new Structure() {
         });
     }

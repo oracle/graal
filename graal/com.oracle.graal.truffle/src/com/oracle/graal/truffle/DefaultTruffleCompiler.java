@@ -24,8 +24,6 @@ package com.oracle.graal.truffle;
 
 import java.util.ListIterator;
 
-import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -40,12 +38,13 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
+import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.BasePhase;
+import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.runtime.RuntimeProvider;
-import com.oracle.graal.truffle.phases.InstrumentBranchesPhase;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 
@@ -110,8 +109,8 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
                 return new BytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext) {
                     @Override
                     protected void postProcessIfNode(ValueNode node) {
-                        if (mustInstrumentBranches) {
-                            InstrumentBranchesPhase.addNodeSourceLocation(node, createBytecodePosition());
+                        if (mustInstrumentBranches && node.getNodeSourcePosition() == null) {
+                            node.setNodeSourcePosition(createBytecodePosition());
                         }
                     }
                 };

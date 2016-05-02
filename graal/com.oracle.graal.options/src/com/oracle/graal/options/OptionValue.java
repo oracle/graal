@@ -357,6 +357,7 @@ public class OptionValue<T> {
 
         abstract void getOverrides(OptionValue<?> option, Collection<Object> c);
 
+        @Override
         public abstract void close();
     }
 
@@ -488,6 +489,7 @@ public class OptionValue<T> {
                     }
                     Collections.sort(options, new Comparator<OptionValue<?>>() {
 
+                        @Override
                         public int compare(OptionValue<?> o1, OptionValue<?> o2) {
                             if (o1.reads < o2.reads) {
                                 return -1;

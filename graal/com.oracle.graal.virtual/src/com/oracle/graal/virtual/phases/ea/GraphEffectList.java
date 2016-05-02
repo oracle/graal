@@ -150,10 +150,12 @@ public class GraphEffectList extends EffectList {
 
     public void killIfBranch(IfNode ifNode, boolean constantCondition) {
         add("kill if branch", new Effect() {
+            @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 graph.removeSplitPropagate(ifNode, ifNode.getSuccessor(constantCondition));
             }
 
+            @Override
             public boolean isCfgKill() {
                 return true;
             }
@@ -162,11 +164,13 @@ public class GraphEffectList extends EffectList {
 
     public void replaceWithSink(FixedWithNextNode node, ControlSinkNode sink) {
         add("kill if branch", new Effect() {
+            @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 node.replaceAtPredecessor(sink);
                 GraphUtil.killCFG(node);
             }
 
+            @Override
             public boolean isCfgKill() {
                 return true;
             }

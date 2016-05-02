@@ -110,7 +110,9 @@ public final class ComputeBlockOrder {
     private static <T extends AbstractBlockBase<T>> void computeLinearScanOrder(List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
-            addPathToLinearScanOrder(nextImportantPath, order, worklist, visitedBlocks);
+            do {
+                nextImportantPath = addPathToLinearScanOrder(nextImportantPath, order, worklist, visitedBlocks);
+            } while (nextImportantPath != null);
         }
     }
 
@@ -127,7 +129,7 @@ public final class ComputeBlockOrder {
     /**
      * Add a linear path to the linear scan order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> void addPathToLinearScanOrder(T block, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> T addPathToLinearScanOrder(T block, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
         T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
@@ -146,11 +148,12 @@ public final class ComputeBlockOrder {
                 if (unscheduledSum > block.probability() / PENALTY_VERSUS_UNSCHEDULED) {
                     // Add this merge only after at least one additional predecessor gets scheduled.
                     visitedBlocks.clear(mostLikelySuccessor.getId());
-                    return;
+                    return null;
                 }
             }
-            addPathToLinearScanOrder(mostLikelySuccessor, order, worklist, visitedBlocks);
+            return mostLikelySuccessor;
         }
+        return null;
     }
 
     /**

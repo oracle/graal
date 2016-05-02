@@ -63,7 +63,8 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         this(TYPE, condition, anchor, reason, action, negated, speculation);
     }
 
-    protected GuardNode(NodeClass<? extends GuardNode> c, LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, JavaConstant speculation) {
+    protected GuardNode(NodeClass<? extends GuardNode> c, LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated,
+                    JavaConstant speculation) {
         super(c, StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;
@@ -75,28 +76,34 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     /**
      * The instruction that produces the tested boolean value.
      */
+    @Override
     public LogicNode getCondition() {
         return condition;
     }
 
+    @Override
     public void setCondition(LogicNode x, boolean negated) {
         updateUsages(condition, x);
         condition = x;
         this.negated = negated;
     }
 
+    @Override
     public boolean isNegated() {
         return negated;
     }
 
+    @Override
     public DeoptimizationReason getReason() {
         return reason;
     }
 
+    @Override
     public DeoptimizationAction getAction() {
         return action;
     }
 
+    @Override
     public JavaConstant getSpeculation() {
         return speculation;
     }

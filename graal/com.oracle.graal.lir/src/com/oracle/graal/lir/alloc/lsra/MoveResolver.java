@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
@@ -46,7 +46,7 @@ import com.oracle.graal.lir.LIRInstruction;
  */
 public class MoveResolver {
 
-    private static final DebugMetric cycleBreakingSlotsAllocated = Debug.metric("LSRA[cycleBreakingSlotsAllocated]");
+    private static final DebugCounter cycleBreakingSlotsAllocated = Debug.counter("LSRA[cycleBreakingSlotsAllocated]");
 
     private final LinearScan allocator;
 
@@ -183,7 +183,8 @@ public class MoveResolver {
         }
         for (int i = 0; i < mappingTo.size(); i++) {
             Interval interval = mappingTo.get(i);
-            assert !usedRegs.contains(interval.location()) || checkIntervalLocation(mappingFrom.get(i), interval, mappingFromOpr.get(i)) : "stack slots used in mappingFrom must be disjoint to mappingTo";
+            assert !usedRegs.contains(interval.location()) ||
+                            checkIntervalLocation(mappingFrom.get(i), interval, mappingFromOpr.get(i)) : "stack slots used in mappingFrom must be disjoint to mappingTo";
         }
     }
 

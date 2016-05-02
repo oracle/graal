@@ -95,6 +95,7 @@ public class OptionsVerifierTest {
             }
         }
 
+        @Override
         public void close() throws IOException {
             for (Object e : entries.values()) {
                 if (e instanceof URLClassLoader) {
@@ -197,7 +198,8 @@ public class OptionsVerifierTest {
         void error(String message) {
             String errorMessage = format(
                             "%s:%d: Illegal code in %s.<clinit> which may be executed when %s.%s is initialized:%n%n    %s%n%n" + "The recommended solution is to move " + option.getName() +
-                                            " into a separate class (e.g., %s.Options).%n", sourceFile, lineNo, cls.getSimpleName(), option.getDeclaringClass().getSimpleName(), option.getName(),
+                                            " into a separate class (e.g., %s.Options).%n",
+                            sourceFile, lineNo, cls.getSimpleName(), option.getDeclaringClass().getSimpleName(), option.getName(),
                             message, option.getDeclaringClass().getSimpleName());
             throw new InternalError(errorMessage);
 

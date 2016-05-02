@@ -83,9 +83,9 @@ import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
  * floating node, it is lowered separately for each of its usages.
  *
- * The type tests implemented are described in the paper <a
- * href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a> by
- * Cliff Click and John Rose.
+ * The type tests implemented are described in the paper
+ * <a href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a>
+ * by Cliff Click and John Rose.
  */
 public class InstanceOfSnippets implements Snippets {
 

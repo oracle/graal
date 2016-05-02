@@ -144,6 +144,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         Registration r = new Registration(plugins.getInvocationPlugins(), DataPatchInConstantsTest.class);
 
         r.register1("loadThroughPatch", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.addPush(JavaKind.Object, new LoadThroughPatchNode(arg));
                 return true;
@@ -151,6 +152,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         });
 
         r.register1("loadThroughCompressedPatch", Object.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 ValueNode compressed = b.add(CompressionNode.compress(arg, config().getOopEncoding()));
                 ValueNode patch = b.add(new LoadThroughPatchNode(compressed));
@@ -173,6 +175,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
             this.input = input;
         }
 
+        @Override
         public void generate(NodeLIRBuilderTool generator) {
             assert input.isConstant();
 

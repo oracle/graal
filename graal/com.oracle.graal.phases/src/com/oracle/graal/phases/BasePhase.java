@@ -28,7 +28,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Graph;
@@ -41,9 +41,6 @@ import com.oracle.graal.nodes.StructuredGraph;
  */
 public abstract class BasePhase<C> {
 
-    public static final int PHASE_DUMP_LEVEL = 1;
-    public static final int BEFORE_PHASE_DUMP_LEVEL = 3;
-
     private CharSequence name;
 
     /**
@@ -54,13 +51,13 @@ public abstract class BasePhase<C> {
     /**
      * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
      */
-    private final DebugMetric executionCount;
+    private final DebugCounter executionCount;
 
     /**
      * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
      * {@link #apply(StructuredGraph, Object, boolean)}.
      */
-    private final DebugMetric inputNodesCount;
+    private final DebugCounter inputNodesCount;
 
     /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
@@ -86,13 +83,13 @@ public abstract class BasePhase<C> {
         /**
          * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
          */
-        private final DebugMetric executionCount;
+        private final DebugCounter executionCount;
 
         /**
          * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
          * {@link #apply(StructuredGraph, Object, boolean)}.
          */
-        private final DebugMetric inputNodesCount;
+        private final DebugCounter inputNodesCount;
 
         /**
          * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
@@ -101,9 +98,9 @@ public abstract class BasePhase<C> {
 
         BasePhaseStatistics(Class<?> clazz) {
             timer = Debug.timer("PhaseTime_%s", clazz);
-            executionCount = Debug.metric("PhaseCount_%s", clazz);
+            executionCount = Debug.counter("PhaseCount_%s", clazz);
             memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", clazz);
-            inputNodesCount = Debug.metric("PhaseNodes_%s", clazz);
+            inputNodesCount = Debug.counter("PhaseNodes_%s", clazz);
         }
     }
 
@@ -139,14 +136,14 @@ public abstract class BasePhase<C> {
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
-            if (dumpGraph && Debug.isDumpEnabled(BEFORE_PHASE_DUMP_LEVEL)) {
-                Debug.dump(BEFORE_PHASE_DUMP_LEVEL, graph, "Before phase %s", getName());
+            if (dumpGraph && Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL)) {
+                Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before phase %s", getName());
             }
             inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                Debug.dump(PHASE_DUMP_LEVEL, graph, "%s", getName());
+            if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", getName());
             }
             if (Fingerprint.ENABLED) {
                 String graphDesc = graph.method() == null ? graph.name : graph.method().format("%H.%n(%p)");

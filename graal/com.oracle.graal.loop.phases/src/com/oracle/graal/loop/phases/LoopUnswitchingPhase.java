@@ -25,7 +25,7 @@ package com.oracle.graal.loop.phases;
 import java.util.List;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopPolicies;
@@ -35,9 +35,9 @@ import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.StructuredGraph;
 
 public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
-    private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
-    private static final DebugMetric UNSWITCH_CANDIDATES = Debug.metric("UnswitchCandidates");
-    private static final DebugMetric UNSWITCH_EARLY_REJECTS = Debug.metric("UnswitchEarlyRejects");
+    private static final DebugCounter UNSWITCHED = Debug.counter("Unswitched");
+    private static final DebugCounter UNSWITCH_CANDIDATES = Debug.counter("UnswitchCandidates");
+    private static final DebugCounter UNSWITCH_EARLY_REJECTS = Debug.counter("UnswitchEarlyRejects");
 
     public LoopUnswitchingPhase(LoopPolicies policies) {
         super(policies);

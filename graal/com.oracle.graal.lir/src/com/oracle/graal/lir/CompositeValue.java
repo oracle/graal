@@ -32,7 +32,7 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
@@ -50,7 +50,7 @@ public abstract class CompositeValue extends Value {
         OperandFlag[] value() default OperandFlag.REG;
     }
 
-    private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
+    private static final DebugCounter COMPOSITE_VALUE_COUNT = Debug.counter("CompositeValues");
 
     public CompositeValue(LIRKind kind) {
         super(kind);

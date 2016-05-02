@@ -190,7 +190,7 @@ public abstract class Stub {
                 }
 
                 assert destroyedCallerRegisters != null;
-                try (Scope s = Debug.scope("CodeInstall")) {
+                try (Scope s = Debug.scope("CodeInstall", compResult)) {
                     HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(null, null, compResult);
                     code = codeCache.installCode(null, compiledCode, null, null, false);
                 } catch (Throwable e) {

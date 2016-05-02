@@ -37,6 +37,7 @@ public class BC_invokeinterface extends JTTTest {
 
     static class IClass implements ITest {
 
+        @Override
         public int id(int a) {
             return a;
         }

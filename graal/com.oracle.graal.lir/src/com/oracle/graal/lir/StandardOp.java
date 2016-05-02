@@ -184,6 +184,7 @@ public class StandardOp {
             size = 0;
         }
 
+        @Override
         public void setOutgoingValues(Value[] values) {
             assert this.outgoingValues.length == 0;
             assert values != null;
@@ -191,20 +192,24 @@ public class StandardOp {
             size = values.length;
         }
 
+        @Override
         public int getOutgoingSize() {
             return size;
         }
 
+        @Override
         public Value getOutgoingValue(int idx) {
             assert checkRange(idx);
             return outgoingValues[idx];
         }
 
+        @Override
         public void clearOutgoingValues() {
             outgoingValues = Value.NO_VALUES;
             size = 0;
         }
 
+        @Override
         public int addOutgoingValues(Value[] values) {
             int t = size + values.length;
             if (t >= outgoingValues.length) {
@@ -221,6 +226,7 @@ public class StandardOp {
             return idx < size;
         }
 
+        @Override
         public void forEachOutgoingValue(InstructionValueProcedure proc) {
             for (int i = 0; i < outgoingValues.length; i++) {
                 outgoingValues[i] = proc.doValue(this, outgoingValues[i], OperandMode.ALIVE, outgoingFlags);

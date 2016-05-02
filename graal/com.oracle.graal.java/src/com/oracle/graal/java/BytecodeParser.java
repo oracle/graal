@@ -226,7 +226,6 @@ import static com.oracle.graal.bytecode.Bytecodes.SWAP;
 import static com.oracle.graal.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.graal.bytecode.Bytecodes.nameOf;
 import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
-import static com.oracle.graal.compiler.common.GraalOptions.NewInfopoints;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintProfilingInformation;
 import static com.oracle.graal.compiler.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static com.oracle.graal.compiler.common.GraalOptions.StressInvokeWithExceptionNode;
@@ -256,11 +255,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.type.TypeReference;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.common.JVMCIError;
@@ -299,14 +295,16 @@ import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
@@ -343,7 +341,6 @@ import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.SimpleInfopointNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -374,12 +371,15 @@ import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.XorNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.extended.GuardedNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
@@ -387,7 +387,6 @@ import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
@@ -403,7 +402,6 @@ import com.oracle.graal.nodes.java.NewMultiArrayNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
-import com.oracle.graal.nodes.java.TypeProfileNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -429,9 +427,9 @@ public class BytecodeParser implements GraphBuilderContext {
     /**
      * Meters the number of actual bytecodes parsed.
      */
-    public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
+    public static final DebugCounter BytecodesParsed = Debug.counter("BytecodesParsed");
 
-    protected static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
+    protected static final DebugCounter EXPLICIT_EXCEPTIONS = Debug.counter("ExplicitExceptions");
 
     /**
      * A scoped object for tasks to be performed after parsing an intrinsic such as processing
@@ -467,6 +465,7 @@ public class BytecodeParser implements GraphBuilderContext {
             stateBefore = parser.frameState.create(parser.bci(), parser.getNonIntrinsicAncestor(), false, argSlotKinds, args);
         }
 
+        @Override
         public void close() {
             IntrinsicContext intrinsic = parser.intrinsicContext;
             if (intrinsic != null && intrinsic.isPostParseInlined()) {
@@ -599,7 +598,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         assert method.getCode() != null : "method must contain bytecodes: " + method;
 
-        if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
+        if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
             lnt = method.getLineNumberTable();
             previousLineNumber = -1;
         }
@@ -707,9 +706,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             finishPrepare(lastInstr);
 
-            if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-                genInfoPointNode(InfopointReason.METHOD_START, null);
-            }
+            genInfoPointNode(InfopointReason.METHOD_START, null);
 
             currentBlock = blockMap.getStartBlock();
             setEntryState(startBlock, frameState);
@@ -724,8 +721,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 processBlock(block);
             }
 
-            if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue() && this.beforeReturnNode != startInstruction) {
-                Debug.dump(graph, "Bytecodes parsed: %s.%s", method.getDeclaringClass().getUnqualifiedName(), method.getName());
+            if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue() && this.beforeReturnNode != startInstruction) {
+                Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Bytecodes parsed: %s.%s", method.getDeclaringClass().getUnqualifiedName(), method.getName());
             }
         }
     }
@@ -1121,9 +1118,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genThrow() {
-        if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-            genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
-        }
+        genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
 
         ValueNode exception = frameState.pop(JavaKind.Object);
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
@@ -1131,8 +1126,24 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
-    protected ValueNode createInstanceOf(TypeReference type, ValueNode object, TypeProfileNode anchor) {
-        return InstanceOfNode.create(type, object, anchor);
+    protected LogicNode createInstanceOf(TypeReference type, ValueNode object) {
+        return InstanceOfNode.create(type, object);
+    }
+
+    protected AnchoringNode createAnchor(JavaTypeProfile profile) {
+        if (profile == null || profile.getNotRecordedProbability() > 0.0) {
+            return null;
+        } else {
+            return append(new ValueAnchorNode(null));
+        }
+    }
+
+    protected LogicNode createInstanceOf(TypeReference type, ValueNode object, JavaTypeProfile profile) {
+        return InstanceOfNode.create(type, object, profile, createAnchor(profile));
+    }
+
+    protected LogicNode createInstanceOfAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile) {
+        return InstanceOfNode.createAllowNull(type, object, profile, createAnchor(profile));
     }
 
     protected ValueNode genConditional(ValueNode x) {
@@ -1293,16 +1304,19 @@ public class BytecodeParser implements GraphBuilderContext {
     private final StampProvider stampProvider;
     protected final IntrinsicContext intrinsicContext;
 
+    @Override
     public InvokeKind getInvokeKind() {
         return currentInvokeKind;
     }
 
+    @Override
     public JavaType getInvokeReturnType() {
         return currentInvokeReturnType;
     }
 
     private boolean forceInliningEverything;
 
+    @Override
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
@@ -1540,6 +1554,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return null;
     }
 
+    @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
         boolean res = inline(targetMethod, substitute, true, args);
         assert res : "failed to inline " + substitute;
@@ -1741,9 +1756,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 append(new RegisterFinalizerNode(receiver));
             }
         }
-        if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-            genInfoPointNode(InfopointReason.METHOD_END, x);
-        }
+        genInfoPointNode(InfopointReason.METHOD_END, x);
 
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
@@ -1861,6 +1874,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return added;
     }
 
+    @Override
     public <T extends ValueNode> T recursiveAppend(T v) {
         if (v.graph() != null) {
             return v;
@@ -2067,9 +2081,9 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedNode target = createTarget(probability, block, stateAfter);
         AbstractBeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node,"
-                        +
-                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
+        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode &&
+                        ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node," +
+                                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 
@@ -2186,7 +2200,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         ValueNode exception = frameState.stack[0];
                         FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                        append(new IfNode(graph.addOrUniqueWithInputs(InstanceOfNode.create(checkedCatchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                        append(new IfNode(graph.addOrUniqueWithInputs(createInstanceOf(checkedCatchType, exception)), trueSuccessor, nextDispatch, 0));
                         return;
                     }
                 }
@@ -2194,6 +2208,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
             BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
             ValueNode exception = frameState.stack[0];
+            /* Anchor for the piNode, which must be before any LoopExit inserted by createTarget. */
+            BeginNode piNodeAnchor = graph.add(new BeginNode());
             ObjectStamp checkedStamp = StampFactory.objectNonNull(checkedCatchType);
             PiNode piNode = graph.addWithoutUnique(new PiNode(exception, checkedStamp));
             frameState.pop(JavaKind.Object);
@@ -2202,7 +2218,9 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.pop(JavaKind.Object);
             frameState.push(JavaKind.Object, exception);
             FixedNode nextDispatch = createTarget(nextBlock, frameState);
-            IfNode ifNode = append(new IfNode(graph.unique(InstanceOfNode.create(checkedCatchType, exception, null)), catchSuccessor, nextDispatch, 0.5));
+            piNodeAnchor.setNext(catchSuccessor);
+            IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception)), piNodeAnchor, nextDispatch, 0.5));
+            assert ifNode.trueSuccessor() == piNodeAnchor;
             piNode.setGuard(ifNode.trueSuccessor());
         } else {
             handleUnresolvedExceptionType(catchType);
@@ -2260,13 +2278,13 @@ public class BytecodeParser implements GraphBuilderContext {
         BytecodesParsed.add(block.endBci - bci);
 
         /* Reset line number for new block */
-        if (graphBuilderConfig.insertSimpleDebugInfo()) {
+        if (graphBuilderConfig.insertFullInfopoints()) {
             previousLineNumber = -1;
         }
 
         while (bci < endBCI) {
-            if (GraalOptions.OldInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-                currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : (graphBuilderConfig.insertFullDebugInfo() ? -1 : bci);
+            if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
+                currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : -1;
                 if (currentLineNumber != previousLineNumber) {
                     genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
                     previousLineNumber = currentLineNumber;
@@ -2318,8 +2336,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private DebugCloseable openNodeContext() {
-        if (NewInfopoints.getValue() && graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-            return graph.withNodeContext(createBytecodePosition());
+        if (graphBuilderConfig.trackNodeSourcePosition() && !parsingIntrinsic()) {
+            return graph.withNodeSourcePosition(createBytecodePosition());
         }
         return null;
     }
@@ -2375,20 +2393,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genInfoPointNode(InfopointReason reason, ValueNode escapedReturnValue) {
-        if (!parsingIntrinsic()) {
-            if (graphBuilderConfig.insertFullDebugInfo()) {
-                append(new FullInfopointNode(reason, createFrameState(bci(), null), escapedReturnValue));
-            } else {
-                BytecodePosition position = createBytecodePosition();
-                // Update the previous infopoint position if no new fixed nodes were inserted
-                if (lastInstr instanceof SimpleInfopointNode) {
-                    SimpleInfopointNode lastInfopoint = (SimpleInfopointNode) lastInstr;
-                    if (lastInfopoint.getReason() == reason) {
-                        lastInfopoint.setPosition(position);
-                    }
-                }
-                append(new SimpleInfopointNode(reason, position));
-            }
+        if (!parsingIntrinsic() && graphBuilderConfig.insertFullInfopoints()) {
+            append(new FullInfopointNode(reason, createFrameState(bci(), null), escapedReturnValue));
         }
     }
 
@@ -2486,8 +2492,9 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    /* Hook for subclasses of BytecodeParser to generate custom nodes before an IfNode. */
-
+    /**
+     * Hook for subclasses to generate custom nodes before an IfNode.
+     */
     @SuppressWarnings("unused")
     protected void postProcessIfNode(ValueNode node) {
     }
@@ -2584,19 +2591,23 @@ public class BytecodeParser implements GraphBuilderContext {
         return currentBC == Bytecodes.IRETURN;
     }
 
+    @Override
     public StampProvider getStampProvider() {
         return stampProvider;
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public void push(JavaKind slotKind, ValueNode value) {
         assert value.isAlive();
         frameState.push(slotKind, value);
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
@@ -2604,14 +2615,17 @@ public class BytecodeParser implements GraphBuilderContext {
     /**
      * Gets the graph being processed by this builder.
      */
+    @Override
     public StructuredGraph getGraph() {
         return graph;
     }
 
+    @Override
     public BytecodeParser getParent() {
         return parent;
     }
 
+    @Override
     public IntrinsicContext getIntrinsic() {
         return intrinsicContext;
     }
@@ -2633,6 +2647,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return fmt.toString();
     }
 
+    @Override
     public BailoutException bailout(String string) {
         FrameState currentFrameState = createFrameState(bci(), null);
         StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
@@ -2647,13 +2662,14 @@ public class BytecodeParser implements GraphBuilderContext {
         return frameState.create(bci, forStateSplit);
     }
 
+    @Override
     public void setStateAfter(StateSplit sideEffect) {
         assert sideEffect.hasSideEffect();
         FrameState stateAfter = createFrameState(stream.nextBCI(), sideEffect);
         sideEffect.setStateAfter(stateAfter);
     }
 
-    protected BytecodePosition createBytecodePosition() {
+    protected NodeSourcePosition createBytecodePosition() {
         return frameState.createBytecodePosition(bci());
     }
 
@@ -2665,6 +2681,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return stream;
     }
 
+    @Override
     public int bci() {
         return stream.currentBCI();
     }
@@ -2977,7 +2994,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object));
                     if (typeCheck.isTautology()) {
                         castNode = object;
                     } else {
@@ -2988,11 +3005,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (castNode == null) {
-            TypeProfileNode anchor = TypeProfileNode.create(profile);
-            if (anchor != null) {
-                append(anchor);
-            }
-            LogicNode condition = genUnique(InstanceOfNode.createAllowNull(checkedType, object, anchor));
+            LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, profile));
             if (condition.isTautology()) {
                 castNode = object;
             } else {
@@ -3034,13 +3047,13 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        ValueNode instanceOfNode = null;
+        LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
-                    LogicNode typeCheck = append(InstanceOfNode.create(TypeReference.createExactTrusted(singleType), object, null));
+                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object));
                     if (!typeCheck.isTautology()) {
                         append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
                     }
@@ -3049,11 +3062,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         if (instanceOfNode == null) {
-            TypeProfileNode anchor = TypeProfileNode.create(profile);
-            if (anchor != null) {
-                append(anchor);
-            }
-            instanceOfNode = createInstanceOf(resolvedType, object, anchor);
+            instanceOfNode = createInstanceOf(resolvedType, object, profile);
         }
         frameState.push(JavaKind.Int, append(genConditional(genUnique(instanceOfNode))));
     }
@@ -3626,6 +3635,7 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(JavaKind.Int, append(genArrayLength(array)));
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
@@ -3659,10 +3669,12 @@ public class BytecodeParser implements GraphBuilderContext {
         Debug.log("%s", sb);
     }
 
+    @Override
     public boolean parsingIntrinsic() {
         return intrinsicContext != null;
     }
 
+    @Override
     public BytecodeParser getNonIntrinsicAncestor() {
         BytecodeParser ancestor = parent;
         while (ancestor != null && ancestor.parsingIntrinsic()) {

@@ -31,8 +31,8 @@ import com.oracle.graal.options.OptionValue;
 /**
  * Options related to HotSpot Graal-generated stubs.
  *
- * Note: This must be a top level class to work around for <a
- * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
+ * Note: This must be a top level class to work around for
+ * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
 public class StubOptions {
     // @formatter:off

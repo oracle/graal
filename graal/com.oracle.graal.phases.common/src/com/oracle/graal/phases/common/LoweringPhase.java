@@ -90,10 +90,12 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             this.guard = guard;
         }
 
+        @Override
         public GuardingNode getGuard() {
             return guard;
         }
 
+        @Override
         public void setGuard(GuardingNode guard) {
             updateUsagesInterface(this.guard, guard);
             this.guard = guard;
@@ -154,6 +156,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return createGuard(before, condition, deoptReason, action, JavaConstant.NULL_POINTER, false);
         }
 
+        @Override
         public StampProvider getStampProvider() {
             return context.getStampProvider();
         }
@@ -185,6 +188,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
         }
 
+        @Override
         public FixedWithNextNode lastFixedNode() {
             return lastFixedNode;
         }
@@ -382,7 +386,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     Collection<Node> unscheduledUsages = null;
                     assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
                     Mark preLoweringMark = node.graph().getMark();
-                    try (DebugCloseable s = node.graph().withNodeContext(node)) {
+                    try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
                         ((Lowerable) node).lower(loweringTool);
                     }
                     if (loweringTool.guardAnchor.asNode().isDeleted()) {
@@ -460,7 +464,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     *
+     * 
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

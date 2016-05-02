@@ -66,6 +66,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return metaAccess;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflectionProvider() {
         return constantReflection;
     }
@@ -87,6 +88,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return closure.getAliasAndResolve(state, value);
     }
 
+    @Override
     public ValueNode getEntry(VirtualObjectNode virtualObject, int index) {
         return state.getObjectState(virtualObject).getEntry(index);
     }
@@ -105,11 +107,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         state.setEntry(virtual.getObjectId(), index, newValue);
     }
 
+    @Override
     public void setEnsureVirtualized(VirtualObjectNode virtualObject, boolean ensureVirtualized) {
         int id = virtualObject.getObjectId();
         state.setEnsureVirtualized(id, ensureVirtualized);
     }
 
+    @Override
     public boolean getEnsureVirtualized(VirtualObjectNode virtualObject) {
         return state.getObjectState(virtualObject).getEnsureVirtualized();
     }
@@ -170,7 +174,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         }
         state.addObject(id, new ObjectState(entryState, locks, ensureVirtualized));
         closure.addAndMarkAlias(virtualObject, virtualObject);
-        PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
+        PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment();
     }
 
     @Override
@@ -189,27 +193,32 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public boolean ensureMaterialized(VirtualObjectNode virtualObject) {
-        return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.METRIC_MATERIALIZATIONS_UNHANDLED);
+        return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.COUNTER_MATERIALIZATIONS_UNHANDLED);
     }
 
+    @Override
     public void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
         int id = virtualObject.getObjectId();
         state.addLock(id, monitorId);
     }
 
+    @Override
     public MonitorIdNode removeLock(VirtualObjectNode virtualObject) {
         int id = virtualObject.getObjectId();
         return state.removeLock(id);
     }
 
+    @Override
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
 
+    @Override
     public boolean canonicalizeReads() {
         return false;
     }
@@ -219,6 +228,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return true;
     }
 
+    @Override
     public Assumptions getAssumptions() {
         return assumptions;
     }

@@ -26,7 +26,7 @@ import com.oracle.truffle.api.CompilerOptions;
 
 public class CounterBasedCompilationPolicy implements CompilationPolicy {
 
-    private boolean compilationFailed;
+    private volatile boolean compilationFailed;
 
     @Override
     public boolean shouldCompile(CompilationProfile profile, CompilerOptions options) {

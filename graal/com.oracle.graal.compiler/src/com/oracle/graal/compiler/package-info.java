@@ -22,7 +22,7 @@
  */
 
 /**
- * The top-level package in Graal containing the main compiler class {@link com.oracle.graal.compiler.GraalCompiler}.
+ * The top-level package in Graal containing the main compiler class
+ * {@link com.oracle.graal.compiler.GraalCompiler}.
  */
 package com.oracle.graal.compiler;
-

@@ -179,6 +179,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
 
+    @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args) {
         return getSnippet(method, null, args);
     }
@@ -193,7 +194,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
-                Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
+                Debug.counter("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache.getValue() || args != null) {
                     return newGraph;
                 }
@@ -209,11 +210,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         // No initialization needed as snippet graphs are created on demand in getSnippet
     }
 
+    @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         return plugin != null && (!plugin.inlineOnly() || invokeBci >= 0);
     }
 
+    @Override
     public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod method) {
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
         if (plugin instanceof MethodSubstitutionPlugin) {
@@ -304,7 +307,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
                 finalizeGraph(graph);
 
-                Debug.dump(graph, "%s: Final", method.getName());
+                Debug.dump(Debug.INFO_LOG_LEVEL, graph, "%s: Final", method.getName());
 
                 return graph;
             } catch (Throwable e) {
@@ -391,8 +394,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                     initialIntrinsicContext = new IntrinsicContext(original, method, INLINE_AFTER_PARSING);
                 }
 
-                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(
-                                graph);
+                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
+                                initialIntrinsicContext).apply(
+                                                graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));

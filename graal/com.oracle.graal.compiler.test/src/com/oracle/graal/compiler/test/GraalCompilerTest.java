@@ -39,26 +39,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
@@ -72,7 +55,6 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
@@ -84,7 +66,7 @@ import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.InfopointNode;
+import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -115,6 +97,22 @@ import com.oracle.graal.phases.tiers.TargetProvider;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.GraalTest;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -255,11 +253,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
     }
 
-    @BeforeClass
-    public static void initializeDebugging() {
-        DebugEnvironment.initialize(System.out);
-    }
-
     private Scope debugScope;
 
     @Before
@@ -300,13 +293,13 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, graph, actualString);
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
-            Debug.dump(expected, "Node count not matching - expected");
-            Debug.dump(graph, "Node count not matching - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "Node count not matching - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Node count not matching - actual");
             Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount() + "\n" + mismatchString);
         }
         if (!expectedString.equals(actualString)) {
-            Debug.dump(expected, "mismatching graphs - expected");
-            Debug.dump(graph, "mismatching graphs - actual");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, expected, "mismatching graphs - expected");
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "mismatching graphs - actual");
             Assert.fail(mismatchString);
         }
     }
@@ -379,7 +372,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             result.append("\n");
             for (Node node : scheduleResult.getBlockToNodesMap().get(block)) {
                 if (node instanceof ValueNode && node.isAlive()) {
-                    if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof InfopointNode)) {
+                    if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof FullInfopointNode)) {
                         if (node instanceof ConstantNode) {
                             String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
                             String str = name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
@@ -772,7 +765,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }
 
-            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner)) {
+            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
                 installedCode = addMethod(installedCodeOwner, compResult);
                 if (installedCode == null) {
                     throw new JVMCIError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
@@ -954,12 +947,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
         }, GraalCompilerTest.class, "breakpoint");
         invocationPlugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;

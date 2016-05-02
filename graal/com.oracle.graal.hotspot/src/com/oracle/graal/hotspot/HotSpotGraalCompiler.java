@@ -46,6 +46,7 @@ import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
+import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.phases.OnStackReplacementPhase;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -54,7 +55,6 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.spi.Replacements;
@@ -86,9 +86,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
             DebugEnvironment.initialize(TTY.out);
         }
-
         CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
-        try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig())) {
+        try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());
+                        Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(request.getMethod()), true, request.getMethod())) {
             return task.runCompilation();
         }
     }
@@ -158,7 +158,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
+                            initialReplacementContext).apply(graph);
             assert !graph.isFrozen();
             return graph;
         }
@@ -195,7 +196,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             if (shouldDebugNonSafepoints) {
                 GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
                 GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-                graphBuilderConfig = graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple);
+                graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
                 GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
                 newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             }

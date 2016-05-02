@@ -57,9 +57,13 @@ public class DelegatingDebugConfig implements DebugConfig {
          */
         VERIFY_METHOD,
         /**
-         * @see Debug#isMeterEnabled()
+         * @see Debug#isCountEnabled()
          */
-        METER,
+        COUNT,
+        /**
+         * @see Debug#isMethodMeterEnabled()
+         */
+        METHOD_METRICS,
         /**
          * @see Debug#isMemUseTrackingEnabled()
          */
@@ -136,6 +140,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return ls.intValue();
     }
 
+    @Override
     public boolean isLogEnabledForMethod() {
         Boolean fs = featureState.get(Feature.LOG_METHOD);
         if (fs == null) {
@@ -145,14 +150,15 @@ public class DelegatingDebugConfig implements DebugConfig {
     }
 
     @Override
-    public boolean isMeterEnabled() {
-        Boolean fs = featureState.get(Feature.METER);
+    public boolean isCountEnabled() {
+        Boolean fs = featureState.get(Feature.COUNT);
         if (fs == null) {
-            return delegate.isMeterEnabled();
+            return delegate.isCountEnabled();
         }
         return fs.booleanValue();
     }
 
+    @Override
     public boolean isMemUseTrackingEnabled() {
         Boolean fs = featureState.get(Feature.TRACK_MEM_USE);
         if (fs == null) {
@@ -170,6 +176,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return ls.intValue();
     }
 
+    @Override
     public boolean isDumpEnabledForMethod() {
         Boolean fs = featureState.get(Feature.DUMP_METHOD);
         if (fs == null) {
@@ -187,6 +194,7 @@ public class DelegatingDebugConfig implements DebugConfig {
         return fs.booleanValue();
     }
 
+    @Override
     public boolean isVerifyEnabledForMethod() {
         Boolean fs = featureState.get(Feature.VERIFY_METHOD);
         if (fs == null) {
@@ -200,6 +208,15 @@ public class DelegatingDebugConfig implements DebugConfig {
         Boolean fs = featureState.get(Feature.TIME);
         if (fs == null) {
             return delegate.isTimeEnabled();
+        }
+        return fs.booleanValue();
+    }
+
+    @Override
+    public boolean isMethodMeterEnabled() {
+        Boolean fs = featureState.get(Feature.METHOD_METRICS);
+        if (fs == null) {
+            return delegate.isMethodMeterEnabled();
         }
         return fs.booleanValue();
     }
@@ -237,4 +254,5 @@ public class DelegatingDebugConfig implements DebugConfig {
     public void removeFromContext(Object o) {
         delegate.removeFromContext(o);
     }
+
 }

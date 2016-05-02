@@ -37,8 +37,8 @@ import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
 
 /**
  * Access to the {@link OptionDescriptors} declared by
- * {@code META-INF/services/com.oracle.graal.options.OptionDescriptors} files in
- * {@code <jre>/lib/jvmci/*.jar}.
+ * {@code META-INF/services/com.oracle.graal.options.OptionDescriptors} files in {@code 
+ * <jre>/lib/jvmci/*.jar}.
  */
 public final class GraalJarsOptionDescriptorsProvider implements OptionDescriptorsProvider {
 
@@ -88,6 +88,7 @@ public final class GraalJarsOptionDescriptorsProvider implements OptionDescripto
         return jarFiles;
     }
 
+    @Override
     public OptionDescriptor get(String name) {
         // Look up loaded option descriptors first
         for (OptionDescriptors optionDescriptors : optionsDescriptorsList) {

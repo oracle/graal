@@ -539,6 +539,7 @@ class CFGPrinter extends CompilationPrinter {
 
     IntervalVisitor intervalVisitor = new IntervalVisitor() {
 
+        @Override
         public void visitIntervalStart(Object parentOperand, Object splitOperand, Object location, Object hint, String typeName, char typeChar) {
             out.printf("%s %s ", splitOperand, typeName);
             if (location != null) {
@@ -549,14 +550,17 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("%s %s ", parentOperand, hint != null ? hint : -1);
         }
 
+        @Override
         public void visitRange(int from, int to) {
             out.printf("[%d, %d[", from, to);
         }
 
+        @Override
         public void visitUsePos(int usePos, Object registerPriority) {
             out.printf("%d %s ", usePos, registerPriority);
         }
 
+        @Override
         public void visitIntervalEnd(Object spillState) {
             out.printf(" \"%s\"", spillState);
             out.println();

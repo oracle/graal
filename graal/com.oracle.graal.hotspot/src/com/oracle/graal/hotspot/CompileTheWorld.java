@@ -149,6 +149,7 @@ public final class CompileTheWorld {
             return OptionValue.override(this);
         }
 
+        @Override
         public void set(OptionDescriptor desc, Object value) {
             put(desc.getOptionValue(), value);
         }
@@ -323,6 +324,7 @@ public final class CompileTheWorld {
             return name;
         }
 
+        @Override
         public void close() throws IOException {
         }
     }
@@ -476,6 +478,7 @@ public final class CompileTheWorld {
         long start = System.currentTimeMillis();
 
         CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
+            @Override
             public GraalDebugConfig getDebugConfig() {
                 if (Debug.isEnabled() && DebugScope.getConfig() == null) {
                     return DebugEnvironment.initialize(System.out);
@@ -676,6 +679,7 @@ public final class CompileTheWorld {
             return;
         }
         Future<?> task = threadPool.submit(new Runnable() {
+            @Override
             public void run() {
                 waitToRun();
                 try (OverrideScope s = config.apply()) {

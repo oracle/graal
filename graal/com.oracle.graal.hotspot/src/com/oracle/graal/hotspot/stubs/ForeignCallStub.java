@@ -132,10 +132,12 @@ public class ForeignCallStub extends Stub {
     }
 
     private class DebugScopeContext implements JavaMethod, JavaMethodContext {
+        @Override
         public JavaMethod asJavaMethod() {
             return this;
         }
 
+        @Override
         public Signature getSignature() {
             ForeignCallDescriptor d = linkage.getDescriptor();
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -147,10 +149,12 @@ public class ForeignCallStub extends Stub {
             return new HotSpotSignature(jvmciRuntime, metaAccess.lookupJavaType(d.getResultType()), parameters);
         }
 
+        @Override
         public String getName() {
             return linkage.getDescriptor().getName();
         }
 
+        @Override
         public JavaType getDeclaringClass() {
             return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
         }
@@ -232,14 +236,14 @@ public class ForeignCallStub extends Stub {
         }
         kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Initial stub graph");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Initial stub graph");
         }
 
         kit.inlineInvokes();
 
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(graph, "Stub graph before compilation");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Stub graph before compilation");
         }
 
         return graph;

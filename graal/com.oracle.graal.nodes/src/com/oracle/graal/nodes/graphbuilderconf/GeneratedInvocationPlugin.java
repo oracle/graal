@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.ValueNode;
 
 public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
 
+    @Override
     public abstract boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args);
 
     @Override

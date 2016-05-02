@@ -27,8 +27,6 @@ import java.util.Arrays;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.nodes.FullInfopointNode;
-import com.oracle.graal.nodes.SimpleInfopointNode;
 
 public class GraphBuilderConfiguration {
 
@@ -144,7 +142,8 @@ public class GraphBuilderConfiguration {
     private final BytecodeExceptionMode bytecodeExceptionMode;
     private final boolean omitAssertions;
     private final ResolvedJavaType[] skippedExceptionTypes;
-    private final DebugInfoMode debugInfoMode;
+    private final boolean insertFullInfopoints;
+    private final boolean trackNodeSourcePosition;
     private final boolean clearNonLiveLocals;
     private final Plugins plugins;
 
@@ -163,37 +162,14 @@ public class GraphBuilderConfiguration {
         Profile
     }
 
-    public enum DebugInfoMode {
-        SafePointsOnly,
-        /**
-         * This mode inserts {@link SimpleInfopointNode}s in places where no safepoints would be
-         * inserted: inlining boundaries, and line number switches.
-         * <p>
-         * In this mode the infopoint only have a location (method and bytecode index) and no
-         * values.
-         * <p>
-         * This is useful to have better program counter to bci mapping and has no influence on the
-         * generated code. However it can increase the amount of metadata and does not allow access
-         * to accessing values at runtime.
-         */
-        Simple,
-        /**
-         * In this mode, {@link FullInfopointNode}s are generated in the same locations as in
-         * {@link #Simple} mode but the infopoints have access to the runtime values.
-         * <p>
-         * This is relevant when code is to be generated for native, machine-code level debugging
-         * but can have a limit the amount of optimization applied to the code.
-         */
-        Full,
-    }
-
-    protected GraphBuilderConfiguration(boolean eagerResolving, BytecodeExceptionMode bytecodeExceptionMode, boolean omitAssertions, DebugInfoMode debugInfoMode,
-                    ResolvedJavaType[] skippedExceptionTypes,
+    protected GraphBuilderConfiguration(boolean eagerResolving, BytecodeExceptionMode bytecodeExceptionMode, boolean omitAssertions, boolean insertFullInfopoints,
+                    boolean trackNodeSourcePosition, ResolvedJavaType[] skippedExceptionTypes,
                     boolean clearNonLiveLocals, Plugins plugins) {
         this.eagerResolving = eagerResolving;
         this.bytecodeExceptionMode = bytecodeExceptionMode;
         this.omitAssertions = omitAssertions;
-        this.debugInfoMode = debugInfoMode;
+        this.insertFullInfopoints = insertFullInfopoints;
+        this.trackNodeSourcePosition = trackNodeSourcePosition;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.clearNonLiveLocals = clearNonLiveLocals;
         this.plugins = plugins;
@@ -206,33 +182,46 @@ public class GraphBuilderConfiguration {
      */
     public GraphBuilderConfiguration copy() {
         Plugins newPlugins = new Plugins(plugins);
-        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, newPlugins);
+        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, insertFullInfopoints, trackNodeSourcePosition, skippedExceptionTypes,
+                        clearNonLiveLocals, newPlugins);
         return result;
     }
 
     public GraphBuilderConfiguration withEagerResolving(boolean newEagerResolving) {
-        return new GraphBuilderConfiguration(newEagerResolving, bytecodeExceptionMode, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(newEagerResolving, bytecodeExceptionMode, omitAssertions, insertFullInfopoints, trackNodeSourcePosition, skippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
-        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, debugInfoMode, newSkippedExceptionTypes, clearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, insertFullInfopoints, trackNodeSourcePosition, newSkippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
     }
 
     public GraphBuilderConfiguration withBytecodeExceptionMode(BytecodeExceptionMode newBytecodeExceptionMode) {
-        return new GraphBuilderConfiguration(eagerResolving, newBytecodeExceptionMode, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, newBytecodeExceptionMode, omitAssertions, insertFullInfopoints, trackNodeSourcePosition, skippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
     }
 
     public GraphBuilderConfiguration withOmitAssertions(boolean newOmitAssertions) {
-        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, newOmitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, newOmitAssertions, insertFullInfopoints, trackNodeSourcePosition, skippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
     }
 
-    public GraphBuilderConfiguration withDebugInfoMode(DebugInfoMode newDebugInfoMode) {
+    public GraphBuilderConfiguration withFullInfopoints(boolean newInsertFullInfopoints) {
         ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
-        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, newDebugInfoMode, newSkippedExceptionTypes, clearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, newInsertFullInfopoints, trackNodeSourcePosition, newSkippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withNodeSourcePosition(boolean newTrackNodeSourcePosition) {
+        ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
+        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, insertFullInfopoints, newTrackNodeSourcePosition, newSkippedExceptionTypes, clearNonLiveLocals,
+                        plugins);
     }
 
     public GraphBuilderConfiguration withClearNonLiveLocals(boolean newClearNonLiveLocals) {
-        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, debugInfoMode, skippedExceptionTypes, newClearNonLiveLocals, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, bytecodeExceptionMode, omitAssertions, insertFullInfopoints, trackNodeSourcePosition, skippedExceptionTypes, newClearNonLiveLocals,
+                        plugins);
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {
@@ -251,16 +240,12 @@ public class GraphBuilderConfiguration {
         return omitAssertions;
     }
 
-    public boolean insertNonSafepointDebugInfo() {
-        return debugInfoMode.ordinal() >= DebugInfoMode.Simple.ordinal();
+    public boolean trackNodeSourcePosition() {
+        return trackNodeSourcePosition;
     }
 
-    public boolean insertFullDebugInfo() {
-        return debugInfoMode.ordinal() >= DebugInfoMode.Full.ordinal();
-    }
-
-    public boolean insertSimpleDebugInfo() {
-        return debugInfoMode == DebugInfoMode.Simple;
+    public boolean insertFullInfopoints() {
+        return insertFullInfopoints;
     }
 
     public boolean clearNonLiveLocals() {
@@ -268,27 +253,27 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(false, BytecodeExceptionMode.Profile, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getInfopointDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getInfopointEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, false, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.OmitAll, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.OmitAll, false, false, false, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, BytecodeExceptionMode.Profile, false, true, true, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     /**

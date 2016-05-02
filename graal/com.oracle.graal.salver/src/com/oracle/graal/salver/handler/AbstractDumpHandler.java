@@ -89,6 +89,7 @@ public abstract class AbstractDumpHandler<D extends Dumper> implements DumpHandl
         this.dumper = dumper;
     }
 
+    @Override
     public void close() throws IOException {
         if (dumper != null) {
             try {

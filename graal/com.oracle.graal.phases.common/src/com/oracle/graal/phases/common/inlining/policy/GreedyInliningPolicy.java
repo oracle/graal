@@ -32,7 +32,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
 import java.util.Map;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
@@ -42,16 +42,17 @@ import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 
 public class GreedyInliningPolicy extends AbstractInliningPolicy {
 
-    private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
+    private static final DebugCounter inliningStoppedByMaxDesiredSizeCounter = Debug.counter("InliningStoppedByMaxDesiredSize");
 
     public GreedyInliningPolicy(Map<Invoke, Double> hints) {
         super(hints);
     }
 
+    @Override
     public boolean continueInlining(StructuredGraph currentGraph) {
         if (InliningUtil.getNodeCount(currentGraph) >= MaximumDesiredSize.getValue()) {
             InliningUtil.logInliningDecision("inlining is cut off by MaximumDesiredSize");
-            metricInliningStoppedByMaxDesiredSize.increment();
+            inliningStoppedByMaxDesiredSizeCounter.increment();
             return false;
         }
         return true;

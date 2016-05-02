@@ -484,6 +484,7 @@ public class OptimizedOSRLoopNodeTest {
             final OptimizedCallTarget compiledLoop = loop.getCompiledOSRLoop();
 
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+                @Override
                 public Void visitFrame(FrameInstance frameInstance) {
                     Assert.assertNotSame(compiledLoop, frameInstance.getCallTarget());
                     return null;
@@ -570,6 +571,7 @@ public class OptimizedOSRLoopNodeTest {
 
         boolean compiled;
 
+        @Override
         public boolean executeRepeating(VirtualFrame frame) {
             try {
                 if (invalidationCounter >= 0) {

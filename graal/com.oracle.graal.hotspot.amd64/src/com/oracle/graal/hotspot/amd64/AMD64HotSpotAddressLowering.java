@@ -59,6 +59,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
             this.heapBaseRegister = heapBaseRegister;
         }
 
+        @Override
         public void generate(NodeLIRBuilderTool generator) {
             LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
             generator.setResult(this, heapBaseRegister.asValue(kind));

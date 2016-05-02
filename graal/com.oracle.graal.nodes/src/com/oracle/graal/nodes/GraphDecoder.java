@@ -51,6 +51,7 @@ import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeList;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.NodeSuccessorList;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -293,7 +294,7 @@ public class GraphDecoder {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 
         @Input ValueNode value;
-        @Input(InputType.Association) Node proxyPoint;
+        @Input(InputType.Unchecked) Node proxyPoint;
 
         public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
             super(TYPE, value.stamp());
@@ -405,7 +406,8 @@ public class GraphDecoder {
             return loopScope;
         }
 
-        if ((node instanceof MergeNode || (node instanceof LoopBeginNode && (methodScope.loopExplosion == LoopExplosionKind.FULL_UNROLL || methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE))) &&
+        if ((node instanceof MergeNode ||
+                        (node instanceof LoopBeginNode && (methodScope.loopExplosion == LoopExplosionKind.FULL_UNROLL || methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE))) &&
                         ((AbstractMergeNode) node).forwardEndCount() == 1) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             EndNode singleEnd = merge.forwardEndAt(0);
@@ -524,7 +526,8 @@ public class GraphDecoder {
             int exceptionOrderId = readOrderId(methodScope);
             int exceptionStateOrderId = readOrderId(methodScope);
             int exceptionNextOrderId = readOrderId(methodScope);
-            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, nextNextOrderId, exceptionOrderId, exceptionStateOrderId, exceptionNextOrderId);
+            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, nextNextOrderId, exceptionOrderId, exceptionStateOrderId,
+                            exceptionNextOrderId);
         } else {
             return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, -1, -1, -1, -1);
         }
@@ -895,7 +898,7 @@ public class GraphDecoder {
     }
 
     protected void readProperties(MethodScope methodScope, Node node) {
-        node.setNodeContext(readObject(methodScope));
+        node.setNodeSourcePosition((NodeSourcePosition) readObject(methodScope));
         Fields fields = node.getNodeClass().getData();
         for (int pos = 0; pos < fields.getCount(); pos++) {
             if (fields.getType(pos).isPrimitive()) {
@@ -922,7 +925,7 @@ public class GraphDecoder {
             }
             int orderId = readOrderId(methodScope);
             Node value = ensureNodeCreated(methodScope, loopScope, orderId);
-            Edges.initializeNode(node, edges.getOffsets(), index, value);
+            edges.initializeNode(node, index, value);
             if (updateUsages && value != null && !value.isDeleted()) {
                 edges.update(node, null, value);
 
@@ -935,7 +938,7 @@ public class GraphDecoder {
             int size = methodScope.reader.getSVInt();
             if (size != -1) {
                 NodeList<Node> nodeList = new NodeInputList<>(node, size);
-                Edges.initializeList(node, edges.getOffsets(), index, nodeList);
+                edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
                     Node value = ensureNodeCreated(methodScope, loopScope, orderId);
@@ -1047,7 +1050,7 @@ public class GraphDecoder {
             }
             int orderId = readOrderId(methodScope);
             Node value = makeStubNode(methodScope, loopScope, orderId);
-            Edges.initializeNode(node, edges.getOffsets(), index, value);
+            edges.initializeNode(node, index, value);
             if (updatePredecessors && value != null) {
                 edges.update(node, null, value);
             }
@@ -1059,7 +1062,7 @@ public class GraphDecoder {
             int size = methodScope.reader.getSVInt();
             if (size != -1) {
                 NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
-                Edges.initializeList(node, edges.getOffsets(), index, nodeList);
+                edges.initializeList(node, index, nodeList);
                 for (int idx = 0; idx < size; idx++) {
                     int orderId = readOrderId(methodScope);
                     Node value = makeStubNode(methodScope, loopScope, orderId);
@@ -1105,7 +1108,7 @@ public class GraphDecoder {
                 assert index == edges.getCount() - 1 : "PhiNode has one variable size input (the values)";
                 if (decode) {
                     /* The values must not be null, so initialize with an empty list. */
-                    Edges.initializeList(node, edges.getOffsets(), index, new NodeInputList<>(node));
+                    edges.initializeList(node, index, new NodeInputList<>(node));
                 }
             }
             return true;
@@ -1159,13 +1162,13 @@ public class GraphDecoder {
     }
 
     protected void detectLoops(MethodScope methodScope, FixedNode startInstruction) {
-        Debug.dump(1, methodScope.graph, "Before detectLoops");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "Before detectLoops");
         Set<LoopBeginNode> newLoopBegins = insertLoopBegins(methodScope, startInstruction);
 
-        Debug.dump(1, methodScope.graph, "Before insertLoopExits");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "Before insertLoopExits");
 
         insertLoopExits(methodScope, startInstruction, newLoopBegins);
-        Debug.dump(1, methodScope.graph, "After detectLoops");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "After detectLoops");
     }
 
     private static Set<LoopBeginNode> insertLoopBegins(MethodScope methodScope, FixedNode startInstruction) {
@@ -1326,7 +1329,7 @@ public class GraphDecoder {
                  * loop iteration. This is mostly the state that we want, we only need to tweak it a
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
-                 * 
+                 *
                  * In some cases, we did not create a FrameState during graph decoding: when there
                  * was no LoopExit in the original loop that we exploded. This happens for code
                  * paths that lead immediately to a DeoptimizeNode. Since the BytecodeParser does

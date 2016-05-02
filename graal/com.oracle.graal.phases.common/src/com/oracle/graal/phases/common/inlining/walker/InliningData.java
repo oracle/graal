@@ -35,15 +35,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -69,28 +63,33 @@ import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 /**
  * <p>
  * The space of inlining decisions is explored depth-first with the help of a stack realized by
  * {@link InliningData}. At any point in time, the topmost element of that stack consists of:
  * <ul>
  * <li>the callsite under consideration is tracked as a {@link MethodInvocation}.</li>
- * <li>
- * one or more {@link CallsiteHolder}s, all of them associated to the callsite above. Why more than
- * one? Depending on the type-profile for the receiver more than one concrete method may be feasible
- * target.</li>
+ * <li>one or more {@link CallsiteHolder}s, all of them associated to the callsite above. Why more
+ * than one? Depending on the type-profile for the receiver more than one concrete method may be
+ * feasible target.</li>
  * </ul>
  * </p>
  *
  * <p>
  * The bottom element in the stack consists of:
  * <ul>
- * <li>
- * a single {@link MethodInvocation} (the
+ * <li>a single {@link MethodInvocation} (the
  * {@link com.oracle.graal.phases.common.inlining.walker.MethodInvocation#isRoot root} one, ie the
  * unknown caller of the root graph)</li>
- * <li>
- * a single {@link CallsiteHolder} (the root one, for the method on which inlining was called)</li>
+ * <li>a single {@link CallsiteHolder} (the root one, for the method on which inlining was called)
+ * </li>
  * </ul>
  * </p>
  *
@@ -98,10 +97,10 @@ import com.oracle.graal.phases.util.Providers;
  */
 public class InliningData {
 
-    // Metrics
-    private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
-    private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
-    private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
+    // Counters
+    private static final DebugCounter counterInliningPerformed = Debug.counter("InliningPerformed");
+    private static final DebugCounter counterInliningRuns = Debug.counter("InliningRuns");
+    private static final DebugCounter counterInliningConsidered = Debug.counter("InliningConsidered");
 
     /**
      * Call hierarchy from outer most call (i.e., compilation unit) to inner most callee.
@@ -385,8 +384,8 @@ public class InliningData {
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);
-                metricInliningRuns.increment();
-                Debug.dump(callerGraph, "after %s", calleeInfo);
+                counterInliningRuns.increment();
+                Debug.dump(Debug.INFO_LOG_LEVEL, callerGraph, "after %s", calleeInfo);
 
                 if (OptCanonicalizer.getValue()) {
                     Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
@@ -403,7 +402,7 @@ public class InliningData {
 
                 callerCallsiteHolder.computeProbabilities();
 
-                metricInliningPerformed.increment();
+                counterInliningPerformed.increment();
             }
         } catch (BailoutException bailout) {
             throw bailout;
@@ -420,12 +419,10 @@ public class InliningData {
      *
      * This method attempts:
      * <ol>
-     * <li>
-     * to inline at the callsite given by <code>calleeInvocation</code>, where that callsite belongs
-     * to the {@link CallsiteHolderExplorable} at the top of the {@link #graphQueue} maintained in
-     * this class.</li>
-     * <li>
-     * otherwise, to devirtualize the callsite in question.</li>
+     * <li>to inline at the callsite given by <code>calleeInvocation</code>, where that callsite
+     * belongs to the {@link CallsiteHolderExplorable} at the top of the {@link #graphQueue}
+     * maintained in this class.</li>
+     * <li>otherwise, to devirtualize the callsite in question.</li>
      * </ol>
      *
      * @return true iff inlining was actually performed
@@ -434,7 +431,7 @@ public class InliningData {
         CallsiteHolderExplorable callerCallsiteHolder = (CallsiteHolderExplorable) currentGraph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
-        metricInliningConsidered.increment();
+        counterInliningConsidered.increment();
 
         if (inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, inliningDepth, true)) {
             doInline(callerCallsiteHolder, calleeInvocation);
@@ -560,7 +557,7 @@ public class InliningData {
      * Gets the call hierarchy of this inlining from outer most call to inner most callee.
      */
     private Object[] inliningContext() {
-        if (!Debug.isDumpEnabled()) {
+        if (!Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
             return NO_CONTEXT;
         }
         Object[] result = new Object[graphQueue.size()];
@@ -658,26 +655,21 @@ public class InliningData {
      * The stack realized by {@link InliningData} grows and shrinks as choices are made among the
      * alternatives below:
      * <ol>
-     * <li>
-     * not worth inlining: pop stack top, which comprises:
+     * <li>not worth inlining: pop stack top, which comprises:
      * <ul>
      * <li>pop any remaining graphs not yet delved into</li>
      * <li>pop the current invocation</li>
      * </ul>
      * </li>
-     * <li>
-     * {@link #processNextInvoke() delve} into one of the callsites hosted in the current graph,
+     * <li>{@link #processNextInvoke() delve} into one of the callsites hosted in the current graph,
      * such callsite is explored next by {@link #moveForward()}</li>
-     * <li>
-     * {@link #tryToInline(MethodInvocation, int) try to inline}: move past the current graph
+     * <li>{@link #tryToInline(MethodInvocation, int) try to inline}: move past the current graph
      * (remove it from the topmost element).
      * <ul>
-     * <li>
-     * If that was the last one then {@link #tryToInline(MethodInvocation, int) try to inline} the
-     * callsite under consideration (ie, the "current invocation").</li>
-     * <li>
-     * Whether inlining occurs or not, that callsite is removed from the top of {@link InliningData}
-     * .</li>
+     * <li>If that was the last one then {@link #tryToInline(MethodInvocation, int) try to inline}
+     * the callsite under consideration (ie, the "current invocation").</li>
+     * <li>Whether inlining occurs or not, that callsite is removed from the top of
+     * {@link InliningData} .</li>
      * </ul>
      * </li>
      * </ol>
@@ -686,14 +678,11 @@ public class InliningData {
      * <p>
      * Some facts about the alternatives above:
      * <ul>
-     * <li>
-     * the first step amounts to backtracking, the 2nd one to depth-search, and the 3rd one also
+     * <li>the first step amounts to backtracking, the 2nd one to depth-search, and the 3rd one also
      * involves backtracking (however possibly after inlining).</li>
-     * <li>
-     * the choice of abandon-and-backtrack or delve-into depends on
+     * <li>the choice of abandon-and-backtrack or delve-into depends on
      * {@link InliningPolicy#isWorthInlining} and {@link InliningPolicy#continueInlining}.</li>
-     * <li>
-     * the 3rd choice is picked whenever none of the previous choices are made</li>
+     * <li>the 3rd choice is picked whenever none of the previous choices are made</li>
      * </ul>
      * </p>
      *

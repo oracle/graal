@@ -1,0 +1,137 @@
+java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
+java9  : {name : oraclejdk, version : "9",    platformspecific: true}
+
+common : {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
+    gcc-build-essentials : ">=4.9.1" # GCC 4.9.0 fails on cluster
+  }
+  environment : {
+    DEFAULT_VM : "jvmci"
+  }
+  timelimit : "30:00"
+}
+
+gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+
+java8Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8}
+  }
+}
+
+java9Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+      ${java8}
+    ]}
+    JAVA_HOME : ${java9}
+  }
+}
+
+gateTest : ${common} {
+  run : [
+    ${gateCmd} ["build,test"]
+  ]
+}
+
+gateBootstrap : ${common} {
+  run : [
+    ${gateCmd} ["build,bootstrap"]
+  ]
+}
+
+gateTest8 : ${gateTest} ${java8Downloads}
+gateTest9  : ${gateTest} ${java9Downloads}
+gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
+gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
+
+gateStyle : ${common} ${java8Downloads} {
+  downloads : {
+    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+  }
+  environment : ${common.environment} {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+  }
+  run : [
+    ${gateCmd} ["style,fullbuild"]
+  ]
+}
+
+bench-jvmci : {
+  mx-settings : ["mx", "--vm=jvmci", "--vmbuild=product"]
+  mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
+  mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
+  mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
+}
+
+# DaCapo-related targets
+
+bench-dacapo : ${common} ${java8Downloads} {
+  downloads : {
+    DACAPO : {name : dacapo, version : "9.12"}
+  }
+  setup: [
+    ${bench-jvmci.mx-settings} ["build"]
+  ]
+  teardown : [
+    ${bench-jvmci.mx-teardown}
+  ]
+}
+
+bench-dacapo-x52 : ${bench-dacapo} {
+  capabilities : [linux, x52, bench, post-merge]
+  name : "bench-dacapo-linux-x52"
+  run : [
+    ${bench-jvmci.mx-dacapo} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"]
+  ]
+}
+
+# SPECJvm2008-related targets
+
+bench-specjvm2008 : ${common} {
+  downloads : ${java8Downloads.downloads} {
+    SPECJVM2008 : {name : specjvm2008, version : "1.01"}
+  }
+  setup: [
+    ${bench-jvmci.mx-settings} ["build"]
+  ]
+  teardown : [
+    ${bench-jvmci.mx-teardown}
+  ]
+  timelimit : "2:50:00"
+}
+
+bench-specjvm2008-x52 : ${bench-specjvm2008} {
+  capabilities : [linux, x52, bench, post-merge]
+  name : "bench-specjvm2008-linux-x52"
+  run : [
+    ${bench-jvmci.mx-specjvm2008} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-it", "240s", "-wt", "120s"]
+  ]
+}
+
+# Build targets
+
+builds = [
+  ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}        {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
+# The linux-sparc gate machine throws OOME when running `javac -X -J-Xms64M -J-Xint` too often.
+#  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
+#  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+  ${bench-dacapo-x52}
+  ${bench-specjvm2008-x52}
+]

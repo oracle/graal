@@ -49,16 +49,19 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
     @Input ValueNode value;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }

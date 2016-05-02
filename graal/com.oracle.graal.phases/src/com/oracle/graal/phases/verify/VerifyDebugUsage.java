@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.verify;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -42,10 +43,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Additionally this phase verifies that no argument is the result of a call to
  * {@link StringBuilder#toString()} or {@link StringBuffer#toString()}. Ideally the parameters at
  * callsites of {@link Debug} are eliminated, and do not produce additional allocations, if
- * {@link Debug#isDumpEnabled()} (or {@link Debug#isLogEnabled()}, ...) is {@code false}.
+ * {@link Debug#isDumpEnabled(int)} (or {@link Debug#isLogEnabled(int)}, ...) is {@code false}.
  *
  * Methods in {@link Debug} checked by this phase are various different versions of
- * {@link Debug#log(String)} , {@link Debug#dump(Object, String)},
+ * {@link Debug#log(String)} , {@link Debug#dump(int, Object, String)},
  * {@link Debug#logAndIndent(String)} and {@link Debug#verify(Object, String)}.
  */
 public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
@@ -53,13 +54,26 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
+        ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
         ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
+        ResolvedJavaType debugMethodMetricsType = context.getMetaAccess().lookupJavaType(DebugMethodMetrics.class);
+
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             String calleeName = callee.getName();
             if (callee.getDeclaringClass().equals(debugType)) {
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || calleeName.equals("dump")) {
                     verifyParameters(graph, t.arguments(), stringType, calleeName.equals("dump") ? 2 : 1);
+                }
+            }
+            if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
+                if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
+                    verifyParameters(graph, t.arguments(), stringType, 1);
+                }
+            }
+            if (callee.getDeclaringClass().equals(debugMethodMetricsType)) {
+                if (calleeName.equals("addToMetric") || calleeName.equals("getCurrentMetricValue") || calleeName.equals("incrementMetric")) {
+                    verifyParameters(graph, t.arguments(), stringType, 1);
                 }
             }
         }

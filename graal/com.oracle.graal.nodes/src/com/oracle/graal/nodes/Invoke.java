@@ -42,6 +42,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     int bci();
 
+    @Override
     FixedNode asNode();
 
     Node predecessor();

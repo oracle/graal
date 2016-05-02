@@ -233,6 +233,7 @@ public class CountedLoopTest extends GraalCompilerTest {
             replaceAtUsagesAndDelete(node);
         }
 
+        @Override
         public void generate(NodeLIRBuilderTool gen) {
             gen.setResult(this, gen.operand(iv));
         }
@@ -244,6 +245,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         Registration r = new Registration(plugins.getInvocationPlugins(), CountedLoopTest.class);
 
         r.register2("get", IVProperty.class, int.class, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 IVProperty property = null;
                 if (arg1.isConstant()) {

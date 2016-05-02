@@ -23,7 +23,7 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeFlood;
 import com.oracle.graal.nodes.AbstractEndNode;
@@ -36,14 +36,14 @@ import com.oracle.graal.phases.Phase;
 public class DeadCodeEliminationPhase extends Phase {
 
     public static class Options {
+
         // @formatter:off
         @Option(help = "Disable optional dead code eliminations", type = OptionType.Debug)
         public static final OptionValue<Boolean> ReduceDCE = new OptionValue<>(true);
         // @formatter:on
     }
 
-    // Metrics
-    private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
+    private static final DebugCounter counterNodesRemoved = Debug.counter("NodesRemoved");
 
     public enum Optionality {
         Optional,
@@ -125,7 +125,7 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
                 node.applyInputs(consumer);
-                metricNodesRemoved.increment();
+                counterNodesRemoved.increment();
             }
         }
     }

@@ -110,6 +110,7 @@ public abstract class SwitchStrategy {
          */
         protected abstract void conditionalJump(int index, Condition condition, Label target);
 
+        @Override
         public void conditionalJump(int index, Condition condition, boolean targetDefault) {
             Label target = targetDefault ? defaultTarget.label() : keyTargets[index].label();
             if (condition == null) {
@@ -119,6 +120,7 @@ public abstract class SwitchStrategy {
             }
         }
 
+        @Override
         public void conditionalJumpOrDefault(int index, Condition condition, boolean canFallThrough) {
             if (canFallThrough && crb.isSuccessorEdge(defaultTarget)) {
                 conditionalJump(index, condition, keyTargets[index].label());
@@ -130,16 +132,19 @@ public abstract class SwitchStrategy {
             }
         }
 
+        @Override
         public Label conditionalJump(int index, Condition condition) {
             Label label = new Label();
             conditionalJump(index, condition, label);
             return label;
         }
 
+        @Override
         public void bind(Label label) {
             masm.bind(label);
         }
 
+        @Override
         public boolean isSameTarget(int index1, int index2) {
             return keyTargets[index1] == keyTargets[index2];
         }
@@ -162,23 +167,28 @@ public abstract class SwitchStrategy {
             this.keyTargets = keyTargets;
         }
 
+        @Override
         public void conditionalJump(int index, Condition condition, boolean defaultTarget) {
             // nothing to do
         }
 
+        @Override
         public void conditionalJumpOrDefault(int index, Condition condition, boolean canFallThrough) {
             // nothing to do
         }
 
+        @Override
         public Label conditionalJump(int index, Condition condition) {
             // nothing to do
             return null;
         }
 
+        @Override
         public void bind(Label label) {
             // nothing to do
         }
 
+        @Override
         public boolean isSameTarget(int index1, int index2) {
             return keyTargets[index1] == keyTargets[index2];
         }

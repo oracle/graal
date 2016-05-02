@@ -99,6 +99,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
         throw JVMCIError.shouldNotReachHere("unexpected WriteNode before PEA");
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
     }

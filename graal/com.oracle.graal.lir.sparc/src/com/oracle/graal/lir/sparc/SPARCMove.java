@@ -35,6 +35,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static java.lang.Math.max;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
@@ -100,10 +101,12 @@ public class SPARCMove {
             }
         }
 
+        @Override
         public Constant getConstant() {
             return constant;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -192,10 +195,12 @@ public class SPARCMove {
             this.temp = temp;
         }
 
+        @Override
         public AllocatableValue getInput() {
             return input;
         }
 
+        @Override
         public AllocatableValue getResult() {
             return result;
         }
@@ -274,6 +279,7 @@ public class SPARCMove {
             emitMemAccess(crb, masm);
         }
 
+        @Override
         public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
             if (state == null && address.isValidImplicitNullCheckFor(value, implicitNullCheckLimit)) {
                 state = nullCheckState;
@@ -340,7 +346,8 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(data);
+            // HotSpot for SPARC requires at least word alignment
+            SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(data, max(SPARCKind.WORD.getSizeInBytes(), data.getAlignment()));
             assert addr == masm.getPlaceholder();
             final boolean forceRelocatable = true;
             Register dstReg = asRegister(result);
@@ -399,10 +406,12 @@ public class SPARCMove {
             masm.ldub(addr, g0);
         }
 
+        @Override
         public Value getCheckedValue() {
             return input;
         }
 
+        @Override
         public LIRFrameState getState() {
             return state;
         }

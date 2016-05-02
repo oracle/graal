@@ -70,14 +70,17 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
         }
     }
 
+    @Override
     public boolean supportsRemove() {
         return true;
     }
 
+    @Override
     public int remove(Set<Register> doNotSave) {
         return prune(doNotSave, zappedRegisters);
     }
 
+    @Override
     public RegisterSaveLayout getMap(FrameMap frameMap) {
         return new RegisterSaveLayout(new Register[0], new int[0]);
     }

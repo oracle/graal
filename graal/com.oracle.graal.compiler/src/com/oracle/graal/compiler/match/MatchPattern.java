@@ -23,7 +23,7 @@
 package com.oracle.graal.compiler.match;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -61,12 +61,12 @@ public class MatchPattern {
             this.matcher = matcher;
         }
 
-        private static final DebugMetric MatchResult_WRONG_CLASS = Debug.metric("MatchResult_WRONG_CLASS");
-        private static final DebugMetric MatchResult_NAMED_VALUE_MISMATCH = Debug.metric("MatchResult_NAMED_VALUE_MISMATCH");
-        private static final DebugMetric MatchResult_TOO_MANY_USERS = Debug.metric("MatchResult_TOO_MANY_USERS");
-        private static final DebugMetric MatchResult_NOT_IN_BLOCK = Debug.metric("MatchResult_NOT_IN_BLOCK");
-        private static final DebugMetric MatchResult_NOT_SAFE = Debug.metric("MatchResult_NOT_SAFE");
-        private static final DebugMetric MatchResult_ALREADY_USED = Debug.metric("MatchResult_ALREADY_USED");
+        private static final DebugCounter MatchResult_WRONG_CLASS = Debug.counter("MatchResult_WRONG_CLASS");
+        private static final DebugCounter MatchResult_NAMED_VALUE_MISMATCH = Debug.counter("MatchResult_NAMED_VALUE_MISMATCH");
+        private static final DebugCounter MatchResult_TOO_MANY_USERS = Debug.counter("MatchResult_TOO_MANY_USERS");
+        private static final DebugCounter MatchResult_NOT_IN_BLOCK = Debug.counter("MatchResult_NOT_IN_BLOCK");
+        private static final DebugCounter MatchResult_NOT_SAFE = Debug.counter("MatchResult_NOT_SAFE");
+        private static final DebugCounter MatchResult_ALREADY_USED = Debug.counter("MatchResult_ALREADY_USED");
 
         static final Result OK = new Result(MatchResultCode.OK, null, null);
         private static final Result CACHED_WRONG_CLASS = new Result(MatchResultCode.WRONG_CLASS, null, null);

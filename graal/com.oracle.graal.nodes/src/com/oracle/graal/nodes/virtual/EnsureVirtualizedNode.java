@@ -51,6 +51,7 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
         this.localOnly = localOnly;
     }
 
+    @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(object);
         if (alias instanceof VirtualObjectNode) {
@@ -66,6 +67,7 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
         }
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         ensureVirtualFailure(this, object.stamp());
     }

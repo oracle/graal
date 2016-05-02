@@ -49,6 +49,7 @@ public final class RootNameNode extends InstrumentationContentNode implements Lo
         return method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor();
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         RuntimeStringNode runtimeString = graph().add(new RuntimeStringNode(genRootName(graph().method()), stamp()));
         graph().replaceFixedWithFixed(this, runtimeString);

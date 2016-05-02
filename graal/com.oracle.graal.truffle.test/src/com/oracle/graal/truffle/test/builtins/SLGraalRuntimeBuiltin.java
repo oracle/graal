@@ -95,6 +95,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
     protected static final Set<DirectCallNode> findCallsTo(RootNode root, OptimizedCallTarget originalCallTarget) {
         final Set<DirectCallNode> allCallNodes = new HashSet<>();
         root.accept(new NodeVisitor() {
+            @Override
             public boolean visit(Node node) {
                 if (node instanceof DirectCallNode) {
                     DirectCallNode callNode = (DirectCallNode) node;

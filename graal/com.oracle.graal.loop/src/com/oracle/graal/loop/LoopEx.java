@@ -46,8 +46,8 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.InfopointNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopExitNode;
@@ -195,7 +195,7 @@ public class LoopEx {
     public boolean detectCounted() {
         LoopBeginNode loopBegin = loopBegin();
         FixedNode next = loopBegin.next();
-        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof InfopointNode) {
+        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof FullInfopointNode) {
             next = ((FixedWithNextNode) next).next();
         }
         if (next instanceof IfNode) {

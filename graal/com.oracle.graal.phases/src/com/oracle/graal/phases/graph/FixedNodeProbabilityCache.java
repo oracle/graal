@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.function.ToDoubleFunction;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.StartNode;
  */
 public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
-    private static final DebugMetric metricComputeNodeProbability = Debug.metric("ComputeNodeProbability");
+    private static final DebugCounter computeNodeProbabilityCounter = Debug.counter("ComputeNodeProbability");
 
     private final Map<FixedNode, Double> cache = Node.newIdentityMap();
 
@@ -78,9 +78,10 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
      * </p>
      *
      */
+    @Override
     public double applyAsDouble(FixedNode node) {
         assert node != null;
-        metricComputeNodeProbability.increment();
+        computeNodeProbabilityCounter.increment();
 
         FixedNode current = findBegin(node);
         if (current == null) {

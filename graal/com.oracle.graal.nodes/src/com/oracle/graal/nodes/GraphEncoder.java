@@ -101,8 +101,8 @@ import com.oracle.graal.nodes.java.ExceptionObjectNode;
  * length -1) and empty lists (encoded as length 0). No reverse edges are written (predecessors,
  * usages) since that information can be easily restored during decoding.
  *
- * Some nodes have additional information written after the properties, successors, and inputs: <li>
- * <item>{@link AbstractEndNode}: the orderId of the merge node and then all {@link PhiNode phi
+ * Some nodes have additional information written after the properties, successors, and inputs:
+ * <li><item>{@link AbstractEndNode}: the orderId of the merge node and then all {@link PhiNode phi
  * mappings} from this end to the merge node are written. <item>{@link LoopExitNode}: the orderId of
  * all {@link ProxyNode proxy nodes} of the loop exit is written.</li>
  */
@@ -170,7 +170,7 @@ public class GraphEncoder {
             nodeClasses.addObject(node.getNodeClass());
 
             NodeClass<?> nodeClass = node.getNodeClass();
-            objects.addObject(node.getRawNodeContext());
+            objects.addObject(node.getNodeSourcePosition());
             for (int i = 0; i < nodeClass.getData().getCount(); i++) {
                 if (!nodeClass.getData().getType(i).isPrimitive()) {
                     objects.addObject(nodeClass.getData().get(node, i));
@@ -350,7 +350,7 @@ public class GraphEncoder {
     }
 
     protected void writeProperties(Node node, Fields fields) {
-        writeObjectId(node.getRawNodeContext());
+        writeObjectId(node.getNodeSourcePosition());
         for (int idx = 0; idx < fields.getCount(); idx++) {
             if (fields.getType(idx).isPrimitive()) {
                 long primitive = fields.getRawPrimitive(node, idx);
@@ -411,8 +411,8 @@ public class GraphEncoder {
             GraphComparison.verifyGraphsEqual(originalGraph, decodedGraph);
         } catch (Throwable ex) {
             try (Debug.Scope scope = Debug.scope("GraphEncoder")) {
-                Debug.dump(originalGraph, "Original Graph");
-                Debug.dump(decodedGraph, "Decoded Graph");
+                Debug.dump(Debug.INFO_LOG_LEVEL, originalGraph, "Original Graph");
+                Debug.dump(Debug.INFO_LOG_LEVEL, decodedGraph, "Decoded Graph");
             }
             throw ex;
         }

@@ -269,6 +269,7 @@ public abstract class LoopFragment {
     public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<Block> blocks) {
         return new NodeIterable<AbstractBeginNode>() {
 
+            @Override
             public Iterator<AbstractBeginNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
                 return new Iterator<AbstractBeginNode>() {
@@ -278,10 +279,12 @@ public abstract class LoopFragment {
                         throw new UnsupportedOperationException();
                     }
 
+                    @Override
                     public AbstractBeginNode next() {
                         return it.next().getBeginNode();
                     }
 
+                    @Override
                     public boolean hasNext() {
                         return it.hasNext();
                     }
@@ -294,6 +297,7 @@ public abstract class LoopFragment {
     public static NodeIterable<LoopExitNode> toHirExits(final Iterable<Block> blocks) {
         return new NodeIterable<LoopExitNode>() {
 
+            @Override
             public Iterator<LoopExitNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
                 return new Iterator<LoopExitNode>() {
@@ -303,10 +307,12 @@ public abstract class LoopFragment {
                         throw new UnsupportedOperationException();
                     }
 
+                    @Override
                     public LoopExitNode next() {
                         return (LoopExitNode) it.next().getBeginNode();
                     }
 
+                    @Override
                     public boolean hasNext() {
                         return it.hasNext();
                     }

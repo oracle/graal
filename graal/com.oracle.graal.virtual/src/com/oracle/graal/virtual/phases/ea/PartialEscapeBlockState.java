@@ -143,7 +143,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, GraphEffectList materializeEffects) {
-        PartialEscapeClosure.METRIC_MATERIALIZATIONS.increment();
+        PartialEscapeClosure.COUNTER_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
         List<ValueNode> values = new ArrayList<>(8);
         List<List<MonitorIdNode>> locks = new ArrayList<>(2);

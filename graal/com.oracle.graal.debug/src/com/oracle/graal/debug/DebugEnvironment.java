@@ -24,11 +24,12 @@ package com.oracle.graal.debug;
 
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Meter;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.Count;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Time;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.TrackMemUse;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodMeter;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -48,7 +49,8 @@ public class DebugEnvironment {
         }
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-        GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), Verify.getValue(), MethodFilter.getValue(),
+        GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Count.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), Verify.getValue(), MethodFilter.getValue(),
+                        MethodMeter.getValue(),
                         log, dumpHandlers, verifyHandlers);
 
         for (DebugConfigCustomizer customizer : Services.load(DebugConfigCustomizer.class)) {

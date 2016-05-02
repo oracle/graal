@@ -60,6 +60,7 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
         this.value = value;
     }
 
+    @Override
     public ValueNode getValue() {
         return value;
     }

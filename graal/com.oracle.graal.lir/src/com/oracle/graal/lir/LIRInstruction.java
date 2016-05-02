@@ -41,13 +41,14 @@ import java.lang.annotation.Target;
 import java.util.EnumMap;
 import java.util.EnumSet;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
@@ -191,7 +192,12 @@ public abstract class LIRInstruction {
      */
     private int id;
 
-    private static final DebugMetric LIR_NODE_COUNT = Debug.metric("LIRNodes");
+    /**
+     * The source position of the code that generated this instruction.
+     */
+    private BytecodePosition position;
+
+    private static final DebugCounter LIR_NODE_COUNT = Debug.counter("LIRNodes");
 
     /**
      * Constructs a new LIR instruction.
@@ -211,6 +217,14 @@ public abstract class LIRInstruction {
 
     public final void setId(int id) {
         this.id = id;
+    }
+
+    public final BytecodePosition getPosition() {
+        return position;
+    }
+
+    public final void setPosition(BytecodePosition position) {
+        this.position = position;
     }
 
     public final String name() {

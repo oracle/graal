@@ -156,6 +156,10 @@ public class FloatStamp extends PrimitiveStamp {
         if (Double.isNaN(value)) {
             return !nonNaN;
         } else {
+            /*
+             * Don't use Double.compare for checking the bounds as -0.0 isn't correctly tracked, so
+             * the presence of 0.0 means -0.0 might also exist in the range.
+             */
             return value >= lowerBound && value <= upperBound;
         }
     }

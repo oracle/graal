@@ -406,12 +406,12 @@ public class CompilationResultBuilder {
     }
 
     private void emitBlock(AbstractBlockBase<?> block) {
-        if (Debug.isDumpEnabled() || PrintLIRWithAssembly.getValue()) {
+        if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
-            if (Debug.isDumpEnabled() || PrintLIRWithAssembly.getValue()) {
+            if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
                 blockComment(String.format("%d %s", op.id(), op));
             }
 
@@ -432,6 +432,9 @@ public class CompilationResultBuilder {
     private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
         try {
             op.emitCode(crb);
+            if (op.getPosition() != null) {
+                crb.recordInfopoint(crb.asm.position(), new DebugInfo(op.getPosition()), InfopointReason.BYTECODE_POSITION);
+            }
         } catch (AssertionError t) {
             throw new JVMCIError(t);
         } catch (RuntimeException t) {

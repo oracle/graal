@@ -29,7 +29,6 @@ import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -43,11 +42,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.code.BytecodePosition;
 import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.Fields;
+import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
@@ -592,87 +591,30 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Per node information tracking extra context for a node. Can be used to track the original
-     * source of a node (e.g., method and bytecode position) or any other piece of information. It's
-     * typed as {@link Object} because not all information to track is under our control so
-     * requiring a particular interface would require wrapping the object, adding overhead. It's
-     * also possible to capture multiple different types of information so the value may be an
-     * {@code Object[]} when multiple objects have been captured.
+     * The position of the bytecode that generated this node.
      */
-    Object nodeContext;
+    NodeSourcePosition sourcePosition;
 
     /**
-     * @return the uninterpreted context for this node
+     * Gets the source position information for this node or null if it doesn't exist.
      */
-    public Object getRawNodeContext() {
-        return nodeContext;
+
+    public NodeSourcePosition getNodeSourcePosition() {
+        return sourcePosition;
     }
 
     /**
-     * Gets the context information of exact type {@code theClass} stored by this node or null if it
-     * doesn't exist.
-     *
-     * @param theClass the exact type of the context being requested
-     * @return a context of exact type {@code theClass} or {@code null}
+     * Set the source position to {@code sourcePosition}.
      */
-    @SuppressWarnings("unchecked")
-    public <T> T getNodeContext(Class<T> theClass) {
-        if (nodeContext == null) {
-            return null;
+    public void setNodeSourcePosition(NodeSourcePosition sourcePosition) {
+        this.sourcePosition = sourcePosition;
+        if (sourcePosition != null && graph != null && !graph.seenNodeSourcePosition) {
+            graph.seenNodeSourcePosition = true;
         }
-        if (nodeContext.getClass() == theClass) {
-            return (T) nodeContext;
-        }
-        if (nodeContext instanceof Object[]) {
-            for (Object info : (Object[]) nodeContext) {
-                if (info.getClass() == theClass) {
-                    return (T) info;
-                }
-            }
-        }
-        return null;
     }
 
-    /**
-     * Replaces the entire current context with {@code context}.
-     */
-    public void setNodeContext(Object context) {
-        nodeContext = context;
-    }
-
-    /**
-     * Adds some given context to this node. Existing context of the same exact type as
-     * {@code newContext} will be replaced by the latter. All other context will be merged with the
-     * existing context.
-     */
-    public void updateNodeContext(Object newContext) {
-        // This is the common case with a single type of information captured
-        if (nodeContext == null || nodeContext.getClass() == newContext.getClass()) {
-            nodeContext = newContext;
-            return;
-        }
-        if (newContext instanceof Object[]) {
-            for (Object context : (Object[]) newContext) {
-                updateNodeContext(context);
-            }
-            return;
-        }
-        if (nodeContext instanceof Object[]) {
-            Object[] contextArray = (Object[]) nodeContext;
-            for (int i = 0; i < contextArray.length; i++) {
-                if (contextArray[i].getClass() == newContext.getClass()) {
-                    contextArray[i] = newContext;
-                    return;
-                }
-            }
-            contextArray = Arrays.copyOf(contextArray, contextArray.length + 1);
-            contextArray[contextArray.length - 1] = newContext;
-        } else {
-            Object[] contextArray = new Object[2];
-            contextArray[0] = nodeContext;
-            contextArray[1] = newContext;
-            nodeContext = contextArray;
-        }
+    public DebugCloseable withNodeSourcePosition() {
+        return graph.withNodeSourcePosition(this);
     }
 
     public final NodeClass<? extends Node> getNodeClass() {
@@ -970,8 +912,8 @@ public abstract class Node implements Cloneable, Formattable {
         if (into != null && useIntoLeafNodeCache) {
             into.putNodeIntoCache(newNode);
         }
-        if (graph != null && into != null) {
-            newNode.nodeContext = nodeContext;
+        if (graph != null && into != null && sourcePosition != null) {
+            newNode.setNodeSourcePosition(sourcePosition);
         }
         newNode.afterClone(this);
         return newNode;
@@ -1004,8 +946,12 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public boolean verifyEdges() {
         verifyInputs();
-        for (Node input : inputs()) {
-            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
+        NodePosIterator iterator = inputs().withNullIterator();
+        while (iterator.hasNext()) {
+            Position pos = iterator.nextPosition();
+            Node input = pos.get(this);
+            assertTrue(pos.isInputOptional() || input != null, "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
+            assertTrue(input == null || input.usages().contains(this), "missing usage in input %s", input);
         }
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
@@ -1016,13 +962,12 @@ public abstract class Node implements Cloneable, Formattable {
             assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
             for (Position pos : usage.inputPositions()) {
                 if (pos.get(usage) == this && pos.getInputType() != InputType.Unchecked) {
-                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type " + pos.getInputType() + " from " + usage + " to " + this + " (" + pos.getName() + ")");
+                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type %s from %s to %s (%s)", pos.getInputType(), usage, this, pos.getName());
                 }
             }
+            assertTrue(foundThis, "missing input in usage %s", usage);
         }
-        for (Position pos : this.inputPositions()) {
-            assert pos.isInputOptional() || pos.get(this) != null : "non-optional input " + pos.getName() + " cannot be null in " + this + " (fix nullness or use @OptionalInput)";
-        }
+
         if (predecessor != null) {
             assertFalse(predecessor.isDeleted(), "predecessor %s must never be deleted", predecessor);
             assertTrue(predecessor.successors().contains(this), "missing successor in predecessor %s", predecessor);
@@ -1103,9 +1048,9 @@ public abstract class Node implements Cloneable, Formattable {
         for (int i = 0; i < properties.getCount(); i++) {
             map.put(properties.getName(i), properties.get(this, i));
         }
-        BytecodePosition pos = getNodeContext(BytecodePosition.class);
+        NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {
-            map.put("debugPosition", pos);
+            map.put("nodeSourcePosition", pos);
         }
         return map;
     }

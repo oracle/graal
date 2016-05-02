@@ -54,6 +54,7 @@ public class IndexOobBytecodeExceptionTest extends BytecodeExceptionTest {
     @Override
     protected void registerPlugin(InvocationPlugins plugins) {
         plugins.register(new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode idx) {
                 return throwBytecodeException(b, ArrayIndexOutOfBoundsException.class, idx);
             }

@@ -80,6 +80,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
         return false;
     }
 
+    @Override
     public MemoryNode getLastLocationAccess(LocationIdentity locationIdentity) {
         if (locationIdentity.isImmutable()) {
             return null;
@@ -93,6 +94,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
         }
     }
 
+    @Override
     public Collection<LocationIdentity> getLocations() {
         return locationIdentities;
     }
@@ -105,6 +107,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
         return res;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do...
     }

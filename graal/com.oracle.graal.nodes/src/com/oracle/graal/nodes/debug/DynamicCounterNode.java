@@ -91,6 +91,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
     @NodeIntrinsic
     public static native void counter(@ConstantNodeParameter String name, @ConstantNodeParameter String group, long increment, @ConstantNodeParameter boolean addContext);
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
         String nameWithContext;

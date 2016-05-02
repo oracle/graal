@@ -36,11 +36,13 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
+import com.oracle.graal.truffle.DefaultInliningPolicy;
 import com.oracle.graal.truffle.DefaultTruffleCompiler;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCompiler;
 import com.oracle.graal.truffle.TruffleDebugJavaMethod;
+import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -96,7 +98,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

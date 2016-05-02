@@ -61,7 +61,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
     @SuppressWarnings("try")
     protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Debug.dump(graph, "Graph");
+        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
         CanonicalizerPhase canonicalizer1 = new CanonicalizerPhase();
         if (disableSimplification) {

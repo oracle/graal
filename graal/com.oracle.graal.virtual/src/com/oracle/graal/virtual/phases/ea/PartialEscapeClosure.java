@@ -45,7 +45,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.util.ArraySet;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.Position;
@@ -78,15 +78,14 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 
 public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockState<BlockT>> extends EffectsClosure<BlockT> {
 
-    public static final DebugMetric METRIC_MATERIALIZATIONS = Debug.metric("Materializations");
-    public static final DebugMetric METRIC_MATERIALIZATIONS_PHI = Debug.metric("MaterializationsPhi");
-    public static final DebugMetric METRIC_MATERIALIZATIONS_MERGE = Debug.metric("MaterializationsMerge");
-    public static final DebugMetric METRIC_MATERIALIZATIONS_UNHANDLED = Debug.metric("MaterializationsUnhandled");
-    public static final DebugMetric METRIC_MATERIALIZATIONS_LOOP_REITERATION = Debug.metric("MaterializationsLoopReiteration");
-    public static final DebugMetric METRIC_MATERIALIZATIONS_LOOP_END = Debug.metric("MaterializationsLoopEnd");
-    public static final DebugMetric METRIC_ALLOCATION_REMOVED = Debug.metric("AllocationsRemoved");
-
-    public static final DebugMetric METRIC_MEMORYCHECKPOINT = Debug.metric("MemoryCheckpoint");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS = Debug.counter("Materializations");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS_PHI = Debug.counter("MaterializationsPhi");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS_MERGE = Debug.counter("MaterializationsMerge");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS_UNHANDLED = Debug.counter("MaterializationsUnhandled");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS_LOOP_REITERATION = Debug.counter("MaterializationsLoopReiteration");
+    public static final DebugCounter COUNTER_MATERIALIZATIONS_LOOP_END = Debug.counter("MaterializationsLoopEnd");
+    public static final DebugCounter COUNTER_ALLOCATION_REMOVED = Debug.counter("AllocationsRemoved");
+    public static final DebugCounter COUNTER_MEMORYCHECKPOINT = Debug.counter("MemoryCheckpoint");
 
     private final NodeBitMap hasVirtualInputs;
     private final VirtualizerToolImpl tool;
@@ -296,7 +295,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ValueNode alias = getAlias((ValueNode) input);
                 if (alias instanceof VirtualObjectNode) {
                     int id = ((VirtualObjectNode) alias).getObjectId();
-                    ensureMaterialized(state, id, insertBefore, effects, METRIC_MATERIALIZATIONS_UNHANDLED);
+                    ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
                     effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
                     VirtualUtil.trace("replacing input %s at %s", input, node);
                 }
@@ -378,9 +377,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     /**
      * @return true if materialization happened, false if not.
      */
-    protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
+    protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, DebugCounter counter) {
         if (state.getObjectState(object).isVirtual()) {
-            metric.increment();
+            counter.increment();
             VirtualObjectNode virtual = virtualObjects.get(object);
             state.materializeBefore(materializeBefore, virtual, effects);
             updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue());
@@ -465,7 +464,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private static void processVirtualAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, int object, ObjectState exitObjState, ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
+    private static void processVirtualAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, int object, ObjectState exitObjState, ObjectState initialObjState,
+                    PartialEscapeBlockState<?> exitState) {
         for (int i = 0; i < exitObjState.getEntries().length; i++) {
             ValueNode value = exitState.getObjectState(object).getEntry(i);
             if (!(value instanceof VirtualObjectNode || value.isConstant())) {
@@ -622,7 +622,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                     ObjectState obj = states[i].getObjectState(object);
                                     if (obj.isVirtual()) {
                                         Block predecessor = getPredecessor(i);
-                                        materialized |= ensureMaterialized(states[i], object, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                                        materialized |= ensureMaterialized(states[i], object, predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                                         obj = states[i].getObjectState(object);
                                     }
                                     setPhiInput(materializedValuePhi, i, obj.getMaterializedValue());
@@ -802,7 +802,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 PhiNode materializedValuePhi = getPhi(resultObject, StampFactory.forKind(JavaKind.Object));
                 for (int i = 0; i < states.length; i++) {
                     Block predecessor = getPredecessor(i);
-                    ensureMaterialized(states[i], getObject.apply(i), predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                    ensureMaterialized(states[i], getObject.apply(i), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                     setPhiInput(materializedValuePhi, i, states[i].getObjectState(getObject.apply(i)).getMaterializedValue());
                 }
                 newState.addObject(resultObject, new ObjectState(materializedValuePhi, null, ensureVirtual));
@@ -828,7 +828,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (entry instanceof VirtualObjectNode) {
                     VirtualObjectNode entryVirtual = (VirtualObjectNode) entry;
                     Block predecessor = getPredecessor(i);
-                    materialized |= ensureMaterialized(states[i], entryVirtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                    materialized |= ensureMaterialized(states[i], entryVirtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                     objectState = states[i].getObjectState(object);
                     if (objectState.isVirtual()) {
                         states[i].setEntry(object, entryIndex, entry = states[i].getObjectState(entryVirtual.getObjectId()).getMaterializedValue());
@@ -927,7 +927,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 VirtualObjectNode virtual = virtualObjs[i];
                 if (virtual != null) {
                     Block predecessor = getPredecessor(i);
-                    materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_PHI);
+                    materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_PHI);
                     setPhiInput(phi, i, getAliasAndResolve(states[i], virtual));
                 }
             }

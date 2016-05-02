@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphSchedule;
-
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +32,7 @@ import java.util.Set;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
@@ -77,10 +76,15 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * as properties.
      */
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) {
         beginGroup();
         beginProperties();
         printProperty("name", name);
+        if (properties != null) {
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                printProperty(entry.getKey().toString(), entry.getValue().toString());
+            }
+        }
         endProperties();
         beginMethod(name, shortName, bci);
         if (method != null && method.getCode() != null) {
@@ -94,7 +98,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title) {
+    public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
         ScheduleResult schedule = null;
@@ -102,7 +106,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             schedule = structuredGraph.getLastSchedule();
             if (schedule == null && tryToSchedule) {
-                if (PrintIdealGraphSchedule.getValue()) {
+                if (Options.PrintIdealGraphSchedule.getValue()) {
                     try {
                         SchedulePhase schedulePhase = new SchedulePhase();
                         schedulePhase.apply(structuredGraph);
@@ -113,6 +117,14 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             }
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
+
+        if (properties != null) {
+            beginProperties();
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                printProperty(entry.getKey().toString(), entry.getValue().toString());
+            }
+            endProperties();
+        }
 
         beginNodes();
         List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);

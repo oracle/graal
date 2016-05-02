@@ -60,6 +60,7 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
         return null;
     }
 
+    @Override
     public LogicNode getValue() {
         return value;
     }

@@ -123,6 +123,7 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
             this.masm = masm;
         }
 
+        @Override
         public void apply(int counterIndex, Value increment, int displacement) {
             SPARCAddress counterAddr;
             int relativeDisplacement = displacement - lastDisplacement;

@@ -25,7 +25,7 @@ package com.oracle.graal.jtt.bytecode;
 
 import org.junit.Test;
 
-public class BC_fdiv extends BC_fdiv_frem_base {
+public class BC_fdiv extends BC_float_base {
 
     public static float test(float a, float b) {
         return a / b;

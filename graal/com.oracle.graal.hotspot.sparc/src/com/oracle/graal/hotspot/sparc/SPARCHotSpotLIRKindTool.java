@@ -30,10 +30,12 @@ import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
 
 public class SPARCHotSpotLIRKindTool extends SPARCLIRKindTool implements HotSpotLIRKindTool {
 
+    @Override
     public LIRKind getNarrowOopKind() {
         return LIRKind.reference(SPARCKind.WORD);
     }
 
+    @Override
     public LIRKind getNarrowPointerKind() {
         return LIRKind.value(SPARCKind.WORD);
     }

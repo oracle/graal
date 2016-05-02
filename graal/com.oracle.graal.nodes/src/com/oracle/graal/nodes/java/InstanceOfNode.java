@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNegationNode;
@@ -38,6 +39,7 @@ import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
+import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.Virtualizable;
@@ -52,36 +54,43 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     protected final ObjectStamp checkedStamp;
-    @Input protected TypeProfileNode anchor;
 
-    private InstanceOfNode(ObjectStamp checkedStamp, ValueNode object, TypeProfileNode profile) {
-        this(TYPE, checkedStamp, object, profile);
+    private JavaTypeProfile profile;
+    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
+
+    private InstanceOfNode(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        this(TYPE, checkedStamp, object, profile, anchor);
     }
 
-    protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ObjectStamp checkedStamp, ValueNode object, TypeProfileNode anchor) {
+    protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         super(c, object);
         this.checkedStamp = checkedStamp;
+        this.profile = profile;
         this.anchor = anchor;
         assert checkedStamp != null;
     }
 
-    public static LogicNode createAllowNull(TypeReference type, ValueNode object, TypeProfileNode anchor) {
+    public static LogicNode createAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         if (StampTool.isPointerNonNull(object)) {
-            return create(type, object, anchor);
+            return create(type, object, profile, anchor);
         }
-        return createHelper(StampFactory.object(type), object, anchor);
+        return createHelper(StampFactory.object(type), object, profile, anchor);
     }
 
-    public static LogicNode create(TypeReference type, ValueNode object, TypeProfileNode anchor) {
-        return createHelper(StampFactory.objectNonNull(type), object, anchor);
+    public static LogicNode create(TypeReference type, ValueNode object) {
+        return create(type, object, null, null);
     }
 
-    public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, TypeProfileNode anchor) {
+    public static LogicNode create(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
+        return createHelper(StampFactory.objectNonNull(type), object, profile, anchor);
+    }
+
+    public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         LogicNode synonym = findSynonym(checkedStamp, object);
         if (synonym != null) {
             return synonym;
         } else {
-            return new InstanceOfNode(checkedStamp, object, anchor);
+            return new InstanceOfNode(checkedStamp, object, profile, anchor);
         }
     }
 
@@ -135,7 +144,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public JavaTypeProfile profile() {
-        return (anchor == null ? null : anchor.getProfile());
+        return profile;
     }
 
     @Override
@@ -181,11 +190,11 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         return !checkedStamp.nonNull();
     }
 
-    public void setProfile(JavaTypeProfile profile) {
-        anchor.setProfile(profile);
+    public void setProfile(JavaTypeProfile typeProfile) {
+        this.profile = typeProfile;
     }
 
-    public TypeProfileNode getAnchor() {
+    public AnchoringNode getAnchor() {
         return anchor;
     }
 }

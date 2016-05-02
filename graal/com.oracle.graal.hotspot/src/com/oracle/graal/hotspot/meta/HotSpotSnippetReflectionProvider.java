@@ -83,6 +83,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     private Class<?> runtimeType;
     private Class<?> configType;
 
+    @Override
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.

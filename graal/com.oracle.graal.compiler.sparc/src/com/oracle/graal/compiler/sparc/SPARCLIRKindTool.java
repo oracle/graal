@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 public class SPARCLIRKindTool implements LIRKindTool {
 
+    @Override
     public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
             return LIRKind.value(SPARCKind.BYTE);
@@ -43,6 +44,7 @@ public class SPARCLIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
@@ -54,10 +56,12 @@ public class SPARCLIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getObjectKind() {
         return LIRKind.reference(SPARCKind.XWORD);
     }
 
+    @Override
     public LIRKind getWordKind() {
         return LIRKind.value(SPARCKind.XWORD);
     }

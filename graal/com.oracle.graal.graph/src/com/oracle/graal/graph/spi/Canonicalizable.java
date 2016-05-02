@@ -48,7 +48,8 @@ public interface Canonicalizable {
     /**
      * Implementations of this method can provide local optimizations like constant folding and
      * strength reduction. Implementations should look at the properties and inputs of the current
-     * node and determine if there is a more optimal and always semantically correct replacement.<br/>
+     * node and determine if there is a more optimal and always semantically correct replacement.
+     * <br/>
      * The return value determines the effect that the canonicalization will have:
      * <ul>
      * <li>Returning an pre-existing node will replace the current node with the given one.</li>
@@ -90,6 +91,7 @@ public interface Canonicalizable {
          */
         T getValue();
 
+        @Override
         default Node canonical(CanonicalizerTool tool) {
             return canonical(tool, getValue());
         }
@@ -126,6 +128,7 @@ public interface Canonicalizable {
          */
         T getY();
 
+        @Override
         default Node canonical(CanonicalizerTool tool) {
             return canonical(tool, getX(), getY());
         }

@@ -101,6 +101,7 @@ public class ExactInlineInfo extends AbstractInlineInfo {
         this.inlineableElement = inlineableElement;
     }
 
+    @Override
     public boolean shouldInline() {
         return concrete.shouldBeInlined();
     }

@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.memory.MemoryNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-@NodeInfo
+@NodeInfo(allowedUsageTypes = InputType.Memory)
 public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCheckpoint.Single, Lowerable, MemoryAccess {
 
     public static final NodeClass<ArrayCopyUnrollNode> TYPE = NodeClass.create(ArrayCopyUnrollNode.class);
@@ -134,10 +134,12 @@ public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCh
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;

@@ -226,7 +226,8 @@ public class OptionProcessor extends AbstractProcessor {
                 if (info.options.size() == 1) {
                     out.printf("            return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionValue);
                 } else {
-                    out.printf("            case \"" + name + "\": return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionValue);
+                    out.printf("            case \"" + name + "\": return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName,
+                                    optionValue);
                 }
             }
             out.println("        }");

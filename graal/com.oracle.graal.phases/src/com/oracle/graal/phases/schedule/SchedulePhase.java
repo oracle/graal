@@ -109,6 +109,7 @@ public final class SchedulePhase extends Phase {
         assert (assertionsEnabled = true) == true;
         if (immutableGraph && assertionsEnabled) {
             return graph.trackNodeEvents(new NodeEventListener() {
+                @Override
                 public void event(NodeEvent e, Node node) {
                     assert false : "graph changed: " + e + " on node " + node;
                 }

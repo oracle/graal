@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.debug;
 
-import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
+/**
+ * A factory for creating {@link DebugCounter}s, {@link DebugTimer}s, {@link DebugMemUseTracker}s
+ * and {@link DebugMethodMetrics}.
+ */
+public interface DebugValueFactory {
 
-@NodeInfo
-public abstract class InfopointNode extends FixedWithNextNode {
-    public static final NodeClass<InfopointNode> TYPE = NodeClass.create(InfopointNode.class);
-    protected final InfopointReason reason;
+    DebugCounter createCounter(String name, boolean conditional);
 
-    public InfopointNode(NodeClass<? extends InfopointNode> c, InfopointReason reason) {
-        super(c, StampFactory.forVoid());
-        this.reason = reason;
-    }
+    DebugTimer createTimer(String name, boolean conditional);
 
-    public InfopointReason getReason() {
-        return reason;
-    }
+    DebugMemUseTracker createMemUseTracker(String name, boolean conditional);
+
+    DebugMethodMetrics createMethodMetrics(ResolvedJavaMethod method);
 }

@@ -101,6 +101,7 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
         return this;
     }
 
+    @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias1 = tool.getAlias(array1);
         ValueNode alias2 = tool.getAlias(array2);
@@ -175,14 +176,17 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
         gen.setResult(this, result);
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(kind);
     }
 
+    @Override
     public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
+    @Override
     public void setLastLocationAccess(MemoryNode lla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;

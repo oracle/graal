@@ -162,6 +162,7 @@ public class HotSpotCompiledCodeBuilder {
          */
         boolean sawCollidingInfopoints;
 
+        @Override
         public int compare(Site s1, Site s2) {
             if (s1.pcOffset == s2.pcOffset) {
                 // Marks must come first since patching a call site

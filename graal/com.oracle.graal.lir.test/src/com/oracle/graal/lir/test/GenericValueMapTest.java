@@ -42,18 +42,22 @@ public class GenericValueMapTest {
 
         private EnumKey<DummyKind> key = new EnumKey<>(this);
 
+        @Override
         public Key getKey() {
             return key;
         }
 
+        @Override
         public int getSizeInBytes() {
             return 8;
         }
 
+        @Override
         public int getVectorLength() {
             return 1;
         }
 
+        @Override
         public char getTypeChar() {
             return 'l';
         }

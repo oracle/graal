@@ -34,3 +34,5 @@ else:
     from mx_graal_8 import mx_post_parse_cmd_line, run_vm, get_vm, isJVMCIEnabled # pylint: disable=unused-import
 
 import mx_graal_bench # pylint: disable=unused-import
+
+import mx_graal_benchmark # pylint: disable=unused-import

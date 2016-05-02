@@ -144,7 +144,7 @@ public abstract class Edges extends Fields {
         int index = 0;
         int curDirectCount = getDirectCount();
         while (index < curDirectCount) {
-            initializeNode(node, curOffsets, index++, null);
+            initializeNode(node, index++, null);
         }
         int curCount = getCount();
         while (index < curCount) {
@@ -154,7 +154,7 @@ public abstract class Edges extends Fields {
                 NodeList<Node> newList = curType == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
 
                 // replacing with a new list object is the expected behavior!
-                initializeList(node, curOffsets, index, newList);
+                initializeList(node, index, newList);
             }
             index++;
         }
@@ -176,7 +176,7 @@ public abstract class Edges extends Fields {
             if (list != null) {
                 int size = list.initialSize;
                 NodeList<Node> newList = curType == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
-                initializeList(node, curOffsets, index, newList);
+                initializeList(node, index, newList);
             }
             index++;
         }
@@ -197,7 +197,7 @@ public abstract class Edges extends Fields {
         final Type curType = this.type;
         int curDirectCount = getDirectCount();
         while (index < curDirectCount) {
-            initializeNode(toNode, curOffsets, index, getNode(fromNode, curOffsets, index));
+            initializeNode(toNode, index, getNode(fromNode, curOffsets, index));
             index++;
         }
         int curCount = getCount();
@@ -206,7 +206,7 @@ public abstract class Edges extends Fields {
             NodeList<Node> fromList = getNodeList(fromNode, curOffsets, index);
             if (list == null || list == fromList) {
                 list = curType == Edges.Type.Inputs ? new NodeInputList<>(toNode, fromList) : new NodeSuccessorList<>(toNode, fromList);
-                initializeList(toNode, curOffsets, index, list);
+                initializeList(toNode, index, list);
             } else {
                 list.copy(fromList);
             }
@@ -227,12 +227,20 @@ public abstract class Edges extends Fields {
      * @param index the index of the edge (between 0 and {@link #getCount()})
      * @param value the node to be written to the edge
      */
-    public static void initializeNode(Node node, long[] offsets, int index, Node value) {
+    public void initializeNode(Node node, int index, Node value) {
+        verifyUpdateValid(node, index, value);
         putNodeUnsafe(node, offsets[index], value);
     }
 
-    public static void initializeList(Node node, long[] offsets, int index, NodeList<Node> value) {
+    public void initializeList(Node node, int index, NodeList<Node> value) {
+        verifyUpdateValid(node, index, value);
         putNodeListUnsafe(node, offsets[index], value);
+    }
+
+    private void verifyUpdateValid(Node node, int index, Object newValue) {
+        if (newValue != null && !getType(index).isAssignableFrom(newValue.getClass())) {
+            throw new IllegalArgumentException("Can not assign " + newValue.getClass() + " to " + getType(index) + " in " + node);
+        }
     }
 
     /**
@@ -246,7 +254,7 @@ public abstract class Edges extends Fields {
     public void setNode(Node node, int index, Node value) {
         assert index < directCount;
         Node old = getNodeUnsafe(node, offsets[index]);
-        putNodeUnsafe(node, offsets[index], value);
+        initializeNode(node, index, value);
         update(node, old, value);
     }
 

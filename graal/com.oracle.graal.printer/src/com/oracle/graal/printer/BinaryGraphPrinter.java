@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.compiler.common.GraalOptions.PrintGraphProbabilities;
-import static com.oracle.graal.compiler.common.GraalOptions.PrintIdealGraphSchedule;
 import static com.oracle.graal.graph.Edges.Type.Inputs;
 import static com.oracle.graal.graph.Edges.Type.Successors;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -38,8 +37,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
+
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.CachedGraph;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Graph;
@@ -62,11 +67,6 @@ import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.schedule.SchedulePhase;
-
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
@@ -137,15 +137,19 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
 
+    private static final Charset utf8 = Charset.forName("UTF-8");
+
     public BinaryGraphPrinter(WritableByteChannel channel) {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
     }
 
-    public void print(Graph graph, String title) throws IOException {
+    @Override
+    public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
+        writeProperties(properties);
         writeGraph(graph);
         flush();
     }
@@ -159,7 +163,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             if (scheduleResult == null) {
 
                 // Also provide a schedule when an error occurs
-                if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
+                if (Options.PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
                     try {
                         SchedulePhase schedule = new SchedulePhase();
                         schedule.apply(structuredGraph);
@@ -221,11 +225,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void writeString(String str) throws IOException {
-        writeInt(str.length());
-        int sizeInBytes = str.length() * 2;
-        ensureAvailable(sizeInBytes);
-        buffer.asCharBuffer().put(str);
-        buffer.position(buffer.position() + sizeInBytes);
+        byte[] bytes = str.getBytes(utf8);
+        writeBytes(bytes);
     }
 
     private void writeBytes(byte[] b) throws IOException {
@@ -233,8 +234,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length);
-            buffer.put(b);
+            int bytesWritten = 0;
+            while (bytesWritten < b.length) {
+                int toWrite = Math.min(b.length - bytesWritten, buffer.capacity());
+                ensureAvailable(toWrite);
+                buffer.put(b, bytesWritten, toWrite);
+                bytesWritten += toWrite;
+            }
         }
     }
 
@@ -455,7 +461,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         for (Node node : graph.getNodes()) {
             NodeClass<?> nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
-            if (cfg != null && PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
+            if (cfg != null && Options.PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
                 try {
                     props.put("probability", cfg.blockFor(node).probability());
                 } catch (Throwable t) {
@@ -494,17 +500,25 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
-            // properties
-            writeShort((char) props.size());
-            for (Entry<Object, Object> entry : props.entrySet()) {
-                String key = entry.getKey().toString();
-                writePoolObject(key);
-                writePropertyObject(entry.getValue());
-            }
+            writeProperties(props);
             writeEdges(node, Inputs);
             writeEdges(node, Successors);
 
             props.clear();
+        }
+    }
+
+    private void writeProperties(Map<Object, Object> props) throws IOException {
+        if (props == null) {
+            writeShort((char) 0);
+            return;
+        }
+        // properties
+        writeShort((char) props.size());
+        for (Entry<Object, Object> entry : props.entrySet()) {
+            String key = entry.getKey().toString();
+            writePoolObject(key);
+            writePropertyObject(entry.getValue());
         }
     }
 
@@ -579,14 +593,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci) throws IOException {
+    @Override
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
         writePoolObject(method);
         writeInt(bci);
+        writeProperties(properties);
     }
 
+    @Override
     public void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
     }

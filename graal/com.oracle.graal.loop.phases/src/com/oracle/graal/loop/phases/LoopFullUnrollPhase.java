@@ -23,7 +23,7 @@
 package com.oracle.graal.loop.phases;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopPolicies;
 import com.oracle.graal.loop.LoopsData;
@@ -33,7 +33,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
 
-    private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
+    private static final DebugCounter FULLY_UNROLLED_LOOPS = Debug.counter("FullUnrolls");
     private final CanonicalizerPhase canonicalizer;
 
     public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer, LoopPolicies policies) {
@@ -54,7 +54,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                         Debug.log("FullUnroll %s", loop);
                         LoopTransformations.fullUnroll(loop, context, canonicalizer);
                         FULLY_UNROLLED_LOOPS.increment();
-                        Debug.dump(graph, "FullUnroll %s", loop);
+                        Debug.dump(Debug.INFO_LOG_LEVEL, graph, "FullUnroll %s", loop);
                         peeled = true;
                         break;
                     }

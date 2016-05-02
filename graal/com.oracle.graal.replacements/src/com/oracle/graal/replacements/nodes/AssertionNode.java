@@ -78,12 +78,14 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         return this;
     }
 
+    @Override
     public void lower(LoweringTool tool) {
         if (!compileTimeAssertion) {
             tool.getLowerer().lower(this, tool);
         }
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
         if (value.isConstant()) {

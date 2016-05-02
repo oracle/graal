@@ -53,6 +53,7 @@ public class SPARCImmediateAddressNode extends AddressNode implements LIRLowerab
         this.displacement = displacement;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         SPARCLIRGenerator tool = (SPARCLIRGenerator) gen.getLIRGeneratorTool();
 

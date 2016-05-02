@@ -570,14 +570,17 @@ public class GraphUtil {
      */
     public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
         return new NodeIterable<FixedNode>() {
+            @Override
             public Iterator<FixedNode> iterator() {
                 return new Iterator<FixedNode>() {
                     public FixedNode current = start;
 
+                    @Override
                     public boolean hasNext() {
                         return current != null;
                     }
 
+                    @Override
                     public FixedNode next() {
                         try {
                             return current;
@@ -603,14 +606,17 @@ public class GraphUtil {
             this.assumptions = assumptions;
         }
 
+        @Override
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
         }
 
+        @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
         }
 
+        @Override
         public boolean canonicalizeReads() {
             return canonicalizeReads;
         }
@@ -620,21 +626,26 @@ public class GraphUtil {
             return true;
         }
 
+        @Override
         public void deleteBranch(Node branch) {
             branch.predecessor().replaceFirstSuccessor(branch, null);
             GraphUtil.killCFG(branch, this);
         }
 
+        @Override
         public void removeIfUnused(Node node) {
             GraphUtil.tryKillUnused(node);
         }
 
+        @Override
         public void addToWorkList(Node node) {
         }
 
+        @Override
         public void addToWorkList(Iterable<? extends Node> nodes) {
         }
 
+        @Override
         public Assumptions getAssumptions() {
             return assumptions;
         }

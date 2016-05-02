@@ -50,26 +50,31 @@ public final class VerifyingMoveFactory implements MoveFactory {
         this.inner = inner;
     }
 
+    @Override
     public boolean canInlineConstant(JavaConstant c) {
         return inner.canInlineConstant(c);
     }
 
+    @Override
     public boolean allowConstantToStackMove(Constant constant) {
         return inner.allowConstantToStackMove(constant);
     }
 
+    @Override
     public LIRInstruction createMove(AllocatableValue result, Value input) {
         LIRInstruction inst = inner.createMove(result, input);
         assert checkResult(inst, result, input);
         return inst;
     }
 
+    @Override
     public LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
         LIRInstruction inst = inner.createStackMove(result, input);
         assert checkResult(inst, result, input);
         return inst;
     }
 
+    @Override
     public LIRInstruction createLoad(AllocatableValue result, Constant input) {
         LIRInstruction inst = inner.createLoad(result, input);
         assert inst instanceof LoadConstantOp && checkResult(inst, result, null);

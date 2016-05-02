@@ -60,6 +60,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
             this.numMat = numMat;
         }
 
+        @Override
         public void forEachProperty(BiConsumer<String, String> action) {
             action.accept("bestCost", Double.toString(getBestCost()));
             action.accept("numMat", Integer.toString(getNumMaterializations()));

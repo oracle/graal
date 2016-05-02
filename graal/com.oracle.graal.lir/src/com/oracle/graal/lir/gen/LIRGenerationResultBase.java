@@ -55,6 +55,7 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
         return callingConvention;
     }
 
+    @Override
     public LIR getLIR() {
         return lir;
     }
@@ -62,29 +63,35 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
     /**
      * Determines whether the code being generated makes at least one foreign call.
      */
+    @Override
     public boolean hasForeignCall() {
         return hasForeignCall;
     }
 
+    @Override
     public final void setForeignCall(boolean hasForeignCall) {
         this.hasForeignCall = hasForeignCall;
     }
 
+    @Override
     public final FrameMapBuilder getFrameMapBuilder() {
         assert frameMap == null : "getFrameMapBuilder() can only be used before calling buildFrameMap()!";
         return frameMapBuilder;
     }
 
+    @Override
     public void buildFrameMap() {
         assert frameMap == null : "buildFrameMap() can only be called once!";
         frameMap = frameMapBuilder.buildFrameMap(this);
     }
 
+    @Override
     public FrameMap getFrameMap() {
         assert frameMap != null : "getFrameMap() can only be used after calling buildFrameMap()!";
         return frameMap;
     }
 
+    @Override
     public String getCompilationUnitName() {
         return compilationUnitName;
     }

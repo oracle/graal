@@ -70,7 +70,7 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.sparc.SPARCNodeMatchRules;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
@@ -114,7 +114,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     private static class SizeEstimateStatistics {
-        private static final ConcurrentHashMap<String, DebugMetric> metrics = new ConcurrentHashMap<>();
+        private static final ConcurrentHashMap<String, DebugCounter> counters = new ConcurrentHashMap<>();
         private final String suffix;
 
         SizeEstimateStatistics(String suffix) {
@@ -124,7 +124,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         public void add(Class<?> c, int count) {
             String name = SizeEstimateStatistics.class.getSimpleName() + "_" + c.getSimpleName() + "." + suffix;
-            DebugMetric m = metrics.computeIfAbsent(name, (n) -> Debug.metric(n));
+            DebugCounter m = counters.computeIfAbsent(name, (n) -> Debug.counter(n));
             m.add(count);
         }
     }
@@ -180,6 +180,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             this.isStub = isStub;
         }
 
+        @Override
         public boolean hasFrame() {
             return true;
         }

@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 public class AMD64LIRKindTool implements LIRKindTool {
 
+    @Override
     public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
             return LIRKind.value(AMD64Kind.BYTE);
@@ -43,6 +44,7 @@ public class AMD64LIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
@@ -54,10 +56,12 @@ public class AMD64LIRKindTool implements LIRKindTool {
         }
     }
 
+    @Override
     public LIRKind getObjectKind() {
         return LIRKind.reference(AMD64Kind.QWORD);
     }
 
+    @Override
     public LIRKind getWordKind() {
         return LIRKind.value(AMD64Kind.QWORD);
     }

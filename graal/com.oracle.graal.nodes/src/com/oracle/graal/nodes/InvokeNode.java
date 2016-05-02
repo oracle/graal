@@ -90,6 +90,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.polymorphic = value;
     }
 
+    @Override
     public boolean useForInlining() {
         return useForInlining;
     }
@@ -147,6 +148,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         }
     }
 
+    @Override
     public int bci() {
         return bci;
     }
@@ -207,6 +209,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.guard = guard;
     }
 
+    @Override
     public Stamp uncheckedStamp() {
         return this.callTarget.returnStamp().getUncheckedStamp();
     }

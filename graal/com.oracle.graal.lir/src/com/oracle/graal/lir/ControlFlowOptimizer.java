@@ -31,7 +31,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -58,7 +58,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             this.lir = lir;
         }
 
-        private static final DebugMetric BLOCKS_DELETED = Debug.metric("BlocksDeleted");
+        private static final DebugCounter BLOCKS_DELETED = Debug.counter("BlocksDeleted");
 
         /**
          * Checks whether a block can be deleted. Only blocks with exactly one successor and an
@@ -77,7 +77,8 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             assert instructions.size() >= 2 : "block must have label and branch";
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors()[0]).get(0)).getLabel() : "branch target must be the successor";
+            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors()[0]).get(
+                            0)).getLabel() : "branch target must be the successor";
 
             // Block must have exactly one successor.
             return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();

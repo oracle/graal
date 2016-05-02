@@ -174,6 +174,7 @@ public class AMD64Unary {
             opcode.emit(masm, size, asRegister(result), input.toAddress());
         }
 
+        @Override
         public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
             if (state == null && input.isValidImplicitNullCheckFor(value, implicitNullCheckLimit)) {
                 state = nullCheckState;

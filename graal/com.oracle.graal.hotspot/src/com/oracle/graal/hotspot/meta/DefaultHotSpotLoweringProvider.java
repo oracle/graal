@@ -184,6 +184,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         this.constantReflection = constantReflection;
     }
 
+    @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         super.initialize(providers, providers.getSnippetReflection());
 
@@ -222,7 +223,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             } else {
                 if (instanceOfNode.allowsNull()) {
                     ValueNode object = instanceOfNode.getValue();
-                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.getAnchor()));
+                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.profile(), instanceOfNode.getAnchor()));
                     LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                     instanceOfNode.replaceAndDelete(newNode);
                 }

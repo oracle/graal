@@ -285,6 +285,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             return register;
         }
 
+        @Override
         public void close() {
             assert nextFreeScratchRegister > 0 : "Close called too often";
             nextFreeScratchRegister--;

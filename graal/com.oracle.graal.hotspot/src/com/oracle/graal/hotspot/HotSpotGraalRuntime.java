@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.areScopedMetricsOrTimersEnabled;
+import static com.oracle.graal.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
@@ -44,6 +44,8 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.TTY;
+import com.oracle.graal.debug.internal.DebugValuesPrinter;
+import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
 import com.oracle.graal.graph.DefaultNodeCollectionsProvider;
 import com.oracle.graal.graph.NodeCollectionsProvider;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
@@ -125,8 +127,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
-            if (MethodFilter.getValue() != null) {
+        if (Log.getValue() == null && !areScopedGlobalMetricsEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
+            if (MethodFilter.getValue() != null && !Debug.isEnabled()) {
                 TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, TrackMemUse, Dump and Verify options are all null");
             }
         }
@@ -148,10 +150,31 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             }
         }
 
-        if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areScopedMetricsOrTimersEnabled())) {
+        if (Debug.areUnconditionalCountersEnabled() || Debug.areUnconditionalTimersEnabled() || Debug.areUnconditionalMethodMetricsEnabled() ||
+                        (Debug.isEnabled() && areScopedGlobalMetricsEnabled()) || (Debug.isEnabled() && Debug.isMethodFilteringEnabled())) {
             // This must be created here to avoid loading the DebugValuesPrinter class
             // during shutdown() which in turn can cause a deadlock
-            debugValuesPrinter = new DebugValuesPrinter();
+            int mmPrinterType = 0;
+            mmPrinterType |= MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue() ? 1 : 0;
+            mmPrinterType |= MethodMetricsPrinter.Options.MethodMeterFile.getValue() != null ? 2 : 0;
+            switch (mmPrinterType) {
+                case 0:
+                    debugValuesPrinter = new DebugValuesPrinter();
+                    break;
+                case 1:
+                    debugValuesPrinter = new DebugValuesPrinter(new MethodMetricsPrinter.MethodMetricsASCIIPrinter(TTY.out));
+                    break;
+                case 2:
+                    debugValuesPrinter = new DebugValuesPrinter(new MethodMetricsPrinter.MethodMetricsCSVFilePrinter());
+                    break;
+                case 3:
+                    debugValuesPrinter = new DebugValuesPrinter(
+                                    new MethodMetricsPrinter.MethodMetricsCompositePrinter(new MethodMetricsPrinter.MethodMetricsCSVFilePrinter(),
+                                                    new MethodMetricsPrinter.MethodMetricsASCIIPrinter(TTY.out)));
+                    break;
+                default:
+                    break;
+            }
         }
 
         // Complete initialization of backends
@@ -180,6 +203,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return backend;
     }
 
+    @Override
     public HotSpotProviders getHostProviders() {
         return getHostBackend().getProviders();
     }
@@ -208,10 +232,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return null;
     }
 
+    @Override
     public HotSpotBackend getHostBackend() {
         return hostBackend;
     }
 
+    @Override
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
         assert arch != Architecture.class;
         return backends.get(arch);

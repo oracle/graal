@@ -43,7 +43,196 @@ The `Debug.log` statement will send output to the console if `CodeInstall` is ma
 
 ## Graal specific VM options
 
-Note that a listing of all Graal specific VM options (i.e., those with a "-G:" prefix) can be listed along with a brief description of each option by specifying the `-G:+PrintFlags` option. Also note that the "-G:" prefix is a [short-cut](https://github.com/graalvm/graal-core/blob/3e5b6a39007ef68a720d62170e16577a240f3616/mx.graal-core/mx_graal_8.py#L338-L352) for use of system properties.
+Note that a listing of all Graal specific VM options (i.e., those with a "-G:" prefix) can be listed along with a brief description of each option by specifying the `-G:+PrintFlags` option.
+Also note that the "-G:" prefix is a [short-cut](https://github.com/graalvm/graal-core/blob/3e5b6a39007ef68a720d62170e16577a240f3616/mx.graal-core/mx_graal_8.py#L338-L352) for use of system properties.
+
+## Debug Metrics
+Graal supports several types of *debug metrics* to record compiler related metrics.
+Metrics are restricted to a numerical representation (counters and timers).  
+Metrics are classified according to their scope which is either *global* or *method*.
+Global metrics are collected per-VM execution whereas method metrics are collected for every compilation of a method.
+A detailed description of both global metrics and method metrics can be found below.
+
+
+### Global Metrics (Counters, Timers, MemUseTrackers)
+*Global Metrics* are counters, timers and memory trackers.
+A global metric always has a unique name across all compilations.
+The VM will dump a summary of the global metrics on shutdown.
+
+There are the following three global metrics types in Graal:
+* DebugCounter: A simple named counter.
+For example:
+```java
+// declaration: if the name of a DebugCounter is known at compile time it should be declared as a constant
+private static final DebugCounter byteCodeSize = Debug.counter("ByteCodeSize");
+// usage
+long byteCodeSize= ... ;
+byteCodeSize.add(byteCodeSize);
+```
+The VM dump on `stdout` will include the counter's name and its value:
+```
+<DebugValues>  
+|-> Summary
+    ...
+    |-> ByteCodeSize=12345
+    ...
+</DebugValues>  
+```
+* DebugTimer: An auto-closable timer implementation that records the time spent in its `try` block.
+For example:
+```java
+// declaration: if the name of DebugTimer is known at compile time it should be declared as a constant
+private static final DebugTimer myOptimizationTime = Debug.timer("MyOptimizationTimer");
+// usage
+try(DebugCloseable a = myOptimizationTime.start()){
+    // do your optimization
+    doMyOptimization();
+} // on close the time elapsed between start and close is accumulated to the timer's value
+```
+The VM dump on `stdout` will include the timer's name. Graal declares two different values for a DebugTimer:
+a flat time and an accumulated time.
+The accumulated time represents the real time spent in the scope associated with the try-with-resource statement.
+The flat time is the amount of time spent within the declared scope minus the time spent in any nested timed scopes.
+```
+<DebugValues>  
+|-> Summary
+    ...
+    |-> MyOptimizationTimer_Accm=100.0 ms
+    |-> MyOptimizationTimer_Flat=10.0 ms
+    ...
+</DebugValues>  
+```
+* DebugMemUseTracker: An auto-closable memory tracker that tracks the memory usage in its `try` block. For example:
+```java
+// declaration: if the name of DebugMemUseTracker is known at compile time it should be declared as a constant
+private static final DebugMemUseTracker myOptimizationMemoryUsage = Debug.timer("MyOptimizationMemory");
+// usage
+try(DebugCloseable a = myOptimizationMemoryUsage.start()){
+    // do your optimization
+    doMyOptimization();
+} // on close the memory usage between start and close is accumulated to the MemUseTrackers's value
+```
+The VM dump on `stdout` will include the debug mem tracker's name. However, Graal declares two different instances for one DebugMemUseTracker following the same semantics as the DebugTimer.
+```
+<DebugValues>  
+|-> Summary
+    ...
+    |-> MyOptimizationMemory_Accm=100000 bytes
+    |-> MyOptimizationMemory_Flat=1000 bytes
+    ...
+</DebugValues>  
+```
+
+### Method Metrics
+Method metrics are the second category of metrics in the Graal compiler.
+Unlike the global metrics, method metrics allow to create and use *named counters* per compilation of a Java method.
+Global metrics have the disadvantage that they are recorded on a per-VM invocation basis.
+They can be filtered (as described in section *Method Filtering*) but filtering
+does not satisfy the requirement of collecting metrics on a per-compilation basis.
+To illustrate this with a simplified example, imagine the following compiler phase doing a novel optimization:
+```java
+public class MyCompilerPhase{
+  private static final DebugCounter myOptCounter = Debug.counter("MyOptCounter");
+  public void doOptimization(JavaMethod method){
+    for(/*all IR nodes in the method*/){
+      if(/*node is suitable for my optimization*/){
+        // do your optimization
+        myOptCounter.increment();
+      }
+    }
+  }
+}
+```
+Assuming you have a Java program `P1` where you know there is one method `M1`
+very frequently called and thus gets marked for compilation and is compiled by Graal.
+You want to know if your novel optimization is applied on `M1` and also how often,
+thus you invoke the VM and enable debug counters with `-G:Count=MyCompilerPhase`
+and to filter for the specific method you enable method filtering with `-G:MethodFitler=P1.M1`.
+Assuming you get a counter value of `5` then you do not know if `M1` was compiled
+once and the optimization triggered `5` times or if `M1` was compiled 5 times and
+the optimization always triggered just once (depending on your optimization and
+the conditions for it to apply any other combination is possible).
+
+Method metrics solve this problem by introducing a container for metrics per compilation of a method.
+A `MethodMetrics` object is a `List<CompilationData<CompilationId,Map<CounterName,Value>>>`
+that collects all its declared metrics for every compilation of a method.
+Every time a method gets compiled, assuming a method metrics object for this
+method is defined, a new entry in this compilation list is created.
+This ensures that all collected metrics preserve the context of the compilation
+they belonged to (including the *order* of the compilations).
+To come back to the example from before, if we rewrite our compiler phase to use
+method metrics we end up with:
+```java
+public class MyCompilerPhase{
+  public void doOptimization(JavaMethod method){
+    DebugMethodMetrics methodMetric = Debug.methodMetrics(method);
+    // asssuming this phase is only executed once each compilation of a method
+    methodMetric.incrementMetric("Compilations");
+    for(/*all IR nodes in the method*/){
+      if(/*node is suitable for my optimization*/){
+        // do your optimization
+        methodMetric.incrementMetric("MyOptCounter");
+      }
+    }
+  }
+}
+```
+And we will then see that e.g. we have 5 compilations where in each compilation
+the counter named `Compilations` has a value of `1`  and the value of `MyOptCounter` is `1`.
+
+
+Method metrics are enabled with the `-G:MethodMeter=` and follow the same debugging scope matching rules as e.g. `-G:Time=`.
+There are two different ways on how to dump method metris (that can be enabled both):
+* ASCII Command Line Dump: The option `-G:MethodMeterPrintAscii=true` dumps method metrics after the global metrics in a human readable ASCII format.
+* File Dump: The option `-G:MethodMeterFile=filename` will create a file on VM shutdown named `filename.csv` that contains the method compilation metrics in a long data format. The format is:
+```
+{methodname,compilationListIndex,counterName,counterValue\n}
+```
+This file can easily be post processed for more elaborate analysis scenarios.
+
+#### Global Metric Interception
+Graal uses global metrics in a lot of places, e.g. to measure time and memory of compiler phases (or compilations).
+Assuming you are interested in those global metrics on  a per-method-compilation basis there is the option
+`-G:GlobalMetricsInterceptedByMethodMetrics` to enable an interception of the global metrics for method metrics.
+If a global metric (`DebugTimer`, `DebugCounter` or `DebugMemUseTracker`)
+is enabled in the same scope as method metrics, this option will enable Graal
+to use the global metric to update the method metrics for the current compilation
+(using the name of the global metric).
+The format to specify global metric interception is: `(Timers|Counters|MemUseTrackers)(,Timers|,Counters|,MemUseTrackers)*`.
+This option however comes with a small but constant overhead for the lookup of the context method in the global metric.
+
+Assuming you are interested in the phase times during the compilation of a certain method consider the following example that will intercept global timers during the compilation of the method `Long.bitCount`:
+```
+mx --vm jvmci dacapo
+  -G:MethodMeter=FrontEnd
+  -G:Time=FrontEnd
+  -G:GlobalMetricsInterceptedByMethodMetrics=Timers
+  -G:MethodMeterPrintAscii=true
+  -G:MethodFilter=Long.bitCount fop -n 10
+
+ // Output
+ ==========================================================================
+HotSpotMethod<Long.bitCount(long)>
+__________________________________________________________________________
+FrontEnd_Accm                                       =                    9
+PhaseTime_CanonicalizerPhase_Accm                   =                    1
+PhaseTime_CanonicalizerPhase_Flat                   =                    1
+PhaseTime_HighTier_Accm                             =                    2
+PhaseTime_IncrementalCanonicalizerPhase_Accm        =                    1
+PhaseTime_LowTier_Accm                              =                    1
+PhaseTime_LoweringPhase_Accm                        =                    1
+PhaseTime_MidTier_Accm                              =                    3
+PhaseTime_PhaseSuite_Accm                           =                    2
+PhaseTime_PhaseSuite_Flat                           =                    1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==========================================================================
+```
+However when using the interception there are several non-trivial things to remember:
+* Time Reporting: Time is collected in nanoseconds with the most accurate timer on the given platform, however a certain phase might be so fast that rounding to milliseconds will generate a 0 value for the reported time. Zero values are ignored during dumping.
+* Compilation Policy: Timing is heavily influenced by several factors including:
+ * TieredCompilation: If Graal is run in tiered mode and compiled by C1 the first compilations will be slower due to the fact that Graal still runs in the interpreter.
+ * Type Profile: Certain debugging options of Graal might result in scenarios where a certain non-Graal method is hot and enqueued for Graal compilation as Graal itself heavily calls it e.g. enabling the flag `-G:PrintAfterCompilation` will format method names with `String.format` which can result in a compilation request to Graal to compile `String.format` although the application itself never calls `String.format`.
+
 
 ## Method filtering
 

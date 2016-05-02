@@ -70,9 +70,9 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
 /**
- * An implementation of the linear scan register allocator algorithm described in <a
- * href="http://doi.acm.org/10.1145/1064979.1064998"
- * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
+ * An implementation of the linear scan register allocator algorithm described in
+ * <a href="http://doi.acm.org/10.1145/1064979.1064998" >
+ * "Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
 public class LinearScan {
@@ -723,11 +723,11 @@ public class LinearScan {
                 }
             }
         }
-        Debug.dump(1, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
+        Debug.dump(Debug.BASIC_LOG_LEVEL, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
-        Debug.dump(ir, label);
+        Debug.dump(Debug.INFO_LOG_LEVEL, ir, label);
     }
 
     boolean verify() {

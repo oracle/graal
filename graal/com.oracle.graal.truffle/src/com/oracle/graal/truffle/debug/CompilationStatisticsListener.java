@@ -154,12 +154,12 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
         compilationLocal.get().truffleTierFinished = System.nanoTime();
 
-        nodeStatistics.accept(target.nodeStream(true).filter(n -> n != null).map(node -> node.getClass()));
+        nodeStatistics.accept(target.nodeStream(inliningDecision).filter(n -> n != null).map(node -> node.getClass()));
 
-        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target);
+        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
         nodeCount.accept(callTargetStat.getNodeCount());
         nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial());
         nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial());
@@ -197,7 +197,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
         success++;
         long compilationDone = System.nanoTime();
 
@@ -312,16 +312,16 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
 
         public void printStatistics(GraalTruffleRuntime rt, Function<T, String> toStringFunction) {
             types.keySet().stream().sorted(Comparator.comparing(c -> -types.get(c).getSum())).//
-            forEach(c -> {
-                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
-            });
+                            forEach(c -> {
+                                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
+                            });
         }
 
         public void accept(Stream<T> classes) {
             classes.collect(groupingBy(identity(), counting())).//
-            forEach((clazz, count) -> {
-                types.computeIfAbsent(clazz, c -> new IntSummaryStatistics()).accept(count.intValue());
-            });
+                            forEach((clazz, count) -> {
+                                types.computeIfAbsent(clazz, c -> new IntSummaryStatistics()).accept(count.intValue());
+                            });
         }
     }
 
@@ -343,8 +343,8 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         private int callCountDirectNotCloned;
         private int loopCount;
 
-        CallTargetNodeStatistics(OptimizedCallTarget target) {
-            target.accept((CallTreeNodeVisitor) this::visitNode, true);
+        CallTargetNodeStatistics(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+            target.accept((CallTreeNodeVisitor) this::visitNode, inliningDecision);
 
         }
 

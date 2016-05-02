@@ -52,16 +52,19 @@ public final class CStringConstant extends DataPointerConstant {
         this.string = string;
     }
 
+    @Override
     public int getSerializedSize() {
         return string.getBytes(UTF8).length + 1;
     }
 
+    @Override
     public void serialize(ByteBuffer buffer) {
         byte[] bytes = string.getBytes(UTF8);
         buffer.put(bytes);
         buffer.put((byte) 0);
     }
 
+    @Override
     public String toValueString() {
         return "c\"" + string + "\"";
     }

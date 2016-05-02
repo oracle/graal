@@ -54,25 +54,30 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
         this.newValue = newValue;
     }
 
+    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
 
+    @Override
     public void setStateAfter(FrameState x) {
         assert x == null || x.isAlive() : "frame state must be in a graph";
         updateUsages(stateAfter, x);
         stateAfter = x;
     }
 
+    @Override
     public boolean hasSideEffect() {
         return true;
     }
 
+    @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(gen.operand(getAddress()), gen.operand(getNewValue()));
         gen.setResult(this, result);
     }
 
+    @Override
     public boolean canNullCheck() {
         return false;
     }

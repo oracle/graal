@@ -34,6 +34,7 @@ class NodeUsageIterable implements NodeIterable<Node> {
         this.node = node;
     }
 
+    @Override
     public NodeUsageIterator iterator() {
         if (MODIFICATION_COUNTS_ENABLED) {
             return new NodeUsageWithModCountIterator(node);

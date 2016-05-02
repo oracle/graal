@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package com.oracle.graal.compiler.test.debug;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.site.InfopointReason;
+import org.junit.Test;
 
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.phases.Phase;
 
-@Opcode("SIMPLE_INFOPOINT")
-public final class SimpleInfopointOp extends LIRInstruction {
-    public static final LIRInstructionClass<SimpleInfopointOp> TYPE = LIRInstructionClass.create(SimpleInfopointOp.class);
-    private final InfopointReason reason;
-    private final BytecodePosition position;
-
-    public SimpleInfopointOp(InfopointReason reason, BytecodePosition position) {
-        super(TYPE);
-        this.reason = reason;
-        this.position = position;
+public class MethodMetricsTest1 extends MethodMetricsTest {
+    @Override
+    protected Phase additionalPhase() {
+        return new MethodMetricPhases.CountingAddPhase();
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb) {
-        crb.recordInfopoint(crb.asm.position(), new DebugInfo(position), reason);
+    DebugConfig getConfig() {
+        return overrideGraalDebugConfig(System.out, "MethodMetricsTest$TestApplication.*", "CountingAddPhase");
+    }
+
+    @Override
+    void assertValues() throws Throwable {
+        assertValues("PhaseRunsOnMethod", new long[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+    }
+
+    @Override
+    @Test
+    public void test() throws Throwable {
+        super.test();
     }
 }

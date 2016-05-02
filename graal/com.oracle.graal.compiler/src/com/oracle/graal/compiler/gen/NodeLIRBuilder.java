@@ -35,7 +35,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.oracle.graal.compiler.common.GraalOptions;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -50,11 +61,11 @@ import com.oracle.graal.graph.GraalGraphJVMCIError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.FullInfopointOp;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.SimpleInfopointOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.SwitchStrategy;
@@ -99,20 +110,6 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
@@ -125,8 +122,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
-
-    private BytecodePosition lastPosition;
 
     private final NodeMatchRules nodeMatchRules;
     private Map<Class<? extends Node>, List<MatchStatement>> matchRules;
@@ -179,6 +174,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return nodeOperands.get(node);
     }
 
+    @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
         for (Entry<Node, Value> entry : nodeOperands.entries()) {
@@ -319,10 +315,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
+    @Override
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
-            lastPosition = null;
+            setSourcePosition(null);
 
             if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
                 assert block.getPredecessorCount() == 0;
@@ -449,13 +446,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (Debug.isLogEnabled() && node.stamp().isEmpty()) {
             Debug.log("This node has an empty stamp, we are emitting dead code(?): %s", node);
         }
-        if (GraalOptions.NewInfopoints.getValue()) {
-            BytecodePosition position = node.getNodeContext(BytecodePosition.class);
-            if (position != null && (lastPosition == null || !lastPosition.equals(position))) {
-                lastPosition = position;
-                recordSimpleInfopoint(InfopointReason.BYTECODE_POSITION, position);
-            }
-        }
+        setSourcePosition(node.getNodeSourcePosition());
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else {
@@ -705,6 +696,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @Override
     public LIRFrameState state(DeoptimizingNode deopt) {
         if (!deopt.canDeoptimize()) {
             return null;
@@ -743,8 +735,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     @Override
-    public void recordSimpleInfopoint(InfopointReason reason, BytecodePosition position) {
-        append(new SimpleInfopointOp(reason, position));
+    public void setSourcePosition(NodeSourcePosition position) {
+        gen.setSourcePosition(position);
     }
 
     @Override

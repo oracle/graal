@@ -86,13 +86,13 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             listener = new HashSetNodeEventListener();
             try (NodeEventScope s = graph.trackNodeEvents(listener)) {
                 try (Scope s2 = Debug.scope("WithGraphChangeMonitoring." + getName() + "-" + message)) {
-                    if (Debug.isDumpEnabled(BasePhase.PHASE_DUMP_LEVEL)) {
-                        Debug.dump(BasePhase.PHASE_DUMP_LEVEL, graph, "*** Before phase %s", getName());
+                    if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** Before phase %s", getName());
                     }
                     super.run(graph, context);
                     Set<Node> collect = listener.getNodes().stream().filter(e -> !e.isAlive()).filter(e -> !(e instanceof LogicConstantNode)).collect(Collectors.toSet());
-                    if (Debug.isDumpEnabled(BasePhase.PHASE_DUMP_LEVEL)) {
-                        Debug.dump(BasePhase.PHASE_DUMP_LEVEL, graph, "*** After phase %s %s", getName(), collect);
+                    if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** After phase %s %s", getName(), collect);
                     }
                     Debug.log("*** %s %s %s\n", message, graph, collect);
                 }

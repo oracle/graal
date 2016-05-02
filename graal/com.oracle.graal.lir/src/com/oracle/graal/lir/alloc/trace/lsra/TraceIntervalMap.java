@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package com.oracle.graal.lir.alloc.trace.lsra;
 
-import com.oracle.graal.debug.DebugMetric;
+import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
+import com.oracle.graal.compiler.common.alloc.TraceMap;
 
-public final class MetricImpl extends DebugValue implements DebugMetric {
+public final class TraceIntervalMap extends TraceMap<IntervalData> {
 
-    public MetricImpl(String name, boolean conditional) {
-        super(name, conditional);
-        if (isEnabled()) {
-            // Allows for zero-count metrics to be shown
-            getCurrentValue();
-        }
+    TraceIntervalMap(TraceBuilderResult<?> traceBuilderResult) {
+        super(traceBuilderResult);
     }
 
-    public void increment() {
-        add(1);
-    }
-
-    public void add(long value) {
-        if (isEnabled()) {
-            super.addToCurrentValue(value);
-        }
-    }
-
-    @Override
-    public String toString(long value) {
-        return Long.toString(value);
-    }
 }

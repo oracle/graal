@@ -51,6 +51,7 @@ import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.type.StampTool;
 
@@ -218,7 +219,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     private boolean tryCheckCastSingleImplementor(ValueNode receiver, TypeReference speculatedType) {
         ResolvedJavaType singleImplementor = speculatedType.getType();
         if (singleImplementor != null) {
-            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType());
+            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveConcreteMethod(targetMethod(), invoke().getContextType());
             if (singleImplementorMethod != null) {
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
@@ -231,12 +232,12 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * an assumption but as we need an instanceof check anyway we can verify both
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
-                TypeProfileNode anchor = TypeProfileNode.create(getProfile());
+                ValueAnchorNode anchor = new ValueAnchorNode(null);
                 if (anchor != null) {
                     graph().add(anchor);
                     graph().addBeforeFixed(invoke().asNode(), anchor);
                 }
-                LogicNode condition = graph().addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, anchor));
+                LogicNode condition = graph().addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, getProfile(), anchor));
                 FixedGuardNode guard = graph().add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph().addBeforeFixed(invoke().asNode(), guard);
                 PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.objectNonNull(speculatedType), guard));

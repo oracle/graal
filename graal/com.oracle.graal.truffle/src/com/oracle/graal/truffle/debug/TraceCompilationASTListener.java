@@ -45,14 +45,15 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        log(0, "opt AST", target.toString(), target.getDebugProperties());
-        printCompactTree(target);
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+        log(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
+        printCompactTree(target, inliningDecision);
     }
 
-    private static void printCompactTree(OptimizedCallTarget target) {
+    private static void printCompactTree(OptimizedCallTarget target, TruffleInlining inliningDecision) {
         target.accept(new CallTreeNodeVisitor() {
 
+            @Override
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node == null) {
                     return true;
@@ -90,6 +91,6 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                 return true;
             }
 
-        }, true);
+        }, inliningDecision);
     }
 }

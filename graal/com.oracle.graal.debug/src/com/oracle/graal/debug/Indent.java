@@ -47,5 +47,6 @@ public interface Indent extends AutoCloseable {
     /**
      * Closes the current indentation scope.
      */
+    @Override
     void close();
 }

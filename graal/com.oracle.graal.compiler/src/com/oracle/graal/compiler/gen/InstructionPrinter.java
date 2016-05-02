@@ -127,8 +127,9 @@ public class InstructionPrinter {
      */
     public void printInstructionListing(ValueNode instruction) {
         int indentation = out.indentationLevel();
-        out.fillTo(BCI.position + indentation, ' ').print(0).fillTo(USE.position + indentation, ' ').print("0").fillTo(VALUE.position + indentation, ' ').print(ValueNodeUtil.valueString(instruction)).fillTo(
-                        INSTRUCTION.position + indentation, ' ');
+        out.fillTo(BCI.position + indentation, ' ').print(0).fillTo(USE.position + indentation, ' ').print("0").fillTo(VALUE.position + indentation, ' ').print(
+                        ValueNodeUtil.valueString(instruction)).fillTo(
+                                        INSTRUCTION.position + indentation, ' ');
         printInstruction(instruction);
         if (instruction instanceof StateSplit) {
             out.print("  [state: " + ((StateSplit) instruction).stateAfter() + "]");

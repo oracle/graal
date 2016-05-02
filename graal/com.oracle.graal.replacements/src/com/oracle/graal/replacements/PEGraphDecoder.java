@@ -36,10 +36,10 @@ import java.util.Map;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -49,8 +49,10 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -69,7 +71,6 @@ import com.oracle.graal.nodes.InvokeWithExceptionNode;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.SimpleInfopointNode;
 import com.oracle.graal.nodes.SimplifyingGraphDecoder;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -79,13 +80,13 @@ import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.spi.StampProvider;
@@ -131,7 +132,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected FrameState outerState;
         protected FrameState exceptionState;
         protected ExceptionPlaceholderNode exceptionPlaceholderNode;
-        protected BytecodePosition bytecodePosition;
+        protected NodeSourcePosition bytecodePosition;
 
         protected PEMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                         int inliningDepth, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
@@ -154,11 +155,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return caller != null;
         }
 
-        public BytecodePosition getBytecodePosition() {
+        public NodeSourcePosition getBytecodePosition() {
             if (bytecodePosition == null) {
                 ensureOuterStateDecoded(this);
                 ensureExceptionStateDecoded(this);
-                bytecodePosition = new BytecodePosition(FrameState.toBytecodePosition(outerState), method, invokeData.invoke.bci());
+                JavaConstant constantReceiver = null;
+                if (invokeData.invoke.callTarget() != null) {
+                    // The callTarget is associated with invokes somewhat lazily so it's possible
+                    // it isn't available here.
+                    constantReceiver = invokeData.invoke.getInvokeKind().hasReceiver() ? invokeData.invoke.getReceiver().asJavaConstant() : null;
+                }
+                bytecodePosition = new NodeSourcePosition(constantReceiver, FrameState.toSourcePosition(outerState), method, invokeData.invoke.bci());
             }
             return bytecodePosition;
         }
@@ -361,6 +368,28 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         decode(methodScope, null);
         cleanupGraph(methodScope, null);
         methodScope.graph.verify();
+    }
+
+    @Override
+    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
+        super.cleanupGraph(methodScope, start);
+
+        for (FrameState frameState : methodScope.graph.getNodes(FrameState.TYPE)) {
+            if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                /*
+                 * handleMissingAfterExceptionFrameState is called during graph decoding from
+                 * InliningUtil.processFrameState - but during graph decoding it does not do
+                 * anything because the usages of the frameState are not available yet. So we need
+                 * to call it again.
+                 */
+                InliningUtil.handleMissingAfterExceptionFrameState(frameState);
+
+                /*
+                 * The frameState must be gone now, because it is not a valid deoptimization point.
+                 */
+                assert frameState.isDeleted();
+            }
+        }
     }
 
     @Override
@@ -579,8 +608,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             plugin.notifyAfterInline(inlineMethod);
         }
 
-        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
-            Debug.dump(methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue()) {
+            Debug.dump(Debug.INFO_LOG_LEVEL, methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
         return true;
     }
@@ -633,24 +662,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     @Override
     protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         PEMethodScope methodScope = (PEMethodScope) s;
-        if (node instanceof SimpleInfopointNode && methodScope.isInlinedMethod()) {
-            InliningUtil.addSimpleInfopointCaller((SimpleInfopointNode) node, methodScope.getBytecodePosition());
-
-        } else if (node instanceof ForeignCallNode) {
+        if (node instanceof ForeignCallNode) {
             ForeignCallNode foreignCall = (ForeignCallNode) node;
             if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
         }
 
-        BytecodePosition pos = node.getNodeContext(BytecodePosition.class);
+        NodeSourcePosition pos = node.getNodeSourcePosition();
         if (pos != null && methodScope.isInlinedMethod()) {
-            BytecodePosition newPosition = pos.addCaller(methodScope.getBytecodePosition());
-            try (DebugCloseable scope = node.graph().withoutNodeContext()) {
+            NodeSourcePosition newPosition = pos.addCaller(methodScope.getBytecodePosition());
+            try (DebugCloseable scope = node.graph().withoutNodeSourcePosition()) {
                 super.handleFixedNode(s, loopScope, nodeOrderId, node);
             }
             if (node.isAlive()) {
-                node.setNodeContext(newPosition);
+                node.setNodeSourcePosition(newPosition);
                 node.verify();
             }
         } else {
@@ -734,10 +760,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (methodScope.isInlinedMethod()) {
-            BytecodePosition pos = node.getNodeContext(BytecodePosition.class);
+            NodeSourcePosition pos = node.getNodeSourcePosition();
             if (pos != null) {
-                BytecodePosition bytecodePosition = methodScope.getBytecodePosition();
-                node.setNodeContext(pos.addCaller(bytecodePosition));
+                NodeSourcePosition bytecodePosition = methodScope.getBytecodePosition();
+                node.setNodeSourcePosition(pos.addCaller(bytecodePosition));
                 node.verify();
             }
             if (node instanceof FrameState) {

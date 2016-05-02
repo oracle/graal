@@ -40,6 +40,7 @@ public abstract class SPARCBlockEndOp extends AbstractBlockEndOp implements SPAR
         store = new SPARCLIRInstructionMixinStore(sizeEstimate);
     }
 
+    @Override
     public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
         return store;
     }

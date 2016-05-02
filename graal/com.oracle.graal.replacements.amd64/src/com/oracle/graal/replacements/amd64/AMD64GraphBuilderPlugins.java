@@ -55,6 +55,7 @@ public class AMD64GraphBuilderPlugins {
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
+            @Override
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
@@ -70,6 +71,7 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, declaringClass);
         if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
             r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountLeadingZerosNode.tryFold(value);
                     if (folded != null) {
@@ -85,6 +87,7 @@ public class AMD64GraphBuilderPlugins {
         }
         if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
                     if (folded != null) {
@@ -101,6 +104,7 @@ public class AMD64GraphBuilderPlugins {
 
         if (arch.getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
             r.register1("bitCount", type, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
                     return true;
@@ -112,12 +116,14 @@ public class AMD64GraphBuilderPlugins {
     private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, Math.class);
         r.register1("log", Double.TYPE, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG)));
                 return true;
             }
         });
         r.register1("log10", Double.TYPE, new InvocationPlugin() {
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG10)));
                 return true;
@@ -137,6 +143,7 @@ public class AMD64GraphBuilderPlugins {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 
             r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
@@ -147,6 +154,7 @@ public class AMD64GraphBuilderPlugins {
             });
             if (kind != JavaKind.Object) {
                 r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
+                    @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();

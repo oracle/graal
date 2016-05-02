@@ -678,6 +678,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @Override
     public Value emitFloatConvert(FloatConvert op, Value input) {
         switch (op) {
             case D2F:
