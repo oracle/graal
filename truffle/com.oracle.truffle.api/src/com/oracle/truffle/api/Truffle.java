@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Iterator;
+import java.util.ServiceLoader;
+
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class Truffle {
@@ -47,12 +50,14 @@ public class Truffle {
 
     /**
      * Gets the singleton {@link TruffleRuntime} object.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static TruffleRuntime getRuntime() {
         return RUNTIME;
     }
+
+    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     private static TruffleRuntime initRuntime() {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
@@ -71,36 +76,48 @@ public class Truffle {
 
                 TruffleRuntimeAccess access = null;
                 Class<?> servicesClass = null;
-                try {
-                    servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                } catch (ClassNotFoundException e) {
-                }
-                if (servicesClass == null) {
+
+                if (!JDK8OrEarlier) {
+                    Iterator<TruffleRuntimeAccess> providers = ServiceLoader.load(TruffleRuntimeAccess.class).iterator();
+                    if (providers.hasNext()) {
+                        access = providers.next();
+                        if (providers.hasNext()) {
+                            throw new InternalError(String.format("Multiple %s providers found", TruffleRuntimeAccess.class.getName()));
+                        }
+                    }
+                } else {
+
                     try {
-                        servicesClass = Class.forName("jdk.vm.ci.service.Services");
+                        servicesClass = Class.forName("jdk.vm.ci.services.Services");
                     } catch (ClassNotFoundException e) {
                     }
-                }
-                if (servicesClass == null) {
-                    try {
-                        servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
-                    } catch (ClassNotFoundException e) {
+                    if (servicesClass == null) {
+                        try {
+                            servicesClass = Class.forName("jdk.vm.ci.service.Services");
+                        } catch (ClassNotFoundException e) {
+                        }
                     }
-                }
-                if (servicesClass == null) {
-                    try {
-                        servicesClass = Class.forName("com.oracle.jvmci.service.Services");
-                    } catch (ClassNotFoundException e) {
-                        // JVMCI is unavailable
+                    if (servicesClass == null) {
+                        try {
+                            servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
+                        } catch (ClassNotFoundException e) {
+                        }
                     }
-                }
-                if (servicesClass != null) {
-                    try {
-                        Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                        access = (TruffleRuntimeAccess) m.invoke(null, TruffleRuntimeAccess.class, false);
-                    } catch (Throwable e) {
-                        // Fail fast for other errors
-                        throw (InternalError) new InternalError().initCause(e);
+                    if (servicesClass == null) {
+                        try {
+                            servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+                        } catch (ClassNotFoundException e) {
+                            // JVMCI is unavailable
+                        }
+                    }
+                    if (servicesClass != null) {
+                        try {
+                            Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                            access = (TruffleRuntimeAccess) m.invoke(null, TruffleRuntimeAccess.class, false);
+                        } catch (Throwable e) {
+                            // Fail fast for other errors
+                            throw (InternalError) new InternalError().initCause(e);
+                        }
                     }
                 }
                 // TODO: try standard ServiceLoader?
