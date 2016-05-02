@@ -23,7 +23,7 @@ _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
 _testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
-_interopTestDir = _testDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
+_interopTestDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
