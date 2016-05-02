@@ -54,40 +54,44 @@ public final class LLVMInteropTest {
 
     @Test
     public void test001() {
-        String file = "interop001";
-        Assert.assertEquals(42, run(file, null, null));
+        Runner runner = new Runner("interop001");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test002() {
-        String file = "interop002";
+        Runner runner = new Runner("interop002");
         ClassA a = new ClassA();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        Assert.assertEquals(42, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test003() {
-        String file = "interop003";
+        Runner runner = new Runner("interop003");
         ClassA a = new ClassA();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        Assert.assertEquals(215, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(215, runner.run());
     }
 
     @Test
     public void test004() {
-        String file = "interop004";
+        Runner runner = new Runner("interop004");
         ClassB a = new ClassB();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        Assert.assertEquals(73, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(73, runner.run());
     }
 
     @Test
     public void test005() {
-        String file = "interop005";
+        Runner runner = new Runner("interop005");
         ClassA a = new ClassA();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        run(file, to, "foreign");
+        runner.export(to, "foreign");
+        runner.run();
 
         Assert.assertEquals(a.valueBool, false);
         Assert.assertEquals(a.valueI, 2);
@@ -99,10 +103,11 @@ public final class LLVMInteropTest {
 
     @Test
     public void test006() {
-        String file = "interop006";
+        Runner runner = new Runner("interop006");
         ClassB a = new ClassB();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        run(file, to, "foreign");
+        runner.export(to, "foreign");
+        runner.run();
 
         Assert.assertEquals(a.valueI[0], 1);
         Assert.assertEquals(a.valueI[1], 2);
@@ -122,10 +127,11 @@ public final class LLVMInteropTest {
 
     @Test
     public void test007() {
-        String file = "interop007";
+        Runner runner = new Runner("interop007");
         ClassC a = new ClassC();
         TruffleObject to = JavaInterop.asTruffleObject(a);
-        Assert.assertEquals(36, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(36, runner.run());
 
         Assert.assertEquals(a.valueI, 4);
         Assert.assertEquals(a.valueB, 3);
@@ -136,111 +142,168 @@ public final class LLVMInteropTest {
 
     @Test
     public void test008() {
-        String file = "interop008";
+        Runner runner = new Runner("interop008");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncBInterface.class, (a, b) -> (byte) (a + b));
-        Assert.assertEquals(42, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test009() {
-        String file = "interop009";
+        Runner runner = new Runner("interop009");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncIInterface.class, (a, b) -> (a + b));
-        Assert.assertEquals(42, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test010() {
-        String file = "interop010";
+        Runner runner = new Runner("interop010");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncLInterface.class, (a, b) -> (a + b));
-        Assert.assertEquals(42, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test011() {
-        String file = "interop011";
+        Runner runner = new Runner("interop011");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncFInterface.class, (a, b) -> (a + b));
-        Assert.assertEquals(42.0, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42.0, runner.run(), 0.1);
     }
 
     @Test
     public void test012() {
-        String file = "interop012";
+        Runner runner = new Runner("interop012");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncDInterface.class, (a, b) -> (a + b));
-        Assert.assertEquals(42.0, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42.0, runner.run(), 0.1);
     }
 
     @Test
     public void test013() {
-        String file = "interop013";
+        Runner runner = new Runner("interop013");
         TruffleObject to = JavaInterop.asTruffleObject(new MyBoxedInt());
-        Assert.assertEquals(42, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test014() {
-        String file = "interop014";
+        Runner runner = new Runner("interop014");
         TruffleObject to = JavaInterop.asTruffleObject(new MyBoxedInt());
-        Assert.assertEquals(42, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run(), 0.1);
     }
 
     @Test
     public void test015() {
-        String file = "interop015";
+        Runner runner = new Runner("interop015");
         TruffleObject to = JavaInterop.asTruffleFunction(FuncDInterface.class, (a, b) -> (a + b));
-        Assert.assertEquals(42, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run(), 0.1);
     }
 
     @Test
     public void test016() {
-        String file = "interop016";
+        Runner runner = new Runner("interop016");
         TruffleObject to = JavaInterop.asTruffleObject(null);
-        Assert.assertEquals(42, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run(), 0.1);
     }
 
     @Test
     public void test017() {
-        String file = "interop017";
+        Runner runner = new Runner("interop017");
         TruffleObject to = JavaInterop.asTruffleObject(new int[]{1, 2, 3});
-        Assert.assertEquals(42, run(file, to, "foreign"), 0.1);
+        runner.export(to, "foreign");
+        Assert.assertEquals(42, runner.run(), 0.1);
     }
 
     @Test
     public void test018() {
-        String file = "interop018";
+        Runner runner = new Runner("interop018");
         TruffleObject to = JavaInterop.asTruffleObject(new int[]{1, 2, 3});
-        Assert.assertEquals(3, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(3, runner.run());
     }
 
     @Test
     public void test019() {
-        String file = "interop019";
+        Runner runner = new Runner("interop019");
         TruffleObject to = JavaInterop.asTruffleObject(new int[]{40, 41, 42, 43, 44});
-        Assert.assertEquals(210, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(210, runner.run());
     }
 
     @Test
     public void test020() {
-        String file = "interop020";
+        Runner runner = new Runner("interop020");
         int[] arr = new int[]{40, 41, 42, 43, 44};
         TruffleObject to = JavaInterop.asTruffleObject(arr);
-        run(file, to, "foreign");
+        runner.export(to, "foreign");
+        runner.run();
         Assert.assertArrayEquals(new int[]{30, 31, 32, 33, 34}, arr);
     }
 
     @Test
     public void test021() {
-        String file = "interop021";
+        Runner runner = new Runner("interop021");
         TruffleObject to = JavaInterop.asTruffleObject(new double[]{40, 41, 42, 43, 44});
-        Assert.assertEquals(210, run(file, to, "foreign"));
+        runner.export(to, "foreign");
+        Assert.assertEquals(210, runner.run());
     }
 
     @Test
     public void test022() {
-        String file = "interop022";
+        Runner runner = new Runner("interop022");
         double[] arr = new double[]{40, 41, 42, 43, 44};
         TruffleObject to = JavaInterop.asTruffleObject(arr);
-        run(file, to, "foreign");
+        runner.export(to, "foreign");
+        runner.run();
         Assert.assertArrayEquals(new double[]{30, 31, 32, 33, 34}, arr, 0.1);
+    }
+
+    @Test
+    public void test023() {
+        Runner runner = new Runner("interop023");
+        ClassA a = new ClassA();
+        ClassA b = new ClassA();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        TruffleObject to2 = JavaInterop.asTruffleObject(b);
+        runner.export(to, "foreign");
+        runner.export(to2, "foreign2");
+        Assert.assertEquals(42, runner.run());
+    }
+
+    @Test
+    public void test024() {
+        Runner runner = new Runner("interop024");
+        ClassA a = new ClassA();
+        ClassA b = new ClassA();
+        b.valueI = 55;
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        TruffleObject to2 = JavaInterop.asTruffleObject(b);
+        runner.export(to, "foreign");
+        runner.export(to2, "foreign2");
+        Assert.assertEquals(55, runner.run());
+    }
+
+    @Test
+    public void test025() {
+        Runner runner = new Runner("interop025");
+        ClassA a = new ClassA();
+        ClassA b = new ClassA();
+        ClassA c = new ClassA();
+        b.valueI = 55;
+        c.valueI = 66;
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        TruffleObject to2 = JavaInterop.asTruffleObject(b);
+        TruffleObject to3 = JavaInterop.asTruffleObject(c);
+        runner.export(to, "foreign");
+        runner.export(to2, "foreign2");
+        runner.export(to3, "foreign3");
+        Assert.assertEquals(66, runner.run());
     }
 
     public static final class ClassA {
@@ -333,21 +396,32 @@ public final class LLVMInteropTest {
         double eval(double a, double b);
     }
 
-    private static int run(String fileName, TruffleObject foreignObject, String foreignObjectName) {
-        Builder builder = PolyglotEngine.newBuilder();
-        builder.globalSymbol(foreignObjectName, foreignObject);
-        final PolyglotEngine engine = builder.build();
-        try {
-            File cFile = new File(PATH, fileName + ".c");
-            File bcFile = File.createTempFile(PATH + "/" + "bc_" + fileName, ".ll");
-            File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + fileName, ".ll");
-            Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
-            Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-            return engine.eval(Source.fromFileName(bcOptFile.getPath())).as(Integer.class);
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        } finally {
-            engine.dispose();
+    private static final class Runner {
+        private final Builder builder = PolyglotEngine.newBuilder();
+        private final String fileName;
+
+        Runner(String fileName) {
+            this.fileName = fileName;
+        }
+
+        void export(TruffleObject foreignObject, String name) {
+            builder.globalSymbol(name, foreignObject);
+        }
+
+        int run() {
+            final PolyglotEngine engine = builder.build();
+            try {
+                File cFile = new File(PATH, fileName + ".c");
+                File bcFile = File.createTempFile(PATH + "/" + "bc_" + fileName, ".ll");
+                File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + fileName, ".ll");
+                Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
+                Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
+                return engine.eval(Source.fromFileName(bcOptFile.getPath())).as(Integer.class);
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            } finally {
+                engine.dispose();
+            }
         }
     }
 }
