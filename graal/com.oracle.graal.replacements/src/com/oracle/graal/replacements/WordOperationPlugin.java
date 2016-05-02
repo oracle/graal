@@ -125,7 +125,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         if (wordStamp != null) {
             return StampPair.createSingle(wordStamp);
         } else {
-            return null
+            return null;
         }
     }
 
