@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,11 +36,17 @@ import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.phases.Phase;
 
-public class SPARCSubIntCompareCanonicalizationPhase extends Phase {
-    public SPARCSubIntCompareCanonicalizationPhase() {
-
-    }
-
+/**
+ * SPARC only supports 32 and 64 bit integer compare.
+ *
+ * This phase turns {@link CompareNode}s which have {@link IntegerStamp} as input and its bit-width
+ * is not 32 or 64 bit into either a 32 or 64 bit compare by sign extending the input values.
+ *
+ * Why we do this in the HIR instead in the LIR? This enables the pattern matcher
+ * {@link SPARCNodeMatchRules#signExtend(SignExtendNode, com.oracle.graal.nodes.memory.Access)} to
+ * do it's job and replace loads with sign extending ones.
+ */
+public class SPARCIntegerCompareCanonicalizationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
