@@ -82,7 +82,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
  * be retrieved as follows:
  *
  * <pre>
- *     Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
+ *     Iterable<MatchStatementSet> sl = GraalServices.load(MatchStatementSet.class);
  *     for (MatchStatementSet rules : sl) {
  *         ...
  *     }

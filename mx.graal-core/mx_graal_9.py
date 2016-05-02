@@ -375,10 +375,8 @@ def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, 
     if project:
         concealed = project.get_concealed_imported_packages()
         for concealingModule, packages in concealed.iteritems():
-            # No need to explicitly export JVMCI - it's exported via reflection
-            if concealingModule != 'jdk.vm.ci':
-                for package in packages:
-                    exports.setdefault(concealingModule + '/' + package, set()).add(module)
+            for package in packages:
+                exports.setdefault(concealingModule + '/' + package, set()).add(module)
 
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
@@ -533,5 +531,5 @@ mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes
 def mx_post_parse_cmd_line(opts):
     if opts.jvmci_mode is not None:
         _vm.update(opts.jvmci_mode)
-    graal_module_dist = _graal_module_descriptor.dist()
-    graal_module_dist.set_archiveparticipant(GraalArchiveParticipant(graal_module_dist))
+    for dist in _suite.dists:
+        dist.set_archiveparticipant(GraalArchiveParticipant(dist))
