@@ -312,6 +312,7 @@ final class BreakpointFactory {
 
         @Override
         public void setEnabled(boolean enabled) {
+            assert getState() != DISPOSED : "disposed breakpoints are unusable";
             if (enabled != isEnabled) {
                 switch (getState()) {
                     case ENABLED:
@@ -351,9 +352,7 @@ final class BreakpointFactory {
 
         @Override
         public void setCondition(String expr) throws IOException {
-            if (getState() == DISPOSED) {
-                throw new IllegalStateException("Attempt to modify a disposed breakpoint");
-            }
+            assert getState() != DISPOSED : "disposed breakpoints are unusable";
             binding.dispose();
             if (expr == null) {
                 conditionSource = null;
@@ -376,6 +375,7 @@ final class BreakpointFactory {
 
         @Override
         public void setIgnoreCount(int ignoreCount) {
+            assert getState() != DISPOSED : "disposed breakpoints are unusable";
             this.ignoreCount = ignoreCount;
         }
 

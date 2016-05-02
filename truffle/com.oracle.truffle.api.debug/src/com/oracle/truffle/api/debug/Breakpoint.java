@@ -34,7 +34,7 @@ import com.oracle.truffle.api.source.Source;
  * breakpoint by calling
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
  * other methods in the {@link Debugger} class.
- * 
+ *
  * @since 0.9
  */
 @SuppressWarnings("javadoc")
@@ -42,7 +42,7 @@ public abstract class Breakpoint {
 
     /**
      * A general model of the states occupied by a {@link Breakpoint} during its lifetime.
-     * 
+     *
      * @since 0.9
      */
     public enum State {
@@ -100,7 +100,7 @@ public abstract class Breakpoint {
 
     /**
      * Gets current state of the breakpoint.
-     * 
+     *
      * @since 0.9
      */
     public abstract State getState();
@@ -116,7 +116,7 @@ public abstract class Breakpoint {
 
     /**
      * Is this breakpoint active?
-     * 
+     *
      * @since 0.9
      */
     public abstract boolean isEnabled();
@@ -135,21 +135,21 @@ public abstract class Breakpoint {
     /**
      * Gets the text that defines the current condition on this breakpoint; {@code null} if this
      * breakpoint is currently unconditional.
-     * 
+     *
      * @since 0.9
      */
     public abstract Source getCondition();
 
     /**
      * Does this breakpoint remove itself after first activation?
-     * 
+     *
      * @since 0.9
      */
     public abstract boolean isOneShot();
 
     /**
      * Gets the number of hits left to be ignored before halting.
-     * 
+     *
      * @since 0.9
      */
     public abstract int getIgnoreCount();
@@ -159,7 +159,7 @@ public abstract class Breakpoint {
      * ignore count and a {@linkplain #setCondition(String) condition} are specified, the condition
      * is evaluated first: if {@code false} it is not considered to be a hit. In other words, the
      * ignore count is for successful conditions only.
-     * 
+     *
      * @since 0.9
      */
     public abstract void setIgnoreCount(int ignoreCount);
@@ -167,7 +167,7 @@ public abstract class Breakpoint {
     /**
      * Number of times this breakpoint has reached, with one exception; if the breakpoint has a
      * condition that evaluates to {@code false}, it does not count as a hit.
-     * 
+     *
      * @since 0.9
      */
     public abstract int getHitCount();
@@ -175,14 +175,14 @@ public abstract class Breakpoint {
     /**
      * Disables this breakpoint and removes any associated instrumentation; it becomes permanently
      * inert.
-     * 
+     *
      * @since 0.9
      */
     public abstract void dispose();
 
     /**
      * Gets a human-sensible description of this breakpoint's location in a {@link Source}.
-     * 
+     *
      * @since 0.9
      */
     public abstract String getLocationDescription();
