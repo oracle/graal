@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.ValueNode;
  * input.
  */
 @NodeInfo
-public abstract class UnaryNode extends FloatingNode implements Canonicalizable.Unary<ValueNode>, Node.ValueNumberable {
+public abstract class UnaryNode extends FloatingNode implements Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<UnaryNode> TYPE = NodeClass.create(UnaryNode.class);
     @Input protected ValueNode value;

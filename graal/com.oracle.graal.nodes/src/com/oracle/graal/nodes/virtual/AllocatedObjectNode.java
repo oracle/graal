@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.virtual;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
@@ -39,7 +38,7 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
  * {@link VirtualObjectNode}.
  */
 @NodeInfo
-public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider, Node.ValueNumberable {
+public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     public static final NodeClass<AllocatedObjectNode> TYPE = NodeClass.create(AllocatedObjectNode.class);
     @Input VirtualObjectNode virtualObject;

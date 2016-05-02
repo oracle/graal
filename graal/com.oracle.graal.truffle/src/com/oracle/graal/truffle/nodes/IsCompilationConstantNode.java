@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 @NodeInfo
-public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable, Node.ValueNumberable {
+public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable {
 
     public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.create(IsCompilationConstantNode.class);
 

@@ -28,7 +28,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -46,7 +45,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * Loads an object's class (i.e., this node can be created for {@code object.getClass()}).
  */
 @NodeInfo
-public final class GetClassNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable, Node.ValueNumberable {
+public final class GetClassNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<GetClassNode> TYPE = NodeClass.create(GetClassNode.class);
     @Input ValueNode object;

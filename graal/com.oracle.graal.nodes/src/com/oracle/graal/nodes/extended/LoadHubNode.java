@@ -28,7 +28,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.TypeReference;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -47,7 +46,7 @@ import com.oracle.graal.nodes.type.StampTool;
  * Loads an object's hub. The object is not null-checked by this operation.
  */
 @NodeInfo
-public final class LoadHubNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable, Node.ValueNumberable {
+public final class LoadHubNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<LoadHubNode> TYPE = NodeClass.create(LoadHubNode.class);
     @Input ValueNode value;

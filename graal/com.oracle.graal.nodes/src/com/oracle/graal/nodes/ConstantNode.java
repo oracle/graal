@@ -52,7 +52,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * The {@code ConstantNode} represents a {@link Constant constant}.
  */
 @NodeInfo(nameTemplate = "C({p#rawvalue})")
-public final class ConstantNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
+public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<ConstantNode> TYPE = NodeClass.create(ConstantNode.class);
 

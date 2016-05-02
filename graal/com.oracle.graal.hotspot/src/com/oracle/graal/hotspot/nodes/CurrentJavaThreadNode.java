@@ -28,7 +28,6 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -42,7 +41,7 @@ import com.oracle.graal.word.WordTypes;
  * Gets the address of the C++ JavaThread object for the current thread.
  */
 @NodeInfo
-public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
+public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CurrentJavaThreadNode> TYPE = NodeClass.create(CurrentJavaThreadNode.class);
 
     public CurrentJavaThreadNode(@InjectedNodeParameter WordTypes wordTypes) {

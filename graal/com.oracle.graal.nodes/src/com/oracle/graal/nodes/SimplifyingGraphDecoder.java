@@ -90,7 +90,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @NodeInfo
-    static class CanonicalizeToNullNode extends FloatingNode implements Canonicalizable, GuardingNode, Node.ValueNumberable {
+    static class CanonicalizeToNullNode extends FloatingNode implements Canonicalizable, GuardingNode {
         public static final NodeClass<CanonicalizeToNullNode> TYPE = NodeClass.create(CanonicalizeToNullNode.class);
 
         protected CanonicalizeToNullNode(Stamp stamp) {

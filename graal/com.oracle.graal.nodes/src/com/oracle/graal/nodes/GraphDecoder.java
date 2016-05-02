@@ -290,7 +290,7 @@ public class GraphDecoder {
      * that the value is defined in the loop, but used outside the loop.
      */
     @NodeInfo
-    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable, Node.ValueNumberable {
+    protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 
         @Input ValueNode value;

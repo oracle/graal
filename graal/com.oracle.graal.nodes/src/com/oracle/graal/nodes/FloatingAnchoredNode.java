@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -31,7 +30,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.AnchoringNode;
 
 @NodeInfo
-public abstract class FloatingAnchoredNode extends FloatingNode implements Node.ValueNumberable {
+public abstract class FloatingAnchoredNode extends FloatingNode {
     public static final NodeClass<FloatingAnchoredNode> TYPE = NodeClass.create(FloatingAnchoredNode.class);
 
     @Input(InputType.Anchor) protected AnchoringNode anchor;

@@ -29,7 +29,6 @@ import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -49,7 +48,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
 @NodeInfo
-public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable, Node.ValueNumberable {
+public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
     @Input(InputType.Condition) LogicNode condition;

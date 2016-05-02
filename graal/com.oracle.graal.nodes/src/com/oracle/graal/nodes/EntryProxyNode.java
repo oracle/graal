@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.spi.ValueProxy;
  * types we see during OSR may be too precise (if a branch was not parsed for example).
  */
 @NodeInfo(nameTemplate = "EntryProxy({i#value})")
-public final class EntryProxyNode extends FloatingNode implements ValueProxy, Node.ValueNumberable {
+public final class EntryProxyNode extends FloatingNode implements ValueProxy {
 
     public static final NodeClass<EntryProxyNode> TYPE = NodeClass.create(EntryProxyNode.class);
     @Input(InputType.Association) EntryMarkerNode proxyPoint;

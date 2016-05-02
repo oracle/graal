@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.test;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.loop.InductionVariable;
 import com.oracle.graal.loop.LoopsData;
@@ -213,7 +212,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     @NodeInfo
-    private static class IVPropertyNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
+    private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);
 

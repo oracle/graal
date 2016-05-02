@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.debug;
 
-import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
@@ -31,7 +30,7 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo
-public final class OpaqueNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
+public final class OpaqueNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
     @Input protected ValueNode value;
