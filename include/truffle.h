@@ -45,6 +45,10 @@ extern "C" {
 */
 
 void *truffle_import(const char *name);
+/* This import function caches the result (i.e. the imported object) for a given name,
+i.e., a subsequent import with the same name does not do a lookup but returns the cached value.
+*/
+void *truffle_import_cached(const char *name);
 // void truffle_export(const char *name, void *value);
 
 // Binary:
