@@ -764,6 +764,7 @@ public class BytecodeParser implements GraphBuilderContext {
         // Remove dead parameters.
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             if (param.hasNoUsages()) {
+                assert param.inputs().isEmpty();
                 param.safeDelete();
             }
         }

@@ -75,9 +75,7 @@ public class GraphUtil {
              * while processing one branch.
              */
             for (Node successor : node.successors()) {
-                if (successor != null) {
-                    killCFG(successor, tool);
-                }
+                killCFG(successor, tool);
             }
         }
         node.replaceAtPredecessor(null);
