@@ -120,6 +120,9 @@ void truffle_write_idx_f(void *object, int idx, float value);
 void truffle_write_idx_d(void *object, int idx, double value);
 void truffle_write_idx_b(void *object, int idx, bool value);
 
+// Strings
+void *truffle_read_string(const char *string);
+
 #if defined(__cplusplus)
 }
 #endif
