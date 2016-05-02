@@ -85,6 +85,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
 
+    public static final long MAX_EDGES = 8;
+    public static final long MAX_EDGES_WITH_LIST = 6;
     public static final long OFFSET_MASK = 0xFC;
     public static final long LIST_MASK = 0x01;
     public static final long NEXT_EDGE = 0x08;
