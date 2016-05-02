@@ -24,12 +24,12 @@ package com.oracle.graal.hotspot;
 
 import java.util.IdentityHashMap;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.runtime.JVMCICompilerFactory;
-
 import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
 
 @ServiceProvider(JVMCICompilerFactory.class)
 public class DefaultHotSpotGraalCompilerFactory extends HotSpotGraalCompilerFactory {

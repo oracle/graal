@@ -102,18 +102,17 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
     private static void verifyStringConcat(StructuredGraph graph, int bci, int argIdx, ResolvedJavaMethod callee) {
         if (callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuilder;") || callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuffer;")) {
             StackTraceElement e = graph.method().asStackTraceElement(bci);
-            throw new VerificationError(String.format("%s: parameter %d of call to %s appears to be a String concatenation expression.%n" +
-                            "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e, argIdx, callee.format("%H.%n(%p)")));
+            throw new VerificationError(
+                            "%s: parameter %d of call to %s appears to be a String concatenation expression.%n" + "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e,
+                            argIdx, callee.format("%H.%n(%p)"));
         }
     }
 
     private static void verifyToStringCall(StructuredGraph graph, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx) {
         if (callee.getSignature().getParameterCount(false) == 0 && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
             StackTraceElement e = graph.method().asStackTraceElement(bci);
-            throw new VerificationError(
-                            String.format("%s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.",
-                                            e,
-                                            argIdx, callee.format("%H.%n(%p)")));
+            throw new VerificationError("%s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
+                            callee.format("%H.%n(%p)"));
         }
     }
 }

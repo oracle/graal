@@ -35,8 +35,9 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.graal.serviceprovider.GraalServices;
+
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
 
 public class DebugEnvironment {
 
@@ -53,7 +54,7 @@ public class DebugEnvironment {
                         MethodMeter.getValue(),
                         log, dumpHandlers, verifyHandlers);
 
-        for (DebugConfigCustomizer customizer : Services.load(DebugConfigCustomizer.class)) {
+        for (DebugConfigCustomizer customizer : GraalServices.load(DebugConfigCustomizer.class)) {
             customizer.customize(debugConfig);
         }
 

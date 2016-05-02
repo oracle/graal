@@ -48,6 +48,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
 import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
 import com.oracle.graal.truffle.debug.TraceCompilationCallTreeListener;
@@ -83,7 +84,6 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -140,7 +140,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
-        Iterable<T> providers = Services.load(clazz);
+        Iterable<T> providers = GraalServices.load(clazz);
         T bestFactory = null;
         for (T factory : providers) {
             if (bestFactory == null) {

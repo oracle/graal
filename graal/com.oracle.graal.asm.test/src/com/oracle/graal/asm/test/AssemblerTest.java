@@ -24,19 +24,6 @@ package com.oracle.graal.asm.test;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.InvalidInstalledCodeException;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.services.Services;
-
 import org.junit.Assert;
 
 import com.oracle.graal.api.test.Graal;
@@ -48,7 +35,20 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.runtime.RuntimeProvider;
+import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.test.GraalTest;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCIBackend;
 
 public abstract class AssemblerTest extends GraalTest {
 
@@ -87,7 +87,7 @@ public abstract class AssemblerTest extends GraalTest {
             CompiledCode compiledCode = backend.createCompiledCode(method, compResult);
             InstalledCode code = codeCache.addCode(method, compiledCode, null, null);
 
-            for (DisassemblerProvider dis : Services.load(DisassemblerProvider.class)) {
+            for (DisassemblerProvider dis : GraalServices.load(DisassemblerProvider.class)) {
                 String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);
                 Assert.assertTrue(compResult.toString(), disasm1 == null || disasm1.length() > 0);
                 String disasm2 = dis.disassembleInstalledCode(codeCache, compResult, code);

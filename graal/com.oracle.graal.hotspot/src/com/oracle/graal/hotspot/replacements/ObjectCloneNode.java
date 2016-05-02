@@ -82,7 +82,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                 assert false : "unhandled array type " + type.getComponentType().getJavaKind();
             } else {
                 Assumptions assumptions = graph().getAssumptions();
-                type = getConcreteType(getObject().stamp(), tool.getMetaAccess());
+                type = getConcreteType(getObject().stamp());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
                     ParameterNode param = newGraph.unique(new ParameterNode(0, StampPair.createSingle(getObject().stamp())));

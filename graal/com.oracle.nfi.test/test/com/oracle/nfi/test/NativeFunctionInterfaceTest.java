@@ -25,7 +25,6 @@ package com.oracle.nfi.test;
 import static java.io.File.separatorChar;
 import static java.lang.System.getProperty;
 import static java.lang.System.mapLibraryName;
-import static jdk.vm.ci.common.UnsafeUtil.writeCString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -43,13 +42,13 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import sun.misc.Unsafe;
-
 import com.oracle.nfi.NativeFunctionInterfaceRuntime;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
+
+import sun.misc.Unsafe;
 
 public class NativeFunctionInterfaceTest {
 
@@ -119,7 +118,7 @@ public class NativeFunctionInterfaceTest {
         String string = "GRAAL";
         int bufferLength = string.length() + 1;
         long cString = (long) malloc.call(bufferLength);
-        writeCString(unsafe, string, cString);
+        writeCString(string, cString);
 
         long cStringCopy = malloc(bufferLength);
         int result = (int) snprintf.call(cStringCopy, bufferLength, cString);
@@ -134,7 +133,7 @@ public class NativeFunctionInterfaceTest {
     public void test2() {
         assumeTrue(nfi.isDefaultLibrarySearchSupported());
         String formatString = "AB %f%f";
-        long formatCString = writeCString(unsafe, "AB %f%f", malloc(formatString.length() + 1));
+        long formatCString = writeCString("AB %f%f", malloc(formatString.length() + 1));
         String referenceString = String.format(formatString, 1.0D, 1.0D);
         int bufferLength = referenceString.length() + 1;
         long buffer = malloc(bufferLength);
@@ -150,7 +149,7 @@ public class NativeFunctionInterfaceTest {
     public void test3() {
         assumeTrue(nfi.isDefaultLibrarySearchSupported());
         String format = "%i%i%i%i%i%i%i%i%i%i%i%i";
-        long formatCString = writeCString(unsafe, format, malloc(format.length() + 1));
+        long formatCString = writeCString(format, malloc(format.length() + 1));
         String referenceString = "01234567891011";
 
         int bufferLength = referenceString.length() + 1;
@@ -180,7 +179,7 @@ public class NativeFunctionInterfaceTest {
         }
 
         String formatString = formatStringBuf.toString();
-        long formatCString = writeCString(unsafe, formatString, malloc(formatString.length() + 1));
+        long formatCString = writeCString(formatString, malloc(formatString.length() + 1));
 
         String referenceString = String.format(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
                         dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11]);
@@ -221,7 +220,7 @@ public class NativeFunctionInterfaceTest {
         }
 
         String formatString = formatStringBuf.toString();
-        long formatCString = writeCString(unsafe, formatString, malloc(formatString.length() + 1));
+        long formatCString = writeCString(formatString, malloc(formatString.length() + 1));
 
         String referenceString = String.format(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
                         dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11], cval[0], cval[1], cval[2], cval[3], cval[4], cval[5], cval[6], cval[7], cval[8], cval[9], cval[10],
@@ -265,7 +264,7 @@ public class NativeFunctionInterfaceTest {
     public void test8() {
         assumeTrue(nfi.isDefaultLibrarySearchSupported());
         String formatString = "AB %f%f";
-        long formatCString = writeCString(unsafe, "AB %f%f", malloc(formatString.length() + 1));
+        long formatCString = writeCString("AB %f%f", malloc(formatString.length() + 1));
 
         String expected = String.format(formatString, 1.0D, 1.0D);
         int bufferLength = expected.length() + 1;
@@ -443,4 +442,20 @@ public class NativeFunctionInterfaceTest {
         }
     }
 
+    /**
+     * Writes the contents of a {@link String} to a native memory buffer as a {@code '\0'}
+     * terminated C string. The caller is responsible for ensuring the buffer is at least
+     * {@code s.length() + 1} bytes long. The caller is also responsible for releasing the buffer
+     * when it is no longer.
+     *
+     * @return the value of {@code buf}
+     */
+    private static long writeCString(String s, long buf) {
+        int size = s.length();
+        for (int i = 0; i < size; i++) {
+            unsafe.putByte(buf + i, (byte) s.charAt(i));
+        }
+        unsafe.putByte(buf + size, (byte) '\0');
+        return buf;
+    }
 }
