@@ -65,6 +65,9 @@ def executeGate():
         with Task('TestInterop', tasks) as t:
             if t: runInteropTestCases()
     with VM('server', 'product'):
+        with Task('TestAsm', tasks) as t:
+            if t: runAsmTestCases()
+    with VM('server', 'product'):
         with Task('TestSulong', tasks) as t:
             if t: runTruffleTestCases()
     with VM('server', 'product'):
@@ -106,6 +109,9 @@ def travis1(args=None):
     with VM('server', 'product'):
         with Task('TestInterop', tasks) as t:
             if t: runInteropTestCases()
+    with VM('server', 'product'):
+        with Task('TestAsm', tasks) as t:
+            if t: runAsmTestCases()
     with VM('server', 'product'):
         with Task('TestTypes', tasks) as t:
             if t: runTypeTestCases()
@@ -447,6 +453,7 @@ def runTests(args=None):
     runTypeTestCases()
     runPolyglotTestCases()
     runInteropTestCases()
+    runAsmTestCases()
     runBenchmarkTestCases()
 
 def runBenchmarkTestCases(args=None):
@@ -501,6 +508,11 @@ def runInteropTestCases(args=None):
     """runs the interop test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
+
+def runAsmTestCases(args=None):
+    """runs the asm test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.inlineassembly.LLVMInlineAssemblyTest'])
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
@@ -785,6 +797,7 @@ mx.update_commands(_suite, {
     'su-tests-types' : [runTypeTestCases, ''],
     'su-tests-polyglot' : [runPolyglotTestCases, ''],
     'su-tests-interop' : [runInteropTestCases, ''],
+    'su-tests-asm' : [runAsmTestCases, ''],
     'su-tests-compile' : [runCompileTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
