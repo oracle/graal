@@ -32,6 +32,26 @@ import mx
 import mx_benchmark
 
 
+class ServerVm(mx_benchmark.JvmciVm):
+    def __init__(self, configName, extraArgs):
+        self.configName = configName
+        self.extraArgs = extraArgs
+
+    def name(self):
+        return self.configName
+
+    def dimensions(self, cwd, args, code, out):
+        return {
+            "host-vm": "default",
+            "host-vm-config": self.name(),
+            "guest-vm": "unknown",
+            "guest-vm-config": "unknown"
+        }
+
+    def postProcessCommandLineArgs(self, args):
+        return self.extraArgs + args
+
+
 class GraalCoreVm(mx_benchmark.JvmciVm):
     def name(self):
         return "graal-core"
@@ -44,11 +64,12 @@ class GraalCoreVm(mx_benchmark.JvmciVm):
             "guest-vm-config": "unknown"
         }
 
-    def postProcessCommandLineArgs(self, suiteArgs):
-        return ["-Djvmci.Compiler=graal"] + suiteArgs
+    def postProcessCommandLineArgs(self, args):
+        return ["-Djvmci.Compiler=graal"] + args
 
 
 mx_benchmark.add_java_vm("jvmci", GraalCoreVm())
+mx_benchmark.add_java_vm("server", ServerVm("default", []))
 
 
 _dacapoIterations = {
