@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.5",
+  "mxversion" : "5.20.6",
   "name" : "graal-core",
 
   "imports" : {
