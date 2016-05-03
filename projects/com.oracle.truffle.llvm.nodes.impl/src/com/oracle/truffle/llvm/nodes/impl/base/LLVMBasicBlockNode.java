@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -44,6 +46,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
  */
 public class LLVMBasicBlockNode extends LLVMNode {
 
+    private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
     @Children private final LLVMNode[] statements;
@@ -51,15 +54,17 @@ public class LLVMBasicBlockNode extends LLVMNode {
 
     @CompilationFinal private final long[] successorCount;
     @CompilationFinal private long totalExecutionCount = 0;
+    private final int blockId;
 
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
     }
 
-    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction) {
+    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction, int blockId) {
         this.statements = statements;
         this.termInstruction = termInstruction;
+        this.blockId = blockId;
         successorCount = new long[termInstruction.getSuccessors().length];
     }
 
@@ -119,5 +124,10 @@ public class LLVMBasicBlockNode extends LLVMNode {
             incrementSuccessorCount(successorIndex);
             incrementTotalCount();
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(FORMAT_STRING, blockId, statements.length, Arrays.toString(termInstruction.getSuccessors()));
     }
 }

@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMBlockNode.LLVMBlockControlF
 
 public class LLVMBlockFactory {
 
-    public static LLVMNode createBasicBlock(LLVMNode[] statementNodes, LLVMTerminatorNode terminatorNode) {
-        return new LLVMBasicBlockNode(statementNodes, terminatorNode);
+    public static LLVMNode createBasicBlock(LLVMNode[] statementNodes, LLVMTerminatorNode terminatorNode, int blockId) {
+        return new LLVMBasicBlockNode(statementNodes, terminatorNode, blockId);
     }
 
     public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] indexToSlotNuller) {
