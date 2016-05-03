@@ -23,6 +23,8 @@
 package com.oracle.nfi;
 
 import java.lang.reflect.Method;
+import java.util.Iterator;
+import java.util.ServiceLoader;
 
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
@@ -48,17 +50,29 @@ public final class NativeFunctionInterfaceRuntime {
 
         NativeFunctionInterfaceAccess access = null;
         Class<?> servicesClass = null;
-        try {
-            servicesClass = Class.forName("jdk.vm.ci.services.Services");
-        } catch (ClassNotFoundException e) {
+        boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        if (!jdk8OrEarlier) {
+            Iterator<NativeFunctionInterfaceAccess> providers = ServiceLoader.load(NativeFunctionInterfaceAccess.class).iterator();
+            if (providers.hasNext()) {
+                access = providers.next();
+                if (providers.hasNext()) {
+                    throw new InternalError(String.format("Multiple %s providers found", NativeFunctionInterfaceAccess.class.getName()));
+                }
+            }
+        } else {
+
             try {
-                servicesClass = Class.forName("jdk.vm.ci.service.Services");
-            } catch (ClassNotFoundException e2) {
+                servicesClass = Class.forName("jdk.vm.ci.services.Services");
+            } catch (ClassNotFoundException e) {
                 try {
-                    // Legacy support
-                    servicesClass = Class.forName("com.oracle.jvmci.service.Services");
-                } catch (ClassNotFoundException e3) {
-                    // JVMCI is unavailable
+                    servicesClass = Class.forName("jdk.vm.ci.service.Services");
+                } catch (ClassNotFoundException e2) {
+                    try {
+                        // Legacy support
+                        servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+                    } catch (ClassNotFoundException e3) {
+                        // JVMCI is unavailable
+                    }
                 }
             }
         }
