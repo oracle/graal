@@ -402,11 +402,12 @@ public class PolyglotEngine {
             return this;
         }
 
-        /** Specifies a {@link PolyglotLocator locator} to be used to search
-         * for various registrations in the engine. Only the last specified
-         * locator is used. If a non-<code>null</code> locator is specified,
-         * then the standard search for {@link PolyglotLocator system wide locators} is disabled for
-         * the to be created {@link PolyglotEngine}.
+        /**
+         * Specifies a {@link PolyglotLocator locator} to be used to search for various
+         * registrations in the engine. Only the last specified locator is used. If a non-
+         * <code>null</code> locator is specified, then the standard search for
+         * {@link PolyglotLocator system wide locators} is disabled for the to be created
+         * {@link PolyglotEngine}.
          *
          * @param locator the locator to use
          * @return instance of this builder

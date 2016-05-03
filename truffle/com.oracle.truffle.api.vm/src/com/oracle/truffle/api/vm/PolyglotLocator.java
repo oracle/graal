@@ -30,31 +30,33 @@ import java.util.LinkedHashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
 
-/** Locator that allows the users of the Truffle API to find implementations of languages
- * to be available in {@link PolyglotEngine}. One can specify the locator
- * via {@link PolyglotEngine.Builder#locator(com.oracle.truffle.api.vm.PolyglotLocator)}
- * when {@link PolyglotEngine.Builder building} own instance of the engine.
- * When there is no explicitly specified locator, then the system asks the
- * {@link ServiceLoader} and uses all registered ones to find their languages.
+/**
+ * Locator that allows the users of the Truffle API to find implementations of languages to be
+ * available in {@link PolyglotEngine}. One can specify the locator via
+ * {@link PolyglotEngine.Builder#locator(com.oracle.truffle.api.vm.PolyglotLocator)} when
+ * {@link PolyglotEngine.Builder building} own instance of the engine. When there is no explicitly
+ * specified locator, then the system asks the {@link ServiceLoader} and uses all registered ones to
+ * find their languages.
  * <p>
- * When the locator is asked to find {@link TruffleLanguage the languages} -
- * via call to
- * {@link #locate(com.oracle.truffle.api.vm.PolyglotLocator.Response) }
- * method, it can respond by registering {@link ClassLoader}(s) that contain
- * implementations and {@link TruffleLanguage.Registration registration}s of
- * the {@link TruffleLanguage languages}.
+ * When the locator is asked to find {@link TruffleLanguage the languages} - via call to
+ * {@link #locate(com.oracle.truffle.api.vm.PolyglotLocator.Response) } method, it can respond by
+ * registering {@link ClassLoader}(s) that contain implementations and
+ * {@link TruffleLanguage.Registration registration}s of the {@link TruffleLanguage languages}.
  *
  * @since 0.14
  */
 public interface PolyglotLocator {
-    /** Called to locate languages and other parts of the system.
+    /**
+     * Called to locate languages and other parts of the system.
      *
      * @param response the response to fill in with found languages
      * @since 0.14
      */
     void locate(Response response);
 
-    /** Callback to register languages.
+    /**
+     * Callback to register languages.
+     * 
      * @since 0.14
      */
     final class Response {
@@ -64,9 +66,9 @@ public interface PolyglotLocator {
             this.loaders = loaders;
         }
 
-        /** Register a classloader to be used to find implementations
-         * of the languages. Can be called multiple times to register
-         * as many classloaders as necessary.
+        /**
+         * Register a classloader to be used to find implementations of the languages. Can be called
+         * multiple times to register as many classloaders as necessary.
          *
          * @param languageLoader the classloader to use
          * @since 0.14
@@ -75,7 +77,8 @@ public interface PolyglotLocator {
             loaders.add(languageLoader);
         }
 
-        /** Creates the set of classloaders to be used by the system.
+        /**
+         * Creates the set of classloaders to be used by the system.
          *
          * @param locator the specified locator or <code>null</code>
          * @return set of classloaders to search registrations in
