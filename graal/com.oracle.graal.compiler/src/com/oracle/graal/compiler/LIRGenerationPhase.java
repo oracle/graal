@@ -26,6 +26,8 @@ import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -54,6 +56,8 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         }
     }
 
+    private static final DebugCounter instructionCounter = Debug.counter("GeneratedLIRInstructions");
+
     @Override
     protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     LIRGenerationPhase.LIRGenerationContext context) {
@@ -75,6 +79,9 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
                 }
             }
             nodeLirGen.doBlock(b, graph, blockMap);
+            if (instructionCounter.isEnabled()) {
+                instructionCounter.add(lirGenRes.getLIR().getLIRforBlock(b).size());
+            }
         }
     }
 
