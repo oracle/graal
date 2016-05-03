@@ -96,7 +96,7 @@ public final class Debugger {
     /**
      * Describes where an execution is halted relative to the instrumented node.
      */
-    private enum HaltPosition {
+    enum HaltPosition {
         BEFORE,
         AFTER;
     }
@@ -817,13 +817,14 @@ public final class Debugger {
         /**
          * Handle a program halt, caused by a breakpoint, stepping action, or other cause.
          *
-         * @param astNode the guest language node at which execution is halted
+         * @param eventContext information about the guest language node at which execution is
+         *            halted
          * @param mFrame the current execution frame where execution is halted
-         * @param haltPosition execution position relative to the instrumented node where halted
+         * @param position execution position relative to the instrumented node where halted
          * @param haltReason what caused the halt
          */
         @TruffleBoundary
-        private void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition haltPosition, String haltReason) {
+        private void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition position, String haltReason) {
             if (disposed) {
                 throw new IllegalStateException("DebugExecutionContexts are single-use.");
             }
@@ -833,7 +834,7 @@ public final class Debugger {
 
             haltedEventContext = eventContext;
             haltedFrame = mFrame;
-            haltedPosition = haltPosition;
+            haltedPosition = position;
             running = false;
 
             clearAction();
@@ -872,7 +873,7 @@ public final class Debugger {
 
             try {
                 // Pass control to the debug client with current execution suspended
-                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedFrame, contextStack, recentWarnings);
+                SuspendedEvent event = new SuspendedEvent(Debugger.this, haltedEventContext.getInstrumentedNode(), haltedPosition, haltedFrame, contextStack, recentWarnings);
                 AccessorDebug.engineAccess().dispatchEvent(engine, event, Accessor.EngineSupport.SUSPENDED_EVENT);
                 if (event.isKillPrepared()) {
                     trace("KILL");

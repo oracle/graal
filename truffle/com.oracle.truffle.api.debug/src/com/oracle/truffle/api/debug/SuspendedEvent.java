@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,10 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.debug.Debugger.HaltPosition;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -61,14 +63,16 @@ public final class SuspendedEvent {
 
     private final Debugger debugger;
     private final Node haltedNode;
+    private final HaltPosition haltedPosition;
     private final MaterializedFrame haltedFrame;
     private final List<FrameInstance> stack;
     private final List<String> warnings;
     private volatile boolean kill;
 
-    SuspendedEvent(Debugger debugger, Node haltedNode, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
+    SuspendedEvent(Debugger debugger, Node haltedNode, HaltPosition haltedPosition, MaterializedFrame haltedFrame, List<FrameInstance> stack, List<String> warnings) {
         this.debugger = debugger;
         this.haltedNode = haltedNode;
+        this.haltedPosition = haltedPosition;
         this.haltedFrame = haltedFrame;
         this.stack = stack;
         this.warnings = warnings;
@@ -90,9 +94,30 @@ public final class SuspendedEvent {
         return debugger;
     }
 
-    /** @since 0.9 */
+    /**
+     * The Guest Language AST node where execution is suspended. Depending on the value of
+     * {@link #isHaltedBefore()}, the node is either:
+     * <ul>
+     * <li>{@code true}: the next (non-instrumentation) node to be executed, or</li>
+     * <li>{@code false}: the most recent (non-instrumentation) node that has been executed.</li>
+     * </ul>
+     *
+     * @see ExecutionEventListener
+     * @since 0.9
+     */
     public Node getNode() {
         return haltedNode;
+    }
+
+    /**
+     * Is the suspended execution halted just <em>before</em> executing the instrumented (halted)
+     * {@linkplain #getNode() node}? If {@code false} then the instrumented node was the most recent
+     * (non-instrumentation) node executed.
+     *
+     * @since 0.14
+     */
+    public boolean isHaltedBefore() {
+        return haltedPosition == HaltPosition.BEFORE;
     }
 
     /** @since 0.9 */
