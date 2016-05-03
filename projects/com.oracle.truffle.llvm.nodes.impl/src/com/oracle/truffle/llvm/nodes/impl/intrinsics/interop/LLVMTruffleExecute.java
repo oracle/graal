@@ -91,7 +91,12 @@ public final class LLVMTruffleExecute {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignExecute = insert(Message.createExecute(getFunctionArgumentLength(frame)).createNode());
             }
-            return new LLVMTruffleObject((TruffleObject) doExecute(frame, foreignExecute, value, toLLVM, expectedType));
+            final Object result = doExecute(frame, foreignExecute, value, toLLVM, expectedType);
+            if (result instanceof String) {
+                return result;
+            } else {
+                return new LLVMTruffleObject((TruffleObject) result);
+            }
         }
     }
 
