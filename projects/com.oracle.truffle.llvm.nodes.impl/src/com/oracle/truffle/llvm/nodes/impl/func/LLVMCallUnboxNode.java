@@ -169,6 +169,11 @@ public abstract class LLVMCallUnboxNode {
     public abstract static class LLVMAddressCallUnboxNode extends LLVMAddressNode {
 
         @Specialization
+        public String executeString(String value) {
+            return value;
+        }
+
+        @Specialization
         public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject value) {
             return value;
         }
