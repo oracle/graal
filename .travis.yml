@@ -19,6 +19,7 @@ addons:
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
 install:
+  - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
   - pip install astroid==1.1.0 --user `whoami`
   - pip install pylint==1.1.0 --user `whoami`
