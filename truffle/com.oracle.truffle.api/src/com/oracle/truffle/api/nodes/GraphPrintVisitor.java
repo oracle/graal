@@ -488,19 +488,19 @@ public class GraphPrintVisitor implements Closeable {
 
     private void readNodeProperties(Node node) {
         NodeClass nodeClass = NodeClass.get(node);
-        for (NodeClass.NodeField field : nodeClass.getNodeFields()) {
-            if (isDataField(field)) {
-                String key = field.getName();
+        for (Object field : nodeClass.getNodeFields()) {
+            if (isDataField(nodeClass, field)) {
+                String key = nodeClass.getFieldName(field);
                 if (!getElementByObject(node).getProperties().containsKey(key)) {
-                    Object value = field.getValue(node);
+                    Object value = nodeClass.getFieldValue(field, node);
                     setNodeProperty(node, key, value);
                 }
             }
         }
     }
 
-    private static boolean isDataField(NodeClass.NodeField field) {
-        return !field.isChildField() && !field.isChildrenField();
+    private static boolean isDataField(NodeClass nodeClass, Object field) {
+        return !nodeClass.isChildField(field) && !nodeClass.isChildrenField(field);
     }
 
     final void connectNodes(Object a, Object b, String label) {
@@ -567,19 +567,19 @@ public class GraphPrintVisitor implements Closeable {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node);
 
-        for (NodeClass.NodeField field : nodeClass.getNodeFields()) {
-            if (field.isChildField()) {
-                Object value = field.getObject(node);
+        for (Object field : nodeClass.getNodeFields()) {
+            if (nodeClass.isChildField(field)) {
+                Object value = nodeClass.getFieldObject(field, node);
                 if (value != null) {
-                    nodes.put(field.getName(), (Node) value);
+                    nodes.put(nodeClass.getFieldName(field), (Node) value);
                 }
-            } else if (field.isChildrenField()) {
-                Object value = field.getObject(node);
+            } else if (nodeClass.isChildrenField(field)) {
+                Object value = nodeClass.getFieldObject(field, node);
                 if (value != null) {
                     Object[] children = (Object[]) value;
                     for (int i = 0; i < children.length; i++) {
                         if (children[i] != null) {
-                            nodes.put(field.getName() + "[" + i + "]", (Node) children[i]);
+                            nodes.put(nodeClass.getFieldName(field) + "[" + i + "]", (Node) children[i]);
                         }
                     }
                 }

@@ -218,7 +218,7 @@ public abstract class NodeFieldAccessor {
     }
 
     @SuppressWarnings("deprecation")
-    private static final class UnsafeNodeField extends AbstractUnsafeNodeFieldAccessor implements NodeClass.NodeField {
+    private static final class UnsafeNodeField extends AbstractUnsafeNodeFieldAccessor {
         private final long offset;
 
         protected UnsafeNodeField(NodeFieldKind kind, Field field) {
@@ -230,35 +230,10 @@ public abstract class NodeFieldAccessor {
         public long getOffset() {
             return offset;
         }
-
-        @Override
-        public Class<?> getFieldType() {
-            return getType();
-        }
-
-        @Override
-        public Object getValue(Node receiver) {
-            return loadValue(receiver);
-        }
-
-        @Override
-        public boolean isChildField() {
-            return getKind() == NodeFieldKind.CHILD;
-        }
-
-        @Override
-        public boolean isChildrenField() {
-            return getKind() == NodeFieldKind.CHILDREN;
-        }
-
-        @Override
-        public boolean isCloneableField() {
-            return getKind() == NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(getType());
-        }
     }
 
     @SuppressWarnings("deprecation")
-    private static final class ReflectionNodeField extends NodeFieldAccessor implements NodeClass.NodeField {
+    private static final class ReflectionNodeField extends NodeFieldAccessor {
         private final Field field;
 
         protected ReflectionNodeField(NodeFieldKind kind, Field field) {
@@ -312,31 +287,6 @@ public abstract class NodeFieldAccessor {
             } catch (IllegalAccessException e) {
                 throw new AssertionError(e);
             }
-        }
-
-        @Override
-        public Object getValue(Node receiver) {
-            return loadValue(receiver);
-        }
-
-        @Override
-        public Class<?> getFieldType() {
-            return getType();
-        }
-
-        @Override
-        public boolean isChildField() {
-            return getKind() == NodeFieldKind.CHILD;
-        }
-
-        @Override
-        public boolean isChildrenField() {
-            return getKind() == NodeFieldKind.CHILDREN;
-        }
-
-        @Override
-        public boolean isCloneableField() {
-            return getKind() == NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(getType());
         }
     }
 

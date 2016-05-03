@@ -92,9 +92,6 @@ public abstract class NodeClass {
     @Deprecated
     public abstract NodeFieldAccessor[] getChildrenFields();
 
-    /** @since 0.14 */
-    protected abstract Iterable<? extends NodeField> getNodeFields();
-
     /** @since 0.8 or earlier */
     public abstract Iterator<Node> makeIterator(Node node);
 
@@ -106,6 +103,33 @@ public abstract class NodeClass {
      * @since 0.8 or earlier
      */
     public abstract Class<? extends Node> getType();
+
+    /** @since 0.14 */
+    protected abstract Iterable<? extends Object> getNodeFields();
+
+    /** @since 0.14 */
+    protected abstract void putFieldObject(Object field, Node receiver, Object value);
+
+    /** @since 0.14 */
+    protected abstract Object getFieldObject(Object field, Node receiver);
+
+    /** @since 0.14 */
+    protected abstract Object getFieldValue(Object field, Node receiver);
+
+    /** @since 0.14 */
+    protected abstract Class<?> getFieldType(Object field);
+
+    /** @since 0.14 */
+    protected abstract String getFieldName(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isChildField(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isChildrenField(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isCloneableField(Object field);
 
     /**
      * If and only if this method returns {@code true}, {@link #getNodeFields()} adheres to the
@@ -119,32 +143,5 @@ public abstract class NodeClass {
      */
     boolean nodeFieldsOrderedByKind() {
         return false;
-    }
-
-    /** @since 0.14 */
-    protected interface NodeField {
-        /** @since 0.14 */
-        void putObject(Node receiver, Object value);
-
-        /** @since 0.14 */
-        Object getObject(Node receiver);
-
-        /** @since 0.14 */
-        Object getValue(Node receiver);
-
-        /** @since 0.14 */
-        Class<?> getFieldType();
-
-        /** @since 0.14 */
-        String getName();
-
-        /** @since 0.14 */
-        boolean isChildField();
-
-        /** @since 0.14 */
-        boolean isChildrenField();
-
-        /** @since 0.14 */
-        boolean isCloneableField();
     }
 }

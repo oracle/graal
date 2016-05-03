@@ -42,10 +42,10 @@ import com.oracle.truffle.api.nodes.Node.Children;
  */
 @SuppressWarnings("deprecation")
 final class NodeClassImpl extends NodeClass {
-    private static final NodeField[] EMPTY_NODE_FIELD_ARRAY = new NodeField[0];
+    private static final NodeFieldAccessor[] EMPTY_NODE_FIELD_ARRAY = new NodeFieldAccessor[0];
 
     // The comprehensive list of all fields.
-    private final NodeField[] fields;
+    private final NodeFieldAccessor[] fields;
     private final NodeFieldAccessor parentField;
     private final NodeFieldAccessor nodeClassField;
 
@@ -57,7 +57,7 @@ final class NodeClassImpl extends NodeClass {
             throw new IllegalArgumentException();
         }
 
-        List<NodeField> fieldsList = new ArrayList<>();
+        List<NodeFieldAccessor> fieldsList = new ArrayList<>();
         NodeFieldAccessor parentFieldTmp = null;
         NodeFieldAccessor nodeClassFieldTmp = null;
 
@@ -74,13 +74,13 @@ final class NodeClassImpl extends NodeClass {
 
         collectInstanceFields(clazz, fieldsList);
 
-        Collections.sort(fieldsList, new Comparator<NodeField>() {
-            public int compare(NodeField o1, NodeField o2) {
+        Collections.sort(fieldsList, new Comparator<NodeFieldAccessor>() {
+            public int compare(NodeFieldAccessor o1, NodeFieldAccessor o2) {
                 return Integer.compare(order(o1), order(o2));
             }
 
-            private int order(NodeField nodeField) {
-                return nodeField.isChildField() ? 0 : (nodeField.isChildrenField() ? 1 : (nodeField.isCloneableField() ? 2 : 3));
+            private int order(NodeFieldAccessor nodeField) {
+                return isChildField(nodeField) ? 0 : (isChildrenField(nodeField) ? 1 : (isCloneableField(nodeField) ? 2 : 3));
             }
         });
 
@@ -90,7 +90,7 @@ final class NodeClassImpl extends NodeClass {
         this.clazz = clazz;
     }
 
-    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeField> fieldsList) {
+    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeFieldAccessor> fieldsList) {
         if (clazz.getSuperclass() != null) {
             collectInstanceFields(clazz.getSuperclass(), fieldsList);
         }
@@ -112,7 +112,7 @@ final class NodeClassImpl extends NodeClass {
             } else {
                 nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.DATA, field);
             }
-            fieldsList.add((NodeField) nodeField);
+            fieldsList.add(nodeField);
         }
     }
 
@@ -174,7 +174,7 @@ final class NodeClassImpl extends NodeClass {
     }
 
     @Override
-    protected Iterable<NodeField> getNodeFields() {
+    protected Iterable<NodeFieldAccessor> getNodeFields() {
         return getNodeFields(null);
     }
 
@@ -182,13 +182,13 @@ final class NodeClassImpl extends NodeClass {
      * Functional interface equivalent to {@code Predicate<NodeFieldAccessor>}.
      */
     private interface NodeFieldFilter {
-        boolean test(NodeField field);
+        boolean test(NodeFieldAccessor field);
     }
 
-    private Iterable<NodeField> getNodeFields(final NodeFieldFilter filter) {
-        return new Iterable<NodeField>() {
-            public Iterator<NodeField> iterator() {
-                return new Iterator<NodeField>() {
+    private Iterable<NodeFieldAccessor> getNodeFields(final NodeFieldFilter filter) {
+        return new Iterable<NodeFieldAccessor>() {
+            public Iterator<NodeFieldAccessor> iterator() {
+                return new Iterator<NodeFieldAccessor>() {
                     private int cursor = -1;
                     {
                         forward();
@@ -196,7 +196,7 @@ final class NodeClassImpl extends NodeClass {
 
                     private void forward() {
                         for (int i = cursor + 1; i < fields.length; i++) {
-                            NodeField field = fields[i];
+                            NodeFieldAccessor field = fields[i];
                             if (filter == null || filter.test(field)) {
                                 cursor = i;
                                 return;
@@ -210,9 +210,9 @@ final class NodeClassImpl extends NodeClass {
                         return cursor < fields.length;
                     }
 
-                    public NodeField next() {
+                    public NodeFieldAccessor next() {
                         if (hasNext()) {
-                            NodeField next = fields[cursor];
+                            NodeFieldAccessor next = fields[cursor];
                             forward();
                             return next;
                         } else {
@@ -236,8 +236,8 @@ final class NodeClassImpl extends NodeClass {
     @Override
     public NodeFieldAccessor[] getChildFields() {
         return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeField field) {
-                return field.isChildField();
+            public boolean test(NodeFieldAccessor field) {
+                return isChildField(field);
             }
         }));
     }
@@ -245,8 +245,8 @@ final class NodeClassImpl extends NodeClass {
     @Override
     public NodeFieldAccessor[] getChildrenFields() {
         return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeField field) {
-                return field.isChildrenField();
+            public boolean test(NodeFieldAccessor field) {
+                return isChildrenField(field);
             }
         }));
     }
@@ -254,18 +254,58 @@ final class NodeClassImpl extends NodeClass {
     @Override
     public NodeFieldAccessor[] getCloneableFields() {
         return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeField field) {
-                return field.isCloneableField();
+            public boolean test(NodeFieldAccessor field) {
+                return isCloneableField(field);
             }
         }));
     }
 
-    private static NodeFieldAccessor[] iterableToArray(Iterable<NodeField> fields) {
+    private static NodeFieldAccessor[] iterableToArray(Iterable<NodeFieldAccessor> fields) {
         ArrayList<NodeFieldAccessor> fieldList = new ArrayList<>();
-        for (NodeField field : fields) {
-            fieldList.add((NodeFieldAccessor) field);
+        for (NodeFieldAccessor field : fields) {
+            fieldList.add(field);
         }
         return fieldList.toArray(new NodeFieldAccessor[0]);
+    }
+
+    @Override
+    protected void putFieldObject(Object field, Node receiver, Object value) {
+        ((NodeFieldAccessor) field).putObject(receiver, value);
+    }
+
+    @Override
+    protected Object getFieldObject(Object field, Node receiver) {
+        return ((NodeFieldAccessor) field).getObject(receiver);
+    }
+
+    @Override
+    protected Object getFieldValue(Object field, Node receiver) {
+        return ((NodeFieldAccessor) field).loadValue(receiver);
+    }
+
+    @Override
+    protected Class<?> getFieldType(Object field) {
+        return ((NodeFieldAccessor) field).getType();
+    }
+
+    @Override
+    protected String getFieldName(Object field) {
+        return ((NodeFieldAccessor) field).getName();
+    }
+
+    @Override
+    protected boolean isChildField(Object field) {
+        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.CHILD;
+    }
+
+    @Override
+    protected boolean isChildrenField(Object field) {
+        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.CHILDREN;
+    }
+
+    @Override
+    protected boolean isCloneableField(Object field) {
+        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(((NodeFieldAccessor) field).getType());
     }
 
     @Override
@@ -274,7 +314,8 @@ final class NodeClassImpl extends NodeClass {
     }
 
     private static final class NodeIterator implements Iterator<Node> {
-        private final NodeField[] fields;
+        private final NodeClassImpl nodeClass;
+        private final NodeFieldAccessor[] fields;
         private final Node node;
 
         private int fieldIndex;
@@ -283,6 +324,7 @@ final class NodeClassImpl extends NodeClass {
         private Object[] children;
 
         protected NodeIterator(NodeClassImpl nodeClass, Node node) {
+            this.nodeClass = nodeClass;
             this.fields = nodeClass.fields;
             this.node = node;
             advance();
@@ -293,17 +335,19 @@ final class NodeClassImpl extends NodeClass {
                 return;
             }
             while (fieldIndex < fields.length) {
-                NodeField field = fields[fieldIndex];
+                NodeFieldAccessor field = fields[fieldIndex];
                 fieldIndex++;
-                if (field.isChildField()) {
-                    next = (Node) field.getObject(node);
+                if (nodeClass.isChildField(field)) {
+                    next = (Node) nodeClass.getFieldObject(field, node);
                     return;
-                } else if (field.isChildrenField()) {
-                    children = (Object[]) field.getObject(node);
+                } else if (nodeClass.isChildrenField(field)) {
+                    children = (Object[]) nodeClass.getFieldObject(field, node);
                     childrenIndex = 0;
                     if (advanceChildren()) {
                         return;
                     }
+                } else if (nodeClass.nodeFieldsOrderedByKind()) {
+                    break;
                 }
             }
             next = null;
