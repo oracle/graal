@@ -1,19 +1,5 @@
 #include <stdlib.h>
-
-void assert_true(int val) {
-  if (!val) {
-    abort();
-  }
-}
-
-void assert_false(int val) {
-  if (val) {
-    abort();
-  }
-}
-
-double volatile NUM = 3;
-double volatile NAN = 0.0 / 0.0;
+#include "../assert.h"
 
 int main() {
   // ==
