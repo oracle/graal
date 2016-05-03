@@ -9,6 +9,7 @@ suite = {
            "version" : "61191367671d802efa088b4b2c80f17bc3c53061",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
+                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
             ]
         },
     ],
