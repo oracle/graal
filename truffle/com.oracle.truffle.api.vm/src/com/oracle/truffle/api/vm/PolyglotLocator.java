@@ -41,8 +41,8 @@ import java.util.Set;
  * <p>
  * When the locator is asked to find {@link TruffleLanguage the languages} - via call to
  * {@link #locate(com.oracle.truffle.api.vm.PolyglotLocator.Response) } method, it can respond by
- * registering {@link ClassLoader}(s) that contain implementations and
- * {@link Registration registration}s of the {@link TruffleLanguage languages}.
+ * registering {@link ClassLoader}(s) that contain implementations and {@link Registration
+ * registration}s of the {@link TruffleLanguage languages}.
  *
  * @since 0.14
  */
