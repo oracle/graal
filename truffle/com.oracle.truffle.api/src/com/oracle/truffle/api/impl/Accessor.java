@@ -235,7 +235,7 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             DEBUG = this.debugSupport();
-        } else if (this.getClass().getSimpleName().endsWith("Frame")) {
+        } else if (this.getClass().getSimpleName().endsWith("Frames")) {
             if (FRAMES != null) {
                 throw new IllegalStateException();
             }
