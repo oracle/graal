@@ -164,7 +164,7 @@ public class PolyglotEngine {
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config, PolyglotLocator locator) {
         assertNoTruffle();
         this.executor = executor;
         this.out = out;
@@ -180,7 +180,7 @@ public class PolyglotEngine {
         this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
-        Set<LanguageCache> uniqueCaches = new HashSet<>(LanguageCache.languages().values());
+        Set<LanguageCache> uniqueCaches = new HashSet<>(LanguageCache.languages(locator).values());
         for (LanguageCache languageCache : uniqueCaches) {
             Language newLanguage = new Language(languageCache);
             for (String mimeType : newLanguage.getMimeTypes()) {
@@ -188,7 +188,7 @@ public class PolyglotEngine {
             }
         }
         this.langs = map;
-        this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
+        this.instruments = createAndAutostartDescriptors(InstrumentCache.load(locator));
         this.context = ExecutionImpl.createStore(this);
     }
 
@@ -260,6 +260,7 @@ public class PolyglotEngine {
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
+        private PolyglotLocator locator;
 
         Builder() {
         }
@@ -401,6 +402,22 @@ public class PolyglotEngine {
             return this;
         }
 
+        /** Specifies a {@link PolyglotLocator locator} to be used to search
+         * for various registrations in the engine. Only the last specified
+         * locator is used. If a non-<code>null</code> locator is specified,
+         * then the standard search for {@link PolyglotLocator system wide locators} is disabled for
+         * the to be created {@link PolyglotEngine}.
+         *
+         * @param locator the locator to use
+         * @return instance of this builder
+         * @since 0.14
+         */
+        @SuppressWarnings("hiding")
+        public Builder locator(PolyglotLocator locator) {
+            this.locator = locator;
+            return this;
+        }
+
         /**
          * Creates the {@link PolyglotEngine Truffle virtual machine}. The configuration is taken
          * from values passed into configuration methods in this class.
@@ -419,7 +436,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
+            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments, locator);
         }
     }
 

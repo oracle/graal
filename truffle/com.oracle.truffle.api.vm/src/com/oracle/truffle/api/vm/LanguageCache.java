@@ -49,13 +49,14 @@ final class LanguageCache {
     private static final boolean PRELOAD;
     private static final Map<String, LanguageCache> CACHE;
     private TruffleLanguage<?> language;
+    private final ClassLoader loader;
     private final String className;
     private final Set<String> mimeTypes;
     private final String name;
     private final String version;
 
     static {
-        CACHE = TruffleOptions.AOT ? initializeLanguages(loader()) : null;
+        CACHE = TruffleOptions.AOT ? initializeLanguages(null) : null;
         PRELOAD = CACHE != null;
     }
 
@@ -68,16 +69,25 @@ final class LanguageCache {
      * @param loader The classloader to be used for finding languages.
      * @return A map of initialized languages.
      */
-    private static Map<String, LanguageCache> initializeLanguages(ClassLoader loader) {
+    private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
         Map<String, LanguageCache> map;
-        map = createLanguages(loader);
+
+        PolyglotLocator singleLoaderLocator = new PolyglotLocator() {
+            @Override
+            public void locate(PolyglotLocator.Response response) {
+                response.registerClassLoader(loader);
+            }
+        };
+
+        map = createLanguages(singleLoaderLocator);
         for (LanguageCache info : map.values()) {
-            info.createLanguage(loader);
+            info.createLanguage();
         }
         return map;
     }
 
-    private LanguageCache(String prefix, Properties info, TruffleLanguage<?> language) {
+    private LanguageCache(String prefix, Properties info, TruffleLanguage<?> language, ClassLoader loader) {
+        this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
         this.version = info.getProperty(prefix + "version");
@@ -93,23 +103,22 @@ final class LanguageCache {
         this.language = language;
     }
 
-    private static ClassLoader loader() {
-        ClassLoader l = PolyglotEngine.class.getClassLoader();
-        if (l == null) {
-            l = ClassLoader.getSystemClassLoader();
-        }
-        return l;
-    }
-
-    static Map<String, LanguageCache> languages() {
+    static Map<String, LanguageCache> languages(PolyglotLocator locator) {
         if (PRELOAD) {
             return CACHE;
         }
-        return createLanguages(loader());
+        return createLanguages(locator);
     }
 
-    private static Map<String, LanguageCache> createLanguages(ClassLoader loader) {
+    private static Map<String, LanguageCache> createLanguages(PolyglotLocator locator) {
         Map<String, LanguageCache> map = new LinkedHashMap<>();
+        for (ClassLoader loader : PolyglotLocator.Response.loaders(locator)) {
+            createLanguages(loader, map);
+        }
+        return map;
+    }
+
+    private static void createLanguages(ClassLoader loader, Map<String, LanguageCache> map) {
         Enumeration<URL> en;
         try {
             en = loader.getResources("META-INF/truffle/language");
@@ -133,13 +142,12 @@ final class LanguageCache {
                 if (p.getProperty(prefix + "name") == null) {
                     break;
                 }
-                LanguageCache l = new LanguageCache(prefix, p, null);
+                LanguageCache l = new LanguageCache(prefix, p, null, loader);
                 for (String mimeType : l.getMimeTypes()) {
                     map.put(mimeType, l);
                 }
             }
         }
-        return map;
     }
 
     Set<String> getMimeTypes() {
@@ -159,12 +167,12 @@ final class LanguageCache {
             return language;
         }
         if (create) {
-            createLanguage(loader());
+            createLanguage();
         }
         return language;
     }
 
-    private void createLanguage(ClassLoader loader) {
+    private void createLanguage() {
         try {
             TruffleLanguage<?> result;
             Class<?> langClazz = Class.forName(className, true, loader);
