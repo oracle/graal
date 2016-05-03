@@ -57,8 +57,6 @@ public class Truffle {
         return RUNTIME;
     }
 
-    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-
     private static TruffleRuntime initRuntime() {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
@@ -77,7 +75,10 @@ public class Truffle {
                 TruffleRuntimeAccess access = null;
                 Class<?> servicesClass = null;
 
-                if (!JDK8OrEarlier) {
+                boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+                if (!jdk8OrEarlier) {
+                    // As of JDK9, the JVMCI Services class should only be used for service types
+                    // defined by JVMCI. Other services types should use ServiceLoader directly.
                     Iterator<TruffleRuntimeAccess> providers = ServiceLoader.load(TruffleRuntimeAccess.class).iterator();
                     if (providers.hasNext()) {
                         access = providers.next();
