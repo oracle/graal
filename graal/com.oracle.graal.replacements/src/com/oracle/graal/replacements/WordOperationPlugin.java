@@ -111,7 +111,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     @Override
-    public StampPair interceptType(GraphBuilderContext b, JavaType declaredType, boolean nonNull) {
+    public StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull) {
         Stamp wordStamp = null;
         if (declaredType instanceof ResolvedJavaType) {
             ResolvedJavaType resolved = (ResolvedJavaType) declaredType;
@@ -138,7 +138,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        StampPair wordStamp = interceptType(b, field.getType(), false);
+        StampPair wordStamp = interceptType(b.parsingIntrinsic(), field.getType(), false);
         if (wordStamp != null) {
             LoadFieldNode loadFieldNode = LoadFieldNode.createOverrideStamp(wordStamp, receiver, field);
             b.addPush(field.getJavaKind(), loadFieldNode);

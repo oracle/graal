@@ -187,7 +187,11 @@ public class GraphKit {
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false), bci));
+        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(true, returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
+        }
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnStamp, bci));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         if (frameStateBuilder != null) {

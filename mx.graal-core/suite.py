@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.1",
+  "mxversion" : "5.20.5",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "8153a654bd10181122c7a8d0932df3acc58f8f06",
+        "version" : "5aa3b3a72e35181e8839793757bc08b84257bcc5",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -244,6 +244,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.misc",
+        "com.sun.crypto.provider",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [
@@ -1392,6 +1393,10 @@ suite = {
         "jvmci:JVMCI_API",
         "jvmci:JVMCI_HOTSPOT",
         "jvmci:JVMCI_HOTSPOTVMCONFIG"
+      ],
+      # The root(s) of the module jar's contents
+      "moduledeps" : [
+        "GRAAL_TRUFFLE_HOTSPOT",
       ],
     },
   },
