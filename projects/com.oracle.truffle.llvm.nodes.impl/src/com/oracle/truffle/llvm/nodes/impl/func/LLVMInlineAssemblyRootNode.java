@@ -29,19 +29,19 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.func;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
 
-    public LLVMInlineAssemblyRootNode(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor, LLVMExpressionNode node) {
-        super(language, sourceSection, frameDescriptor);
+    public LLVMInlineAssemblyRootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor, LLVMExpressionNode node) {
+        super(LLVMLanguage.class, sourceSection, frameDescriptor);
         this.node = node;
     }
 

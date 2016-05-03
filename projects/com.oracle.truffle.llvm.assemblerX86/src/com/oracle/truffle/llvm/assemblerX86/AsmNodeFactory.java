@@ -32,14 +32,13 @@ package com.oracle.truffle.llvm.assemblerX86;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmAddlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmSublNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 
 public class AsmNodeFactory {
 
     public LLVMInlineAssemblyRootNode finishInline(LLVMI32Node n) {
-        return new LLVMInlineAssemblyRootNode(LLVMLanguage.class, null, new FrameDescriptor(), n);
+        return new LLVMInlineAssemblyRootNode(null, new FrameDescriptor(), n);
     }
 
     /**
