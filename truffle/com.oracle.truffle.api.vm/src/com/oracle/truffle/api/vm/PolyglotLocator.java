@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.ServiceLoader;
@@ -41,7 +42,7 @@ import java.util.Set;
  * When the locator is asked to find {@link TruffleLanguage the languages} - via call to
  * {@link #locate(com.oracle.truffle.api.vm.PolyglotLocator.Response) } method, it can respond by
  * registering {@link ClassLoader}(s) that contain implementations and
- * {@link TruffleLanguage.Registration registration}s of the {@link TruffleLanguage languages}.
+ * {@link Registration registration}s of the {@link TruffleLanguage languages}.
  *
  * @since 0.14
  */
