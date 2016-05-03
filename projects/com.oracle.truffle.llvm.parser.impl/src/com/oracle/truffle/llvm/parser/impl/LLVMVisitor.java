@@ -621,7 +621,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         System.arraycopy(statements.toArray(new LLVMNode[statementNodes.length]), 0, statementNodes, 0, statementNodes.length);
         LLVMParserAsserts.assertNoNullElement(statementNodes);
         LLVMNode terminatorNode = statements.get(statements.size() - 1);
-        return factoryFacade.createBasicBlockNode(statementNodes, terminatorNode);
+        return factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, getIndexFromBasicBlock(basicBlock));
     }
 
     private List<LLVMNode> visitInstruction(Instruction instr) {

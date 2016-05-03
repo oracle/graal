@@ -237,7 +237,7 @@ public interface NodeFactoryFacade {
      * @param terminatorNode the terminator instruction node that changes control flow
      * @return the basic block node
      */
-    LLVMNode createBasicBlockNode(LLVMNode[] statementNodes, LLVMNode terminatorNode);
+    LLVMNode createBasicBlockNode(LLVMNode[] statementNodes, LLVMNode terminatorNode, int blockId);
 
     /**
      * Creates a node that groups together several basic blocks in a function and returns the
