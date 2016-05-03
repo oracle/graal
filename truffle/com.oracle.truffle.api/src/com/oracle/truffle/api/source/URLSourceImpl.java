@@ -29,6 +29,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.ref.WeakReference;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -54,6 +55,7 @@ final class URLSourceImpl extends Content {
     }
 
     private final URL url;
+    private final URI uri;
     private final String name;
 
     URLSourceImpl(URL url, String name) throws IOException {
@@ -63,6 +65,11 @@ final class URLSourceImpl extends Content {
     URLSourceImpl(URL url, URLConnection c, String name) throws IOException {
         this.url = url;
         this.name = name;
+        try {
+            this.uri = url.toURI();
+        } catch (URISyntaxException ex) {
+            throw new IOException("Bad URL: " + url, ex);
+        }
         code = Source.read(new InputStreamReader(c.getInputStream()));
     }
 
@@ -84,6 +91,11 @@ final class URLSourceImpl extends Content {
     @Override
     public URL getURL() {
         return url;
+    }
+
+    @Override
+    URI getURI() {
+        return uri;
     }
 
     @Override

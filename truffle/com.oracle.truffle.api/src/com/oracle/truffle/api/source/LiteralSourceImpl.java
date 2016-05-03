@@ -27,10 +27,11 @@ package com.oracle.truffle.api.source;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
 
-final class LiteralSourceImpl extends Content {
+final class LiteralSourceImpl extends Content implements Content.CreateURI {
 
     private final String name;
 
@@ -62,6 +63,16 @@ final class LiteralSourceImpl extends Content {
     @Override
     public URL getURL() {
         return null;
+    }
+
+    @Override
+    URI getURI() {
+        return createURIOnce(this);
+    }
+
+    @Override
+    public URI createURI() {
+        return getNamedURI(name, code.getBytes());
     }
 
     @Override

@@ -39,6 +39,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import java.io.InputStreamReader;
 import java.util.Objects;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -497,6 +499,25 @@ public abstract class Source {
     }
 
     /**
+     * Get URI of the source. Every source has an associated {@link URI}, which can be used as a
+     * persistent identification of the source. For example one can
+     * {@link com.oracle.truffle.api.debug.Debugger#setLineBreakpoint(int, java.net.URI, int, boolean)
+     * register a breakpoint using a URI} to a source that isn't loaded yet and it will be activated
+     * when the source is
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
+     * evaluated}. The {@link URI} returned by this method should be as unique as possible, yet it
+     * can happen that different {@link Source sources} return the same {@link #getURI} - for
+     * example when content of a {@link Source#fromFileName file on a disk} changes and is
+     * re-loaded.
+     *
+     * @return a URI, it's never <code>null</code>
+     * @since 0.14
+     */
+    public URI getURI() {
+        return content().getURI();
+    }
+
+    /**
      * Access to the source contents.
      *
      * @since 0.8 or earlier
@@ -900,12 +921,13 @@ class SourceSnippets {
         assert file.getName().equals(source.getShortName());
         assert file.getPath().equals(source.getPath());
         assert file.getPath().equals(source.getName());
+        assert file.toURI().equals(source.getURI());
         assert "text/x-java".equals(source.getMimeType());
         // END: SourceSnippets#fromFile
         return source;
     }
 
-    public static Source fromURL() throws IOException {
+    public static Source fromURL() throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
         Source source = Source.fromURL(resource, "/your/pkg/sample.js");
@@ -913,6 +935,7 @@ class SourceSnippets {
         assert resource.toExternalForm().equals(source.getPath());
         assert "/your/pkg/sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
+        assert resource.toURI().equals(source.getURI());
         // END: SourceSnippets#fromURL
         return source;
     }

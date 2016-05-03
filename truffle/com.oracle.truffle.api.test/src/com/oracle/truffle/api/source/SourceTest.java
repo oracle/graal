@@ -52,6 +52,8 @@ public class SourceTest {
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertNotNull("Every source must have URI", s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -67,6 +69,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertNotNull("Every source must have URI", s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -79,6 +83,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertNotNull("Every source must have URI", s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -91,6 +97,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertNotNull("Every source must have URI", s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -119,6 +127,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertEquals("File URI", new File(nonCannonical).toURI(), s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -136,6 +146,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertEquals("File URI", file.toURI(), s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -156,6 +168,8 @@ public class SourceTest {
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
+        assertEquals("File URI", file.toURI(), s1.getURI());
+        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
@@ -168,6 +182,7 @@ public class SourceTest {
         assertEquals(literal.getCode(), code);
         assertEquals("Non-appendable path is based on name", description, literal.getPath());
         assertNull(literal.getURL());
+        assertNotNull("Every source must have URI", literal.getURI());
         final char[] buffer = new char[code.length()];
         assertEquals(literal.getReader().read(buffer), code.length());
         assertEquals(new String(buffer), code);
@@ -184,6 +199,8 @@ public class SourceTest {
         final Source source2 = Source.fromFileName(code2, path);
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
+        assertEquals("File URI", new File(path).toURI(), source1.getURI());
+        assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
     @Test
@@ -197,6 +214,8 @@ public class SourceTest {
         final Source source2 = Source.fromFileName(code2, path);
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
+        assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
+        assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
     @Test
@@ -258,12 +277,14 @@ public class SourceTest {
 
     @Test
     public void stringSample() throws Exception {
-        SourceSnippets.fromAString();
+        Source source = SourceSnippets.fromAString();
+        assertNotNull("Every source must have URI", source.getURI());
     }
 
     @Test
     public void readerSample() throws Exception {
-        SourceSnippets.fromReader();
+        Source source = SourceSnippets.fromReader();
+        assertNotNull("Every source must have URI", source.getURI());
     }
 
     @Test
@@ -289,10 +310,12 @@ public class SourceTest {
         Source still = Source.fromFileName(file.getPath(), false);
         assertEquals(original, still);
         assertEquals(text, still.getCode());
+        assertEquals(file.toURI(), still.getURI());
 
         Source reloaded = Source.fromFileName(file.getPath(), true);
         assertNotEquals(original, reloaded);
         assertEquals("New source has the new text", newText, reloaded.getCode());
+        assertEquals("New source has the same URI", reloaded.getURI(), still.getURI());
 
         assertEquals("Old source1 remains unchanged", text, original.getCode());
         assertEquals("Old source2 remains unchanged", text, still.getCode());
@@ -322,6 +345,10 @@ public class SourceTest {
         assertEquals(one.hashCode(), oneSnd.hashCode());
         assertEquals(two.hashCode(), twoSnd.hashCode());
         assertEquals(three.hashCode(), threeSnd.hashCode());
+
+        assertEquals(src.getURI(), one.getURI());
+        assertEquals(src.getURI(), two.getURI());
+        assertEquals(src.getURI(), three.getURI());
     }
 
     @Test
@@ -349,6 +376,11 @@ public class SourceTest {
         assertNotEquals("Different sub sources", sub1, sub2);
         assertEquals("with the same content", sub1.getCode(), sub2.getCode());
         assertNotEquals("and different hash", sub1.hashCode(), sub2.hashCode());
+
+        assertEquals(f1.toURI(), s1.getURI());
+        assertEquals(s1.getURI(), sub1.getURI());
+        assertEquals(f2.toURI(), s2.getURI());
+        assertEquals(s2.getURI(), sub2.getURI());
     }
 
     private static void assertGC(String msg, WeakReference<?> ref) {
