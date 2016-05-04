@@ -51,6 +51,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
 import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
+import com.oracle.graal.truffle.debug.TraceCompilationASTListener;
 import com.oracle.graal.truffle.debug.TraceCompilationCallTreeListener;
 import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
 import com.oracle.graal.truffle.debug.TraceCompilationListener;
@@ -168,6 +169,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
+        TraceCompilationASTListener.install(this);
         installShutdownHooks();
         compilationNotify.notifyStartup(this);
     }
