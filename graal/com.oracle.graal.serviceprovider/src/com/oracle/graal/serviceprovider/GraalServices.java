@@ -33,7 +33,7 @@ import jdk.vm.ci.services.Services;
  * JVMCI-8 or JVMCI-9. In JVMCI-8, a JVMCI specific mechanism is used to lookup services via the
  * hidden JVMCI class loader. in JVMCI-9, the standard {@link ServiceLoader} mechanism is used.
  */
-public class GraalServices {
+public final class GraalServices {
 
     private GraalServices() {
     }
