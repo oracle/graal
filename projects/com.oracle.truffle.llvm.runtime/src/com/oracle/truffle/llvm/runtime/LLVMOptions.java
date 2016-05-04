@@ -99,7 +99,21 @@ public class LLVMOptions {
         }
     }
 
-    public enum Property {
+    public interface LLVMOption {
+
+        String getKey();
+
+        String getDescription();
+
+        String getDefaultValue();
+
+        Object parse();
+
+        PropertyCategory getCategory();
+
+    }
+
+    public enum Property implements LLVMOption {
 
         DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
         PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
@@ -168,22 +182,27 @@ public class LLVMOptions {
         private final OptionParser parser;
         private final PropertyCategory category;
 
+        @Override
         public String getKey() {
             return key;
         }
 
+        @Override
         public String getDescription() {
             return description;
         }
 
+        @Override
         public String getDefaultValue() {
             return defaultValue;
         }
 
+        @Override
         public PropertyCategory getCategory() {
             return category;
         }
 
+        @Override
         public Object parse() {
             return parser.parse(this);
         }
