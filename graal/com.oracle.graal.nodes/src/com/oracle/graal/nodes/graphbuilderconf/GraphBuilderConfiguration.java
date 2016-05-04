@@ -156,9 +156,9 @@ public class GraphBuilderConfiguration {
             this.loopExplosionPlugin = plugin;
         }
 
-        public StampPair getOverridingStamp(boolean parsingIntrinsic, JavaType type, boolean nonNull) {
+        public StampPair getOverridingStamp(GraphBuilderTool b, JavaType type, boolean nonNull) {
             for (TypePlugin plugin : getTypePlugins()) {
-                StampPair stamp = plugin.interceptType(parsingIntrinsic, type, nonNull);
+                StampPair stamp = plugin.interceptType(b, type, nonNull);
                 if (stamp != null) {
                     return stamp;
                 }
