@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,6 @@ package com.oracle.graal.nodes.graphbuilderconf;
 import static com.oracle.graal.compiler.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -41,33 +34,21 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.StateSplit;
-import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
  * single {@linkplain #getMethod() method} as part of building a {@linkplain #getGraph() graph} .
  */
-public interface GraphBuilderContext {
-
-    /**
-     * Raw operation for adding a node to the graph when neither {@link #add} nor
-     * {@link #addPush(JavaKind, ValueNode)} can be used.
-     *
-     * @return either the node added or an equivalent node
-     */
-    <T extends ValueNode> T append(T value);
-
-    /**
-     * Adds the given node to the graph and also adds recursively all referenced inputs.
-     *
-     * @param value the node to be added to the graph
-     * @return either the node added or an equivalent node
-     */
-    <T extends ValueNode> T recursiveAppend(T value);
+public interface GraphBuilderContext extends GraphBuilderTool {
 
     /**
      * Pushes a given value to the frame state stack using an explicit kind. This should be used
@@ -149,21 +130,6 @@ public interface GraphBuilderContext {
      */
     boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver);
 
-    StampProvider getStampProvider();
-
-    MetaAccessProvider getMetaAccess();
-
-    default Assumptions getAssumptions() {
-        return getGraph().getAssumptions();
-    }
-
-    ConstantReflectionProvider getConstantReflection();
-
-    /**
-     * Gets the graph being constructed.
-     */
-    StructuredGraph getGraph();
-
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one
      * currently being parsed and assigns it to a given {@linkplain StateSplit#hasSideEffect() side
@@ -228,6 +194,7 @@ public interface GraphBuilderContext {
      * Determines if this parsing context is within the bytecode of an intrinsic or a method inlined
      * by an intrinsic.
      */
+    @Override
     default boolean parsingIntrinsic() {
         return getIntrinsic() != null;
     }

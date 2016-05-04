@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
@@ -71,9 +72,9 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     }
 
     @Override
-    public StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull) {
-        if (parsingIntrinsic) {
-            return wordOperationPlugin.interceptType(parsingIntrinsic, declaredType, nonNull);
+    public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
+        if (b.parsingIntrinsic()) {
+            return wordOperationPlugin.interceptType(b, declaredType, nonNull);
         }
         return null;
     }
