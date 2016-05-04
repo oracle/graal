@@ -397,7 +397,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             byte oldCode = codes[oldBci];
             assert Bytecodes.lengthOf(newCode) + newBci == oldBci || Bytecodes.lengthOf(oldCode) + oldBci == newBci : "expecting roll back or forward";
         }
-        assert !newDuringCall || Bytecodes.isInvoke(newCode) || newStackSize + Bytecodes.stackEffectOf(newCode) >= 0 : "stack underflow at " + Bytecodes.nameOf(newCode);
         return true;
     }
 
