@@ -230,6 +230,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         @Override
         public Object execute(VirtualFrame frame) {
             final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) ForeignAccess.getReceiver(frame);
+            assert function.getReturnType() != LLVMRuntimeType.STRUCT;
             final CallTarget callTarget = getCallTarget(function);
             final List<Object> arguments = ForeignAccess.getArguments(frame);
             final Object[] packedArguments = new Object[1 + arguments.size()];
