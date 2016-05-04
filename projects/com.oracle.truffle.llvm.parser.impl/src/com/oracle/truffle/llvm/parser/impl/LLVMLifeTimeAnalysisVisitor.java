@@ -55,7 +55,7 @@ import com.intel.llvm.ireditor.lLVM_IR.TerminatorInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * This class determines which variables are dead after each basic block.

@@ -27,13 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.options;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class LLVMOptions {
 
@@ -197,12 +199,10 @@ public class LLVMOptions {
             return defaultValue;
         }
 
-        @Override
         public PropertyCategory getCategory() {
             return category;
         }
 
-        @Override
         public Object parse() {
             return parser.parse(this);
         }

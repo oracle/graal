@@ -44,10 +44,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
 import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 import com.oracle.truffle.llvm.test.spec.TestSpecification;

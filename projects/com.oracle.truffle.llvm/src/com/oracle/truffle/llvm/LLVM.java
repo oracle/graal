@@ -62,8 +62,8 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * This is the main LLVM execution class.

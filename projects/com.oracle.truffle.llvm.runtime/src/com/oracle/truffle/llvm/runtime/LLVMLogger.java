@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public class LLVMLogger {
 

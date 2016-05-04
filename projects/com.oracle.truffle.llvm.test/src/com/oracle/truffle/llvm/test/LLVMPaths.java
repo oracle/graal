@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.test;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public final class LLVMPaths {
 

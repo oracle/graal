@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class GCC extends CompilerBase {

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+
 /**
  * Provides a optimization configuration based on Java properties.
  */
