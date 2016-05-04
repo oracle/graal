@@ -58,7 +58,7 @@ public class Parser {
 	public static final int _identifier = 1;
 	public static final int _stringLiteral = 2;
 	public static final int _numericLiteral = 3;
-	public static final int maxT = 31;
+	public static final int maxT = 32;
 
     static final boolean _T = true;
     static final boolean _x = false;
@@ -190,7 +190,7 @@ public class Parser {
 		SLStatementNode  result;
 		result = null;
 		switch (la.kind) {
-		case 13: {
+		case 14: {
 			result = WhileStatement();
 			break;
 		}
@@ -206,11 +206,11 @@ public class Parser {
 			Expect(11);
 			break;
 		}
-		case 14: {
+		case 15: {
 			result = IfStatement(inLoop);
 			break;
 		}
-		case 16: {
+		case 17: {
 			result = ReturnStatement();
 			break;
 		}
@@ -219,14 +219,20 @@ public class Parser {
 			Expect(11);
 			break;
 		}
-		default: SynErr(32); break;
+		case 13: {
+			Get();
+			result = factory.createDebugger(t);
+			Expect(11);
+			break;
+		}
+		default: SynErr(33); break;
 		}
 		return result;
 	}
 
 	SLStatementNode  WhileStatement() {
 		SLStatementNode  result;
-		Expect(13);
+		Expect(14);
 		Token whileToken = t;
 		Expect(5);
 		SLExpressionNode condition = Expression();
@@ -238,14 +244,14 @@ public class Parser {
 
 	SLStatementNode  IfStatement(boolean inLoop) {
 		SLStatementNode  result;
-		Expect(14);
+		Expect(15);
 		Token ifToken = t;
 		Expect(5);
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode thenPart = Block(inLoop);
 		SLStatementNode elsePart = null;
-		if (la.kind == 15) {
+		if (la.kind == 16) {
 			Get();
 			elsePart = Block(inLoop);
 		}
@@ -255,7 +261,7 @@ public class Parser {
 
 	SLStatementNode  ReturnStatement() {
 		SLStatementNode  result;
-		Expect(16);
+		Expect(17);
 		Token returnToken = t;
 		SLExpressionNode value = null;
 		if (StartOf(2)) {
@@ -269,7 +275,7 @@ public class Parser {
 	SLExpressionNode  Expression() {
 		SLExpressionNode  result;
 		result = LogicTerm();
-		while (la.kind == 17) {
+		while (la.kind == 18) {
 			Get();
 			Token op = t;
 			SLExpressionNode right = LogicTerm();
@@ -281,7 +287,7 @@ public class Parser {
 	SLExpressionNode  LogicTerm() {
 		SLExpressionNode  result;
 		result = LogicFactor();
-		while (la.kind == 18) {
+		while (la.kind == 19) {
 			Get();
 			Token op = t;
 			SLExpressionNode right = LogicFactor();
@@ -295,10 +301,6 @@ public class Parser {
 		result = Arithmetic();
 		if (StartOf(3)) {
 			switch (la.kind) {
-			case 19: {
-				Get();
-				break;
-			}
 			case 20: {
 				Get();
 				break;
@@ -319,6 +321,10 @@ public class Parser {
 				Get();
 				break;
 			}
+			case 25: {
+				Get();
+				break;
+			}
 			}
 			Token op = t;
 			SLExpressionNode right = Arithmetic();
@@ -330,8 +336,8 @@ public class Parser {
 	SLExpressionNode  Arithmetic() {
 		SLExpressionNode  result;
 		result = Term();
-		while (la.kind == 25 || la.kind == 26) {
-			if (la.kind == 25) {
+		while (la.kind == 26 || la.kind == 27) {
+			if (la.kind == 26) {
 				Get();
 			} else {
 				Get();
@@ -346,8 +352,8 @@ public class Parser {
 	SLExpressionNode  Term() {
 		SLExpressionNode  result;
 		result = Factor();
-		while (la.kind == 27 || la.kind == 28) {
-			if (la.kind == 27) {
+		while (la.kind == 28 || la.kind == 29) {
+			if (la.kind == 28) {
 				Get();
 			} else {
 				Get();
@@ -364,11 +370,11 @@ public class Parser {
 		result = null;
 		if (la.kind == 1) {
 			Get();
-			if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
+			if (la.kind == 5 || la.kind == 30 || la.kind == 31) {
 				result = MemberExpression(null, null, t);
 			} else if (StartOf(4)) {
 				result = factory.createRead(t);
-			} else SynErr(33);
+			} else SynErr(34);
 		} else if (la.kind == 2) {
 			Get();
 			result = factory.createStringLiteral(t);
@@ -383,7 +389,7 @@ public class Parser {
 			Expect(7);
 			int length = (t.charPos + t.val.length()) - start;
 			result = factory.createParenExpression(expr, start, length);
-		} else SynErr(34);
+		} else SynErr(35);
 		return result;
 	}
 
@@ -411,7 +417,7 @@ public class Parser {
 			Expect(7);
 			Token finalToken = t;
 			result = factory.createCall(receiver, parameters, finalToken);
-		} else if (la.kind == 29) {
+		} else if (la.kind == 30) {
 			Get();
 			SLExpressionNode value = Expression();
 			if (assignmentName == null) {
@@ -421,7 +427,7 @@ public class Parser {
 			} else {
 			   result = factory.createWriteProperty(assignmentReceiver, assignmentName, value);
 			}
-		} else if (la.kind == 30) {
+		} else if (la.kind == 31) {
 			Get();
 			if (receiver == null) {
 			   receiver = factory.createRead(assignmentName);
@@ -429,8 +435,8 @@ public class Parser {
 			Expect(1);
 			result = factory.createReadProperty(receiver, t);
 			nestedAssignmentName = t;
-		} else SynErr(35);
-		if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
+		} else SynErr(36);
+		if (la.kind == 5 || la.kind == 30 || la.kind == 31) {
 			result = MemberExpression(result, receiver, nestedAssignmentName);
 		}
 		return result;
@@ -448,11 +454,11 @@ public class Parser {
     }
 
     private static final boolean[][] set = {
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_T,_x, _T,_T,_T,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_T, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_T,_x, _T,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x}
 
     };
 
@@ -508,29 +514,30 @@ class Errors {
 			case 10: s = "\"break\" expected"; break;
 			case 11: s = "\";\" expected"; break;
 			case 12: s = "\"continue\" expected"; break;
-			case 13: s = "\"while\" expected"; break;
-			case 14: s = "\"if\" expected"; break;
-			case 15: s = "\"else\" expected"; break;
-			case 16: s = "\"return\" expected"; break;
-			case 17: s = "\"||\" expected"; break;
-			case 18: s = "\"&&\" expected"; break;
-			case 19: s = "\"<\" expected"; break;
-			case 20: s = "\"<=\" expected"; break;
-			case 21: s = "\">\" expected"; break;
-			case 22: s = "\">=\" expected"; break;
-			case 23: s = "\"==\" expected"; break;
-			case 24: s = "\"!=\" expected"; break;
-			case 25: s = "\"+\" expected"; break;
-			case 26: s = "\"-\" expected"; break;
-			case 27: s = "\"*\" expected"; break;
-			case 28: s = "\"/\" expected"; break;
-			case 29: s = "\"=\" expected"; break;
-			case 30: s = "\".\" expected"; break;
-			case 31: s = "??? expected"; break;
-			case 32: s = "invalid Statement"; break;
-			case 33: s = "invalid Factor"; break;
+			case 13: s = "\"debugger\" expected"; break;
+			case 14: s = "\"while\" expected"; break;
+			case 15: s = "\"if\" expected"; break;
+			case 16: s = "\"else\" expected"; break;
+			case 17: s = "\"return\" expected"; break;
+			case 18: s = "\"||\" expected"; break;
+			case 19: s = "\"&&\" expected"; break;
+			case 20: s = "\"<\" expected"; break;
+			case 21: s = "\"<=\" expected"; break;
+			case 22: s = "\">\" expected"; break;
+			case 23: s = "\">=\" expected"; break;
+			case 24: s = "\"==\" expected"; break;
+			case 25: s = "\"!=\" expected"; break;
+			case 26: s = "\"+\" expected"; break;
+			case 27: s = "\"-\" expected"; break;
+			case 28: s = "\"*\" expected"; break;
+			case 29: s = "\"/\" expected"; break;
+			case 30: s = "\"=\" expected"; break;
+			case 31: s = "\".\" expected"; break;
+			case 32: s = "??? expected"; break;
+			case 33: s = "invalid Statement"; break;
 			case 34: s = "invalid Factor"; break;
-			case 35: s = "invalid MemberExpression"; break;
+			case 35: s = "invalid Factor"; break;
+			case 36: s = "invalid MemberExpression"; break;
             default:
                 s = "error " + n;
                 break;

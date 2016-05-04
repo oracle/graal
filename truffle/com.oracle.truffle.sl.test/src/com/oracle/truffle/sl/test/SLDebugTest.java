@@ -121,6 +121,23 @@ public class SLDebugTest {
                                         "application/x-sl");
     }
 
+    private static Source createFactorialWithDebugger() {
+        return Source.fromText("function main() {\n" +
+                        "  res = fac(2);\n" + "  println(res);\n" +
+                        "  return res;\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + "  }\n" +
+                        "  nMinusOne = n - 1;\n" +
+                        "  nMOFact = fac(nMinusOne);\n" +
+                        "  debugger;\n" +
+                        "  res = n * nMOFact;\n" +
+                        "  return res;\n" + "}\n",
+                        "factorial.sl").withMimeType(
+                                        "application/x-sl");
+    }
+
     protected final String getOut() {
         return new String(out.toByteArray());
     }
@@ -165,6 +182,41 @@ public class SLDebugTest {
                         1L, "nMinusOne",
                         null, "nMOFact",
                         null, "res", null);
+        continueExecution();
+
+        Value value = engine.findGlobalSymbol("main").execute();
+        assertExecutedOK();
+        Assert.assertEquals("2\n", getOut());
+        Number n = value.as(Number.class);
+        assertNotNull(n);
+        assertEquals("Factorial computed OK", 2, n.intValue());
+    }
+
+    @Test
+    public void testDebuggerBreakpoint() throws Throwable {
+        final Source factorial = createFactorialWithDebugger();
+
+        run.addLast(new Runnable() {
+            @Override
+            public void run() {
+                assertNull(suspendedEvent);
+                assertNotNull(executionEvent);
+            }
+        });
+        engine.eval(factorial);
+        assertExecutedOK();
+
+        run.addLast(new Runnable() {
+            @Override
+            public void run() {
+                // the breakpoint should hit instead
+            }
+        });
+        assertLocation(12, true,
+                        "debugger", "n",
+                        2L, "nMinusOne",
+                        1L, "nMOFact",
+                        1L, "res", null);
         continueExecution();
 
         Value value = engine.findGlobalSymbol("main").execute();

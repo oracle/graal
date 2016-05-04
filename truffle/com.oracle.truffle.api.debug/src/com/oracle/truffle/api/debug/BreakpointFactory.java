@@ -87,6 +87,11 @@ final class BreakpointFactory {
      * {@linkplain String tag}; there may be no more than one breakpoint per key.
      */
     private final Map<Object, BreakpointImpl> breakpoints = new HashMap<>();
+    /**
+     * Breakpoints that are internal to the debugger infrastructure. These are not exposed to
+     * clients.
+     */
+    private final Map<Object, BreakpointImpl> breakpointsInternal = new HashMap<>();
 
     private static final Comparator<Entry<Object, BreakpointImpl>> BREAKPOINT_COMPARATOR = new Comparator<Entry<Object, BreakpointImpl>>() {
 
@@ -122,6 +127,14 @@ final class BreakpointFactory {
         this.instrumenter = instrumenter;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
+        createDefaultBreakpoints();
+    }
+
+    private void createDefaultBreakpoints() {
+        Class<?> tag = DebuggerTags.AlwaysHalt.class;
+        SourceSectionFilter query = SourceSectionFilter.newBuilder().tagIs(tag).build();
+        BreakpointImpl breakpoint = createBreakpoint(tag, query, 0, false);
+        breakpointsInternal.put(tag, breakpoint);
     }
 
     /**
