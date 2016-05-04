@@ -48,12 +48,6 @@ public final class LLVMTruffleObject {
         this.name = name;
     }
 
-    public LLVMTruffleObject(TruffleObject object) {
-        this.object = object;
-        this.offset = 0;
-        this.name = null;
-    }
-
     public long getOffset() {
         return offset;
     }

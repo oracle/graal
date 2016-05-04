@@ -88,7 +88,7 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return new LLVMTruffleObject((TruffleObject) doRead(frame, foreignRead, value, id, toLLVM, expectedType));
+            return doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
 
@@ -188,7 +188,7 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return new LLVMTruffleObject((TruffleObject) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType));
+            return doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
 

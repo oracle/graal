@@ -72,7 +72,7 @@ public final class LLVMTruffleUnbox {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return new LLVMTruffleObject((TruffleObject) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType));
+            return doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
         }
     }
 

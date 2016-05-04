@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
@@ -171,6 +172,12 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
     public abstract static class LLVMAddressRetNode extends LLVMRetNode {
 
         @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, TruffleObject retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
         public int executeGetSuccessorIndex(VirtualFrame frame, LLVMTruffleObject retResult) {
             frame.setObject(getRetSlot(), retResult);
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
@@ -178,6 +185,12 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
         @Specialization
         public int executeGetSuccessorIndex(VirtualFrame frame, LLVMAddress retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, int retResult) {
             frame.setObject(getRetSlot(), retResult);
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
         }

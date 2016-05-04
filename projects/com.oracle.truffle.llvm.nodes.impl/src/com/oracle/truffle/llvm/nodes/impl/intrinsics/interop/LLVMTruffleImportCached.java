@@ -55,16 +55,16 @@ public abstract class LLVMTruffleImportCached extends LLVMAddressIntrinsic {
 
     abstract static class ImportCache extends Node {
 
-        public abstract LLVMTruffleObject execute(String name);
+        public abstract Object execute(String name);
 
         @SuppressWarnings("unused")
         @Specialization(limit = "10", guards = {"stringEquals(name, cachedName)"})
-        public LLVMTruffleObject importValue(String name, @Cached("name") String cachedName, @Cached("resolve(cachedName)") TruffleObject value) {
-            return new LLVMTruffleObject(value);
+        public Object importValue(String name, @Cached("name") String cachedName, @Cached("resolve(cachedName)") Object value) {
+            return value;
         }
 
-        protected static TruffleObject resolve(String name) {
-            return (TruffleObject) LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
+        protected static Object resolve(String name) {
+            return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
         }
 
         @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
