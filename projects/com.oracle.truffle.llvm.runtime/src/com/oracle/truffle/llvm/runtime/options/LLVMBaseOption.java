@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.options;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions.OptionParser;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions.PropertyCategory;
 
-public enum Property implements LLVMOption {
+public enum LLVMBaseOption implements LLVMOption {
 
     DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
@@ -92,7 +92,7 @@ public enum Property implements LLVMOption {
     NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
 
-    Property(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
+    LLVMBaseOption(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
         this.key = LLVMOptions.OPTION_PREFIX + key;
         this.description = description;
         this.defaultValue = defaultValue;
@@ -138,8 +138,8 @@ public enum Property implements LLVMOption {
         return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
     }
 
-    public static Property fromKey(String key) {
-        for (Property p : values()) {
+    public static LLVMBaseOption fromKey(String key) {
+        for (LLVMBaseOption p : values()) {
             if (p.getKey().equals(key)) {
                 return p;
             }

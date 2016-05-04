@@ -105,7 +105,7 @@ public class LLVMOptions {
     }
 
     private static void registerOptions() {
-        registeredProperties.addAll(Arrays.asList(Property.values()));
+        registeredProperties.addAll(Arrays.asList(LLVMBaseOption.values()));
         ServiceLoader<LLVMOptionServiceProvider> loader = ServiceLoader.load(LLVMOptionServiceProvider.class);
         for (LLVMOptionServiceProvider definitions : loader) {
             registeredProperties.addAll(definitions.getOptions());
@@ -117,7 +117,7 @@ public class LLVMOptions {
         Properties allProperties = System.getProperties();
         for (String key : allProperties.stringPropertyNames()) {
             if (key.startsWith(OPTION_PREFIX)) {
-                if (Property.fromKey(key) == null) {
+                if (LLVMBaseOption.fromKey(key) == null) {
                     wrongOptionName = true;
                     LLVMLogger.error(key + " is an invalid option!");
                 }
@@ -153,7 +153,7 @@ public class LLVMOptions {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T getParsedProperty(Property property) {
+    public static <T> T getParsedProperty(LLVMBaseOption property) {
         return (T) parsedProperties.get(property);
     }
 
