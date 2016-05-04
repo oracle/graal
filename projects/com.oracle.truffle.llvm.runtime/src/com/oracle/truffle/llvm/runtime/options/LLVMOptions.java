@@ -101,20 +101,6 @@ public class LLVMOptions {
         }
     }
 
-    public interface LLVMOption {
-
-        String getKey();
-
-        String getDescription();
-
-        String getDefaultValue();
-
-        Object parse();
-
-        PropertyCategory getCategory();
-
-    }
-
     public enum Property implements LLVMOption {
 
         DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
@@ -199,10 +185,12 @@ public class LLVMOptions {
             return defaultValue;
         }
 
+        @Override
         public PropertyCategory getCategory() {
             return category;
         }
 
+        @Override
         public Object parse() {
             return parser.parse(this);
         }
