@@ -26,8 +26,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LayoutImpl;
 import com.oracle.truffle.object.LayoutStrategy;
 import com.oracle.truffle.object.LocationImpl;
@@ -59,20 +57,6 @@ class DefaultStrategy extends LayoutStrategy {
         Objects.requireNonNull(location);
         assert assertLocationInRange(shape, location);
         return shape;
-    }
-
-    @Override
-    public boolean isAutoExtArray() {
-        return false;
-    }
-
-    @Override
-    public ShapeAndProperty generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
-        Location oldLocation = oldProperty.getLocation();
-        Location newLocation = ((BasicAllocator) currentShape.allocator()).locationForValueUpcast(value, oldLocation);
-        Property newProperty = oldProperty.relocate(newLocation);
-        Shape newShape = nextShape.replaceProperty(oldProperty, newProperty);
-        return new ShapeAndProperty(newShape, newProperty);
     }
 
     @Override

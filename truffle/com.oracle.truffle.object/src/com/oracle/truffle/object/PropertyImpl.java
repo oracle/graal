@@ -100,15 +100,21 @@ public class PropertyImpl extends Property {
         }
     }
 
+    private static boolean verifyShapeParameter(DynamicObject store, Shape shape) {
+        assert shape == null || store.getShape() == shape : "wrong shape";
+        assert shape == null || shape.isValid() : "invalid shape";
+        return true;
+    }
+
     @Override
     public final void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        assert shape == null || store.getShape() == shape : "wrong shape";
+        assert verifyShapeParameter(store, shape);
         getLocation().set(store, value, shape);
     }
 
     @Override
     public final void setSafe(DynamicObject store, Object value, Shape shape) {
-        assert shape == null || store.getShape() == shape : "wrong shape";
+        assert verifyShapeParameter(store, shape);
         try {
             getLocation().set(store, value, shape);
         } catch (IncompatibleLocationException | FinalLocationException ex) {
@@ -118,7 +124,7 @@ public class PropertyImpl extends Property {
 
     @Override
     public final void setGeneric(DynamicObject store, Object value, Shape shape) {
-        assert shape == null || store.getShape() == shape : "wrong shape";
+        assert verifyShapeParameter(store, shape);
         try {
             set(store, value, shape);
         } catch (IncompatibleLocationException | FinalLocationException ex) {
@@ -126,19 +132,21 @@ public class PropertyImpl extends Property {
         }
     }
 
+    private static boolean verifyShapeParameters(DynamicObject store, Shape oldShape, Shape newShape) {
+        assert store.getShape() == oldShape : "wrong shape";
+        assert newShape.isValid() : "invalid shape";
+        return true;
+    }
+
     @Override
     public final void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
-        assert store.getShape() == oldShape : "wrong shape";
-        assert newShape.isValid();
-        assert getLocation() != null;
+        assert verifyShapeParameters(store, oldShape, newShape);
         getLocation().set(store, value, oldShape, newShape);
     }
 
     @Override
     public final void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert store.getShape() == oldShape : "wrong old shape";
-        assert newShape.isValid();
-        assert getLocation() != null;
+        assert verifyShapeParameters(store, oldShape, newShape);
         try {
             getLocation().set(store, value, oldShape, newShape);
         } catch (IncompatibleLocationException ex) {
@@ -148,9 +156,7 @@ public class PropertyImpl extends Property {
 
     @Override
     public final void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert store.getShape() == oldShape : "wrong old shape";
-        assert newShape.isValid();
-        assert getLocation() != null;
+        assert verifyShapeParameters(store, oldShape, newShape);
         try {
             getLocation().set(store, value, oldShape, newShape);
         } catch (IncompatibleLocationException ex) {
@@ -203,7 +209,7 @@ public class PropertyImpl extends Property {
 
     @Override
     public String toString() {
-        return "\"" + key + "\"" + ":" + location;
+        return "\"" + key + "\"" + ":" + location + (flags == 0 ? "" : "%" + flags);
     }
 
     @Override
@@ -212,32 +218,13 @@ public class PropertyImpl extends Property {
     }
 
     private void setSlowCase(DynamicObject store, Object value) {
-        Shape oldShape = store.getShape();
-        Shape newShape = oldShape.defineProperty(getKey(), value, getFlags());
-        if (store.updateShape()) {
-            oldShape = store.getShape();
-        }
-        assert newShape.isValid() && oldShape.isValid();
-        Property newProperty = newShape.getProperty(getKey());
-        newProperty.setSafe(store, value, oldShape, newShape);
+        ShapeImpl oldShape = (ShapeImpl) store.getShape();
+        oldShape.getLayout().getStrategy().propertySetFallback(this, store, value, oldShape);
     }
 
     private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
-        Shape oldShape = currentShape;
-        if (store.updateShape()) {
-            oldShape = store.getShape();
-        }
-        LayoutStrategy strategy = ((LayoutImpl) currentShape.getLayout()).getStrategy();
-        LayoutStrategy.ShapeAndProperty newShapeAndProperty = strategy.generalizeProperty(this, value, (ShapeImpl) oldShape, (ShapeImpl) nextShape);
-        if (store.updateShape()) {
-            oldShape = store.getShape();
-        }
-
-        Shape newNextShape = newShapeAndProperty.getShape();
-        Property newProperty = newShapeAndProperty.getProperty();
-
-        assert newNextShape.isValid() && oldShape.isValid();
-        newProperty.setSafe(store, value, oldShape, newNextShape);
+        ShapeImpl oldShape = (ShapeImpl) currentShape;
+        oldShape.getLayout().getStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
     }
 
     @Override

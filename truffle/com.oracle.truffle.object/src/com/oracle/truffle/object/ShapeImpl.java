@@ -24,10 +24,10 @@ package com.oracle.truffle.object;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,30 +40,33 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
+import com.oracle.truffle.object.LocationImpl.TypedObjectLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
-import com.oracle.truffle.object.Transition.DirectReplacePropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
-import com.oracle.truffle.object.Transition.RemovePropertyTransition;
-import com.oracle.truffle.object.Transition.ReservePrimitiveArrayTransition;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
@@ -102,8 +105,6 @@ public abstract class ShapeImpl extends Shape {
 
     protected final Assumption validAssumption;
     @CompilationFinal protected volatile Assumption leafAssumption;
-
-    public static final String NO_FASTPATH_PROPERTY_ADD_MESSAGE = "don't add object properties in compiled code";
 
     /**
      * Shape transition map; lazily initialized.
@@ -237,36 +238,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /**
-     * Get the (parent) shape that holds the given property.
-     */
-    public final ShapeImpl getShapeFromProperty(Object propertyName) {
-        ShapeImpl current = this;
-        while (current != getRoot()) {
-            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getProperty().getKey().equals(propertyName)) {
-                return current;
-            }
-            current = current.getParent();
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the (parent) shape that holds the given property.
-     */
-    public final ShapeImpl getShapeFromProperty(Property prop) {
-        ShapeImpl current = this;
-        while (current != getRoot()) {
-            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getProperty().equals(prop)) {
-                return current;
-            }
-            current = current.parent;
-        }
-
-        return null;
-    }
-
-    /**
      * Get a property entry by string name.
      *
      * @param key the name to look up
@@ -278,7 +249,7 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.get(key);
     }
 
-    protected final void addDirectTransition(Transition transition, ShapeImpl next) {
+    public final void addDirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
     }
@@ -314,15 +285,11 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap;
     }
 
-    protected final ShapeImpl queryTransition(Transition transition) {
-        return queryTransition(transition, true);
-    }
-
-    protected final ShapeImpl queryTransition(Transition transition, boolean ensureValid) {
+    public final ShapeImpl queryTransition(Transition transition) {
         ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
-        if (cachedShape != null) { // Shape already exists?
+        if (cachedShape != null) {
             shapeCacheHitCount.inc();
-            return ensureValid ? layout.getStrategy().ensureValid(cachedShape) : cachedShape;
+            return cachedShape;
         }
         shapeCacheMissCount.inc();
 
@@ -340,10 +307,11 @@ public abstract class ShapeImpl extends Shape {
     public ShapeImpl addProperty(Property property) {
         assert isValid();
         onPropertyTransition(property);
-        return addPropertyInternal(property, true);
+
+        return layout.getStrategy().addProperty(this, property);
     }
 
-    private void onPropertyTransition(Property property) {
+    protected void onPropertyTransition(Property property) {
         if (sharedData instanceof ShapeListener) {
             ((ShapeListener) sharedData).onPropertyTransition(property.getKey());
         }
@@ -352,60 +320,13 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags) {
-        return defineProperty(key, value, flags, DEFAULT_LAYOUT_FACTORY);
+        return defineProperty(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
     }
 
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags, LocationFactory locationFactory) {
-        ShapeImpl oldShape = this;
-        if (!oldShape.isValid()) {
-            oldShape = layout.getStrategy().ensureValid(oldShape);
-        }
-        PropertyImpl existing = (PropertyImpl) oldShape.getProperty(key);
-        if (existing == null) {
-            return oldShape.addProperty(Property.create(key, locationFactory.createLocation(oldShape, value), flags));
-        } else {
-            if (existing.getFlags() == flags) {
-                if (existing.getLocation().canSet(value)) {
-                    return oldShape;
-                } else {
-                    if (existing.getLocation() instanceof DeclaredLocation) {
-                        return oldShape.addProperty(existing.relocateShadow(locationFactory.createLocation(oldShape, value)));
-                    } else {
-                        return (ShapeImpl) layout.getStrategy().generalizeProperty(existing, value, oldShape, oldShape).getShape();
-                    }
-                }
-            } else {
-                Property newProperty = Property.create(key, oldShape.getLayout().existingLocationForValue(value, existing.getLocation(), oldShape), flags);
-                return oldShape.replaceProperty(existing, newProperty);
-            }
-        }
-    }
-
-    /**
-     * Add a new property in the map, yielding a new or cached Shape object.
-     *
-     * In contrast to {@link ShapeImpl#addProperty(Property)}, this method does not care about
-     * obsolete shapes.
-     *
-     * @see #addProperty(Property)
-     */
-    private ShapeImpl addPropertyInternal(Property prop, boolean ensureValid) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_PROPERTY_ADD_MESSAGE);
-        assert prop.isShadow() || !(this.hasProperty(prop.getKey())) : "duplicate property " + prop.getKey();
-
-        AddPropertyTransition addTransition = new AddPropertyTransition(prop);
-        ShapeImpl cachedShape = queryTransition(addTransition, ensureValid);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-
-        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, prop.getLocation());
-
-        ShapeImpl newShape = makeShapeWithAddedProperty(oldShape, addTransition);
-        oldShape.addDirectTransition(addTransition, newShape);
-        return newShape;
+        return layout.getStrategy().defineProperty(this, key, value, flags, locationFactory);
     }
 
     protected ShapeImpl cloneRoot(ShapeImpl from, Object newSharedData) {
@@ -423,7 +344,6 @@ public abstract class ShapeImpl extends Shape {
 
         shapeCloneCount.inc();
 
-        // (aw) need to have this transition for obsolescence
         newParent.addDirectTransition(from.transitionFromParent, newShape);
         return newShape;
     }
@@ -435,7 +355,7 @@ public abstract class ShapeImpl extends Shape {
     /**
      * Create a new shape that adds a property to the parent shape.
      */
-    private static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
+    protected static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
         Property addend = addTransition.getProperty();
         BaseAllocator allocator = parent.allocator().addLocation(addend.getLocation());
 
@@ -450,27 +370,13 @@ public abstract class ShapeImpl extends Shape {
     /**
      * Create a new shape that reserves the primitive extension array field.
      */
-    private static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
+    protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
         assert parent.getLayout().hasPrimitiveExtensionArray();
         assert !parent.hasPrimitiveArray();
         BaseAllocator allocator = parent.allocator().addLocation(parent.getLayout().getPrimitiveArrayLocation());
         ShapeImpl newShape = parent.createShape(parent.layout, parent.sharedData, parent, parent.objectType, parent.propertyMap, transition, allocator, parent.id);
         assert newShape.hasPrimitiveArray();
         assert newShape.depth == allocator.depth;
-        return newShape;
-    }
-
-    private ShapeImpl addPrimitiveExtensionArray() {
-        assert layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray();
-        Transition transition = new ReservePrimitiveArrayTransition();
-        ShapeImpl cachedShape = queryTransition(transition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-
-        ShapeImpl oldShape = layout.getStrategy().ensureSpace(this, layout.getPrimitiveArrayLocation());
-        ShapeImpl newShape = makeShapeWithPrimitiveExtensionArray(oldShape, transition);
-        oldShape.addDirectTransition(transition, newShape);
         return newShape;
     }
 
@@ -675,63 +581,16 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
+        assert isValid();
         onPropertyTransition(prop);
 
-        RemovePropertyTransition transition = new RemovePropertyTransition(prop);
-        ShapeImpl cachedShape = queryTransition(transition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-
-        ShapeImpl shape = getShapeFromProperty(prop.getKey());
-        if (shape != null) {
-            List<Transition> transitionList = new ArrayList<>();
-            ShapeImpl current = this;
-            while (current != shape) {
-                if (!(current.getTransitionFromParent() instanceof Transition.DirectReplacePropertyTransition) ||
-                                !((Transition.DirectReplacePropertyTransition) current.getTransitionFromParent()).getPropertyBefore().getKey().equals(prop.getKey())) {
-                    transitionList.add(current.getTransitionFromParent());
-                }
-                current = current.parent;
-            }
-            ShapeImpl newShape = shape.parent;
-            for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
-                Transition previous = iterator.previous();
-                newShape = newShape.applyTransition(previous, true);
-            }
-
-            addIndirectTransition(transition, newShape);
-            return newShape;
-        } else {
-            return null;
-        }
+        return layout.getStrategy().removeProperty(this, prop);
     }
 
     @TruffleBoundary
     @Override
     public final ShapeImpl append(Property oldProperty) {
         return addProperty(oldProperty.relocate(allocator().moveLocation(oldProperty.getLocation())));
-    }
-
-    public final ShapeImpl applyTransition(Transition transition, boolean append) {
-        if (transition instanceof AddPropertyTransition) {
-            return append ? append(((AddPropertyTransition) transition).getProperty()) : addPropertyInternal(((AddPropertyTransition) transition).getProperty(), false);
-        } else if (transition instanceof ObjectTypeTransition) {
-            return changeType(((ObjectTypeTransition) transition).getObjectType());
-        } else if (transition instanceof ReservePrimitiveArrayTransition) {
-            return reservePrimitiveExtensionArray();
-        } else if (transition instanceof DirectReplacePropertyTransition) {
-            Property oldProperty = ((DirectReplacePropertyTransition) transition).getPropertyBefore();
-            Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
-            if (append) {
-                assert oldProperty.getLocation() instanceof DualLocation && newProperty.getLocation() instanceof DualLocation;
-                oldProperty = getProperty(oldProperty.getKey());
-                newProperty = newProperty.relocate(((DualLocation) oldProperty.getLocation()).changeType(((DualLocation) newProperty.getLocation()).getType()));
-            }
-            return replaceProperty(oldProperty, newProperty);
-        } else {
-            throw new UnsupportedOperationException();
-        }
     }
 
     @Override
@@ -744,23 +603,10 @@ public abstract class ShapeImpl extends Shape {
      */
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
-        return directReplaceProperty(oldProperty, newProperty);
-    }
-
-    protected final ShapeImpl directReplaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
         onPropertyTransition(oldProperty);
 
-        Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
-        ShapeImpl cachedShape = queryTransition(replacePropertyTransition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-        PropertyMap newPropertyMap = this.getPropertyMap().replaceCopy(oldProperty, newProperty);
-        ShapeImpl newShape = createShape(getLayout(), getSharedData(), this, getObjectType(), newPropertyMap, replacePropertyTransition, allocator(), getId());
-
-        addDirectTransition(replacePropertyTransition, newShape);
-        return newShape;
+        return layout.getStrategy().replaceProperty(this, oldProperty, newProperty);
     }
 
     /**
@@ -875,7 +721,7 @@ public abstract class ShapeImpl extends Shape {
         ObjectTypeTransition transition = new ObjectTypeTransition(newOps);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
-            return cachedShape;
+            return layout.getStrategy().ensureValid(cachedShape);
         }
 
         ShapeImpl newShape = createShape(layout, sharedData, this, newOps, propertyMap, transition, allocator(), id);
@@ -886,7 +732,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final ShapeImpl reservePrimitiveExtensionArray() {
         if (layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray()) {
-            return addPrimitiveExtensionArray();
+            return layout.getStrategy().addPrimitiveExtensionArray(this);
         }
         return this;
     }
@@ -1098,6 +944,38 @@ public abstract class ShapeImpl extends Shape {
                 throw new AssertionError(e);
             }
         }
+
+        public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
+            assert oldShape.getLayout() == this.layout;
+            Location newLocation;
+            if (oldLocation instanceof IntLocation && value instanceof Integer) {
+                newLocation = oldLocation;
+            } else if (oldLocation instanceof DoubleLocation && (value instanceof Double || this.layout.isAllowedIntToDouble() && value instanceof Integer)) {
+                newLocation = oldLocation;
+            } else if (oldLocation instanceof LongLocation && (value instanceof Long || this.layout.isAllowedIntToLong() && value instanceof Integer)) {
+                newLocation = oldLocation;
+            } else if (oldLocation instanceof DeclaredLocation) {
+                return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
+            } else if (oldLocation instanceof ConstantLocation) {
+                return LocationImpl.valueEquals(oldLocation.get(null, false), value) ? oldLocation : new Locations.ConstantLocation(value);
+            } else if (oldLocation instanceof TypedObjectLocation && !((TypedObjectLocation<?>) oldLocation).getType().isAssignableFrom(value.getClass())) {
+                newLocation = (((TypedObjectLocation<?>) oldLocation).toUntypedLocation());
+            } else if (oldLocation instanceof DualLocation) {
+                if (oldLocation.canStore(value)) {
+                    newLocation = oldLocation;
+                } else {
+                    newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
+                }
+            } else if (oldLocation instanceof ObjectLocation) {
+                newLocation = oldLocation;
+            } else {
+                return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.NonNull));
+            }
+            if (newLocation instanceof EffectivelyFinalLocation) {
+                newLocation = ((EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
+            }
+            return newLocation;
+        }
     }
 
     /**
@@ -1106,12 +984,6 @@ public abstract class ShapeImpl extends Shape {
     private static final Pred<Property> ALL = new Pred<Property>() {
         public boolean test(Property t) {
             return true;
-        }
-    };
-
-    static final LocationFactory DEFAULT_LAYOUT_FACTORY = new LocationFactory() {
-        public Location createLocation(Shape shape, Object value) {
-            return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
         }
     };
 
