@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
@@ -139,13 +138,14 @@ public final class ProbeFailure {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     public String getMessage() {
         final StringBuilder sb = new StringBuilder(reason.message + ": ");
         if (parent != null) {
             sb.append("parent=" + parent.getClass().getSimpleName() + " ");
             if (child != null) {
                 sb.append("child=" + child.getClass().getSimpleName() + " ");
-                final NodeFieldAccessor field = NodeUtil.findChildField(parent, child);
+                final com.oracle.truffle.api.nodes.NodeFieldAccessor field = NodeUtil.findChildField(parent, child);
                 if (field != null) {
                     sb.append("field=" + field.getName() + " ");
                 }

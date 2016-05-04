@@ -87,6 +87,10 @@ public abstract class Node implements NodeInterface, Cloneable {
         return nodeClass;
     }
 
+    void setParent(Node parent) {
+        this.parent = parent;
+    }
+
     /**
      * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by
      * runtime systems or guest languages to implement heuristics based on Truffle ASTs. This method
