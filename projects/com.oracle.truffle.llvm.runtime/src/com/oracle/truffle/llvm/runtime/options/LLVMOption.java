@@ -27,46 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.options;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions.PropertyCategory;
 
-public class LLVMLogger {
+public interface LLVMOption {
 
-    public static void performanceWarning(String warning) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (LLVMBaseOptionFacade.printPerformanceWarnings()) {
-            // Checkstyle: stop
-            System.err.println(warning);
-            // Checkstyle: resume
-        }
-        if (LLVMBaseOptionFacade.performanceWarningsAreFatal()) {
-            throw new AssertionError(warning);
-        }
-    }
+    String getKey();
 
-    public static void error(String error) {
-        CompilerAsserts.neverPartOfCompilation();
-        // Checkstyle: stop
-        System.err.println(error);
-        // Checkstyle: resume
-    }
+    String getDescription();
 
-    public static void unconditionalInfo(String string) {
-        CompilerAsserts.neverPartOfCompilation();
-        // Checkstyle: stop
-        System.err.println(string);
-        // Checkstyle: resume
-    }
+    String getDefaultValue();
 
-    public static void info(String string) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (LLVMBaseOptionFacade.debugEnabled()) {
-            // Checkstyle: stop
-            System.err.println(string);
-            // Checkstyle: resume
-        }
-    }
+    Object parse();
+
+    PropertyCategory getCategory();
 
 }
