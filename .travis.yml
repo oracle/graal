@@ -1,3 +1,7 @@
+cache:
+  directories:
+  - projects/com.oracle.truffle.llvm.test/suites
+  - projects/com.oracle.truffle.llvm.tools/tools
 sudo: required
 language: java
 python:
