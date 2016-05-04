@@ -27,46 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.options;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import java.util.List;
 
-public class LLVMLogger {
-
-    public static void performanceWarning(String warning) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (LLVMBaseOptionFacade.printPerformanceWarnings()) {
-            // Checkstyle: stop
-            System.err.println(warning);
-            // Checkstyle: resume
-        }
-        if (LLVMBaseOptionFacade.performanceWarningsAreFatal()) {
-            throw new AssertionError(warning);
-        }
-    }
-
-    public static void error(String error) {
-        CompilerAsserts.neverPartOfCompilation();
-        // Checkstyle: stop
-        System.err.println(error);
-        // Checkstyle: resume
-    }
-
-    public static void unconditionalInfo(String string) {
-        CompilerAsserts.neverPartOfCompilation();
-        // Checkstyle: stop
-        System.err.println(string);
-        // Checkstyle: resume
-    }
-
-    public static void info(String string) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (LLVMBaseOptionFacade.debugEnabled()) {
-            // Checkstyle: stop
-            System.err.println(string);
-            // Checkstyle: resume
-        }
-    }
-
+public interface LLVMOptionServiceProvider {
+    List<LLVMOption> getOptions();
 }
