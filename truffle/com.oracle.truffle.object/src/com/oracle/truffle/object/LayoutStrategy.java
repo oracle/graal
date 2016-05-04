@@ -62,7 +62,11 @@ public abstract class LayoutStrategy {
         if (!oldShape.isValid()) {
             oldShape = ensureValid(oldShape);
         }
-        PropertyImpl existing = (PropertyImpl) oldShape.getProperty(key);
+        Property existing = oldShape.getProperty(key);
+        return defineProperty(oldShape, key, value, flags, locationFactory, existing);
+    }
+
+    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int flags, LocationFactory locationFactory, Property existing) {
         if (existing == null) {
             Property property = Property.create(key, locationFactory.createLocation(oldShape, value), flags);
             ShapeImpl newShape = oldShape.addProperty(property);
@@ -80,7 +84,7 @@ public abstract class LayoutStrategy {
         }
     }
 
-    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, PropertyImpl oldProperty, Object value, LocationFactory locationFactory) {
+    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, LocationFactory locationFactory) {
         if (oldProperty.getLocation() instanceof DeclaredLocation) {
             Property property = relocateShadow(oldProperty, locationFactory.createLocation(oldShape, value));
             ShapeImpl newShape = oldShape.addProperty(property);
@@ -90,7 +94,7 @@ public abstract class LayoutStrategy {
         }
     }
 
-    protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, PropertyImpl oldProperty, Object value, int flags) {
+    protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property oldProperty, Object value, int flags) {
         Location oldLocation = oldProperty.getLocation();
         Location newLocation = oldShape.allocator().existingLocationForValue(value, oldLocation, oldShape);
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, flags);
@@ -122,12 +126,14 @@ public abstract class LayoutStrategy {
 
     protected void objectDefineProperty(DynamicObjectImpl object, Object key, Object value, int flags, LocationFactory locationFactory, ShapeImpl currentShape) {
         ShapeImpl oldShape = currentShape;
-        ShapeImpl newShape = defineProperty(oldShape, key, value, flags, locationFactory);
-        Property property = newShape.getProperty(key);
+        Property oldProperty = oldShape.getProperty(key);
+        ShapeImpl newShape = defineProperty(oldShape, key, value, flags, locationFactory, oldProperty);
         if (oldShape == newShape) {
-            property.setSafe(object, value, oldShape);
+            assert oldProperty.equals(newShape.getProperty(key));
+            oldProperty.setSafe(object, value, oldShape);
         } else {
-            property.setSafe(object, value, oldShape, newShape);
+            Property newProperty = newShape.getProperty(key);
+            newProperty.setSafe(object, value, oldShape, newShape);
         }
     }
 
@@ -143,8 +149,8 @@ public abstract class LayoutStrategy {
         object.copyProperties(original, deletedParentShape);
     }
 
-    protected static Property relocateShadow(PropertyImpl property, Location newLocation) {
-        return property.relocateShadow(newLocation);
+    protected static Property relocateShadow(Property property, Location newLocation) {
+        return ((PropertyImpl) property).relocateShadow(newLocation);
     }
 
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
