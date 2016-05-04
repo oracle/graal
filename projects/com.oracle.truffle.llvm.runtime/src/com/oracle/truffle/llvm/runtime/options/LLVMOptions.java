@@ -35,6 +35,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
@@ -42,15 +44,14 @@ public class LLVMOptions {
 
     public static void main(String[] args) {
         for (PropertyCategory category : PropertyCategory.values()) {
-            List<Property> properties = category.getProperties();
-            if (!properties.isEmpty()) {
+            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory() == category).collect(Collectors.toList());
+            if (!props.isEmpty()) {
                 LLVMLogger.unconditionalInfo(category + ":");
-                for (Property prop : properties) {
+                for (LLVMOption prop : props) {
                     LLVMLogger.unconditionalInfo(prop.toString());
                 }
                 LLVMLogger.unconditionalInfo("");
             }
-
         }
     }
 
@@ -60,22 +61,22 @@ public class LLVMOptions {
 
     @FunctionalInterface
     interface OptionParser {
-        Object parse(Property property);
+        Object parse(LLVMOption property);
     }
 
-    static boolean parseBoolean(Property prop) {
+    static boolean parseBoolean(LLVMOption prop) {
         return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
     }
 
-    static String parseString(Property prop) {
+    static String parseString(LLVMOption prop) {
         return System.getProperty(prop.getKey(), prop.getDefaultValue());
     }
 
-    static int parseInteger(Property prop) {
+    static int parseInteger(LLVMOption prop) {
         return Integer.parseInt(System.getProperty(prop.getKey(), prop.getDefaultValue()));
     }
 
-    static String[] parseDynamicLibraryPath(Property prop) {
+    static String[] parseDynamicLibraryPath(LLVMOption prop) {
         String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
         if (property == null) {
             return new String[0];
@@ -91,25 +92,24 @@ public class LLVMOptions {
         TESTS,
         MX;
 
-        public List<Property> getProperties() {
-            List<Property> properties = new ArrayList<>();
-            for (Property p : Property.values()) {
-                if (this == p.getCategory()) {
-                    properties.add(p);
-                }
-            }
-            return properties;
-        }
     }
 
-    private static Map<Property, Object> parsedProperties = new HashMap<>();
+    private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();
     private static final List<LLVMOption> registeredProperties = new ArrayList<>();
 
     static {
-        registeredProperties.addAll(Arrays.asList(Property.values()));
+        registerOptions();
         parseOptions();
         checkForInvalidOptionNames();
         checkForObsoleteOptionPrefix();
+    }
+
+    private static void registerOptions() {
+        registeredProperties.addAll(Arrays.asList(Property.values()));
+        ServiceLoader<LLVMOptionServiceProvider> loader = ServiceLoader.load(LLVMOptionServiceProvider.class);
+        for (LLVMOptionServiceProvider definitions : loader) {
+            registeredProperties.addAll(definitions.getOptions());
+        }
     }
 
     private static void checkForInvalidOptionNames() {
@@ -147,8 +147,7 @@ public class LLVMOptions {
     }
 
     private static void parseOptions() {
-        Property[] properties = Property.values();
-        for (Property prop : properties) {
+        for (LLVMOption prop : registeredProperties) {
             parsedProperties.put(prop, prop.parse());
         }
     }
