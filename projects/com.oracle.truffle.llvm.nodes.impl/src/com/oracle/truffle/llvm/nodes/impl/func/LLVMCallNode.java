@@ -60,7 +60,7 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -249,7 +249,7 @@ public abstract class LLVMCallNode {
         @CompilationFinal private boolean printedNativePerformanceWarning;
         @CompilationFinal private boolean printedExceedInlineCacheWarning;
 
-        protected static final int INLINE_CACHE_SIZE = LLVMOptions.getInlineCacheSize();
+        protected static final int INLINE_CACHE_SIZE = LLVMBaseOptionFacade.getInlineCacheSize();
 
         public LLVMFunctionCallChain(LLVMContext context, LLVMExpressionNode[] nodes) {
             this.context = context;

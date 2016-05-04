@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.runtime.options.Property;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
@@ -165,9 +165,9 @@ public class TestHelper {
             String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
             String classpath = System.getProperty("java.class.path");
             String className = RemoteLLVMTester.class.getCanonicalName();
-            String bootClassPath = LLVMOptions.getRemoteTestBootClassPath();
+            String bootClassPath = LLVMBaseOptionFacade.getRemoteTestBootClassPath();
             String debugOption = asOption(Property.DEBUG.getKey(), "false");
-            String projectRootOption = asOption(Property.PROJECT_ROOT.getKey(), LLVMOptions.getProjectRoot());
+            String projectRootOption = asOption(Property.PROJECT_ROOT.getKey(), LLVMBaseOptionFacade.getProjectRoot());
             String options = debugOption + " " + projectRootOption;
             String command = javaBin + " -cp " + classpath + " " + bootClassPath + " " + options + " " + className;
             Process process = Runtime.getRuntime().exec(command);

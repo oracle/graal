@@ -42,7 +42,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.llvm.LLVM;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
@@ -69,7 +69,7 @@ public class SulongTestSuite extends TestSuiteBase {
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() {
-        if (LLVMOptions.discoveryTestModeEnabled()) {
+        if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
             throw new AssertionError("this suite does not have a discovery mode!");
         }
         return getFilesRecursively(LLVMPaths.LOCAL_TESTS);

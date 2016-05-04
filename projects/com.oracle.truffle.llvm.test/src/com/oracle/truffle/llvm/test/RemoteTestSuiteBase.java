@@ -46,7 +46,7 @@ import org.junit.BeforeClass;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public class RemoteTestSuiteBase extends TestSuiteBase {
@@ -73,7 +73,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     // we have to launch a remote process to capture native prints
     public List<String> launchRemote(TestCaseFiles tuple) throws IOException, AssertionError {
-        if (LLVMOptions.launchRemoteTestCasesAsLocal()) {
+        if (LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
             return launchLocal(tuple);
         } else {
             String str = tuple.getBitCodeFile().getAbsolutePath() + "\n";
@@ -113,7 +113,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     @AfterClass
     public static void endRemoteProcess() {
-        if (!LLVMOptions.launchRemoteTestCasesAsLocal()) {
+        if (!LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
             try {
                 outputStream.write("exit\n");
                 outputStream.flush();
@@ -126,7 +126,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     @BeforeClass
     public static void startRemoteProcess() throws IOException {
-        if (!LLVMOptions.launchRemoteTestCasesAsLocal()) {
+        if (!LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
             remoteTruffleProcess = TestHelper.launchRemoteTruffle();
             outputStream = new BufferedWriter(new OutputStreamWriter(remoteTruffleProcess.getOutputStream()));
             reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));

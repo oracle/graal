@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public abstract class LLVMBlockNode extends LLVMExpressionNode {
 
@@ -50,7 +50,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         @Children private final LLVMBasicBlockNode[] bodyNodes;
         @CompilationFinal private final LLVMStackFrameNuller[][] indexToSlotNuller;
         private final FrameSlot returnSlot;
-        private final boolean injectBranchProbabilities = LLVMOptions.injectBranchProbabilities();
+        private final boolean injectBranchProbabilities = LLVMBaseOptionFacade.injectBranchProbabilities();
 
         public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;

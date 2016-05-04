@@ -55,7 +55,7 @@ import com.intel.llvm.ireditor.lLVM_IR.TerminatorInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This class determines which variables are dead after each basic block.
@@ -79,7 +79,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     public static Map<BasicBlock, FrameSlot[]> visit(FunctionDef function, FrameDescriptor frameDescriptor) {
         Map<BasicBlock, FrameSlot[]> mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
-        if (LLVMOptions.printLifeTimeAnalysis()) {
+        if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
             printAnalysisResults(function, mapping);
         }
         return mapping;

@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.test;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public final class LLVMPaths {
 
@@ -44,7 +44,7 @@ public final class LLVMPaths {
 
     static final String NO_OPTIMIZATIONS_FOLDER_NAME = "noopt";
 
-    static final File PROJECT_ROOT = new File(LLVMOptions.getProjectRoot() + File.separator + LLVMPaths.class.getPackage().getName());
+    static final File PROJECT_ROOT = new File(LLVMBaseOptionFacade.getProjectRoot() + File.separator + LLVMPaths.class.getPackage().getName());
 
     public static final File LOCAL_TESTS = new File(PROJECT_ROOT, "tests/");
     static final File EXTERNAL_TEST_SUITES = new File(PROJECT_ROOT, "suites/");

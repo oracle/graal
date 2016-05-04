@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class GCC extends CompilerBase {
@@ -56,7 +56,7 @@ public final class GCC extends CompilerBase {
         } else {
             throw new AssertionError(toBeCompiled);
         }
-        String[] command = new String[]{tool, "-I " + LLVMOptions.getProjectRoot() + "/../include", "-S", dragonEggOption(), "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationFile,
+        String[] command = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(), "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationFile,
                         toBeCompiled.getAbsolutePath()};
         ProcessUtil.executeNativeCommandZeroReturn(command);
     }

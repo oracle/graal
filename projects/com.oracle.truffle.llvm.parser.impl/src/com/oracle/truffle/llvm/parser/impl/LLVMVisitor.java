@@ -154,7 +154,7 @@ import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMParserException.ParserErrorCause;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -490,7 +490,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
         RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, frameDescriptor, functionName);
-        if (LLVMOptions.printFunctionASTs()) {
+        if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
         LLVMFunctionDescriptor function = createLLVMFunctionFromHeader(def.getHeader());
@@ -513,7 +513,7 @@ public class LLVMVisitor implements LLVMParserRuntime {
         LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[currentIndex][];
         i = 0;
         Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
-        if (LLVMOptions.lifeTimeAnalysisEnabled()) {
+        if (LLVMBaseOptionFacade.lifeTimeAnalysisEnabled()) {
             deadSlotsAfterBlock = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
         } else {
             deadSlotsAfterBlock = new HashMap<>();

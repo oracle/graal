@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
@@ -86,7 +86,7 @@ public class Clang extends CompilerBase {
         } else {
             throw new IllegalArgumentException(fileExtension);
         }
-        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMOptions.getProjectRoot() + "/../include", emitLLVMIRTo(destinationFile), optimizationLevel(options),
+        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", emitLLVMIRTo(destinationFile), optimizationLevel(options),
                         path.getAbsolutePath()};
         ProcessUtil.executeNativeCommandZeroReturn(command);
     }

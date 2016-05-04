@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
 import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 import com.oracle.truffle.llvm.test.spec.TestSpecification;
@@ -122,8 +122,8 @@ public abstract class TestSuiteBase {
 
     @After
     public void displaySummary() {
-        if (LLVMOptions.debugEnabled()) {
-            if (LLVMOptions.discoveryTestModeEnabled()) {
+        if (LLVMBaseOptionFacade.debugEnabled()) {
+            if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
                 printList("succeeding tests:", succeedingTests);
             } else {
                 printList("failing tests:", failingTests);
@@ -137,7 +137,7 @@ public abstract class TestSuiteBase {
 
     @AfterClass
     public static void displayEndSummary() {
-        if (!LLVMOptions.discoveryTestModeEnabled()) {
+        if (!LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
             printList("failing tests:", failingTests);
         }
     }
@@ -205,9 +205,9 @@ public abstract class TestSuiteBase {
     protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen) throws IOException, AssertionError {
         TestSpecification testSpecification = SpecificationFileReader.readSpecificationFolder(configFile, testSuite);
         List<SpecificationEntry> includedFiles = testSpecification.getIncludedFiles();
-        if (LLVMOptions.discoveryTestModeEnabled()) {
+        if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
             List<SpecificationEntry> excludedFiles = testSpecification.getExcludedFiles();
-            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), LLVMOptions.getTestDiscoveryPath());
+            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), LLVMBaseOptionFacade.getTestDiscoveryPath());
             assert absoluteDiscoveryPath.exists() : absoluteDiscoveryPath.toString();
             LLVMLogger.info("\tcollect files");
             List<File> filesToRun = getFilesRecursively(absoluteDiscoveryPath, gen);

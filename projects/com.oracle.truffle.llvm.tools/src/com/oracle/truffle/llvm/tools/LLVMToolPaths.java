@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public class LLVMToolPaths {
 
-    static final File PROJECT_ROOT = new File(LLVMOptions.getProjectRoot() + File.separator + LLVMToolPaths.class.getPackage().getName());
+    static final File PROJECT_ROOT = new File(LLVMBaseOptionFacade.getProjectRoot() + File.separator + LLVMToolPaths.class.getPackage().getName());
     public static final File TOOLS_ROOT = new File(PROJECT_ROOT, "tools");
     public static final File LLVM_ROOT = new File(TOOLS_ROOT, "llvm/bin");
 
