@@ -122,6 +122,14 @@ final class BreakpointFactory {
         this.instrumenter = instrumenter;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
+        createDefaultBreakpoints();
+    }
+
+    private void createDefaultBreakpoints() {
+        try {
+            create(0, DebuggerTags.AlwaysHalt.class, false);
+        } catch (IOException ioex) {
+        }
     }
 
     /**
