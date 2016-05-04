@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.options;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,8 +54,8 @@ public class LLVMOptions {
         }
     }
 
-    private static final String PATH_DELIMITER = ":";
-    private static final String OPTION_PREFIX = "sulong.";
+    static final String PATH_DELIMITER = ":";
+    static final String OPTION_PREFIX = "sulong.";
     private static final String OBSOLETE_OPTION_PREFIX = "llvm.";
 
     @FunctionalInterface
@@ -101,121 +102,11 @@ public class LLVMOptions {
         }
     }
 
-    public enum Property implements LLVMOption {
-
-        DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-        PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-        PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-        PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-        EXECUTION_COUNT("ExecutionCount", "Execute each program for as many times as specified by this option", "1", LLVMOptions::parseInteger, PropertyCategory.DEBUG),
-        /*
-         * The boot classpath that should be used to execute the remote JVM when executing the LLVM
-         * test suite (and other tests). These rely on comparing output sent to stdout that cannot
-         * becaptured inside Java, since, e.g., a printf is executed by native code. To determine
-         * the right value just copy the boot class path that you use to launch the main LLVM class"
-         */
-        REMOTE_TEST_BOOT_CLASSPATH(
-                        "TestRemoteBootPath",
-                        "The boot classpath for the remote JVM used to capture native printf and other output.",
-                        null,
-                        LLVMOptions::parseString,
-                        PropertyCategory.TESTS),
-        REMOTE_TEST_CASES_AS_LOCAL(
-                        "LaunchRemoteTestCasesLocally",
-                        "Launches the test cases which are usually launched in a separate JVM in the currently running one.",
-                        "false",
-                        LLVMOptions::parseBoolean,
-                        PropertyCategory.TESTS),
-        TEST_DISCOVERY_PATH(
-                        "TestDiscoveryPath",
-                        "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",
-                        null,
-                        LLVMOptions::parseString,
-                        PropertyCategory.TESTS),
-        DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
-        DYN_BITCODE_LIBRARIES("DynamicBitcodeLibraries", "The paths to shared bitcode libraries delimited by " + PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
-        PROJECT_ROOT("ProjectRoot", "Overrides the root of the project. This option exists to set the project root from mx", ".", LLVMOptions::parseString, PropertyCategory.MX),
-        OPTIMIZATIONS_DISABLE_SPECULATIVE(
-                        "DisableSpeculativeOptimizations",
-                        "Disables all speculative optimizations regardless if they would be enabled otherwise",
-                        "false",
-                        LLVMOptions::parseBoolean,
-                        PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_VALUE_PROFILE_FUNCTION_ARGS("ValueProfileFunctionArgs", "Enable value profiling for function arguments", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_BRANCH_PROBABILITIES("InjectBranchProbabilities", "Injects branch probabilities for the basic block successors", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", "5", LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
-        OPTIMIZATION_LIFE_TIME_ANALYSIS(
-                        "EnableLifetimeAnalysis",
-                        "Performs a lifetime analysis to set dead frame slots to null to assist the PE",
-                        "true",
-                        LLVMOptions::parseBoolean,
-                        PropertyCategory.PERFORMANCE),
-        NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-        LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
-
-        Property(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
-            this.key = OPTION_PREFIX + key;
-            this.description = description;
-            this.defaultValue = defaultValue;
-            this.parser = parser;
-            this.category = category;
-        }
-
-        private final String key;
-        private final String description;
-        private final String defaultValue;
-        private final OptionParser parser;
-        private final PropertyCategory category;
-
-        @Override
-        public String getKey() {
-            return key;
-        }
-
-        @Override
-        public String getDescription() {
-            return description;
-        }
-
-        @Override
-        public String getDefaultValue() {
-            return defaultValue;
-        }
-
-        @Override
-        public PropertyCategory getCategory() {
-            return category;
-        }
-
-        @Override
-        public Object parse() {
-            return parser.parse(this);
-        }
-
-        private static final String FORMAT_STRING = "%40s (default = %5s) %s";
-
-        @Override
-        public String toString() {
-            return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
-        }
-
-        public static Property fromKey(String key) {
-            for (Property p : values()) {
-                if (p.getKey().equals(key)) {
-                    return p;
-                }
-            }
-            return null;
-        }
-
-    }
-
     private static Map<Property, Object> parsedProperties = new HashMap<>();
+    private static final List<LLVMOption> registeredProperties = new ArrayList<>();
 
     static {
+        registeredProperties.addAll(Arrays.asList(Property.values()));
         parseOptions();
         checkForInvalidOptionNames();
         checkForObsoleteOptionPrefix();
