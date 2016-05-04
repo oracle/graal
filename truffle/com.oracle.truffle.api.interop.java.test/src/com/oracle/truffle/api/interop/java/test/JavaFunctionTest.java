@@ -27,6 +27,8 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Iterator;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -47,6 +49,22 @@ public class JavaFunctionTest {
         engine.findGlobalSymbol("test").execute();
 
         assertTrue("Runnable has been called", called[0]);
+    }
+
+    @Test
+    public void invokeIterable() throws IOException {
+        final boolean[] called = {false};
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Iterable.class, new Iterable<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                called[0] = true;
+                return Collections.emptyIterator();
+            }
+        })).build();
+        engine.findGlobalSymbol("test").execute();
+
+        assertTrue("Iterator has been called", called[0]);
     }
 
     @After
