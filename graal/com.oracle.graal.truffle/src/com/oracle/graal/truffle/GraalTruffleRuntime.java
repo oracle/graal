@@ -64,6 +64,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -85,6 +86,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -121,6 +123,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     private final Supplier<GraalRuntime> graalRuntime;
     private final GraalTVMCI tvmci = new GraalTVMCI();
+
+    /**
+     * Utility method that casts the singleton {@link TruffleRuntime}.
+     */
+    public static GraalTruffleRuntime getRuntime() {
+        return (GraalTruffleRuntime) Truffle.getRuntime();
+    }
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
@@ -360,6 +369,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             }
         }
     }
+
+    public abstract SpeculationLog createSpeculationLog();
+
+    public abstract RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog);
 
     public abstract RootCallTarget createClonedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode root);
 

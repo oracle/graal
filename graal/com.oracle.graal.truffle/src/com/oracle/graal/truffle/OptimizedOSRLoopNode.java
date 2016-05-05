@@ -24,6 +24,8 @@ package com.oracle.graal.truffle;
 
 import java.util.Objects;
 
+import jdk.vm.ci.meta.SpeculationLog;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
@@ -59,6 +61,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      * If an OSR compilation is scheduled the corresponding call target is stored here.
      */
     private volatile OptimizedCallTarget compiledOSRLoop;
+
+    /**
+     * The speculation log used by the call target. If multiple compilations happen over time (with
+     * different call targets), the speculation log remains the same so that failed speculations are
+     * correctly propagated between compilations.
+     */
+    private volatile SpeculationLog speculationLog;
 
     /**
      * The current loop count. Not for condition probabilities use as it might stop profiling.
@@ -228,7 +237,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         RootNode root = getRootNode();
         if (shouldCompile(root)) {
             Node parent = getParent();
-            OptimizedCallTarget osrTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()));
+
+            if (speculationLog == null) {
+                speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
+            }
+            OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()), speculationLog);
             // to avoid a deopt on first call we provide some profiling information
             osrTarget.profileReturnType(Boolean.TRUE);
             osrTarget.profileReturnType(Boolean.FALSE);
