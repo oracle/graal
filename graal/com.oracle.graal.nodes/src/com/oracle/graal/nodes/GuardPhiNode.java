@@ -52,4 +52,9 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     public NodeInputList<ValueNode> values() {
         return values;
     }
+
+    @Override
+    public boolean hasValidInput() {
+        return true;
+    }
 }
