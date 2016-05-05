@@ -50,6 +50,8 @@
  */
 package uk.ac.man.cs.llvm.ir.types;
 
+import java.util.Objects;
+
 public final class PointerType implements Type {
 
     /* This must be mutable to handle circular references */
@@ -65,6 +67,11 @@ public final class PointerType implements Type {
             return type.equals(((PointerType) obj).type);
         }
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return type.hashCode();
     }
 
     public Type getPointeeType() {

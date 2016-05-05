@@ -84,8 +84,8 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         instructions.add(node);
     }
 
-    public void addTerminatingInstruction(LLVMTerminatorNode node) {
-        blocks.add(new LLVMBasicBlockNode(getBlock(), node));
+    public void addTerminatingInstruction(LLVMTerminatorNode node, int blockId) {
+        blocks.add(new LLVMBasicBlockNode(getBlock(), node, blockId));
         instructions.add(node);
     }
 
