@@ -4,6 +4,7 @@
 mx.sulong/*.pyc
 mx.sulong/env
 mx.sulong/eclipse-launches/**
+.DS_Store
 build.xml
 workingsets.xml
 hs_err_pid*.log
