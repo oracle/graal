@@ -57,7 +57,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @since 0.14
      */
-    protected boolean materializeCalled;
+    boolean materializeCalled;
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "interpreter-only. includes hashmap operations.";
 
