@@ -191,6 +191,31 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         callMethods = CallMethods.lookup(metaAccess);
     }
 
+    /** Accessor for non-public state in {@link FrameDescriptor}. */
+    public void markFrameMaterializeCalled(FrameDescriptor descriptor) {
+        try {
+            getTvmci().markFrameMaterializeCalled(descriptor);
+        } catch (Throwable ex) {
+            /*
+             * Backward compatibility: do nothing on old Truffle version where the field in
+             * FrameDescriptor does not exist.
+             */
+        }
+    }
+
+    /** Accessor for non-public state in {@link FrameDescriptor}. */
+    public boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
+        try {
+            return getTvmci().getFrameMaterializeCalled(descriptor);
+        } catch (Throwable ex) {
+            /*
+             * Backward compatibility: be conservative on old Truffle version where the field in
+             * FrameDescriptor does not exist.
+             */
+            return true;
+        }
+    }
+
     @Override
     public LoopNode createLoopNode(RepeatingNode repeatingNode) {
         if (!(repeatingNode instanceof Node)) {

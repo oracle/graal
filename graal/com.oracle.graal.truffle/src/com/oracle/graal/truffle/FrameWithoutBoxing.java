@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -86,6 +87,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public MaterializedFrame materialize() {
+        ((GraalTruffleRuntime) Truffle.getRuntime()).markFrameMaterializeCalled(descriptor);
         return this;
     }
 

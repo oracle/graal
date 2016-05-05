@@ -24,6 +24,8 @@ package com.oracle.graal.truffle.substitutions;
 
 import static java.lang.Character.toUpperCase;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 import jdk.vm.ci.meta.Constant;
@@ -33,7 +35,6 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -50,6 +51,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.ConditionAnchorNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -64,11 +66,16 @@ import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulHighNode;
@@ -86,25 +93,35 @@ import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import com.oracle.graal.truffle.nodes.frame.ForceMaterializeNode;
 import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode;
+import com.oracle.graal.truffle.nodes.frame.VirtualFrameGetNode;
+import com.oracle.graal.truffle.nodes.frame.VirtualFrameIsNode;
+import com.oracle.graal.truffle.nodes.frame.VirtualFrameSetNode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
+
+    public static class Options {
+        @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)//
+        public static final OptionValue<Boolean> TruffleIntrinsifyFrameAccess = new StableOptionValue<>(true);
+    }
+
+    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
 
         registerOptimizedAssumptionPlugins(plugins, snippetReflection);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
-        registerOptimizedCallTargetPlugins(metaAccess, plugins, snippetReflection, canDelayIntrinsification);
+        registerOptimizedCallTargetPlugins(plugins, snippetReflection, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
-            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification);
+            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, snippetReflection);
         } else {
             registerFrameWithBoxingPlugins(plugins, canDelayIntrinsification);
         }
@@ -244,7 +261,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     * 
+                     *
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
@@ -363,13 +380,24 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
+    public static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode descriptor, ValueNode args) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+                if (!descriptor.isConstant()) {
+                    throw b.bailout("Parameter 'descriptor' is not a compile-time constant");
+                }
+                FrameDescriptor constantDescriptor = snippetReflection.asObject(FrameDescriptor.class, descriptor.asJavaConstant());
+
+                ValueNode nonNullArguments = b.add(new PiNode(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-                b.addPush(JavaKind.Object, new NewFrameNode(snippetReflection, StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(frameClass))), descriptor, args));
+                NewFrameNode newFrame = new NewFrameNode(b.getMetaAccess(), snippetReflection, b.getGraph(), b.getMetaAccess().lookupJavaType(frameClass), constantDescriptor, descriptor,
+                                nonNullArguments);
+                b.addPush(JavaKind.Object, newFrame);
                 return true;
             }
         });
@@ -383,24 +411,136 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
     }
 
-    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
+    private static final EnumMap<JavaKind, Integer> accessorKindToTag;
+
+    static {
+        accessorKindToTag = new EnumMap<>(JavaKind.class);
+        accessorKindToTag.put(JavaKind.Object, (int) FrameWithoutBoxing.OBJECT_TAG);
+        accessorKindToTag.put(JavaKind.Long, (int) FrameWithoutBoxing.LONG_TAG);
+        accessorKindToTag.put(JavaKind.Int, (int) FrameWithoutBoxing.INT_TAG);
+        accessorKindToTag.put(JavaKind.Double, (int) FrameWithoutBoxing.DOUBLE_TAG);
+        accessorKindToTag.put(JavaKind.Float, (int) FrameWithoutBoxing.FLOAT_TAG);
+        accessorKindToTag.put(JavaKind.Boolean, (int) FrameWithoutBoxing.BOOLEAN_TAG);
+        accessorKindToTag.put(JavaKind.Byte, (int) FrameWithoutBoxing.BYTE_TAG);
+    }
+
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, FrameWithoutBoxing.class);
-        registerMaterialize(r);
+        registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
+
+        if (Options.TruffleIntrinsifyFrameAccess.getValue()) {
+            for (Map.Entry<JavaKind, Integer> kindAndTag : accessorKindToTag.entrySet()) {
+                registerFrameAccessors(r, kindAndTag.getKey(), kindAndTag.getValue(), snippetReflection);
+            }
+        }
     }
 
     public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, FrameWithBoxing.class);
-        registerMaterialize(r);
+        registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
     }
 
-    private static void registerMaterialize(Registration r) {
-        r.register1("materialize", Receiver.class, new InvocationPlugin() {
+    /**
+     * We intrinisify the getXxx, setXxx, and isXxx methods for all type tags. The intrinsic nodes
+     * are lightweight fixed nodes without a {@link FrameState}. No {@link FrameState} is important
+     * for partial evaluation performance, because creating and later on discarding FrameStates for
+     * the setXxx methods have a high compile time cost.
+     *
+     * Intrinsification requires the following conditions: (1) the accessed frame is directly the
+     * {@link NewFrameNode}, (2) the accessed FrameSlot is a constant, and (3) the FrameDescriptor
+     * was never materialized before. All three conditions together guarantee that the escape
+     * analysis can virtualize the access. The condition (3) is necessary because a possible
+     * materialization of the frame can prevent escape analysis - so in that case a FrameState for
+     * setXxx methods is actually necessary since they stores can be state-changing memory
+     * operations.
+     *
+     * Note that we do not register an intrinsification for {@link FrameWithoutBoxing#getValue}. It
+     * is a complicated method to intrinsify, and it is not used frequently enough to justify the
+     * complexity of an intrinisification.
+     */
+    private static void registerFrameAccessors(Registration r, JavaKind accessKind, int accessTag, SnippetReflectionProvider snippetReflection) {
+        String nameSuffix = accessKind.name();
+        r.register2("get" + nameSuffix, Receiver.class, FrameSlot.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
+                if (frameSlot != null) {
+                    b.addPush(accessKind, new VirtualFrameGetNode((NewFrameNode) frameNode.get(), frameSlot, accessKind, accessTag));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register3("set" + nameSuffix, Receiver.class, FrameSlot.class, accessKind == JavaKind.Object ? Object.class : accessKind.toJavaClass(), new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
+                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
+                if (frameSlot != null) {
+                    b.add(new VirtualFrameSetNode((NewFrameNode) frameNode.get(), frameSlot, accessTag, value));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register2("is" + nameSuffix, Receiver.class, FrameSlot.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
+                if (frameSlot != null) {
+                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode((NewFrameNode) frameNode.get(), frameSlot, accessTag));
+                    return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    static FrameSlot maybeGetConstantFrameSlot(SnippetReflectionProvider snippetReflection, ValueNode frameNode, ValueNode frameSlotNode) {
+        if (frameSlotNode.isConstant() && frameNode instanceof NewFrameNode && ((NewFrameNode) frameNode).getIntrinsifyAccessors()) {
+            return snippetReflection.asObject(FrameSlot.class, frameSlotNode.asJavaConstant());
+        }
+        return null;
+    }
+
+    private static void registerFrameMethods(Registration r) {
+        r.register1("getArguments", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
-                b.addPush(JavaKind.Object, new MaterializeFrameNode(frame.get()));
+                if (frame.get(false) instanceof NewFrameNode) {
+                    b.push(JavaKind.Object, ((NewFrameNode) frame.get()).getArguments());
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register1("getFrameDescriptor", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
+                if (frame.get(false) instanceof NewFrameNode) {
+                    b.push(JavaKind.Object, ((NewFrameNode) frame.get()).getDescriptor());
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register1("materialize", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode frame = receiver.get();
+                if (Options.TruffleIntrinsifyFrameAccess.getValue() && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                    JavaConstant speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
+                    b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.TransferToInterpreter, speculation));
+                    return true;
+                }
+
+                b.addPush(JavaKind.Object, new MaterializeFrameNode(frame));
                 return true;
             }
         });
