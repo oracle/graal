@@ -72,7 +72,8 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final List<LLVMNode> instructions = new ArrayList<>();
 
-    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels, Map<InstructionBlock, List<Phi>> phis) {
+    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels,
+                    Map<InstructionBlock, List<Phi>> phis) {
         this.module = module;
         this.frame = frame;
         this.slotsToNull = slotsToNull;

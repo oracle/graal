@@ -53,10 +53,10 @@ package uk.ac.man.cs.llvm.bc.blocks;
 import uk.ac.man.cs.llvm.bc.Parser;
 
 public enum Block {
-
     ROOT(-1, parser -> parser),
 
     BLOCKINFO(0, parser -> new InformationBlockParser(parser)),
+
     MODULE(8, parser -> parser),
     PARAMATTR(9, parser -> parser),
     PARAMATTR_GROUP(10, parser -> parser),
@@ -77,7 +77,9 @@ public enum Block {
         if (id == 0) {
             return BLOCKINFO;
         } else if (id >= MODULE.getId() && id <= METADATA_KIND.getId()) {
-            return values()[(int) id - (MODULE.getId() - MODULE.ordinal())]; // Skip ROOT and BLOCKINFO
+            // Skip ROOT and BLOCKINFO
+            int index = (int) id - (MODULE.getId() - MODULE.ordinal());
+            return values()[index];
         }
         return null;
     }

@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 import uk.ac.man.cs.llvm.bc.ParserListener;
 import uk.ac.man.cs.llvm.bc.blocks.Block;
+import uk.ac.man.cs.llvm.bc.records.Records;
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
 import uk.ac.man.cs.llvm.ir.module.records.ModuleRecord;
@@ -70,6 +71,8 @@ public class Module implements ParserListener {
     protected int mode = 1;
 
     protected final Types types;
+
+    protected final List<TargetInformation> info = new ArrayList<>();
 
     protected final List<FunctionType> methods = new ArrayList<>();
 
@@ -133,7 +136,12 @@ public class Module implements ParserListener {
                 break;
 
             case TARGET_TRIPLE:
+                info.add(new TargetTriple(Records.toString(args)));
+                break;
 
+            case TARGET_DATALAYOUT:
+                info.add(new TargetDataLayout(Records.toString(args)));
+                break;
 
             case GLOBAL_VARIABLE:
                 createGlobalVariable(args);
