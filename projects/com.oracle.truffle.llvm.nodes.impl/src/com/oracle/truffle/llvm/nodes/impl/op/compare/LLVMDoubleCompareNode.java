@@ -54,42 +54,71 @@ public abstract class LLVMDoubleCompareNode extends LLVMI1Node {
     public abstract static class LLVMDoubleOltNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 < val2;
+            if (val1 < val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMDoubleOgtNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 > val2;
+            if (val1 > val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMDoubleOgeNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 >= val2;
+            if (val1 >= val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMDoubleOleNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 <= val2;
+            if (val1 <= val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMDoubleOeqNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 == val2;
+            if (val1 == val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMDoubleOneNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return areOrdered(val1, val2) && val1 != val2;
+            if (val1 != val2) {
+                return areOrdered(val1, val2);
+            } else {
+                return false;
+            }
         }
     }
 

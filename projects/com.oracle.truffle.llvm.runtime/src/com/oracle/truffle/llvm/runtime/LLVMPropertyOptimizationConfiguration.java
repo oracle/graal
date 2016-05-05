@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+
 /**
  * Provides a optimization configuration based on Java properties.
  */
@@ -36,27 +38,17 @@ public class LLVMPropertyOptimizationConfiguration implements LLVMOptimizationCo
 
     @Override
     public boolean specializeForExpectIntrinsic() {
-        return LLVMOptions.specializeForExpectIntrinsic();
+        return LLVMBaseOptionFacade.specializeForExpectIntrinsic();
     }
 
     @Override
     public boolean valueProfileMemoryReads() {
-        return LLVMOptions.valueProfileMemoryReads();
-    }
-
-    @Override
-    public boolean injectBranchProbabilitiesForSelect() {
-        return LLVMOptions.injectBranchProbabilitiesForSelect();
+        return LLVMBaseOptionFacade.valueProfileMemoryReads();
     }
 
     @Override
     public boolean intrinsifyCLibraryFunctions() {
-        return LLVMOptions.intrinsifyCLibraryFunctions();
-    }
-
-    @Override
-    public boolean injectBranchProbabilitiesForConditionalBranch() {
-        return LLVMOptions.injectBranchProbabilitiesForConditionalBranch();
+        return LLVMBaseOptionFacade.intrinsifyCLibraryFunctions();
     }
 
 }

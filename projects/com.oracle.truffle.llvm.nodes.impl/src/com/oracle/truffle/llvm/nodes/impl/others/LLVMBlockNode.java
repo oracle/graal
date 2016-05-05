@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public abstract class LLVMBlockNode extends LLVMExpressionNode {
 
@@ -49,6 +50,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         @Children private final LLVMBasicBlockNode[] bodyNodes;
         @CompilationFinal private final LLVMStackFrameNuller[][] indexToSlotNuller;
         private final FrameSlot returnSlot;
+        private final boolean injectBranchProbabilities = LLVMBaseOptionFacade.injectBranchProbabilities();
 
         public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
@@ -77,9 +79,17 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
                 }
                 int[] successors = bb.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
-                    if (i == successorSelection) {
-                        bci = successors[i];
-                        continue outer;
+                    if (injectBranchProbabilities) {
+                        if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
+                            bb.increaseBranchProbabilityDeoptIfZero(i);
+                            bci = successors[i];
+                            continue outer;
+                        }
+                    } else {
+                        if (i == successorSelection) {
+                            bci = successors[i];
+                            continue outer;
+                        }
                     }
                 }
                 /*

@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
@@ -42,19 +46,26 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
  */
 public class LLVMBasicBlockNode extends LLVMNode {
 
+    private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
     @Children private final LLVMNode[] statements;
     @Child private LLVMTerminatorNode termInstruction;
+
+    @CompilationFinal private final long[] successorCount;
+    @CompilationFinal private long totalExecutionCount = 0;
+    private final int blockId;
 
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
     }
 
-    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction) {
+    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction, int blockId) {
         this.statements = statements;
         this.termInstruction = termInstruction;
+        this.blockId = blockId;
+        successorCount = new long[termInstruction.getSuccessors().length];
     }
 
     @ExplodeLoop
@@ -65,6 +76,19 @@ public class LLVMBasicBlockNode extends LLVMNode {
         return termInstruction.executeGetSuccessorIndex(frame);
     }
 
+    private void incrementTotalCount() {
+        if (totalExecutionCount != Long.MAX_VALUE) {
+            totalExecutionCount++;
+        }
+    }
+
+    private void incrementSuccessorCount(int successorIndex) {
+        long currentCount = successorCount[successorIndex];
+        if (currentCount != Long.MAX_VALUE && totalExecutionCount != Long.MAX_VALUE) {
+            successorCount[successorIndex]++;
+        }
+    }
+
     /**
      * Gets an array containing the potential successor basic blocks. During execution,
      * {@link #executeGetSuccessorIndex(VirtualFrame)} method returns an index into this array.
@@ -73,5 +97,37 @@ public class LLVMBasicBlockNode extends LLVMNode {
      */
     public int[] getSuccessors() {
         return termInstruction.getSuccessors();
+    }
+
+    /**
+     * Gets the branch probability of the given successor.
+     *
+     * @param successorIndex
+     * @return the probability between 0 and 1
+     */
+    public double getBranchProbability(int successorIndex) {
+        double successorBranchProbability;
+        if (successorCount[successorIndex] == 0) {
+            successorBranchProbability = 0;
+        } else {
+            successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
+        }
+        assert successorBranchProbability >= 0 && successorBranchProbability <= 1;
+        return successorBranchProbability;
+    }
+
+    public void increaseBranchProbabilityDeoptIfZero(int successorIndex) {
+        if (successorCount[successorIndex] == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        if (CompilerDirectives.inInterpreter()) {
+            incrementSuccessorCount(successorIndex);
+            incrementTotalCount();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(FORMAT_STRING, blockId, statements.length, Arrays.toString(termInstruction.getSuccessors()));
     }
 }

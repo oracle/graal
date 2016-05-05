@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
@@ -75,32 +74,6 @@ public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
                 return FALSE_SUCCESSOR;
             }
         }
-    }
-
-    public abstract static class LLVMBrConditionalInjectionNode extends LLVMConditionalBranchNode {
-
-        public LLVMBrConditionalInjectionNode(int trueSuccessor, int falseSuccessor, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes) {
-            super(trueSuccessor, falseSuccessor, truePhiWriteNodes, falsePhiWriteNodes);
-        }
-
-        private final ConditionProfile profile = ConditionProfile.createCountingProfile();
-
-        @ExplodeLoop
-        @Specialization
-        public int executeGetSuccessorIndex(VirtualFrame frame, boolean condition) {
-            if (profile.profile(condition)) {
-                for (int i = 0; i < truePhiWriteNodes.length; i++) {
-                    truePhiWriteNodes[i].executeVoid(frame);
-                }
-                return TRUE_SUCCESSOR;
-            } else {
-                for (int i = 0; i < falsePhiWriteNodes.length; i++) {
-                    falsePhiWriteNodes[i].executeVoid(frame);
-                }
-                return FALSE_SUCCESSOR;
-            }
-        }
-
     }
 
 }

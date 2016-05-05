@@ -45,19 +45,9 @@ public interface LLVMOptimizationConfiguration {
     boolean valueProfileMemoryReads();
 
     /**
-     * Record branch probabilities for the LLVM <code>select</code> instruction.
-     */
-    boolean injectBranchProbabilitiesForSelect();
-
-    /**
      * Substitute common C library functions by Java implementations. Note that some functions such
      * as exit or abort are substituted in each case, to allow the VM to terminate gracefully.
      */
     boolean intrinsifyCLibraryFunctions();
-
-    /**
-     * Record branch probabilities for the LLVM <code>br</code> instruction.
-     */
-    boolean injectBranchProbabilitiesForConditionalBranch();
 
 }

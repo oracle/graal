@@ -36,9 +36,11 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 // see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
+@ValueType
 public abstract class LLVMIVarBit {
 
     private final int bits;
