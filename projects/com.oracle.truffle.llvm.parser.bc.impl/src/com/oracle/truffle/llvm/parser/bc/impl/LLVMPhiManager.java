@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
@@ -81,13 +81,13 @@ public final class LLVMPhiManager implements ModelVisitor {
         return visitor;
     }
 
-    private final Map<String, Map<Block, List<Phi>>> edges = new HashMap<>();
+    private final Map<String, Map<InstructionBlock, List<Phi>>> edges = new HashMap<>();
 
     private LLVMPhiManager() {
     }
 
-    public Map<Block, List<Phi>> getPhiMap(String method) {
-        Map<Block, List<Phi>> references = edges.get(method);
+    public Map<InstructionBlock, List<Phi>> getPhiMap(String method) {
+        Map<InstructionBlock, List<Phi>> references = edges.get(method);
         if (references == null) {
             return Collections.emptyMap();
         } else {
@@ -122,19 +122,19 @@ public final class LLVMPhiManager implements ModelVisitor {
 
     private static class LLVMPhiManagerFunctionVisitor implements FunctionVisitor, InstructionVisitor {
 
-        private final Map<Block, List<Phi>> edges = new HashMap<>();
+        private final Map<InstructionBlock, List<Phi>> edges = new HashMap<>();
 
-        private Block currentBlock = null;
+        private InstructionBlock currentBlock = null;
 
         LLVMPhiManagerFunctionVisitor() {
         }
 
-        public Map<Block, List<Phi>> getEdges() {
+        public Map<InstructionBlock, List<Phi>> getEdges() {
             return edges;
         }
 
         @Override
-        public void visit(Block block) {
+        public void visit(InstructionBlock block) {
             this.currentBlock = block;
             block.accept(this);
         }
@@ -198,7 +198,7 @@ public final class LLVMPhiManager implements ModelVisitor {
         @Override
         public void visit(PhiInstruction phi) {
             for (int i = 0; i < phi.getSize(); i++) {
-                Block blk = phi.getBlock(i);
+                InstructionBlock blk = phi.getBlock(i);
                 List<Phi> references = edges.get(blk);
                 if (references == null) {
                     references = new ArrayList<>();
@@ -243,19 +243,19 @@ public final class LLVMPhiManager implements ModelVisitor {
 
     public static final class Phi {
 
-        private final Block block;
+        private final InstructionBlock block;
 
         private final ValueSymbol phi;
 
         private final Symbol value;
 
-        Phi(Block block, ValueSymbol phi, Symbol value) {
+        Phi(InstructionBlock block, ValueSymbol phi, Symbol value) {
             this.block = block;
             this.phi = phi;
             this.value = value;
         }
 
-        public Block getBlock() {
+        public InstructionBlock getBlock() {
             return block;
         }
 

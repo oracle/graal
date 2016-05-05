@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.bc.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
@@ -115,7 +115,7 @@ public final class LLVMLabelList {
         }
 
         @Override
-        public void visit(Block block) {
+        public void visit(InstructionBlock block) {
             String name = block.getName();
             if (name.isEmpty() || "entry".equals(name)) {
                 name = "%0";

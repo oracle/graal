@@ -197,21 +197,20 @@ suite = {
         "version" : "3.6.200.v20130402-1505.jar",
       }
     },
-    "LLVM_BITCODE_FOR_JAVA" : {
-      "path" : "lib/llvm-bcj-1.0-SNAPSHOT.jar",
-      "urls" : [
-        "https://github.com/beehive-lab/llvm-bcj/releases/download/1.0-SNAPSHOT/llvm-bcj-1.0-SNAPSHOT.jar",
-      ],
-      "sha1" : "b7366a5c109595f307c4c358afcc0a5e8a70442f",
-      "maven" : {
-        "groupId" : "uk.ac.man.cs",
-        "artifactId" : "llvm-bcj",
-        "version" : "1.0-SNAPSHOT.jar",
-      }
-    },
   },
 
   "projects" : {
+
+    "uk.ac.man.cs.llvm" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "",
+    },
 
     "com.oracle.truffle.llvm.test" : {
       "subDir" : "projects",
@@ -359,8 +358,8 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.parser.factories",
         "com.oracle.truffle.llvm.parser.impl",
+        "com.oracle.truffle.llvm.parser.bc.impl",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -401,7 +400,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.parser.factories",
-        "LLVM_BITCODE_FOR_JAVA",
+        "uk.ac.man.cs.llvm",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -434,7 +433,6 @@ suite = {
        "XTEXT_ANTLR_RUNTIME",
        "XTEXT_UTIL",
        "ECLIPSE_EQUINOX",
-       "LLVM_BITCODE_FOR_JAVA",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",

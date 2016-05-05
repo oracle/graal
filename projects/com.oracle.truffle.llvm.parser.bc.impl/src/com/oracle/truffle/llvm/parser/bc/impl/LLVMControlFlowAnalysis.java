@@ -35,7 +35,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
@@ -91,22 +91,22 @@ public final class LLVMControlFlowAnalysis {
 
     public static final class LLVMControlFlow {
 
-        private final Map<Block, Set<Block>> predecessors;
+        private final Map<InstructionBlock, Set<InstructionBlock>> predecessors;
 
-        private final Map<Block, Set<Block>> successors;
+        private final Map<InstructionBlock, Set<InstructionBlock>> successors;
 
-        public LLVMControlFlow(Map<Block, Set<Block>> predecessors, Map<Block, Set<Block>> successors) {
+        public LLVMControlFlow(Map<InstructionBlock, Set<InstructionBlock>> predecessors, Map<InstructionBlock, Set<InstructionBlock>> successors) {
             this.predecessors = predecessors;
             this.successors = successors;
         }
 
-        public Set<Block> predecessor(Block block) {
-            Set<Block> set = predecessors.get(block);
+        public Set<InstructionBlock> predecessor(InstructionBlock block) {
+            Set<InstructionBlock> set = predecessors.get(block);
             return set == null ? Collections.emptySet() : set;
         }
 
-        public Set<Block> successor(Block block) {
-            Set<Block> set = successors.get(block);
+        public Set<InstructionBlock> successor(InstructionBlock block) {
+            Set<InstructionBlock> set = successors.get(block);
             return set == null ? Collections.emptySet() : set;
         }
     }
@@ -150,20 +150,20 @@ public final class LLVMControlFlowAnalysis {
 
     private static class LLVMControlFlowFunctionVisitor implements FunctionVisitor, InstructionVisitor {
 
-        private final Map<Block, Set<Block>> predecessors = new HashMap<>();
+        private final Map<InstructionBlock, Set<InstructionBlock>> predecessors = new HashMap<>();
 
-        private final Map<Block, Set<Block>> successors = new HashMap<>();
+        private final Map<InstructionBlock, Set<InstructionBlock>> successors = new HashMap<>();
 
-        private Set<Block> workspace;
+        private Set<InstructionBlock> workspace;
 
         LLVMControlFlowFunctionVisitor() {
         }
 
-        public Map<Block, Set<Block>> predecessors() {
+        public Map<InstructionBlock, Set<InstructionBlock>> predecessors() {
             if (predecessors.isEmpty()) {
-                for (Block blk : successors.keySet()) {
-                    for (Block successor : successors.get(blk)) {
-                        Set<Block> temp = predecessors.get(successor);
+                for (InstructionBlock blk : successors.keySet()) {
+                    for (InstructionBlock successor : successors.get(blk)) {
+                        Set<InstructionBlock> temp = predecessors.get(successor);
                         if (temp == null) {
                             temp = new HashSet<>();
                             predecessors.put(successor, temp);
@@ -175,7 +175,7 @@ public final class LLVMControlFlowAnalysis {
             return predecessors;
         }
 
-        public Map<Block, Set<Block>> successors() {
+        public Map<InstructionBlock, Set<InstructionBlock>> successors() {
             return successors;
         }
 
@@ -188,7 +188,7 @@ public final class LLVMControlFlowAnalysis {
         }
 
         @Override
-        public void visit(Block block) {
+        public void visit(InstructionBlock block) {
             workspace = new HashSet<>();
             successors.put(block, workspace);
             block.accept(this);

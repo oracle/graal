@@ -87,7 +87,7 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
-import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
@@ -142,9 +142,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMBitcodeFunctionVisitor method;
 
-    private final Block block;
+    private final InstructionBlock block;
 
-    public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, Block block) {
+    public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block) {
         this.method = method;
         this.block = block;
     }
@@ -287,9 +287,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             if (symbol instanceof FloatingPointConstant) {
                 FloatingPointConstant constant = (FloatingPointConstant) symbol;
                 switch ((FloatingPointType) constant.getType()) {
-                    case F32:
+                    case FLOAT:
                         return new LLVMFloatLiteralNode(constant.toFloat());
-                    case F64:
+                    case DOUBLE:
                         return new LLVMDoubleLiteralNode(constant.toDouble());
                     default:
                         break;

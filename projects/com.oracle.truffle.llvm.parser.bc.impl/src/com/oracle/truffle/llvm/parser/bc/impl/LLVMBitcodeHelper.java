@@ -224,11 +224,11 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof FloatingPointType) {
             switch (((FloatingPointType) type)) {
-                case F16:
+                case HALF:
                     return LLVMBaseType.HALF;
-                case F32:
+                case FLOAT:
                     return LLVMBaseType.FLOAT;
-                case F64:
+                case DOUBLE:
                     return LLVMBaseType.DOUBLE;
                 case X86_FP80:
                     return LLVMBaseType.X86_FP80;
@@ -408,9 +408,9 @@ public final class LLVMBitcodeHelper {
         if (value instanceof FloatingPointConstant) {
             FloatingPointConstant constant = (FloatingPointConstant) value;
             switch (((FloatingPointType) constant.getType())) {
-                case F32:
+                case FLOAT:
                     return new LLVMFloatLiteralNode(constant.toFloat());
-                case F64:
+                case DOUBLE:
                     return new LLVMDoubleLiteralNode(constant.toDouble());
                 default:
                     break;
@@ -687,9 +687,9 @@ public final class LLVMBitcodeHelper {
         if (value instanceof FloatingPointType) {
             FloatingPointType type = (FloatingPointType) value;
             switch (type) {
-                case F32:
+                case FLOAT:
                     return new LLVMFloatLiteralNode(0.0f);
-                case F64:
+                case DOUBLE:
                     return new LLVMDoubleLiteralNode(0.0);
                 default:
                     break;
@@ -724,11 +724,11 @@ public final class LLVMBitcodeHelper {
 
             LLVMAllocaInstruction allocation = LLVMAllocaInstructionNodeGen.create(getSize(structure.getType(), align), getAlignment(structure.getType(), align), context, stack);
 
-            LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[structure.getLength()];
-            int[] offsets = new int[structure.getLength()];
+            LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[structure.getElementCount()];
+            int[] offsets = new int[structure.getElementCount()];
             int offset = 0;
 
-            for (int i = 0; i < structure.getLength(); i++) {
+            for (int i = 0; i < structure.getElementCount(); i++) {
                 Type element = structure.getElementType(i);
 
                 if (!structure.isPacked()) {
@@ -836,9 +836,9 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof FloatingPointType) {
             switch (((FloatingPointType) type)) {
-                case F32:
+                case FLOAT:
                     return FrameSlotKind.Float;
-                case F64:
+                case DOUBLE:
                     return FrameSlotKind.Double;
                 default:
                     break;
@@ -888,11 +888,11 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof FloatingPointType) {
             switch (((FloatingPointType) type)) {
-                case F16:
+                case HALF:
                     return LLVMRuntimeType.HALF;
-                case F32:
+                case FLOAT:
                     return LLVMRuntimeType.FLOAT;
-                case F64:
+                case DOUBLE:
                     return LLVMRuntimeType.DOUBLE;
                 case X86_FP80:
                     return LLVMRuntimeType.X86_FP80;

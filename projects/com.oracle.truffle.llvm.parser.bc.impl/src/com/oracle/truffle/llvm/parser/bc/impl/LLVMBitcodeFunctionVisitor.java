@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
-import uk.ac.man.cs.llvm.ir.model.Block;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 
@@ -60,7 +60,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final FrameDescriptor frame;
 
-    private final Map<Block, List<FrameSlot>> slotsToNull;
+    private final Map<InstructionBlock, List<FrameSlot>> slotsToNull;
 
     private final List<LLVMStackFrameNuller[]> nullers = new ArrayList<>();
 
@@ -68,11 +68,11 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final Map<String, Integer> labels;
 
-    private final Map<Block, List<Phi>> phis;
+    private final Map<InstructionBlock, List<Phi>> phis;
 
     private final List<LLVMNode> instructions = new ArrayList<>();
 
-    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<Block, List<FrameSlot>> slotsToNull, Map<String, Integer> labels, Map<Block, List<Phi>> phis) {
+    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels, Map<InstructionBlock, List<Phi>> phis) {
         this.module = module;
         this.frame = frame;
         this.slotsToNull = slotsToNull;
@@ -133,12 +133,12 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return nullers.toArray(new LLVMStackFrameNuller[0][]);
     }
 
-    public Map<Block, List<Phi>> getPhiManager() {
+    public Map<InstructionBlock, List<Phi>> getPhiManager() {
         return phis;
     }
 
     @Override
-    public void visit(Block block) {
+    public void visit(InstructionBlock block) {
         this.instructions.clear();
 
         block.accept(new LLVMBitcodeInstructionVisitor(this, block));
