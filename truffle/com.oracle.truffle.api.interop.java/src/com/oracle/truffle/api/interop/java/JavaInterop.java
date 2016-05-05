@@ -246,6 +246,12 @@ public final class JavaInterop {
             if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
                 continue;
             }
+            try {
+                Object.class.getMethod(m.getName(), m.getParameterTypes());
+                continue;
+            } catch (NoSuchMethodException ex) {
+                // OK, not an object method
+            }
             if (found != null) {
                 throw new IllegalArgumentException();
             }

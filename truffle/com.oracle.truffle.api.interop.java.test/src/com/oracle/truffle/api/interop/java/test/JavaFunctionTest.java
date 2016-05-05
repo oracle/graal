@@ -67,10 +67,33 @@ public class JavaFunctionTest {
         assertTrue("Iterator has been called", called[0]);
     }
 
+    @Test
+    public void invokeHashableInterface() throws IOException {
+        final boolean[] called = {false};
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Hashable.class, new Hashable() {
+            @Override
+            public String name() {
+                called[0] = true;
+                return "no name";
+            }
+        })).build();
+        engine.findGlobalSymbol("test").execute();
+
+        assertTrue("Hashable name has been called", called[0]);
+    }
+
     @After
     public void dispose() {
         if (engine != null) {
             engine.dispose();
         }
+    }
+
+    public interface Hashable {
+        @Override
+        public int hashCode();
+
+        public String name();
     }
 }
