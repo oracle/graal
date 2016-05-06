@@ -80,19 +80,34 @@ public class LLVMOptions {
     }
 
     public static boolean parseBoolean(LLVMOption prop) {
-        return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+        String booleanProperty = System.getProperty(prop.getKey());
+        if (booleanProperty == null) {
+            return (boolean) prop.getDefaultValue();
+        } else {
+            return Boolean.parseBoolean(booleanProperty);
+        }
     }
 
     public static String parseString(LLVMOption prop) {
-        return System.getProperty(prop.getKey(), prop.getDefaultValue());
+        String stringProperty = System.getProperty(prop.getKey());
+        if (stringProperty == null) {
+            return (String) prop.getDefaultValue();
+        } else {
+            return stringProperty;
+        }
     }
 
     public static int parseInteger(LLVMOption prop) {
-        return Integer.parseInt(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+        String integerProperty = System.getProperty(prop.getKey());
+        if (integerProperty == null) {
+            return (int) prop.getDefaultValue();
+        } else {
+            return Integer.parseInt(integerProperty);
+        }
     }
 
     public static String[] parseDynamicLibraryPath(LLVMOption prop) {
-        String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
+        String property = System.getProperty(prop.getKey());
         if (property == null) {
             return new String[0];
         } else {

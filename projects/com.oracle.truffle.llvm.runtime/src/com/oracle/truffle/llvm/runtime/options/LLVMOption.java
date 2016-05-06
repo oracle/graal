@@ -52,7 +52,7 @@ public interface LLVMOption {
      *
      * @return the default value
      */
-    String getDefaultValue();
+    Object getDefaultValue();
 
     /**
      * Gets the value of the option. Returns {@link #getDefaultValue()} if the option is not set.

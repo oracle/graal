@@ -33,11 +33,11 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions.OptionParser;
 
 public enum LLVMBaseOption implements LLVMOption {
 
-    DEBUG("Debug", "Turns debugging on/off", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    EXECUTION_COUNT("ExecutionCount", "Execute each program for as many times as specified by this option", "1", LLVMOptions::parseInteger, PropertyCategory.DEBUG),
+    DEBUG("Debug", "Turns debugging on/off", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    EXECUTION_COUNT("ExecutionCount", "Execute each program for as many times as specified by this option", 1, LLVMOptions::parseInteger, PropertyCategory.DEBUG),
     /*
      * The boot classpath that should be used to execute the remote JVM when executing the LLVM test
      * suite (and other tests). These rely on comparing output sent to stdout that cannot becaptured
@@ -53,7 +53,7 @@ public enum LLVMBaseOption implements LLVMOption {
     REMOTE_TEST_CASES_AS_LOCAL(
                     "LaunchRemoteTestCasesLocally",
                     "Launches the test cases which are usually launched in a separate JVM in the currently running one.",
-                    "false",
+                    false,
                     LLVMOptions::parseBoolean,
                     PropertyCategory.TESTS),
     TEST_DISCOVERY_PATH(
@@ -78,25 +78,25 @@ public enum LLVMBaseOption implements LLVMOption {
     OPTIMIZATIONS_DISABLE_SPECULATIVE(
                     "DisableSpeculativeOptimizations",
                     "Disables all speculative optimizations regardless if they would be enabled otherwise",
-                    "false",
+                    false,
                     LLVMOptions::parseBoolean,
                     PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_VALUE_PROFILE_FUNCTION_ARGS("ValueProfileFunctionArgs", "Enable value profiling for function arguments", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_BRANCH_PROBABILITIES("InjectBranchProbabilities", "Injects branch probabilities for the basic block successors", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", "true", LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
-    OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", "5", LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_SPECIALIZE_EXPECT_INTRINSIC("SpecializeExpectIntrinsic", "Specialize the llvm.expect intrinsic", true, LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_VALUE_PROFILE_MEMORY_READS("ValueProfileMemoryReads", "Enable value profiling for memory reads", true, LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_VALUE_PROFILE_FUNCTION_ARGS("ValueProfileFunctionArgs", "Enable value profiling for function arguments", true, LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_BRANCH_PROBABILITIES("InjectBranchProbabilities", "Injects branch probabilities for the basic block successors", true, LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_INTRINSIFY_C_FUNCTIONS("IntrinsifyCFunctions", "Substitute C functions by Java equivalents where possible", true, LLVMOptions::parseBoolean, PropertyCategory.PERFORMANCE),
+    OPTIMIZATION_INLINE_CACHE_SIZE("InlineCacheSize", "Specifies the size of the polymorphic inline cache", 5, LLVMOptions::parseInteger, PropertyCategory.PERFORMANCE),
     OPTIMIZATION_LIFE_TIME_ANALYSIS(
                     "EnableLifetimeAnalysis",
                     "Performs a lifetime analysis to set dead frame slots to null to assist the PE",
-                    "true",
+                    true,
                     LLVMOptions::parseBoolean,
                     PropertyCategory.PERFORMANCE),
-    NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
+    NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
 
-    LLVMBaseOption(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
+    LLVMBaseOption(String key, String description, Object defaultValue, OptionParser parser, PropertyCategory category) {
         this.key = LLVMOptions.getOptionPrefix() + key;
         this.description = description;
         this.defaultValue = defaultValue;
@@ -106,7 +106,7 @@ public enum LLVMBaseOption implements LLVMOption {
 
     private final String key;
     private final String description;
-    private final String defaultValue;
+    private final Object defaultValue;
     private final OptionParser parser;
     private final PropertyCategory category;
 
@@ -121,7 +121,7 @@ public enum LLVMBaseOption implements LLVMOption {
     }
 
     @Override
-    public String getDefaultValue() {
+    public Object getDefaultValue() {
         return defaultValue;
     }
 
