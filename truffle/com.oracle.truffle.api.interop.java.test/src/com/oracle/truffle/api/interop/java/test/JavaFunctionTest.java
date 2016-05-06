@@ -29,8 +29,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import org.junit.After;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -98,6 +102,32 @@ public class JavaFunctionTest {
         engine.findGlobalSymbol("test").execute(1, 1);
 
         assertTrue("Iterator has been called", called[0]);
+    }
+
+    @Test
+    public void failOnMultipleMethods() throws IOException {
+        HashSet<Object> set = new HashSet<>();
+        IllegalArgumentException noSet = null;
+        try {
+            JavaInterop.asTruffleFunction(Set.class, set);
+        } catch (IllegalArgumentException ex) {
+            noSet = ex;
+        }
+        assertNotNull("Exception has ben thrown", noSet);
+        IllegalArgumentException noInterface = null;
+        try {
+            JavaInterop.asTruffleFunction(HashSet.class, set);
+        } catch (IllegalArgumentException ex) {
+            noInterface = ex;
+        }
+        assertNotNull("Exception has ben thrown", noInterface);
+        final int noSetDepth = noSet.getStackTrace().length;
+        final int noInterfaceDepth = noInterface.getStackTrace().length;
+        if (noSetDepth != noInterfaceDepth) {
+            noSet.printStackTrace();
+            noInterface.printStackTrace();
+            assertEquals("Different stack depth in both exceptions", noSetDepth, noInterfaceDepth);
+        }
     }
 
     @After
