@@ -138,13 +138,4 @@ public enum LLVMBaseOption implements LLVMOption {
         return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
     }
 
-    public static LLVMBaseOption fromKey(String key) {
-        for (LLVMBaseOption p : values()) {
-            if (p.getKey().equals(key)) {
-                return p;
-            }
-        }
-        return null;
-    }
-
 }

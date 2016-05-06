@@ -117,7 +117,7 @@ public class LLVMOptions {
         Properties allProperties = System.getProperties();
         for (String key : allProperties.stringPropertyNames()) {
             if (key.startsWith(OPTION_PREFIX)) {
-                if (LLVMBaseOption.fromKey(key) == null) {
+                if (registeredProperties.stream().noneMatch(option -> option.getKey().equals(key))) {
                     wrongOptionName = true;
                     LLVMLogger.error(key + " is an invalid option!");
                 }
