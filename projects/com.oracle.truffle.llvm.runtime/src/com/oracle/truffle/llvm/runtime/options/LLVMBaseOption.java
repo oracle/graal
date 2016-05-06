@@ -136,11 +136,4 @@ public enum LLVMBaseOption implements LLVMOption {
         return parser.parse(this);
     }
 
-    private static final String FORMAT_STRING = "%40s (default = %5s) %s";
-
-    @Override
-    public String toString() {
-        return String.format(FORMAT_STRING, getKey(), getDefaultValue(), getDescription());
-    }
-
 }

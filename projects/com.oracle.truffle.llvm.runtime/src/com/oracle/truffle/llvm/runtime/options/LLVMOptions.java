@@ -42,13 +42,19 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class LLVMOptions {
 
+    private static final String OPTION_FORMAT_STRING = "%40s (default = %5s) %s";
+
+    private static String toString(LLVMOption option) {
+        return String.format(OPTION_FORMAT_STRING, option.getKey(), option.getDefaultValue(), option.getDescription());
+    }
+
     public static void main(String[] args) {
         for (PropertyCategory category : PropertyCategory.values()) {
             List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory() == category).collect(Collectors.toList());
             if (!props.isEmpty()) {
                 LLVMLogger.unconditionalInfo(category + ":");
                 for (LLVMOption prop : props) {
-                    LLVMLogger.unconditionalInfo(prop.toString());
+                    LLVMLogger.unconditionalInfo(toString(prop));
                 }
                 LLVMLogger.unconditionalInfo("");
             }
