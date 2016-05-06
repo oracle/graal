@@ -42,42 +42,91 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class LLVMOptions {
 
+    private static final String OPTION_FORMAT_STRING = "%40s (default = %5s) %s";
+
+    private static String toString(LLVMOption option) {
+        return String.format(OPTION_FORMAT_STRING, option.getKey(), option.getDefaultValue(), option.getDescription());
+    }
+
+    private static boolean initialized;
+
+    private static void initializeOptions() {
+        if (!initialized) {
+            try {
+                registerOptions();
+                parseOptions();
+                checkForInvalidOptionNames();
+                checkForObsoleteOptionPrefix();
+            } finally {
+                initialized = true;
+            }
+        }
+    }
+
     public static void main(String[] args) {
-        for (PropertyCategory category : PropertyCategory.values()) {
-            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory() == category).collect(Collectors.toList());
+        registerOptions();
+        List<String> categoryLabels = registeredProperties.stream().map(option -> option.getCategoryLabel()).distinct().collect(Collectors.toList());
+        for (String category : categoryLabels) {
+            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategoryLabel().equals(category)).collect(Collectors.toList());
             if (!props.isEmpty()) {
                 LLVMLogger.unconditionalInfo(category + ":");
                 for (LLVMOption prop : props) {
-                    LLVMLogger.unconditionalInfo(prop.toString());
+                    LLVMLogger.unconditionalInfo(toString(prop));
                 }
                 LLVMLogger.unconditionalInfo("");
             }
         }
     }
 
-    static final String PATH_DELIMITER = ":";
-    static final String OPTION_PREFIX = "sulong.";
+    private static final String PATH_DELIMITER = ":";
+    private static final String OPTION_PREFIX = "sulong.";
     private static final String OBSOLETE_OPTION_PREFIX = "llvm.";
 
+    private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();
+    private static final List<LLVMOption> registeredProperties = new ArrayList<>();
+
+    public static String getPathDelimiter() {
+        return PATH_DELIMITER;
+    }
+
+    public static String getOptionPrefix() {
+        return OPTION_PREFIX;
+    }
+
     @FunctionalInterface
-    interface OptionParser {
+    public interface OptionParser {
         Object parse(LLVMOption property);
     }
 
-    static boolean parseBoolean(LLVMOption prop) {
-        return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+    public static boolean parseBoolean(LLVMOption prop) {
+        String booleanProperty = System.getProperty(prop.getKey());
+        if (booleanProperty == null) {
+            return (boolean) prop.getDefaultValue();
+        } else {
+            return Boolean.parseBoolean(booleanProperty);
+        }
     }
 
-    static String parseString(LLVMOption prop) {
-        return System.getProperty(prop.getKey(), prop.getDefaultValue());
+    public static String parseString(LLVMOption prop) {
+        String stringProperty = System.getProperty(prop.getKey());
+        if (stringProperty == null) {
+            return (String) prop.getDefaultValue();
+        } else {
+            return stringProperty;
+        }
     }
 
-    static int parseInteger(LLVMOption prop) {
-        return Integer.parseInt(System.getProperty(prop.getKey(), prop.getDefaultValue()));
+    public static int parseInteger(LLVMOption prop) {
+        String integerProperty = System.getProperty(prop.getKey());
+        if (integerProperty == null) {
+            return (int) prop.getDefaultValue();
+        } else {
+            return Integer.parseInt(integerProperty);
+        }
     }
 
-    static String[] parseDynamicLibraryPath(LLVMOption prop) {
-        String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
+    public static String[] parseDynamicLibraryPath(LLVMOption prop) {
+        String property = System.getProperty(prop.getKey());
         if (property == null) {
             return new String[0];
         } else {
@@ -85,30 +134,13 @@ public class LLVMOptions {
         }
     }
 
-    public enum PropertyCategory {
-        GENERAL,
-        DEBUG,
-        PERFORMANCE,
-        TESTS,
-        MX;
-
-    }
-
-    private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();
-    private static final List<LLVMOption> registeredProperties = new ArrayList<>();
-
-    static {
-        registerOptions();
-        parseOptions();
-        checkForInvalidOptionNames();
-        checkForObsoleteOptionPrefix();
-    }
-
     private static void registerOptions() {
-        registeredProperties.addAll(Arrays.asList(LLVMBaseOption.values()));
-        ServiceLoader<LLVMOptionServiceProvider> loader = ServiceLoader.load(LLVMOptionServiceProvider.class);
-        for (LLVMOptionServiceProvider definitions : loader) {
-            registeredProperties.addAll(definitions.getOptions());
+        if (registeredProperties.isEmpty()) {
+            registeredProperties.addAll(Arrays.asList(LLVMBaseOption.values()));
+            ServiceLoader<LLVMOptionServiceProvider> loader = ServiceLoader.load(LLVMOptionServiceProvider.class);
+            for (LLVMOptionServiceProvider definitions : loader) {
+                registeredProperties.addAll(definitions.getOptions());
+            }
         }
     }
 
@@ -117,7 +149,7 @@ public class LLVMOptions {
         Properties allProperties = System.getProperties();
         for (String key : allProperties.stringPropertyNames()) {
             if (key.startsWith(OPTION_PREFIX)) {
-                if (LLVMBaseOption.fromKey(key) == null) {
+                if (registeredProperties.stream().noneMatch(option -> option.getKey().equals(key))) {
                     wrongOptionName = true;
                     LLVMLogger.error(key + " is an invalid option!");
                 }
@@ -148,12 +180,13 @@ public class LLVMOptions {
 
     private static void parseOptions() {
         for (LLVMOption prop : registeredProperties) {
-            parsedProperties.put(prop, prop.parse());
+            parsedProperties.put(prop, prop.getValue());
         }
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T getParsedProperty(LLVMBaseOption property) {
+        initializeOptions();
         return (T) parsedProperties.get(property);
     }
 
