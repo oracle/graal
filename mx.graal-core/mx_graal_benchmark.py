@@ -44,8 +44,8 @@ class ServerVm(mx_benchmark.JvmciVm):
         return {
             "host-vm": "default",
             "host-vm-config": self.name(),
-            "guest-vm": "unknown",
-            "guest-vm-config": "unknown"
+            "guest-vm": "none",
+            "guest-vm-config": "none"
         }
 
     def postProcessCommandLineArgs(self, args):
@@ -60,8 +60,8 @@ class GraalCoreVm(mx_benchmark.JvmciVm):
         return {
             "host-vm": "jvmci",
             "host-vm-config": self.name(),
-            "guest-vm": "unknown",
-            "guest-vm-config": "unknown"
+            "guest-vm": "none",
+            "guest-vm-config": "none"
         }
 
     def postProcessCommandLineArgs(self, args):
