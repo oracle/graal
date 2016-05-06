@@ -75,7 +75,7 @@ public final class DebugBreakpointTest {
     @Test
     public void breakpointBasics() throws IOException {
 
-        assertEquals("no breakpoints at start", db.getBreakpoints().size(), 0);
+        assertEquals("no breakpoints at start", 0, db.getBreakpoints().size());
 
         // Create breakpoint at line 1
         final LineLocation line1 = testSource.createLineLocation(1);

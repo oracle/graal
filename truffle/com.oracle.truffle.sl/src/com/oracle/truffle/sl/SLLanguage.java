@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -89,6 +90,7 @@ import com.oracle.truffle.sl.nodes.call.SLUndefinedFunctionException;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLDebuggerNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLIfNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLReturnNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
@@ -156,6 +158,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * <li>Basic control flow statements: {@link SLBlockNode blocks}, {@link SLIfNode if},
  * {@link SLWhileNode while} with {@link SLBreakNode break} and {@link SLContinueNode continue},
  * {@link SLReturnNode return}.
+ * <li>Debugging control: {@link SLDebuggerNode debugger} statement uses
+ * {@link DebuggerTags#AlwaysHalt} tag to halt the execution when run under the debugger.
  * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
  * {@link SLDispatchNode polymorphic inline caches}.
  * </ul>
@@ -188,7 +192,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * </ul>
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String builtinKind = "SL builtin";
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
