@@ -106,11 +106,23 @@ public final class LLVMLifeTimeAnalysisVisitor {
     private Map<BasicBlock, FrameSlot[]> visit() {
         Map<BasicBlock, FrameSlot[]> map = new HashMap<>();
         for (BasicBlock block : basicBlocks) {
+            List<BasicBlock> transitiveSuccessors = getTransitiveSuccessors(block);
             List<BasicBlock> successors = getSuccessors(block);
             Deque<BasicBlock> currentQueue = new ArrayDeque<>();
             currentQueue.push(block);
             List<BasicBlock> processed = new ArrayList<>();
             List<FrameSlot> frameSlots = new ArrayList<>();
+            List<FrameSlot> writtenFrameSlots = writtenFrameSlotsPerBlock.get(block);
+            if (!transitiveSuccessors.contains(block)) {
+                outer: for (FrameSlot slot : writtenFrameSlots) {
+                    for (BasicBlock successor : transitiveSuccessors) {
+                        if (successor != block && reads(successor, slot)) {
+                            continue outer;
+                        }
+                    }
+                    frameSlots.add(slot);
+                }
+            }
             while (!currentQueue.isEmpty()) {
                 BasicBlock currentBlock = currentQueue.pop();
                 processed.add(currentBlock);
@@ -133,6 +145,10 @@ public final class LLVMLifeTimeAnalysisVisitor {
             map.put(block, frameSlots.toArray(new FrameSlot[frameSlots.size()]));
         }
         return map;
+    }
+
+    private boolean reads(BasicBlock successor, FrameSlot slot) {
+        return new LLVMReadVisitor().getReads(successor, frameDescriptor).contains(slot);
     }
 
     private List<BasicBlock> getPredecessors(BasicBlock block) {
@@ -189,6 +205,28 @@ public final class LLVMLifeTimeAnalysisVisitor {
             return successors;
         }
 
+    }
+
+    private List<BasicBlock> getTransitiveSuccessors(BasicBlock block) {
+        List<BasicBlock> processed = new ArrayList<>();
+        List<BasicBlock> successors = new ArrayList<>();
+        Deque<BasicBlock> toProcess = new ArrayDeque<>();
+        toProcess.push(block);
+        while (!toProcess.isEmpty()) {
+            BasicBlock currentBlock = toProcess.pop();
+            processed.add(currentBlock);
+            List<BasicBlock> currentBlockSuccessors = getSuccessors(currentBlock);
+            for (BasicBlock currentBlockSuccessor : currentBlockSuccessors) {
+                if (!successors.contains(currentBlockSuccessor)) {
+                    successors.add(currentBlockSuccessor);
+                }
+                successors.add(currentBlockSuccessor);
+                if (!processed.contains(currentBlockSuccessor) && !toProcess.contains(currentBlockSuccessor)) {
+                    toProcess.add(currentBlockSuccessor);
+                }
+            }
+        }
+        return successors;
     }
 
     private static List<BasicBlock> getSuccessors(TerminatorInstruction termInstr) {
