@@ -105,7 +105,7 @@ public class JavaFunctionTest {
     }
 
     @Test
-    public void failOnMultipleMethods() throws IOException {
+    public void failOnMultipleMethods() {
         HashSet<Object> set = new HashSet<>();
         IllegalArgumentException noSet = null;
         try {
