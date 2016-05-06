@@ -63,10 +63,15 @@ public enum LLVMBaseOption implements LLVMOption {
                     null,
                     LLVMOptions::parseString,
                     PropertyCategory.TESTS),
-    DYN_LIBRARY_PATHS("DynamicNativeLibraryPath", "The native library search paths delimited by " + LLVMOptions.PATH_DELIMITER, null, LLVMOptions::parseDynamicLibraryPath, PropertyCategory.GENERAL),
+    DYN_LIBRARY_PATHS(
+                    "DynamicNativeLibraryPath",
+                    "The native library search paths delimited by " + LLVMOptions.getPathDelimiter(),
+                    null,
+                    LLVMOptions::parseDynamicLibraryPath,
+                    PropertyCategory.GENERAL),
     DYN_BITCODE_LIBRARIES(
                     "DynamicBitcodeLibraries",
-                    "The paths to shared bitcode libraries delimited by " + LLVMOptions.PATH_DELIMITER,
+                    "The paths to shared bitcode libraries delimited by " + LLVMOptions.getPathDelimiter(),
                     null,
                     LLVMOptions::parseDynamicLibraryPath,
                     PropertyCategory.GENERAL),
@@ -93,7 +98,7 @@ public enum LLVMBaseOption implements LLVMOption {
     LIFE_TIME_ANALYSIS_STATS("PrintNativeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", "false", LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
 
     LLVMBaseOption(String key, String description, String defaultValue, OptionParser parser, PropertyCategory category) {
-        this.key = LLVMOptions.OPTION_PREFIX + key;
+        this.key = LLVMOptions.getOptionPrefix() + key;
         this.description = description;
         this.defaultValue = defaultValue;
         this.parser = parser;

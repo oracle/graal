@@ -55,9 +55,17 @@ public class LLVMOptions {
         }
     }
 
-    static final String PATH_DELIMITER = ":";
-    static final String OPTION_PREFIX = "sulong.";
+    private static final String PATH_DELIMITER = ":";
+    private static final String OPTION_PREFIX = "sulong.";
     private static final String OBSOLETE_OPTION_PREFIX = "llvm.";
+
+    public static String getPathDelimiter() {
+        return PATH_DELIMITER;
+    }
+
+    public static String getOptionPrefix() {
+        return OPTION_PREFIX;
+    }
 
     @FunctionalInterface
     interface OptionParser {
