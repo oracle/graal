@@ -95,6 +95,8 @@ public class GraphDecoder {
 
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
+        /** The loop that contains the call. Only non-null during method inlining. */
+        public final LoopScope callerLoopScope;
         /** The target graph where decoded nodes are added to. */
         public final StructuredGraph graph;
         /** The encode graph that is decoded. */
@@ -103,6 +105,8 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionKind loopExplosion;
+        /** A list of tasks to run before the method scope is closed. */
+        public final List<Runnable> cleanupTasks;
 
         /** All return nodes encountered during decoding. */
         public final List<ReturnNode> returnNodes;
@@ -112,10 +116,12 @@ public class GraphDecoder {
         /** All merges created during loop explosion. */
         public final NodeBitMap loopExplosionMerges;
 
-        protected MethodScope(StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
+        protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
+            this.callerLoopScope = callerLoopScope;
             this.graph = graph;
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
+            this.cleanupTasks = new ArrayList<>();
             this.returnNodes = new ArrayList<>();
 
             if (encodedGraph != null) {
@@ -142,6 +148,7 @@ public class GraphDecoder {
 
     /** Decoding state maintained for each loop in the encoded graph. */
     protected static class LoopScope {
+        public final MethodScope methodScope;
         public final LoopScope outer;
         public final int loopDepth;
         public final int loopIteration;
@@ -172,6 +179,7 @@ public class GraphDecoder {
         public final Node[] initialCreatedNodes;
 
         protected LoopScope(MethodScope methodScope) {
+            this.methodScope = methodScope;
             this.outer = null;
             this.nextIterations = null;
             this.loopDepth = 0;
@@ -187,6 +195,7 @@ public class GraphDecoder {
 
         protected LoopScope(LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, Node[] initialCreatedNodes, Node[] createdNodes, Deque<LoopScope> nextIterations,
                         Map<LoopExplosionState, LoopExplosionState> iterationStates) {
+            this.methodScope = outer.methodScope;
             this.outer = outer;
             this.loopDepth = loopDepth;
             this.loopIteration = loopIteration;
@@ -335,8 +344,8 @@ public class GraphDecoder {
     @SuppressWarnings("try")
     public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
-            MethodScope methodScope = new MethodScope(graph, encodedGraph, LoopExplosionKind.NONE);
-            decode(methodScope, null);
+            MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
+            decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope, null);
             methodScope.graph.verify();
         } catch (Throwable ex) {
@@ -344,7 +353,7 @@ public class GraphDecoder {
         }
     }
 
-    protected final void decode(MethodScope methodScope, FixedWithNextNode startNode) {
+    protected final LoopScope createInitialLoopScope(MethodScope methodScope, FixedWithNextNode startNode) {
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
@@ -364,23 +373,49 @@ public class GraphDecoder {
             loopScope.nodesToProcess.set(GraphEncoder.START_NODE_ORDER_ID);
         }
 
-        while (loopScope != null) {
-            while (!loopScope.nodesToProcess.isEmpty()) {
-                loopScope = processNextNode(methodScope, loopScope);
-            }
-
-            if (loopScope.nextIterations != null && !loopScope.nextIterations.isEmpty()) {
-                /* Loop explosion: process the loop iteration. */
-                assert loopScope.nextIterations.peekFirst().loopIteration == loopScope.loopIteration + 1;
-                loopScope = loopScope.nextIterations.removeFirst();
-            } else {
-                propagateCreatedNodes(loopScope);
-                loopScope = loopScope.outer;
-            }
-        }
-
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            detectLoops(methodScope, startNode);
+            methodScope.cleanupTasks.add(() -> detectLoops(methodScope, startNode));
+        }
+        return loopScope;
+    }
+
+    protected final void decode(LoopScope initialLoopScope) {
+        LoopScope loopScope = initialLoopScope;
+        /* Process inlined methods. */
+        while (loopScope != null) {
+            MethodScope methodScope = loopScope.methodScope;
+
+            /* Process loops of method. */
+            while (loopScope != null) {
+
+                /* Process nodes of loop. */
+                while (!loopScope.nodesToProcess.isEmpty()) {
+                    loopScope = processNextNode(methodScope, loopScope);
+                    methodScope = loopScope.methodScope;
+                    /*
+                     * We can have entered a new loop, and we can have entered a new inlined method.
+                     */
+                }
+
+                /* Finished with a loop. */
+                if (loopScope.nextIterations != null && !loopScope.nextIterations.isEmpty()) {
+                    /* Loop explosion: process the loop iteration. */
+                    assert loopScope.nextIterations.peekFirst().loopIteration == loopScope.loopIteration + 1;
+                    loopScope = loopScope.nextIterations.removeFirst();
+                } else {
+                    propagateCreatedNodes(loopScope);
+                    loopScope = loopScope.outer;
+                }
+            }
+
+            /*
+             * Finished with an inlined method. Perform all registered end-of-method cleanup tasks
+             * and continue with loop that contained the call.
+             */
+            for (Runnable task : methodScope.cleanupTasks) {
+                task.run();
+            }
+            loopScope = methodScope.callerLoopScope;
         }
     }
 
@@ -500,7 +535,7 @@ public class GraphDecoder {
 
         } else if (node instanceof Invoke) {
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
-            handleInvoke(methodScope, loopScope, invokeData);
+            resultScope = handleInvoke(methodScope, loopScope, invokeData);
 
         } else if (node instanceof ReturnNode) {
             methodScope.returnNodes.add((ReturnNode) node);
@@ -538,8 +573,12 @@ public class GraphDecoder {
      * successors encoded. Instead, this information is provided separately to allow method inlining
      * without decoding and adding them to the graph upfront. For non-inlined methods, this method
      * restores the normal state. Subclasses can override it to perform method inlining.
+     *
+     * The return value is the loop scope where decoding should continue. When method inlining
+     * should be performed, the returned loop scope must be a new loop scope for the inlined method.
+     * Without inlining, the original loop scope must be returned.
      */
-    protected void handleInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+    protected LoopScope handleInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
         CallTargetNode callTarget = (CallTargetNode) ensureNodeCreated(methodScope, loopScope, invokeData.callTargetOrderId);
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
@@ -555,6 +594,7 @@ public class GraphDecoder {
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             ((InvokeWithExceptionNode) invokeData.invoke).setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, invokeData.exceptionOrderId));
         }
+        return loopScope;
     }
 
     /**
