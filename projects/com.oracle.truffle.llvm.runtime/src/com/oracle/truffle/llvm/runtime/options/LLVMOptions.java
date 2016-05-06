@@ -48,7 +48,20 @@ public class LLVMOptions {
         return String.format(OPTION_FORMAT_STRING, option.getKey(), option.getDefaultValue(), option.getDescription());
     }
 
+    private static boolean initialized;
+
+    private static void initializeOptions() {
+        if (!initialized) {
+            registerOptions();
+            parseOptions();
+            checkForInvalidOptionNames();
+            checkForObsoleteOptionPrefix();
+            initialized = true;
+        }
+    }
+
     public static void main(String[] args) {
+        initializeOptions();
         List<String> categoryLabels = registeredProperties.stream().map(option -> option.getCategoryLabel()).distinct().collect(Collectors.toList());
         for (String category : categoryLabels) {
             List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategoryLabel().equals(category)).collect(Collectors.toList());
@@ -65,6 +78,9 @@ public class LLVMOptions {
     private static final String PATH_DELIMITER = ":";
     private static final String OPTION_PREFIX = "sulong.";
     private static final String OBSOLETE_OPTION_PREFIX = "llvm.";
+
+    private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();
+    private static final List<LLVMOption> registeredProperties = new ArrayList<>();
 
     public static String getPathDelimiter() {
         return PATH_DELIMITER;
@@ -113,16 +129,6 @@ public class LLVMOptions {
         } else {
             return property.split(PATH_DELIMITER);
         }
-    }
-
-    private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();
-    private static final List<LLVMOption> registeredProperties = new ArrayList<>();
-
-    static {
-        registerOptions();
-        parseOptions();
-        checkForInvalidOptionNames();
-        checkForObsoleteOptionPrefix();
     }
 
     private static void registerOptions() {
@@ -175,6 +181,7 @@ public class LLVMOptions {
 
     @SuppressWarnings("unchecked")
     public static <T> T getParsedProperty(LLVMBaseOption property) {
+        initializeOptions();
         return (T) parsedProperties.get(property);
     }
 
