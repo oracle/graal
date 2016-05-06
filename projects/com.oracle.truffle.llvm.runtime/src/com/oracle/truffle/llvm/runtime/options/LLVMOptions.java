@@ -49,8 +49,9 @@ public class LLVMOptions {
     }
 
     public static void main(String[] args) {
-        for (PropertyCategory category : PropertyCategory.values()) {
-            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory() == category).collect(Collectors.toList());
+        List<String> categoryLabels = registeredProperties.stream().map(option -> option.getCategory()).distinct().collect(Collectors.toList());
+        for (String category : categoryLabels) {
+            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory().equals(category)).collect(Collectors.toList());
             if (!props.isEmpty()) {
                 LLVMLogger.unconditionalInfo(category + ":");
                 for (LLVMOption prop : props) {
@@ -97,15 +98,6 @@ public class LLVMOptions {
         } else {
             return property.split(PATH_DELIMITER);
         }
-    }
-
-    public enum PropertyCategory {
-        GENERAL,
-        DEBUG,
-        PERFORMANCE,
-        TESTS,
-        MX;
-
     }
 
     private static Map<LLVMOption, Object> parsedProperties = new HashMap<>();

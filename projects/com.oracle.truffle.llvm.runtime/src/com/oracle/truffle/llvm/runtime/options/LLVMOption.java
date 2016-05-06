@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions.PropertyCategory;
-
 public interface LLVMOption {
 
     String getKey();
@@ -41,6 +39,6 @@ public interface LLVMOption {
 
     Object parse();
 
-    PropertyCategory getCategory();
+    String getCategory();
 
 }
