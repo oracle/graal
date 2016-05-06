@@ -49,9 +49,9 @@ public class LLVMOptions {
     }
 
     public static void main(String[] args) {
-        List<String> categoryLabels = registeredProperties.stream().map(option -> option.getCategory()).distinct().collect(Collectors.toList());
+        List<String> categoryLabels = registeredProperties.stream().map(option -> option.getCategoryLabel()).distinct().collect(Collectors.toList());
         for (String category : categoryLabels) {
-            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategory().equals(category)).collect(Collectors.toList());
+            List<LLVMOption> props = registeredProperties.stream().filter(option -> option.getCategoryLabel().equals(category)).collect(Collectors.toList());
             if (!props.isEmpty()) {
                 LLVMLogger.unconditionalInfo(category + ":");
                 for (LLVMOption prop : props) {
@@ -154,7 +154,7 @@ public class LLVMOptions {
 
     private static void parseOptions() {
         for (LLVMOption prop : registeredProperties) {
-            parsedProperties.put(prop, prop.parse());
+            parsedProperties.put(prop, prop.getValue());
         }
     }
 
