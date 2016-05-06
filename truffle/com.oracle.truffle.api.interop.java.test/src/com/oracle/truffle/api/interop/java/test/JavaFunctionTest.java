@@ -27,7 +27,14 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import org.junit.After;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -49,10 +56,91 @@ public class JavaFunctionTest {
         assertTrue("Runnable has been called", called[0]);
     }
 
+    @Test
+    public void invokeIterable() throws IOException {
+        final boolean[] called = {false};
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Iterable.class, new Iterable<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                called[0] = true;
+                return Collections.emptyIterator();
+            }
+        })).build();
+        engine.findGlobalSymbol("test").execute();
+
+        assertTrue("Iterator has been called", called[0]);
+    }
+
+    @Test
+    public void invokeHashableInterface() throws IOException {
+        final boolean[] called = {false};
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Hashable.class, new Hashable() {
+            @Override
+            public String name() {
+                called[0] = true;
+                return "no name";
+            }
+        })).build();
+        engine.findGlobalSymbol("test").execute();
+
+        assertTrue("Hashable name has been called", called[0]);
+    }
+
+    @Test
+    public void invokeComparator() throws IOException {
+        final boolean[] called = {false};
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("test", JavaInterop.asTruffleFunction(Comparator.class, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                called[0] = true;
+                return o1.compareTo(o2);
+            }
+        })).build();
+        engine.findGlobalSymbol("test").execute(1, 1);
+
+        assertTrue("Iterator has been called", called[0]);
+    }
+
+    @Test
+    public void failOnMultipleMethods() {
+        HashSet<Object> set = new HashSet<>();
+        IllegalArgumentException noSet = null;
+        try {
+            JavaInterop.asTruffleFunction(Set.class, set);
+        } catch (IllegalArgumentException ex) {
+            noSet = ex;
+        }
+        assertNotNull("Exception has ben thrown", noSet);
+        IllegalArgumentException noInterface = null;
+        try {
+            JavaInterop.asTruffleFunction(HashSet.class, set);
+        } catch (IllegalArgumentException ex) {
+            noInterface = ex;
+        }
+        assertNotNull("Exception has ben thrown", noInterface);
+        final int noSetDepth = noSet.getStackTrace().length;
+        final int noInterfaceDepth = noInterface.getStackTrace().length;
+        if (noSetDepth != noInterfaceDepth) {
+            noSet.printStackTrace();
+            noInterface.printStackTrace();
+            assertEquals("Different stack depth in both exceptions", noSetDepth, noInterfaceDepth);
+        }
+    }
+
     @After
     public void dispose() {
         if (engine != null) {
             engine.dispose();
         }
+    }
+
+    public interface Hashable {
+        @Override
+        int hashCode();
+
+        String name();
     }
 }
