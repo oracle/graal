@@ -31,8 +31,6 @@ import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
 
-import jdk.vm.ci.meta.LocationIdentity;
-
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -60,10 +58,10 @@ import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.VirtualState;
-import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.cfg.HIRLoop;
@@ -73,6 +71,8 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryNode;
 import com.oracle.graal.nodes.memory.MemoryPhiNode;
 import com.oracle.graal.phases.Phase;
+
+import jdk.vm.ci.meta.LocationIdentity;
 
 public final class SchedulePhase extends Phase {
 
@@ -445,13 +445,13 @@ public final class SchedulePhase extends Phase {
 
         private static void sortIntoList(Node n, Block b, ArrayList<Node> result, NodeMap<Block> nodeMap, NodeBitMap unprocessed, Node excludeNode) {
             assert unprocessed.isMarked(n) : n;
-            unprocessed.clear(n);
-
             assert nodeMap.get(n) == b;
 
             if (n instanceof PhiNode) {
                 return;
             }
+
+            unprocessed.clear(n);
 
             for (Node input : n.inputs()) {
                 if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode) {
@@ -484,6 +484,7 @@ public final class SchedulePhase extends Phase {
             }
 
             if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
+                assert latestBlock != null;
                 while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
                     latestBlock = latestBlock.getDominator();
                 }
