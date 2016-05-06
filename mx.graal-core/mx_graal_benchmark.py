@@ -42,14 +42,14 @@ class ServerVm(mx_benchmark.JvmciVm):
 
     def dimensions(self, cwd, args, code, out):
         return {
-            "host-vm": "default",
+            "host-vm": "server",
             "host-vm-config": self.name(),
             "guest-vm": "none",
             "guest-vm-config": "none"
         }
 
     def postProcessCommandLineArgs(self, args):
-        return self.extraArgs + args
+        return ["-server"] + self.extraArgs + args
 
 
 class GraalCoreVm(mx_benchmark.JvmciVm):
@@ -65,7 +65,7 @@ class GraalCoreVm(mx_benchmark.JvmciVm):
         }
 
     def postProcessCommandLineArgs(self, args):
-        return ["-Djvmci.Compiler=graal"] + args
+        return ["-server", "-Djvmci.Compiler=graal"] + args
 
 
 mx_benchmark.add_java_vm("jvmci", GraalCoreVm())
