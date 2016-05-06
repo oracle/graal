@@ -74,23 +74,23 @@ public class LLVMOptions {
     }
 
     @FunctionalInterface
-    interface OptionParser {
+    public interface OptionParser {
         Object parse(LLVMOption property);
     }
 
-    static boolean parseBoolean(LLVMOption prop) {
+    public static boolean parseBoolean(LLVMOption prop) {
         return Boolean.parseBoolean(System.getProperty(prop.getKey(), prop.getDefaultValue()));
     }
 
-    static String parseString(LLVMOption prop) {
+    public static String parseString(LLVMOption prop) {
         return System.getProperty(prop.getKey(), prop.getDefaultValue());
     }
 
-    static int parseInteger(LLVMOption prop) {
+    public static int parseInteger(LLVMOption prop) {
         return Integer.parseInt(System.getProperty(prop.getKey(), prop.getDefaultValue()));
     }
 
-    static String[] parseDynamicLibraryPath(LLVMOption prop) {
+    public static String[] parseDynamicLibraryPath(LLVMOption prop) {
         String property = System.getProperty(prop.getKey(), prop.getDefaultValue());
         if (property == null) {
             return new String[0];
