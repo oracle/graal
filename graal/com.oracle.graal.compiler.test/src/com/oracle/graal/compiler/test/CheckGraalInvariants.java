@@ -130,8 +130,9 @@ public class CheckGraalInvariants extends GraalTest {
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 
-        String bootclasspath = System.getProperty("sun.boot.class.path");
-        Assert.assertNotNull("Cannot find value of boot class path", bootclasspath);
+        String propertyName = JDK8OrEarlier ? "sun.boot.class.path" : "jdk.module.path";
+        String bootclasspath = System.getProperty(propertyName);
+        Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
 
         bootclasspath.split(File.pathSeparator);
 
@@ -235,6 +236,9 @@ public class CheckGraalInvariants extends GraalTest {
     private static List<Class<?>> initializeClasses(List<String> classNames) {
         List<Class<?>> classes = new ArrayList<>(classNames.size());
         for (String className : classNames) {
+            if (className.equals("module-info")) {
+                continue;
+            }
             try {
                 Class<?> c = Class.forName(className, true, CheckGraalInvariants.class.getClassLoader());
                 classes.add(c);
