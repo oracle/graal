@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.jtt.except;
 
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
-import jdk.internal.org.objectweb.asm.Type;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.graal.jtt.JTTTest;
+
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.Type;
 
 public class UntrustedInterfaces extends JTTTest {
 
@@ -50,20 +50,20 @@ public class UntrustedInterfaces extends JTTTest {
      *     public void setField() {
      *         field = new TestConstant();
      *     }
-     * 
+     *
      *     public void setStaticField() {
      *         staticField = new TestConstant();
      *     }
-     * 
+     *
      *     public int callMe(CallBack callback) {
      *         return callback.callBack(new TestConstant());
      *     }
-     * 
+     *
      *     public TestInterface get() {
      *         return new TestConstant();
      *     }
      * }
-     * 
+     *
      * private static final class TestConstant implements TestInterface {
      *     public int method() {
      *         return 42;
@@ -216,7 +216,7 @@ public class UntrustedInterfaces extends JTTTest {
         runTest("returnCheckcast", poisonPill);
     }
 
-    private static class PoisonLoader extends ClassLoader {
+    private static class PoisonLoader extends ExportingClassLoader {
         public static final String POISON_IMPL_NAME = "com.oracle.graal.jtt.except.PoisonPill";
 
         @Override

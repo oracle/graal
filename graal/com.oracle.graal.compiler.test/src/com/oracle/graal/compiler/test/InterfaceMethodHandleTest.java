@@ -26,6 +26,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import org.junit.Test;
+
+import com.oracle.graal.code.CompilationResult;
+
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
@@ -33,10 +37,6 @@ import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import org.junit.Test;
-
-import com.oracle.graal.code.CompilationResult;
 
 public final class InterfaceMethodHandleTest extends GraalCompilerTest implements Opcodes {
     private static final MethodHandle INTERFACE_HANDLE_M;
@@ -191,7 +191,7 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest implement
         return cw.toByteArray();
     }
 
-    public static class AsmLoader extends ClassLoader {
+    public static class AsmLoader extends ExportingClassLoader {
         Class<?> loaded;
 
         public AsmLoader(ClassLoader parent) {

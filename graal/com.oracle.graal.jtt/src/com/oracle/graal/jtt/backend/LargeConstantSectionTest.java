@@ -34,11 +34,6 @@ import static jdk.internal.org.objectweb.asm.Opcodes.LCONST_0;
 import static jdk.internal.org.objectweb.asm.Opcodes.LLOAD;
 import static jdk.internal.org.objectweb.asm.Opcodes.LRETURN;
 import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.Label;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
-import jdk.internal.org.objectweb.asm.Type;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,6 +43,12 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.jtt.JTTTest;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
+
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.Label;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.Type;
 
 public class LargeConstantSectionTest extends JTTTest {
     private static final String NAME = "LargeConstantSection";
@@ -67,7 +68,7 @@ public class LargeConstantSectionTest extends JTTTest {
         return a.run(GraalDirectives.opaque(i));
     }
 
-    public static class LargeConstantClassLoader extends ClassLoader {
+    public static class LargeConstantClassLoader extends ExportingClassLoader {
         public LargeConstantClassLoader(ClassLoader parent) {
             super(parent);
         }
