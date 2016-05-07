@@ -122,6 +122,8 @@ public class GraalDebugConfig implements DebugConfig {
                        "This option incurs a small but constant overhead due to the context method lookup at each metric update." +
                        "Format to specify GlobalMetric interception:(Timers|Counters|MemUseTrackers)(,Timers|,Counters|,MemUseTrackers)*", type = OptionType.Debug)
         public static final OptionValue<String> GlobalMetricsInterceptedByMethodMetrics = new OptionValue<>(null);
+        @Option(help = "Force-enable debug code paths", type = OptionType.Debug)
+        public static final OptionValue<Boolean> ForceDebugEnable = new OptionValue<>(false);
         // @formatter:on
     }
 
