@@ -70,9 +70,9 @@ public final class InformationBlockParser extends Parser {
     }
 
     @Override
-    protected Parser instantiate(Parser parser, Bitstream stream, Block block, ParserListener listener, Parser parent, Operation[][] operations, long idsize, long offset) {
-        long b = parser instanceof InformationBlockParser ? ((InformationBlockParser) parser).bid : 0;
-        return new InformationBlockParser(stream, block, listener, parent, operations, idsize, offset, b);
+    protected Parser instantiate(Parser argParser, Bitstream argStream, Block argBlock, ParserListener argListener, Parser argParent, Operation[][] argOperations, long argIdSize, long argOffset) {
+        long b = argParser instanceof InformationBlockParser ? ((InformationBlockParser) argParser).bid : 0;
+        return new InformationBlockParser(argStream, argBlock, argListener, argParent, argOperations, argIdSize, argOffset, b);
     }
 
     @Override

@@ -54,7 +54,7 @@ import uk.ac.man.cs.llvm.bc.blocks.Block;
 
 public interface ParserListener {
 
-    default ParserListener enter(Block block) {
+    default ParserListener enter(@SuppressWarnings("unused") Block block) {
         return this;
     }
 

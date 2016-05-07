@@ -99,9 +99,9 @@ public class Parser {
         result = result.getParser().read(Primitive.SUBBLOCK_ID_SIZE);
         long idsize = result.getValue();
 
-        parser = result.getParser().align(Integer.SIZE);
+        Parser p = result.getParser().align(Integer.SIZE);
 
-        result = parser.read(Integer.SIZE);
+        result = p.read(Integer.SIZE);
         long size = result.getValue();
 
         return result.getParser().enter(id, size, idsize);
@@ -121,9 +121,7 @@ public class Parser {
             operands[(int) i] = result.getValue();
         }
 
-        parser = result.getParser().handleRecord(id, operands);
-
-        return parser;
+        return result.getParser().handleRecord(id, operands);
     };
 
     protected static final Operation[] DEFAULT_OPERATIONS = new Operation[]{
@@ -167,8 +165,8 @@ public class Parser {
         this.offset = offset;
     }
 
-    protected Parser instantiate(Parser parser, Bitstream stream, Block block, ParserListener listener, Parser parent, Operation[][] operations, long idsize, long offset) {
-        return new Parser(stream, block, listener, parent, operations, idsize, offset);
+    protected Parser instantiate(Parser argParser, Bitstream argStream, Block argBlock, ParserListener argListener, Parser argParent, Operation[][] argOperations, long argIdSize, long argOffset) {
+        return new Parser(argStream, argBlock, argListener, argParent, argOperations, argIdSize, argOffset);
     }
 
     public Parser align(long bits) {
@@ -179,13 +177,13 @@ public class Parser {
         return this;
     }
 
-    public Parser enter(long id, long size, long idsize) {
+    public Parser enter(long id, long size, long argIdSize) {
         Block subblock = Block.lookup(id);
         if (subblock == null) {
             // Cannot find block so just skip it
             return offset(getOffset() + size * Integer.SIZE);
         } else {
-            return subblock.getParser(instantiate(this, stream, subblock, listener.enter(subblock), this, operations, idsize, getOffset()));
+            return subblock.getParser(instantiate(this, stream, subblock, listener.enter(subblock), this, operations, argIdSize, getOffset()));
         }
     }
 
@@ -198,8 +196,8 @@ public class Parser {
         return offset;
     }
 
-    public Parser offset(long offset) {
-        return instantiate(this, stream, block, listener, parent, operations, idsize, offset);
+    public Parser offset(long argOffset) {
+        return instantiate(this, stream, block, listener, parent, operations, idsize, argOffset);
     }
 
     public Operation getOperation(long id) {
@@ -261,7 +259,7 @@ public class Parser {
 
     public ParserResult readChar() {
         char value = CHAR6.charAt((int) stream.read(offset, Primitive.CHAR6.getBits()));
-        return new ParserResult(offset(offset + Primitive.CHAR6.getBits()), (long) value);
+        return new ParserResult(offset(offset + Primitive.CHAR6.getBits()), value);
     }
 
     public ParserResult readId() {

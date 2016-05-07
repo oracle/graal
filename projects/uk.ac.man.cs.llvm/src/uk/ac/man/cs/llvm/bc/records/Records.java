@@ -56,11 +56,12 @@ public final class Records {
     }
 
     public static long extendSign(int bits, long value) {
+        long v = value;
         long mask = (((1L << (bits)) - 1) ^ -1L) >> 1;
-        if ((value & mask) != 0) {
-            value |= mask;
+        if ((v & mask) != 0) {
+            v |= mask;
         }
-        return value;
+        return v;
     }
 
     public static int toAlignment(long value) {
@@ -75,12 +76,13 @@ public final class Records {
         return values;
     }
 
-    public static long toSignedValue(long value) {
-        if ((value & 1L) == 1L) {
-            value = value >>> 1;
-            return value == 0 ? Long.MIN_VALUE : -value;
+    public static long toSignedValue(long v) {
+        long value = v;
+        if ((v & 1L) == 1L) {
+            v = v >>> 1;
+            return v == 0 ? Long.MIN_VALUE : -v;
         } else {
-            return value >>> 1;
+            return v >>> 1;
         }
     }
 

@@ -379,7 +379,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(BranchInstruction branch) {
-        method.addTerminatingInstruction(LLVMBranchFactory.createUnconditionalBranch(method.labels().get(branch.getSuccessor().getName()), getPhiWriteNodes()), block.getIndex());
+        method.addTerminatingInstruction(LLVMBranchFactory.createUnconditionalBranch(method.labels().get(branch.getSuccessor().getName()), getPhiWriteNodes()), block.getBlockIndex());
     }
 
     @Override
@@ -482,7 +482,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMNode[] falsePhiWriteNodes = falseConditionPhiWriteNodes.toArray(new LLVMNode[falseConditionPhiWriteNodes.size()]);
         LLVMTerminatorNode node = LLVMBranchFactory.createConditionalBranch(trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
 
-        method.addTerminatingInstruction(node, block.getIndex());
+        method.addTerminatingInstruction(node, block.getBlockIndex());
     }
 
     @Override
@@ -560,7 +560,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMAddressNode value = (LLVMAddressNode) resolve(branch.getAddress());
 
         LLVMTerminatorNode node = LLVMBranchFactory.createIndirectBranch(value, labelTargets, getPhiWriteNodes());
-        method.addTerminatingInstruction(node, block.getIndex());
+        method.addTerminatingInstruction(node, block.getBlockIndex());
     }
 
     @Override
@@ -671,7 +671,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        method.addTerminatingInstruction(node, block.getIndex());
+        method.addTerminatingInstruction(node, block.getBlockIndex());
     }
 
     @Override
@@ -739,7 +739,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMBaseType llvmType = LLVMBitcodeHelper.toBaseType(zwitch.getCondition().getType());
 
         LLVMTerminatorNode node = LLVMSwitchFactory.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
-        method.addTerminatingInstruction(node, block.getIndex());
+        method.addTerminatingInstruction(node, block.getBlockIndex());
     }
 
     @Override
@@ -761,12 +761,12 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         LLVMTerminatorNode node = LLVMSwitchFactory.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
-        method.addTerminatingInstruction(node, block.getIndex());
+        method.addTerminatingInstruction(node, block.getBlockIndex());
     }
 
     @Override
     public void visit(UnreachableInstruction ui) {
-        method.addTerminatingInstruction(new LLVMUnreachableNode(), block.getIndex());
+        method.addTerminatingInstruction(new LLVMUnreachableNode(), block.getBlockIndex());
     }
 
     @Override

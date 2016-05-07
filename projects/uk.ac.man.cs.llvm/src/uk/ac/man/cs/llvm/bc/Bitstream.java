@@ -65,7 +65,7 @@ public class Bitstream {
     protected static byte[] read(String filename) {
         try {
             return Files.readAllBytes(Paths.get(filename));
-        } catch (@SuppressWarnings("unused") IOException ignore) {
+        } catch (IOException ignore) {
             return new byte[0];
         }
     }
@@ -86,10 +86,11 @@ public class Bitstream {
         long value = 0;
         long shift = 0;
         long datum;
+        long o = offset;
         long dmask = 1 << (width - 1);
         do {
-            datum = read(offset, width);
-            offset += width;
+            datum = read(o, width);
+            o += width;
             value += (datum & (dmask - 1)) << shift;
             shift += width - 1;
         } while ((datum & dmask) != 0);
@@ -102,10 +103,11 @@ public class Bitstream {
 
     public long widthVBR(long value, long width) {
         long total = 0;
+        long v = value;
         do {
             total += width;
-            value >>>= (width - 1);
-        } while (value != 0);
+            v >>>= (width - 1);
+        } while (v != 0);
         return total;
     }
 
