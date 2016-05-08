@@ -144,7 +144,8 @@ public class Parser {
         this.offset = offset;
     }
 
-    protected Parser instantiate(Parser argParser, Bitstream argStream, Block argBlock, ParserListener argListener, Parser argParent, Operation[][] argOperations, long argIdSize, long argOffset) {
+    protected Parser instantiate(@SuppressWarnings("unused") Parser argParser, Bitstream argStream, Block argBlock, ParserListener argListener, Parser argParent, Operation[][] argOperations,
+                    long argIdSize, long argOffset) {
         return new Parser(argStream, argBlock, argListener, argParent, argOperations, argIdSize, argOffset);
     }
 
