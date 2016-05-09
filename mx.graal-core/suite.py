@@ -313,6 +313,9 @@ suite = {
         "com.oracle.graal.replacements.test",
         "com.oracle.graal.hotspot",
       ],
+      "imports" : [
+        "jdk.internal.reflect",
+      ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
