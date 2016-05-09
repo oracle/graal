@@ -94,9 +94,14 @@ final class LanguageCache {
     }
 
     private static ClassLoader loader() {
-        ClassLoader l = PolyglotEngine.class.getClassLoader();
-        if (l == null) {
-            l = ClassLoader.getSystemClassLoader();
+        ClassLoader l;
+        if (PolyglotEngine.JDK8OrEarlier) {
+            l = PolyglotEngine.class.getClassLoader();
+            if (l == null) {
+                l = ClassLoader.getSystemClassLoader();
+            }
+        } else {
+            l = ModuleResourceLocator.createLoader();
         }
         return l;
     }
