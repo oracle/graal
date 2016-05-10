@@ -310,7 +310,9 @@ public abstract class Edges extends Fields {
             needsForward = false;
             if (index < directCount) {
                 index++;
-                return;
+                if (index < directCount) {
+                    return;
+                }
             } else {
                 subIndex++;
             }
