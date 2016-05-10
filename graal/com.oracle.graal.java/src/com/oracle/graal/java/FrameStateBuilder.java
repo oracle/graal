@@ -58,11 +58,11 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
@@ -189,7 +189,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
             }
 
-            locals[javaIndex] = graph.unique(receiver);
+            locals[javaIndex] = graph.addOrUnique(receiver);
             javaIndex = 1;
             index = 1;
         }
@@ -223,7 +223,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 param = new ParameterNode(index, stamp);
             }
 
-            locals[javaIndex] = graph.unique(param);
+            locals[javaIndex] = graph.addOrUnique(param);
             javaIndex++;
             if (kind.needsTwoSlots()) {
                 locals[javaIndex] = TWO_SLOT_MARKER;

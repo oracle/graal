@@ -25,10 +25,10 @@ package com.oracle.graal.loop.phases;
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopFragmentWhole;
@@ -88,15 +88,15 @@ public abstract class LoopTransformations {
          * The code below assumes that all of the control split nodes have the same successor
          * structure, which should have been enforced by findUnswitchable.
          */
-        NodePosIterator successors = firstNode.successors().iterator();
+        Iterator<Position> successors = firstNode.successorPositions().iterator();
         assert successors.hasNext();
         // original loop is used as first successor
-        Position firstPosition = successors.nextPosition();
+        Position firstPosition = successors.next();
         AbstractBeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
         firstPosition.set(newControlSplit, originalLoopBegin);
 
         while (successors.hasNext()) {
-            Position position = successors.nextPosition();
+            Position position = successors.next();
             // create a new loop duplicate and connect it.
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
             AbstractBeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());

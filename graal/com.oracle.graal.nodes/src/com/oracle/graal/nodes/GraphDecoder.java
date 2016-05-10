@@ -854,7 +854,6 @@ public class GraphDecoder {
                 oldStateAfter.safeDelete();
             }
         }
-
         loopExit.safeDelete();
         assert loopExitSuccessor.predecessor() == null;
         if (merge != null) {
@@ -1473,18 +1472,18 @@ public class GraphDecoder {
     protected boolean verifyEdges(MethodScope methodScope) {
         for (Node node : methodScope.graph.getNodes()) {
             assert node.isAlive();
-            node.acceptInputs((n, i) -> {
+            for (Node i : node.inputs()) {
                 assert i.isAlive();
-                assert i.usages().contains(n);
-            });
-            node.acceptSuccessors((n, s) -> {
+                assert i.usages().contains(node);
+            }
+            for (Node s : node.successors()) {
                 assert s.isAlive();
-                assert s.predecessor() == n;
-            });
+                assert s.predecessor() == node;
+            }
 
             for (Node usage : node.usages()) {
                 assert usage.isAlive();
-                assert usage.inputs().contains(node);
+                assert usage.inputs().contains(node) : node + " / " + usage + " / " + usage.inputs().count();
             }
             if (node.predecessor() != null) {
                 assert node.predecessor().isAlive();

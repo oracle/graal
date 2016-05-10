@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -103,18 +102,21 @@ public class GraphUtil {
                  */
                 // assert node.successors().count() > 1 || node.successors().count() == 0 :
                 // node.getClass();
-                NodeClassIterable successors = current.successors();
-                if (successors.count() == 1) {
-                    next = (FixedNode) successors.first();
-                } else {
-                    if (newWorklist == null) {
-                        newWorklist = in.graph().createNodeWorkList();
-                    }
-                    for (Node successor : successors) {
-                        newWorklist.add(successor);
-                        if (successor instanceof LoopExitNode) {
-                            LoopExitNode exit = (LoopExitNode) successor;
-                            exit.replaceFirstInput(exit.loopBegin(), null);
+                Iterator<Node> successors = current.successors().iterator();
+                if (successors.hasNext()) {
+                    Node first = successors.next();
+                    if (!successors.hasNext()) {
+                        next = (FixedNode) first;
+                    } else {
+                        if (newWorklist == null) {
+                            newWorklist = in.graph().createNodeWorkList();
+                        }
+                        for (Node successor : current.successors()) {
+                            newWorklist.add(successor);
+                            if (successor instanceof LoopExitNode) {
+                                LoopExitNode exit = (LoopExitNode) successor;
+                                exit.replaceFirstInput(exit.loopBegin(), null);
+                            }
                         }
                     }
                 }
@@ -177,14 +179,14 @@ public class GraphUtil {
         if (node != null && node.isAlive()) {
             node.markDeleted();
 
-            node.acceptInputs((n, in) -> {
+            for (Node in : node.inputs()) {
                 if (in.isAlive()) {
-                    in.removeUsage(n);
+                    in.removeUsage(node);
                     if (in.hasNoUsages() && !(in instanceof FixedNode)) {
                         killWithUnusedFloatingInputs(in);
                     }
                 }
-            });
+            }
 
             ArrayList<Node> usageToKill = null;
             for (Node usage : node.usages()) {
@@ -199,8 +201,9 @@ public class GraphUtil {
                 for (Node usage : usageToKill) {
                     if (usage.isAlive()) {
                         if (usage instanceof PhiNode) {
+                            PhiNode phiNode = (PhiNode) usage;
                             usage.replaceFirstInput(node, null);
-                            if (!((PhiNode) usage).hasValidInput()) {
+                            if (phiNode.merge() == null || !phiNode.hasValidInput()) {
                                 propagateKill(usage);
                             }
                         } else {
@@ -213,22 +216,28 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        node.safeDelete();
-        node.acceptInputs((n, in) -> {
-            if (in.isAlive() && !(in instanceof FixedNode)) {
+        node.markDeleted();
+        outer: for (Node in : node.inputs()) {
+            if (in.isAlive()) {
+                in.removeUsage(node);
                 if (in.hasNoUsages()) {
-                    killWithUnusedFloatingInputs(in);
-                } else if (in instanceof PhiNode) {
-                    for (Node use : in.usages()) {
-                        if (use != in) {
-                            return;
+                    node.maybeNotifyZeroUsages(in);
+                }
+                if (!(in instanceof FixedNode)) {
+                    if (in.hasNoUsages()) {
+                        killWithUnusedFloatingInputs(in);
+                    } else if (in instanceof PhiNode) {
+                        for (Node use : in.usages()) {
+                            if (use != in) {
+                                continue outer;
+                            }
                         }
+                        in.replaceAtUsages(null);
+                        killWithUnusedFloatingInputs(in);
                     }
-                    in.replaceAtUsages(null);
-                    killWithUnusedFloatingInputs(in);
                 }
             }
-        });
+        }
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {

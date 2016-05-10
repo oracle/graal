@@ -72,7 +72,6 @@ import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopsData;
@@ -731,7 +730,7 @@ public class SnippetTemplate {
                         assert parameterCount < 10000;
                         int idx = (i + 1) * 10000 + j;
                         assert idx >= parameterCount : "collision in parameter numbering";
-                        ParameterNode local = snippetCopy.unique(new ParameterNode(idx, StampPair.createSingle(stamp)));
+                        ParameterNode local = snippetCopy.addOrUnique(new ParameterNode(idx, StampPair.createSingle(stamp)));
                         params[j] = local;
                     }
                     parameters[i] = params;
@@ -1246,9 +1245,7 @@ public class SnippetTemplate {
 
             LocationIdentity location = getLocationIdentity(usage);
             if (location != null) {
-                NodePosIterator iter = usage.inputs().iterator();
-                while (iter.hasNext()) {
-                    Position pos = iter.nextPosition();
+                for (Position pos : usage.inputPositions()) {
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
                         MemoryNode replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {

@@ -115,7 +115,7 @@ public class OnStackReplacementPhase extends Phase {
                  * we need to drop the stamp since the types we see during OSR may be too precise
                  * (if a branch was not parsed for example).
                  */
-                proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
+                proxy.replaceAndDelete(graph.addOrUnique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
             } else {
                 assert value == null || value instanceof OSRLocalNode;
             }

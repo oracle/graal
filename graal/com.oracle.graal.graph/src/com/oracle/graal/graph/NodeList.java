@@ -219,6 +219,10 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         for (int i = 0; i < size; i++) {
             update((T) nodes[i], null);
         }
+        clearWithoutUpdate();
+    }
+
+    void clearWithoutUpdate() {
         nodes = EMPTY_NODE_ARRAY;
         size = 0;
     }

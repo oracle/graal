@@ -48,7 +48,6 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -265,9 +264,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private boolean prepareCanonicalNode(ValueNode node, BlockT state, GraphEffectList effects) {
         assert !node.isAlive();
-        NodePosIterator iter = node.inputs().iterator();
-        while (iter.hasNext()) {
-            Position pos = iter.nextPosition();
+        for (Position pos : node.inputPositions()) {
             Node input = pos.get(node);
             if (input instanceof ValueNode) {
                 if (input.isAlive()) {

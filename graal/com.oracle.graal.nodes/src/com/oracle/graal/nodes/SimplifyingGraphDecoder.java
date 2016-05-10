@@ -243,8 +243,9 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             } else if (canonical instanceof ControlSinkNode) {
                 FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
                 predecessor.setNext((ControlSinkNode) canonical);
+                List<Node> successorSnapshot = node.successors().snapshot();
                 node.safeDelete();
-                for (Node successor : node.successors()) {
+                for (Node successor : successorSnapshot) {
                     successor.safeDelete();
                 }
 

@@ -47,7 +47,6 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
@@ -93,7 +92,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         if (!method.isStatic()) {
             // add the receiver
             Stamp receiverStamp = StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(method.getDeclaringClass()));
-            FloatingNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, StampPair.createSingle(receiverStamp)));
+            ValueNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, StampPair.createSingle(receiverStamp)));
             arguments[index] = receiver;
             javaIndex = 1;
             index = 1;
@@ -108,7 +107,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
             } else {
                 stamp = StampFactory.forKind(kind);
             }
-            FloatingNode param = graph.addWithoutUnique(new ParameterNode(index, StampPair.createSingle(stamp)));
+            ValueNode param = graph.addWithoutUnique(new ParameterNode(index, StampPair.createSingle(stamp)));
             arguments[index] = param;
             javaIndex += kind.getSlotCount();
             index++;

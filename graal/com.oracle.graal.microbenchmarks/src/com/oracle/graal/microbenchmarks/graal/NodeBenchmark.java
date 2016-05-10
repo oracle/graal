@@ -34,6 +34,9 @@ import com.oracle.graal.microbenchmarks.graal.util.GraalState;
 import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
 import com.oracle.graal.microbenchmarks.graal.util.NodesState;
 import com.oracle.graal.microbenchmarks.graal.util.NodesState.NodePair;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 public class NodeBenchmark extends GraalBenchmark {
 
@@ -52,12 +55,63 @@ public class NodeBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
+    public void dataEquals(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().dataEquals(n, n));
+        }
+    }
+
+    @Benchmark
+    public void replaceFirstInput(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().replaceFirstInput(n, n, n));
+        }
+    }
+
+    @Benchmark
+    public void inputsEquals(StringEquals s, Blackhole bh) {
+        for (Node n : s.nodes) {
+            bh.consume(n.getNodeClass().equalInputs(n, n));
+        }
+    }
+
+    @Benchmark
     public void inputs(StringEquals s, Blackhole bh) {
         for (Node n : s.nodes) {
             for (Node input : n.inputs()) {
                 bh.consume(input);
             }
         }
+    }
+
+    @Benchmark
+    public void acceptInputs(StringEquals s, Blackhole bh) {
+        Node.EdgeVisitor consumer = new Node.EdgeVisitor() {
+            @Override
+            public Node apply(Node t, Node u) {
+                bh.consume(u);
+                return u;
+            }
+        };
+        for (Node n : s.nodes) {
+            n.applyInputs(consumer);
+        }
+    }
+
+    @Benchmark
+    public void createAndDeleteAdd(StringEquals s, Blackhole bh) {
+        AddNode addNode = new AddNode(ConstantNode.forInt(40), ConstantNode.forInt(2));
+        s.graph.addOrUniqueWithInputs(addNode);
+        GraphUtil.killWithUnusedFloatingInputs(addNode);
+        bh.consume(addNode);
+    }
+
+    @Benchmark
+    public void createAndDeleteConstant(StringEquals s, Blackhole bh) {
+        ConstantNode constantNode = ConstantNode.forInt(42);
+        s.graph.addOrUnique(constantNode);
+        GraphUtil.killWithUnusedFloatingInputs(constantNode);
+        bh.consume(constantNode);
     }
 
     @Benchmark

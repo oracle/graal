@@ -27,6 +27,7 @@ import java.util.BitSet;
 import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -40,7 +41,7 @@ import com.oracle.graal.word.WordTypes;
  * Node that is used to maintain a stack based counter of how many locks are currently held.
  */
 @NodeInfo
-public final class MonitorCounterNode extends FloatingNode implements LIRLowerable {
+public final class MonitorCounterNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
     public static final NodeClass<MonitorCounterNode> TYPE = NodeClass.create(MonitorCounterNode.class);
 
     public MonitorCounterNode(@InjectedNodeParameter WordTypes wordTypes) {
