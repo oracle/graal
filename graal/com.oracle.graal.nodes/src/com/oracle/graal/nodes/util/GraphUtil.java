@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -103,20 +102,23 @@ public class GraphUtil {
                  */
                 // assert node.successors().count() > 1 || node.successors().count() == 0 :
                 // node.getClass();
-                NodeClassIterable successors = current.successors();
-                if (successors.count() == 1) {
-                    next = (FixedNode) successors.first();
-                } else {
-                    if (newWorklist == null) {
-                        newWorklist = in.graph().createNodeWorkList();
-                    }
-                    for (Node successor : successors) {
-                        newWorklist.add(successor);
-                        if (successor instanceof LoopExitNode) {
-                            LoopExitNode exit = (LoopExitNode) successor;
-                            exit.replaceFirstInput(exit.loopBegin(), null);
-                        }
-                    }
+                Iterator<Node> successors = current.successors().iterator();
+                if (successors.hasNext()) {
+                  Node first = successors.next();
+                  if (!successors.hasNext()) {
+                      next = (FixedNode) first;
+                  } else {
+                      if (newWorklist == null) {
+                          newWorklist = in.graph().createNodeWorkList();
+                      }
+                      for (Node successor : current.successors()) {
+                          newWorklist.add(successor);
+                          if (successor instanceof LoopExitNode) {
+                              LoopExitNode exit = (LoopExitNode) successor;
+                              exit.replaceFirstInput(exit.loopBegin(), null);
+                          }
+                      }
+                  }
                 }
             }
             current.replaceAtPredecessor(null);
