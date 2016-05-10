@@ -131,6 +131,8 @@ public class PolyglotEngine {
     private final ContextStore context;
     private boolean disposed;
 
+    static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
     static {
         try {
             // We need to ensure that the Instrumentation class is loaded so accessors are created
@@ -188,7 +190,7 @@ public class PolyglotEngine {
             }
         }
         this.langs = map;
-        this.instruments = createAndAutostartDescriptors(InstrumentCache.load(getClass().getClassLoader()));
+        this.instruments = createAndAutostartDescriptors(InstrumentCache.load(JDK8OrEarlier ? getClass().getClassLoader() : null));
         this.context = ExecutionImpl.createStore(this);
     }
 
