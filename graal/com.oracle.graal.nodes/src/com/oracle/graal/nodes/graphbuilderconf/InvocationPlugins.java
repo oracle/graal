@@ -62,8 +62,11 @@ public class InvocationPlugins {
         }
 
         @Override
-        public ValueNode get() {
+        public ValueNode get(boolean performNullCheck) {
             assert args != null : "Cannot get the receiver of a static method";
+            if (!performNullCheck) {
+                return args[0];
+            }
             if (value == null) {
                 value = parser.nullCheckedValue(args[0]);
                 if (value != args[0]) {

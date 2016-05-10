@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
@@ -111,7 +112,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     @Override
-    public StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull) {
+    public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
         Stamp wordStamp = null;
         if (declaredType instanceof ResolvedJavaType) {
             ResolvedJavaType resolved = (ResolvedJavaType) declaredType;
@@ -138,7 +139,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        StampPair wordStamp = interceptType(b.parsingIntrinsic(), field.getType(), false);
+        StampPair wordStamp = interceptType(b, field.getType(), false);
         if (wordStamp != null) {
             LoadFieldNode loadFieldNode = LoadFieldNode.createOverrideStamp(wordStamp, receiver, field);
             b.addPush(field.getJavaKind(), loadFieldNode);

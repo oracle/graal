@@ -82,7 +82,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         if (objectStamp.type() == null) {
             return null;
         } else if (objectStamp.isExactType()) {
-            return objectStamp.type().isAllocationCloneable() ? objectStamp.type() : null;
+            return objectStamp.type().isCloneableWithAllocation() ? objectStamp.type() : null;
         }
         return null;
     }
@@ -96,7 +96,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         ValueNode originalAlias = tool.getAlias(getObject());
         if (originalAlias instanceof VirtualObjectNode) {
             VirtualObjectNode originalVirtual = (VirtualObjectNode) originalAlias;
-            if (originalVirtual.type().isAllocationCloneable()) {
+            if (originalVirtual.type().isCloneableWithAllocation()) {
                 ValueNode[] newEntryState = new ValueNode[originalVirtual.entryCount()];
                 for (int i = 0; i < newEntryState.length; i++) {
                     newEntryState[i] = tool.getEntry(originalVirtual, i);

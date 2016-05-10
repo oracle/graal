@@ -50,7 +50,14 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
          * @return the receiver value with a {@linkplain StampTool#isPointerNonNull(ValueNode)
          *         non-null} stamp
          */
-        ValueNode get();
+        default ValueNode get() {
+            return get(true);
+        }
+
+        /**
+         * Gets the receiver value, optionally null checking it first if necessary.
+         */
+        ValueNode get(boolean performNullCheck);
 
         /**
          * Determines if the receiver is constant.

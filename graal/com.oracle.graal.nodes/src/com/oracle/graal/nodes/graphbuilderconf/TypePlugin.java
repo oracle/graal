@@ -36,5 +36,5 @@ public interface TypePlugin extends GraphBuilderPlugin {
     /**
      * Intercept the type of arguments or return values.
      */
-    StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull);
+    StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull);
 }

@@ -96,7 +96,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -339,7 +338,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private static RawNativeCallNodeFactory getRawNativeCallNodeFactory(String arch) {
-        for (RawNativeCallNodeFactory factory : Services.load(RawNativeCallNodeFactory.class)) {
+        for (RawNativeCallNodeFactory factory : GraalServices.load(RawNativeCallNodeFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 return factory;
             }

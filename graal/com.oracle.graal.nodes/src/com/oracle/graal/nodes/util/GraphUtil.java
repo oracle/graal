@@ -27,15 +27,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.SourceStackTrace;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -58,28 +51,79 @@ import com.oracle.graal.nodes.spi.ArrayLengthProvider;
 import com.oracle.graal.nodes.spi.LimitedValueProxy;
 import com.oracle.graal.nodes.spi.ValueProxy;
 
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.SourceStackTrace;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class GraphUtil {
 
     public static void killCFG(Node node, SimplifierTool tool) {
-        assert node.isAlive();
-        if (node instanceof AbstractEndNode) {
-            // We reached a control flow end.
-            AbstractEndNode end = (AbstractEndNode) node;
-            killEnd(end, tool);
-        } else if (node instanceof FixedNode) {
-            // Normal control flow node.
-            /*
-             * We do not take a successor snapshot because this iterator supports concurrent
-             * modifications as long as they do not change the size of the successor list. Not
-             * taking a snapshot allows us to see modifications to other branches that may happen
-             * while processing one branch.
-             */
-            for (Node successor : node.successors()) {
-                killCFG(successor, tool);
+        NodeWorkList worklist = killCFG(node, tool, null);
+        if (worklist != null) {
+            for (Node successor : worklist) {
+                killCFG(successor, tool, worklist);
             }
         }
-        node.replaceAtPredecessor(null);
-        propagateKill(node);
+    }
+
+    private static NodeWorkList killCFG(Node node, SimplifierTool tool, NodeWorkList worklist) {
+        NodeWorkList newWorklist = worklist;
+        // DebugScope.forceDump(node.graph(), "kill CFG %s", node);
+        if (node instanceof FixedNode) {
+            newWorklist = killCFGLinear((FixedNode) node, newWorklist, tool);
+        } else {
+            propagateKill(node);
+        }
+        return newWorklist;
+    }
+
+    private static NodeWorkList killCFGLinear(FixedNode in, NodeWorkList worklist, SimplifierTool tool) {
+        NodeWorkList newWorklist = worklist;
+        FixedNode current = in;
+        while (current != null) {
+            FixedNode next = null;
+            assert current.isAlive();
+            if (current instanceof AbstractEndNode) {
+                // We reached a control flow end.
+                AbstractEndNode end = (AbstractEndNode) current;
+                killEnd(end, tool);
+            } else if (current instanceof FixedWithNextNode) {
+                next = ((FixedWithNextNode) current).next();
+            } else {
+                // Normal control flow node.
+                /*
+                 * We do not take a successor snapshot because this iterator supports concurrent
+                 * modifications as long as they do not change the size of the successor list. Not
+                 * taking a snapshot allows us to see modifications to other branches that may
+                 * happen while processing one branch.
+                 */
+                // assert node.successors().count() > 1 || node.successors().count() == 0 :
+                // node.getClass();
+                NodeClassIterable successors = current.successors();
+                if (successors.count() == 1) {
+                    next = (FixedNode) successors.first();
+                } else {
+                    if (newWorklist == null) {
+                        newWorklist = in.graph().createNodeWorkList();
+                    }
+                    for (Node successor : successors) {
+                        newWorklist.add(successor);
+                        if (successor instanceof LoopExitNode) {
+                            LoopExitNode exit = (LoopExitNode) successor;
+                            exit.replaceFirstInput(exit.loopBegin(), null);
+                        }
+                    }
+                }
+            }
+            current.replaceAtPredecessor(null);
+            propagateKill(current);
+            current = next;
+        }
+        return newWorklist;
     }
 
     public static void killCFG(Node node) {

@@ -1165,7 +1165,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
-        StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(parsingIntrinsic(), field.getType(), false);
+        StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
             return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
         } else {
@@ -1400,7 +1400,7 @@ public class BytecodeParser implements GraphBuilderContext {
             profile = profilingInfo.getTypeProfile(bci());
         }
 
-        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(parsingIntrinsic(), returnType, false);
+        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
         if (returnStamp == null) {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }

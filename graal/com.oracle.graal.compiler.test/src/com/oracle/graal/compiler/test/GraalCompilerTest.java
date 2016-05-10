@@ -698,7 +698,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
         } else {
             if (actual.exception != null) {
-                actual.exception.printStackTrace();
                 Assert.fail("expected " + expect.returnValue + " but got an exception");
             }
             assertDeepEquals(expect.returnValue, actual.returnValue);

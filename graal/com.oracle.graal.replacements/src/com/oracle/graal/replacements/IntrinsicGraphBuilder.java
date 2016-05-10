@@ -237,7 +237,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     @Override
-    public ValueNode get() {
+    public ValueNode get(boolean performNullCheck) {
         return arguments[0];
     }
 

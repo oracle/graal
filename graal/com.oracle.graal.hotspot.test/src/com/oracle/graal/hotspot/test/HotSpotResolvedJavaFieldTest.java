@@ -23,6 +23,11 @@
 package com.oracle.graal.hotspot.test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -30,15 +35,27 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.
  */
 public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
 
     private static final Class<?>[] classesWithInternalFields = {Class.class, ClassLoader.class};
+
+    private static final Method createFieldMethod;
+
+    static {
+        Method ret = null;
+        try {
+            Class<?> typeImpl = Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl");
+            ret = typeImpl.getDeclaredMethod("createField", String.class, JavaType.class, long.class, int.class);
+            ret.setAccessible(true);
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException e) {
+            e.printStackTrace();
+        }
+
+        createFieldMethod = ret;
+    }
 
     /**
      * Tests that {@link HotSpotResolvedJavaField#getModifiers()} only includes the modifiers
@@ -58,17 +75,22 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * Tests that {@link HotSpotResolvedObjectType#createField(String, JavaType, long, int)} always
+     * Tests that {@code HotSpotResolvedObjectType#createField(String, JavaType, long, int)} always
      * returns the same object for an internal field.
+     *
+     * @throws InvocationTargetException
+     * @throws IllegalArgumentException
+     * @throws IllegalAccessException
      */
     @Test
-    public void testCachingForInternalFields() {
+    public void testCachingForInternalFields() throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Assert.assertTrue("HotSpotResolvedObjectTypeImpl.createField method not found", createFieldMethod != null);
         for (Class<?> c : classesWithInternalFields) {
             HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     HotSpotResolvedJavaField expected = (HotSpotResolvedJavaField) field;
-                    ResolvedJavaField actual = type.createField(expected.getName(), expected.getType(), expected.offset(), expected.getModifiers());
+                    ResolvedJavaField actual = (ResolvedJavaField) createFieldMethod.invoke(type, expected.getName(), expected.getType(), expected.offset(), expected.getModifiers());
                     Assert.assertEquals(expected, actual);
                 }
             }

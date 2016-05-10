@@ -37,7 +37,7 @@ from sanitycheck import _noneAsEmptyList
 
 from mx_unittest import unittest
 from mx_graal_bench import dacapo
-from mx_javamodules import as_java_module, get_module_deps
+from mx_javamodules import as_java_module, get_module_deps, lookup_package
 import mx_gate
 import mx_unittest
 import mx_microbench
@@ -301,26 +301,30 @@ def _uniqify(alist):
     seen = set()
     return [e for e in alist if e not in seen and seen.add(e) is None]
 
-def _packages_defined_by(classpathEntry):
+def _defines_package(classpath, package):
     """
-    Finds the packages defined by the ``*.class`` files available under `classpathEntry`.
+    Determines if any ``*.class`` files available under `classpath` are in a given package.
 
-    :param str classpathEntry: an entry on a class path
+    :param list classpath: a list of class path entries
+    :param str package: the package to test
+    :rtype: bool
     """
-    pkgs = set()
-    if os.path.isdir(classpathEntry):
-        for root, _, filenames in os.walk(classpathEntry):
-            for f in filenames:
-                if f.endswith('.class'):
-                    pkg = root[len(classpathEntry) + 1:].replace(os.sep, '.')
-                    pkgs.add(pkg)
-    elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
-        with zipfile.ZipFile(classpathEntry, 'r') as zf:
-            for name in zf.namelist():
-                if name.endswith('.class') and '/' in name:
-                    pkg = name[0:name.rfind('/')].replace('/', '.')
-                    pkgs.add(pkg)
-    return pkgs
+    for classpathEntry in classpath:
+        if os.path.isdir(classpathEntry):
+            for root, _, filenames in os.walk(classpathEntry):
+                for f in filenames:
+                    if f.endswith('.class'):
+                        if root[len(classpathEntry) + 1:].replace(os.sep, '.') == package:
+                            print package
+                            return True
+        elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
+            with zipfile.ZipFile(classpathEntry, 'r') as zf:
+                for name in zf.namelist():
+                    if name.endswith('.class') and '/' in name:
+                        if name[0:name.rfind('/')].replace('/', '.') == package:
+                            print package
+                            return True
+    return False
 
 def _find_intersecting_module(modulepath, packages, source):
     """
@@ -375,10 +379,30 @@ def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, 
     if project:
         concealed = project.get_concealed_imported_packages()
         for concealingModule, packages in concealed.iteritems():
-            # No need to explicitly export JVMCI - it's exported via reflection
-            if concealingModule != 'jdk.vm.ci':
-                for package in packages:
-                    exports.setdefault(concealingModule + '/' + package, set()).add(module)
+            for package in packages:
+                exports.setdefault(concealingModule + '/' + package, set()).add(module)
+
+def _imports_concealed_packages_in(classpath, pathToProject, module):
+    """
+    Determines if any entry on `classpath` is a Java project that imports a concealed package defined by `module`.
+
+    :param list classpath: a list of class path entries
+    :param dict pathToProject: map from an output directory to its defining `JavaProject`
+    :param str module: the name of the module to test for concealed packages imported by `classpath`
+    """
+    for classpathEntry in classpath:
+        p = pathToProject.get(classpathEntry)
+        if not p:
+            # Assume non-project class path entries do not import anything from module
+            pass
+        else:
+            imported = p.imported_java_packages(projectDepsOnly=False)
+            for package in imported:
+                _, visibility = lookup_package([module], package, "<unnamed>")
+                if visibility == 'concealed':
+                    print classpathEntry, package
+                    return True
+    return False
 
 def _parseVmArgs(jdk, args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
@@ -429,15 +453,18 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
         # Filter out Graal classes from the class path
         filtered_cp = [classpathEntry for classpathEntry in cp if classpathEntry not in module_cp]
         if cp != filtered_cp:
-            # If the class path overlaps with Graal, then the class path classes need to
-            # be able to access concealed packages in Graal (e.g., for testing). In JDK8
-            # this was achieved by disabling use of the JVMCI class loader and prepending
-            # Graal onto the boot class path. In JDK9, the -Xpatch argument must be used
-            # instead to give all class path entries visibility to Graal classes.
-            args[cpIndex - 1:cpIndex + 1] = ['-Xpatch:' + module.name + '=' + os.pathsep.join(filtered_cp)]
+            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+
+            if _imports_concealed_packages_in(filtered_cp, pathToProject, module) or \
+                any(_defines_package(filtered_cp, package) for package in module.packages):
+                # If the class path imports concealed Graal packages or defines classes in
+                # packages also defined by Graal, then Graal is extended to include the
+                # class path via -Xpatch. In JDK8 this visibility relaxing was
+                # achieved by disabling use of the JVMCI class loader and prepending
+                # Graal onto the boot class path.
+                args[cpIndex - 1:cpIndex + 1] = ['-Xpatch:' + module.name + '=' + os.pathsep.join(filtered_cp)]
 
             # Need to export concealed JDK packages used by the class path entries
-            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
             for classpathEntry in filtered_cp:
                 _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, module.name)
 
@@ -533,5 +560,5 @@ mx.add_argument('-M', '--jvmci-mode', action='store', choices=sorted(_jvmciModes
 def mx_post_parse_cmd_line(opts):
     if opts.jvmci_mode is not None:
         _vm.update(opts.jvmci_mode)
-    graal_module_dist = _graal_module_descriptor.dist()
-    graal_module_dist.set_archiveparticipant(GraalArchiveParticipant(graal_module_dist))
+    for dist in _suite.dists:
+        dist.set_archiveparticipant(GraalArchiveParticipant(dist))

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.4",
+  "mxversion" : "5.20.5",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "5aa3b3a72e35181e8839793757bc08b84257bcc5",
+        "version" : "a2faf07d2fa5638de5f8193c3049904f3efcd184",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -16,7 +16,7 @@ suite = {
       },
       {
         "name" : "truffle",
-        "version" : "9c16d110f3aa63a17e3e2cf1b857e039c507078a",
+        "version" : "994fddd8a4d6585c56017e655327c583088fb56e",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -244,6 +244,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.misc",
+        "com.sun.crypto.provider",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [
