@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmAddlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmSublNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 
 public class AsmNodeFactory {
 
@@ -55,7 +56,7 @@ public class AsmNodeFactory {
             case "subl":
                 return LLVMAsmSublNodeGen.create(leftNode, rightNode);
             default:
-                throw new UnsupportedOperationException("unexpected operation: " + operation);
+                return new LLVMI32UnsupportedInlineAssemblerNode();
         }
     }
 
