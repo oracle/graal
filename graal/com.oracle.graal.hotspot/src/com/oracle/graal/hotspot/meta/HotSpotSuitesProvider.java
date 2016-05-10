@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,8 +112,8 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             protected void run(StructuredGraph graph, HighTierContext context) {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
 
-                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getStampProvider(), !ImmutableCode.getValue(),
-                                runtime.getTarget().arch);
+                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
+                                context.getStampProvider(), !ImmutableCode.getValue(), runtime.getTarget().arch);
                 StructuredGraph targetGraph = new StructuredGraph(graph.method(), AllowAssumptions.YES);
                 graphDecoder.decode(targetGraph, encodedGraph);
             }

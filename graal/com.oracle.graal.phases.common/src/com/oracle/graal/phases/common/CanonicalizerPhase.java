@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
@@ -428,6 +429,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             @Override
             public ConstantReflectionProvider getConstantReflection() {
                 return context.getConstantReflection();
+            }
+
+            @Override
+            public ConstantFieldProvider getConstantFieldProvider() {
+                return context.getConstantFieldProvider();
             }
 
             @Override

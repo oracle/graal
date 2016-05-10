@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,8 @@ package com.oracle.graal.truffle;
 
 import java.util.ListIterator;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.java.BytecodeParser;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -45,6 +42,10 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.runtime.RuntimeProvider;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 
@@ -83,17 +84,16 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
         @Override
         protected void run(StructuredGraph graph, HighTierContext context) {
-            new TruffleGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), getGraphBuilderConfig(),
+            new TruffleGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), context.getConstantFieldProvider(), getGraphBuilderConfig(),
                             context.getOptimisticOptimizations(), null).run(graph);
         }
 
         public static class Instance extends GraphBuilderPhase.Instance {
             private boolean mustInstrumentBranches;
 
-            public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider,
-                            ConstantReflectionProvider constantReflection, GraphBuilderConfiguration config,
-                            OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-                super(metaAccess, stampProvider, constantReflection, config, optimisticOpts, initialIntrinsicContext);
+            public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                            GraphBuilderConfiguration config, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+                super(metaAccess, stampProvider, constantReflection, constantFieldProvider, config, optimisticOpts, initialIntrinsicContext);
                 this.mustInstrumentBranches = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,9 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     protected final Constant value;
 
+    private final int stableDimension;
+    private final boolean isDefaultStable;
+
     private static ConstantNode createPrimitive(JavaConstant value) {
         assert value.getJavaKind() != JavaKind.Object;
         return new ConstantNode(value, StampFactory.forConstant(value));
@@ -69,9 +72,15 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @param value the constant
      */
     public ConstantNode(Constant value, Stamp stamp) {
+        this(value, stamp, 0, false);
+    }
+
+    private ConstantNode(Constant value, Stamp stamp, int stableDimension, boolean isDefaultStable) {
         super(TYPE, stamp);
         assert stamp != null && stamp.isCompatible(value) : stamp + " " + value;
         this.value = value;
+        this.stableDimension = stableDimension;
+        this.isDefaultStable = isDefaultStable;
     }
 
     /**
@@ -79,6 +88,20 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      */
     public Constant getValue() {
         return value;
+    }
+
+    /**
+     * @return the number of stable dimensions if this is a stable array, otherwise 0
+     */
+    public int getStableDimension() {
+        return stableDimension;
+    }
+
+    /**
+     * @return true if this is a stable array and the default elements are considered stable
+     */
+    public boolean isDefaultStable() {
+        return isDefaultStable;
     }
 
     /**
@@ -129,19 +152,28 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
-    public static ConstantNode forConstant(JavaConstant constant, MetaAccessProvider metaAccess) {
+    public static ConstantNode forConstant(JavaConstant constant, int stableDimension, boolean isDefaultStable, MetaAccessProvider metaAccess) {
         if (constant.getJavaKind().getStackKind() == JavaKind.Int && constant.getJavaKind() != JavaKind.Int) {
             return forInt(constant.asInt());
         }
         if (constant.getJavaKind() == JavaKind.Object) {
-            return new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess));
+            return new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess), stableDimension, isDefaultStable);
         } else {
+            assert stableDimension == 0;
             return createPrimitive(constant);
         }
     }
 
+    public static ConstantNode forConstant(JavaConstant array, MetaAccessProvider metaAccess) {
+        return forConstant(array, 0, false, metaAccess);
+    }
+
     public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
         return graph.unique(new ConstantNode(constant, stamp.constant(constant, metaAccess)));
+    }
+
+    public static ConstantNode forConstant(Stamp stamp, Constant constant, int stableDimension, boolean isDefaultStable, MetaAccessProvider metaAccess) {
+        return new ConstantNode(constant, stamp.constant(constant, metaAccess), stableDimension, isDefaultStable);
     }
 
     public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess) {

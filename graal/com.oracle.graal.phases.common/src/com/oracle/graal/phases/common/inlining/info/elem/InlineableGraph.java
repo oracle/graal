@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,8 @@ public class InlineableGraph implements Inlineable {
                     Constant constant = arg.asConstant();
                     parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
-                    param.replaceAtUsagesAndDelete(ConstantNode.forConstant(arg.stamp(), constant, context.getMetaAccess(), graph));
+                    param.replaceAtUsagesAndDelete(graph.unique(
+                                    ConstantNode.forConstant(arg.stamp(), constant, ((ConstantNode) arg).getStableDimension(), ((ConstantNode) arg).isDefaultStable(), context.getMetaAccess())));
                     // param-node gone, leaving a gap in the sequence given by param.index()
                 } else {
                     Stamp impro = improvedStamp(arg, param);

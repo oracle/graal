@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,7 +119,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
             try {
                 IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-                new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
+                new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.NONE,
+                                initialIntrinsicContext).apply(graph);
 
             } finally {
                 if (SnippetGraphUnderConstruction != null) {

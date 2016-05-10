@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -172,7 +172,9 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()), tool.getMetaAccess());
+            int stableDimension = ((ConstantNode) forValue).getStableDimension();
+            boolean isDefaultStable = ((ConstantNode) forValue).isDefaultStable();
+            return ConstantNode.forConstant(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()), stableDimension, isDefaultStable, tool.getMetaAccess());
         } else if (forValue instanceof CompressionNode) {
             CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {

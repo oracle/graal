@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.StampProvider;
@@ -59,6 +60,8 @@ public interface GraphBuilderTool {
     }
 
     ConstantReflectionProvider getConstantReflection();
+
+    ConstantFieldProvider getConstantFieldProvider();
 
     /**
      * Gets the graph being constructed.

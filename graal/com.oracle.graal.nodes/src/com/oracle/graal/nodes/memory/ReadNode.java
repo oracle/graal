@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,16 +137,13 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
             ValueNode object = objAddress.getBase();
             if (metaAccess != null && object.isConstant() && !object.isNullConstant() && objAddress.getOffset().isConstant()) {
                 long displacement = objAddress.getOffset().asJavaConstant().asLong();
-                if (locationIdentity.isImmutable()) {
+                int stableDimension = ((ConstantNode) object).getStableDimension();
+                if (locationIdentity.isImmutable() || stableDimension > 0) {
                     Constant constant = read.stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
-                    if (constant != null) {
-                        return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
+                    boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
+                    if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
+                        return ConstantNode.forConstant(read.stamp(), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
                     }
-                }
-
-                Constant constant = read.stamp().readConstantArrayElementForOffset(tool.getConstantReflection(), object.asJavaConstant(), displacement);
-                if (constant != null) {
-                    return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                 }
             }
             if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {

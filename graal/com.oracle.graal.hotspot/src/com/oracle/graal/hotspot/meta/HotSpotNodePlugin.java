@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.FieldReadEnabledInImmutableCode;
+import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider.FieldReadEnabledInImmutableCode;
 
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.nodes.ConstantNode;
@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
+import com.oracle.graal.nodes.util.ConstantFoldUtil;
 import com.oracle.graal.replacements.WordOperationPlugin;
 import com.oracle.graal.word.Word;
 
@@ -131,10 +132,10 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     }
 
     private static boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
-        JavaConstant result = b.getConstantReflection().readConstantFieldValue(field, object);
+        ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, object);
         if (result != null) {
-            ConstantNode constantNode = ConstantNode.forConstant(result, b.getMetaAccess(), b.getGraph());
-            b.push(field.getJavaKind(), constantNode);
+            result = b.getGraph().unique(result);
+            b.push(field.getJavaKind(), result);
             return true;
         }
         return false;

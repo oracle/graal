@@ -137,8 +137,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                     Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                     IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, ROOT_COMPILATION);
-                    new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(
-                                    graph);
+                    new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getConstantReflection(), getProviders().getConstantFieldProvider(), config,
+                                    OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;
                 } else {

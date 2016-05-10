@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Graph.Mark;
@@ -129,6 +130,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return context.getConstantReflection();
+        }
+
+        @Override
+        public ConstantFieldProvider getConstantFieldProvider() {
+            return context.getConstantFieldProvider();
         }
 
         @Override
@@ -464,7 +470,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     * 
+     *
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

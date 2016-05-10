@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,9 +89,9 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
         }
         assert schedule != null;
         if (readElimination) {
-            return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection());
+            return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider());
         } else {
-            return new PartialEscapeClosure.Final(schedule, context.getMetaAccess(), context.getConstantReflection());
+            return new PartialEscapeClosure.Final(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider());
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**
  * A stamp is the basis for a type system.
@@ -142,13 +140,6 @@ public abstract class Stamp {
      * Read a value of this stamp from memory.
      */
     public abstract Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement);
-
-    /**
-     * Read a value of this stamp from memory.
-     */
-    public Constant readConstantArrayElementForOffset(ConstantReflectionProvider constantReflection, JavaConstant constant, long displacement) {
-        return constantReflection.readConstantArrayElementForOffset(constant, displacement);
-    }
 
     /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new

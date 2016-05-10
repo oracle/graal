@@ -84,7 +84,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
-            GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), null, graphBuilderConfig, optimisticOpts, null);
+            GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), null, null, graphBuilderConfig, optimisticOpts, null);
             graphBuilder.apply(graph);
         } catch (BailoutException e) {
             if (e.getMessage().contains("unbalanced monitors")) {
