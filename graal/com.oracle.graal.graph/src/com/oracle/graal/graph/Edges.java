@@ -58,9 +58,9 @@ public abstract class Edges extends Fields {
         this.directCount = directCount;
 
         long mask = 0;
-        assert edges.size() <= NodeClass.MAX_EDGES : String.format("Can only support a maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
-        assert directCount == edges.size() || edges.size() <= NodeClass.MAX_EDGES_WITH_LIST : String.format("Can only support a maximum of %d edges if one edge is a list (%s)",
-                        NodeClass.MAX_EDGES_WITH_LIST, type);
+        assert edges.size() <= NodeClass.MAX_EDGES : String.format("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
+        assert edges.size() - directCount <= NodeClass.MAX_LIST_EDGES : String.format("Exceeded maximum of %d list edges (%s)",
+                        NodeClass.MAX_LIST_EDGES, type);
 
         for (int i = edges.size() - 1; i >= 0; i--) {
             FieldsScanner.FieldInfo f = edges.get(i);
