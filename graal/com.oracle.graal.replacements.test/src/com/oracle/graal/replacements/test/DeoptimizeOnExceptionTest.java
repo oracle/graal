@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
+import com.oracle.graal.test.ExportingClassLoader;
 
 /**
  * Tests that deoptimization upon exception handling works.
@@ -86,7 +87,7 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
         return "SUCCESS";
     }
 
-    public static class MyClassLoader extends ClassLoader {
+    public static class MyClassLoader extends ExportingClassLoader {
         @Override
         protected Class<?> findClass(String className) throws ClassNotFoundException {
             return defineClass(name.replace('/', '.'), clazz, 0, clazz.length);

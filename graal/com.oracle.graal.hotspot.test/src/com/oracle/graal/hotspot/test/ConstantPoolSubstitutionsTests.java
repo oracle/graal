@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.test;
 
 import java.lang.reflect.Method;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
@@ -64,8 +65,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
     }
 
     private static Object getConstantPoolForObject() {
-        String javaVersion = System.getProperty("java.specification.version");
-        String miscPackage = javaVersion.compareTo("1.9") < 0 ? "sun.misc" : "jdk.internal.misc";
+        String miscPackage = JDK8OrEarlier ? "sun.misc" : "jdk.internal.misc";
         try {
             Class<?> sharedSecretsClass = Class.forName(miscPackage + ".SharedSecrets");
             Class<?> javaLangAccessClass = Class.forName(miscPackage + ".JavaLangAccess");
@@ -90,34 +90,56 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
         return getMethod(cl, methodName);
     }
 
+    /**
+     * Disables these tests until we know how to dynamically export the {@code jdk.internal.reflect}
+     * package from the {@code java.base} module to the unnamed module associated with
+     * {@link AsmLoader}. Without such an export, the test fails as follows:
+     *
+     * <pre>
+     * Caused by: java.lang.IllegalAccessError: class com.oracle.graal.hotspot.test.ConstantPoolTest
+     * (in unnamed module @0x57599b23) cannot access class jdk.internal.reflect.ConstantPool (in
+     * module java.base) because module java.base does not export jdk.internal.reflect to unnamed
+     * module @0x57599b23
+     * </pre>
+     */
+    private static void assumeJDK8() {
+        Assume.assumeTrue(JDK8OrEarlier);
+    }
+
     @Test
     public void testGetSize() {
+        assumeJDK8();
         Object cp = getConstantPoolForObject();
         test("getSize", cp);
     }
 
     @Test
     public void testGetIntAt() {
+        assumeJDK8();
         test("getIntAt");
     }
 
     @Test
     public void testGetLongAt() {
+        assumeJDK8();
         test("getLongAt");
     }
 
     @Test
     public void testGetFloatAt() {
+        assumeJDK8();
         test("getFloatAt");
     }
 
     @Test
     public void testGetDoubleAt() {
+        assumeJDK8();
         test("getDoubleAt");
     }
 
     // @Test
     public void testGetUTF8At() {
+        assumeJDK8();
         test("getUTF8At");
     }
 
