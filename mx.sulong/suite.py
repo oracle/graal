@@ -357,7 +357,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.assemblerX86" : {
+    "com.oracle.truffle.llvm.asm.amd64" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -374,8 +374,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nodes.impl",
-        "com.oracle.truffle.llvm.assemblerX86"
+        "com.oracle.truffle.llvm.asm.amd64",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",

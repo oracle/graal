@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.assemblerX86;
+package com.oracle.truffle.llvm.asm.amd64;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmAddlNodeGen;
