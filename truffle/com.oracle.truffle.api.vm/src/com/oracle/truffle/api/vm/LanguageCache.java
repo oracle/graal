@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -46,19 +47,14 @@ import com.oracle.truffle.api.TruffleOptions;
  * cache with languages found in application classloader.
  */
 final class LanguageCache {
-    private static final boolean PRELOAD;
-    private static final Map<String, LanguageCache> CACHE;
+    private static final boolean PRELOAD = TruffleOptions.AOT;
+    private static final Map<String, LanguageCache> CACHE = TruffleOptions.AOT ? new HashMap<String, LanguageCache>() : null;
     private TruffleLanguage<?> language;
     private final ClassLoader loader;
     private final String className;
     private final Set<String> mimeTypes;
     private final String name;
     private final String version;
-
-    static {
-        CACHE = TruffleOptions.AOT ? initializeLanguages(null) : null;
-        PRELOAD = CACHE != null;
-    }
 
     /**
      * This method initializes all languages under the provided classloader.
@@ -69,6 +65,7 @@ final class LanguageCache {
      * @param loader The classloader to be used for finding languages.
      * @return A map of initialized languages.
      */
+    @SuppressWarnings("unused")
     private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
         Map<String, LanguageCache> map;
 
