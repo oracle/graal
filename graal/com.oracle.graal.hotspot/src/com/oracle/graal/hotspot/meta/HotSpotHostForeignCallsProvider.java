@@ -89,6 +89,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -113,7 +114,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**

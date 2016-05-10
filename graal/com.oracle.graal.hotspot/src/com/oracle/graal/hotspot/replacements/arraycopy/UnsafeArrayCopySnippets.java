@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,10 +37,10 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
 import com.oracle.graal.nodes.NamedLocationIdentity;

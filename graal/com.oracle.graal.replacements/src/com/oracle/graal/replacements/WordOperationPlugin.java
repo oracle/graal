@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.nodes.ConstantNode.forInt;
 import static com.oracle.graal.nodes.ConstantNode.forIntegerKind;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.reflect.Constructor;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -70,7 +71,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

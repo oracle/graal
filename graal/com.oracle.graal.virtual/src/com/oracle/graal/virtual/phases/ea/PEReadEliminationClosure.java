@@ -29,6 +29,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
@@ -60,7 +61,6 @@ import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheE
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 

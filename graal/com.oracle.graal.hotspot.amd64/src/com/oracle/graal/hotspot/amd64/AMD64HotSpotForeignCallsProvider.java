@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
@@ -35,7 +36,6 @@ import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.UPDATE_BY
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;

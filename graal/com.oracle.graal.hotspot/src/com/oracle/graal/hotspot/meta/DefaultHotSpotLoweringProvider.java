@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.AlwaysInlineVTableStubs;
 import static com.oracle.graal.compiler.common.GraalOptions.InlineVTableStubs;
 import static com.oracle.graal.compiler.common.GraalOptions.OmitHotExceptionStacktrace;
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
@@ -35,7 +36,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJ_
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.ref.Reference;
 
@@ -49,12 +49,12 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
