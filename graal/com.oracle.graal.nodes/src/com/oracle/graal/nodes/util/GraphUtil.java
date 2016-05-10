@@ -104,21 +104,21 @@ public class GraphUtil {
                 // node.getClass();
                 Iterator<Node> successors = current.successors().iterator();
                 if (successors.hasNext()) {
-                  Node first = successors.next();
-                  if (!successors.hasNext()) {
-                      next = (FixedNode) first;
-                  } else {
-                      if (newWorklist == null) {
-                          newWorklist = in.graph().createNodeWorkList();
-                      }
-                      for (Node successor : current.successors()) {
-                          newWorklist.add(successor);
-                          if (successor instanceof LoopExitNode) {
-                              LoopExitNode exit = (LoopExitNode) successor;
-                              exit.replaceFirstInput(exit.loopBegin(), null);
-                          }
-                      }
-                  }
+                    Node first = successors.next();
+                    if (!successors.hasNext()) {
+                        next = (FixedNode) first;
+                    } else {
+                        if (newWorklist == null) {
+                            newWorklist = in.graph().createNodeWorkList();
+                        }
+                        for (Node successor : current.successors()) {
+                            newWorklist.add(successor);
+                            if (successor instanceof LoopExitNode) {
+                                LoopExitNode exit = (LoopExitNode) successor;
+                                exit.replaceFirstInput(exit.loopBegin(), null);
+                            }
+                        }
+                    }
                 }
             }
             current.replaceAtPredecessor(null);
