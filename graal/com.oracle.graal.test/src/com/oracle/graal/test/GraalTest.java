@@ -52,25 +52,6 @@ public class GraalTest {
 
     public static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    /**
-     * A class loader that exports all packages in the module defining the class loader to all
-     * classes in the unnamed module associated with the loader.
-     */
-    public static class ExportingClassLoader extends ClassLoader {
-        public ExportingClassLoader() {
-            if (!JDK8OrEarlier) {
-                JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
-            }
-        }
-
-        public ExportingClassLoader(ClassLoader parent) {
-            super(parent);
-            if (!JDK8OrEarlier) {
-                JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
-            }
-        }
-    }
-
     protected Method getMethod(String methodName) {
         return getMethod(getClass(), methodName);
     }

@@ -29,6 +29,7 @@ import java.lang.invoke.MethodType;
 import org.junit.Test;
 
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.test.ExportingClassLoader;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;

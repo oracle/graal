@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
+import com.oracle.graal.test.ExportingClassLoader;
 
 /**
  * Tests that deoptimization upon exception handling works.
