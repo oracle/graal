@@ -29,6 +29,7 @@ import java.util.Map;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
@@ -91,7 +92,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         if (virtual instanceof VirtualInstanceNode) {
             VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
             for (int i = 0; i < instance.entryCount(); i++) {
-                readCache.put(new ReadCacheEntry(instance.field(i).getLocationIdentity(), representation, -1), values.get(i));
+                readCache.put(new ReadCacheEntry(new FieldLocationIdentity(instance.field(i)), representation, -1), values.get(i));
             }
         }
     }

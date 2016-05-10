@@ -57,7 +57,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
                 return false;
             }
             CacheEntry<?> other = (CacheEntry<?>) obj;
-            return identity == other.identity && object == other.object;
+            return identity.equals(other.identity) && object == other.object;
         }
 
         @Override
