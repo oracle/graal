@@ -34,6 +34,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.oracle.graal.asm.AbstractAddress;
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.code.DataSection.Data;
+import com.oracle.graal.code.DataSection.RawData;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.graph.NodeSourcePosition;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValue;
+
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
@@ -49,25 +69,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.DataSection.Data;
-import com.oracle.graal.code.DataSection.RawData;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
@@ -218,6 +219,10 @@ public class CompilationResultBuilder {
 
     public void recordInfopoint(int pos, DebugInfo debugInfo, InfopointReason reason) {
         compilationResult.recordInfopoint(pos, debugInfo, reason);
+    }
+
+    public void recordSourceMapping(int pcOffset, int endPcOffset, NodeSourcePosition sourcePosition) {
+        compilationResult.recordSourceMapping(pcOffset, endPcOffset, sourcePosition);
     }
 
     public void recordInlineDataInCode(Constant data) {
@@ -431,9 +436,10 @@ public class CompilationResultBuilder {
 
     private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
         try {
+            int start = crb.asm.position();
             op.emitCode(crb);
             if (op.getPosition() != null) {
-                crb.recordInfopoint(crb.asm.position(), new DebugInfo(op.getPosition()), InfopointReason.BYTECODE_POSITION);
+                crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
             }
         } catch (AssertionError t) {
             throw new JVMCIError(t);

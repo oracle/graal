@@ -30,11 +30,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class NodeSourcePosition extends BytecodePosition {
 
+    /**
+     * The receiver of the method this frame refers to.
+     */
     private final JavaConstant receiver;
 
     public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
         super(caller, method, bci);
         this.receiver = receiver;
+        assert receiver == null || method.getDeclaringClass().isInstance(receiver);
     }
 
     public JavaConstant getReceiver() {
@@ -46,12 +50,17 @@ public class NodeSourcePosition extends BytecodePosition {
         return (NodeSourcePosition) super.getCaller();
     }
 
-    public NodeSourcePosition addCaller(NodeSourcePosition link) {
+    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link) {
         if (getCaller() == null) {
-            return new NodeSourcePosition(receiver, link, getMethod(), getBCI());
+            assert newCallerReceiver == null || receiver == null : "replacing receier";
+            return new NodeSourcePosition(newCallerReceiver, link, getMethod(), getBCI());
         } else {
             return new NodeSourcePosition(receiver, getCaller().addCaller(link), getMethod(), getBCI());
         }
+    }
+
+    public NodeSourcePosition addCaller(NodeSourcePosition link) {
+        return addCaller(null, link);
     }
 
     @Override
@@ -59,8 +68,8 @@ public class NodeSourcePosition extends BytecodePosition {
         StringBuilder sb = new StringBuilder(100);
         NodeSourcePosition pos = this;
         while (pos != null) {
-            if (receiver != null) {
-                sb.append("receiver= " + receiver);
+            if (pos.receiver != null) {
+                sb.append("receiver=" + pos.receiver + " ");
             }
             MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
             pos = pos.getCaller();

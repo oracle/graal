@@ -273,42 +273,42 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         @SuppressWarnings("try")
         public boolean tryCanonicalize(final Node node, NodeClass<?> nodeClass) {
-            if (customCanonicalizer != null) {
-                Node canonical = customCanonicalizer.canonicalize(node);
-                if (performReplacement(node, canonical)) {
-                    return true;
-                } else {
-                    customCanonicalizer.simplify(node, tool);
-                    if (node.isDeleted()) {
+            try (DebugCloseable position = node.withNodeSourcePosition()) {
+                if (customCanonicalizer != null) {
+                    Node canonical = customCanonicalizer.canonicalize(node);
+                    if (performReplacement(node, canonical)) {
                         return true;
+                    } else {
+                        customCanonicalizer.simplify(node, tool);
+                        if (node.isDeleted()) {
+                            return true;
+                        }
                     }
                 }
-            }
-            if (nodeClass.isCanonicalizable()) {
-                COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment();
-                Node canonical;
-                try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
-                    try (DebugCloseable position = node.graph().withNodeSourcePosition(node)) {
+                if (nodeClass.isCanonicalizable()) {
+                    COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment();
+                    Node canonical;
+                    try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
                         canonical = ((Canonicalizable) node).canonical(tool);
                         if (canonical == node && nodeClass.isCommutative()) {
                             canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                         }
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
                     }
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
+                    if (performReplacement(node, canonical)) {
+                        return true;
+                    }
                 }
-                if (performReplacement(node, canonical)) {
-                    return true;
-                }
-            }
 
-            if (nodeClass.isSimplifiable() && simplify) {
-                Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: simplifying %s", node);
-                COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment();
-                node.simplify(tool);
-                return node.isDeleted();
+                if (nodeClass.isSimplifiable() && simplify) {
+                    Debug.log(Debug.VERBOSE_LOG_LEVEL, "Canonicalizer: simplifying %s", node);
+                    COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment();
+                    node.simplify(tool);
+                    return node.isDeleted();
+                }
+                return false;
             }
-            return false;
         }
 
 // @formatter:off

@@ -165,8 +165,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.serviceprovider",
-        "jvmci:JVMCI_API",
+        "com.oracle.graal.graph",
       ],
       "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -505,7 +504,6 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.asm",
         "com.oracle.graal.code",
-        "com.oracle.graal.compiler.common",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -683,7 +681,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.graph",
         "com.oracle.graal.api.replacements",
         "com.oracle.graal.bytecode",
         "com.oracle.graal.lir",
