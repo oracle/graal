@@ -95,6 +95,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
 
 /**
@@ -174,17 +175,17 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return createCallTargetImpl(null, rootNode);
+        return createCallTargetImpl(null, rootNode, createSpeculationLog());
     }
 
-    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
+    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
         CompilationPolicy compilationPolicy;
         if (acceptForCompilation(rootNode)) {
             compilationPolicy = new CounterAndTimeBasedCompilationPolicy();
         } else {
             compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
-        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, new HotSpotSpeculationLog());
+        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, speculationLog);
         rootNode.setCallTarget(target);
         callTargets.put(target, null);
 
@@ -192,8 +193,18 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog) {
+        return createCallTargetImpl(null, root, speculationLog);
+    }
+
+    @Override
+    public SpeculationLog createSpeculationLog() {
+        return new HotSpotSpeculationLog();
+    }
+
+    @Override
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode root) {
-        return createCallTargetImpl(source, root);
+        return createCallTargetImpl(source, root, createSpeculationLog());
     }
 
     public static void setDontInlineCallBoundaryMethod() {

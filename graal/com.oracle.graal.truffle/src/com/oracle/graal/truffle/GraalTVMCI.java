@@ -24,6 +24,7 @@ package com.oracle.graal.truffle;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -58,4 +59,13 @@ final class GraalTVMCI extends TVMCI {
         super.onFirstExecution(callTarget.getRootNode());
     }
 
+    @Override
+    protected void markFrameMaterializeCalled(FrameDescriptor descriptor) {
+        super.markFrameMaterializeCalled(descriptor);
+    }
+
+    @Override
+    protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
+        return super.getFrameMaterializeCalled(descriptor);
+    }
 }
