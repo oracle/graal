@@ -91,14 +91,13 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
             int val = cond.executeI8(frame);
+            executePhiWrites(frame);
             for (int i = 0; i < cases.length; i++) {
                 int caseValue = cases[i].executeI8(frame);
                 if (profile(i, val == caseValue)) {
-                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
-            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
@@ -150,14 +149,13 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
             int val = cond.executeI32(frame);
+            executePhiWrites(frame);
             for (int i = 0; i < cases.length; i++) {
                 int caseValue = cases[i].executeI32(frame);
                 if (profile(i, val == caseValue)) {
-                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
-            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
@@ -212,14 +210,13 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
             long val = cond.executeI64(frame);
+            executePhiWrites(frame);
             for (int i = 0; i < cases.length; i++) {
                 long caseValue = cases[i].executeI64(frame);
                 if (profile(i, val == caseValue)) {
-                    executePhiWrites(frame);
                     return i + CASE_LABEL_START_INDEX;
                 }
             }
-            executePhiWrites(frame);
             return DEFAULT_LABEL_INDEX;
         }
 
