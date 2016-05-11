@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.memory;
 
 import java.util.Collection;
 
-import jdk.vm.ci.meta.LocationIdentity;
+import com.oracle.graal.compiler.common.LocationIdentity;
 
 /**
  * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,8 @@ import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINT
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.READ_KLASS_POINTER;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_KLASS_POINTER;
-import jdk.vm.ci.meta.LocationIdentity;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;

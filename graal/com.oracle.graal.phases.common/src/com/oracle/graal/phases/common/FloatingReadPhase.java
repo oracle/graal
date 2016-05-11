@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -34,9 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.vm.ci.meta.LocationIdentity;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.graph.Graph.NodeEventScope;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,43 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 
-/**
- * The start node of a graph.
- */
-@NodeInfo(allowedUsageTypes = {InputType.Memory}, nameTemplate = "Start")
-public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
-    public static final NodeClass<StartNode> TYPE = NodeClass.create(StartNode.class);
+import jdk.vm.ci.meta.JavaKind.FormatWithToString;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-    protected StartNode(NodeClass<? extends StartNode> c) {
-        super(c);
-    }
+public class FieldLocationIdentity extends LocationIdentity implements FormatWithToString {
 
-    public StartNode() {
-        super(TYPE);
+    private ResolvedJavaField inner;
+
+    public FieldLocationIdentity(ResolvedJavaField inner) {
+        this.inner = inner;
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.any();
+    public boolean isImmutable() {
+        return false;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof FieldLocationIdentity) {
+            FieldLocationIdentity fieldLocationIdentity = (FieldLocationIdentity) obj;
+            return inner.equals(fieldLocationIdentity.inner);
+
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return inner.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return inner.getName();
     }
 }
