@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -73,6 +74,11 @@ public abstract class LLVMI32LoadNode extends LLVMI32Node {
             return doForeignAccess(frame, addr);
         }
 
+        @Specialization
+        public int executeI32(VirtualFrame frame, TruffleObject addr) {
+            return executeI32(frame, new LLVMTruffleObject(addr));
+        }
+
     }
 
     public abstract static class LLVMI32ProfilingLoadNode extends LLVMI32LoadNode {
@@ -88,6 +94,11 @@ public abstract class LLVMI32LoadNode extends LLVMI32Node {
         @Specialization
         public int executeI32(VirtualFrame frame, LLVMTruffleObject addr) {
             return doForeignAccess(frame, addr);
+        }
+
+        @Specialization
+        public int executeI32(VirtualFrame frame, TruffleObject addr) {
+            return executeI32(frame, new LLVMTruffleObject(addr));
         }
 
     }

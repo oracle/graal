@@ -72,7 +72,12 @@ public final class LLVMTruffleUnbox {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return new LLVMTruffleObject((TruffleObject) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType));
+            return doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
         }
     }
 
@@ -88,6 +93,11 @@ public final class LLVMTruffleUnbox {
         public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (int) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
         }
+
+        @Specialization
+        public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
@@ -101,6 +111,11 @@ public final class LLVMTruffleUnbox {
         @Specialization
         public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (long) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public long executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
         }
     }
 
@@ -116,6 +131,11 @@ public final class LLVMTruffleUnbox {
         public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (byte) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
         }
+
+        @Specialization
+        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
@@ -129,6 +149,11 @@ public final class LLVMTruffleUnbox {
         @Specialization
         public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (float) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public float executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
         }
     }
 
@@ -144,6 +169,11 @@ public final class LLVMTruffleUnbox {
         public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (double) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
         }
+
+        @Specialization
+        public double executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
@@ -157,6 +187,11 @@ public final class LLVMTruffleUnbox {
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             return (boolean) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+            return executeIntrinsic(frame, new LLVMTruffleObject(value));
         }
     }
 }

@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
@@ -64,6 +65,11 @@ public abstract class LLVMTruffleGetSize extends LLVMI32Intrinsic {
     @Specialization
     public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
         return (int) getSize(frame, value);
+    }
+
+    @Specialization
+    public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+        return executeIntrinsic(frame, new LLVMTruffleObject(value));
     }
 
 }

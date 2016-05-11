@@ -32,17 +32,16 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 @NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMTruffleImport extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleAddressToFunction extends LLVMAddressIntrinsic {
 
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
-        String id = LLVMTruffleIntrinsicUtil.readString(value);
-        return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(id);
+        return LLVMFunctionDescriptor.create((int) value.getVal());
     }
 
 }
