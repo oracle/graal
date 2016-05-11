@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeWorkList;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -640,12 +641,15 @@ public class GraphUtil {
     private static final class DefaultSimplifierTool implements SimplifierTool {
         private final MetaAccessProvider metaAccess;
         private final ConstantReflectionProvider constantReflection;
+        private final ConstantFieldProvider constantFieldProvider;
         private final boolean canonicalizeReads;
         private final Assumptions assumptions;
 
-        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
+        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, boolean canonicalizeReads,
+                        Assumptions assumptions) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
+            this.constantFieldProvider = constantFieldProvider;
             this.canonicalizeReads = canonicalizeReads;
             this.assumptions = assumptions;
         }
@@ -658,6 +662,11 @@ public class GraphUtil {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
+        }
+
+        @Override
+        public ConstantFieldProvider getConstantFieldProvider() {
+            return constantFieldProvider;
         }
 
         @Override
@@ -695,7 +704,8 @@ public class GraphUtil {
         }
     }
 
-    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads, Assumptions assumptions) {
-        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads, assumptions);
+    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                    boolean canonicalizeReads, Assumptions assumptions) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions);
     }
 }

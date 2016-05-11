@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,18 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -94,6 +83,18 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A graph decoder that performs partial evaluation, i.e., that performs method inlining and
@@ -191,6 +192,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
+        }
+
+        @Override
+        public ConstantFieldProvider getConstantFieldProvider() {
+            return constantFieldProvider;
         }
 
         @Override
@@ -350,8 +356,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, Architecture architecture) {
-        super(metaAccess, constantReflection, stampProvider, true, architecture);
+    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
+                    Architecture architecture) {
+        super(metaAccess, constantReflection, constantFieldProvider, stampProvider, true, architecture);
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {

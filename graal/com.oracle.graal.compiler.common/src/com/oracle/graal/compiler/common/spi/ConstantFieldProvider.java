@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.spi;
+package com.oracle.graal.compiler.common.spi;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
-import com.oracle.graal.graph.Node;
+/**
+ * Implements the logic that decides whether a field read should be constant folded.
+ */
+public interface ConstantFieldProvider {
 
-public interface CanonicalizerTool {
+    public interface ConstantFieldTool<T> {
 
-    Assumptions getAssumptions();
+        JavaConstant readValue();
 
-    MetaAccessProvider getMetaAccess();
+        JavaConstant getReceiver();
 
-    ConstantReflectionProvider getConstantReflection();
+        T foldConstant(JavaConstant ret);
 
-    ConstantFieldProvider getConstantFieldProvider();
-
-    boolean canonicalizeReads();
+        T foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable);
+    }
 
     /**
-     * If this method returns false, not all {@link Node#usages() usages of a node} are yet
-     * available. So a node must not be canonicalized base on, e.g., information returned from
-     * {@link Node#hasNoUsages()}.
+     * Decide whether a read from the {@code field} should be constant folded. This should return
+     * {@link ConstantFieldTool#foldConstant} or {@link ConstantFieldTool#foldStableArray} if the
+     * read should be constant folded, or {@code null} otherwise.
      */
-    boolean allUsagesAvailable();
+    <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool);
 }

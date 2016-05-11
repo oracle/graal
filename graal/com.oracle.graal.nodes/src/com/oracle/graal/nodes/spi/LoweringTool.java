@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface LoweringTool {
 
@@ -41,6 +42,8 @@ public interface LoweringTool {
     LoweringProvider getLowerer();
 
     ConstantReflectionProvider getConstantReflection();
+
+    ConstantFieldProvider getConstantFieldProvider();
 
     Replacements getReplacements();
 

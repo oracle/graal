@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Extends {@link Providers} to include a number of extra capabilities used by the HotSpot parts of
@@ -46,10 +47,10 @@ public class HotSpotProviders extends Providers {
     private final HotSpotWordTypes wordTypes;
     private final Plugins graphBuilderPlugins;
 
-    public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, SuitesProvider suites, HotSpotRegistersProvider registers, SnippetReflectionProvider snippetReflection,
-                    HotSpotWordTypes wordTypes, Plugins graphBuilderPlugins) {
-        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, new HotSpotStampProvider());
+    public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantField,
+                    HotSpotForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, SuitesProvider suites, HotSpotRegistersProvider registers,
+                    SnippetReflectionProvider snippetReflection, HotSpotWordTypes wordTypes, Plugins graphBuilderPlugins) {
+        super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, new HotSpotStampProvider());
         this.suites = suites;
         this.registers = registers;
         this.snippetReflection = snippetReflection;

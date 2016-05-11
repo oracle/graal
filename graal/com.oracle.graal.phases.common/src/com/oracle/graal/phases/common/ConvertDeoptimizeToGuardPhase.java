@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,7 +198,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             FixedNode next = pred.next();
             pred.setNext(guard);
             guard.setNext(next);
-            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, false, graph.getAssumptions());
+            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false, graph.getAssumptions());
             survivingSuccessor.simplify(simplifierTool);
             return;
         }

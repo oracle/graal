@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions,
                     Architecture architecture) {
-        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), architecture);
+        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getStampProvider(), architecture);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
@@ -66,8 +66,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-        return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(),
-                        providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), graphBuilderConfig,
+                        optimisticOpts, initialIntrinsicContext);
     }
 
     @SuppressWarnings("try")

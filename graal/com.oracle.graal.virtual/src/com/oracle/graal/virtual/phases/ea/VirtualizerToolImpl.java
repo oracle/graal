@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.MaximumEscapeAnalysi
 
 import java.util.List;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodes.FixedNode;
@@ -41,16 +37,24 @@ import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+
 class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
+    private final ConstantFieldProvider constantFieldProvider;
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure, Assumptions assumptions) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, PartialEscapeClosure<?> closure,
+                    Assumptions assumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
+        this.constantFieldProvider = constantFieldProvider;
         this.closure = closure;
         this.assumptions = assumptions;
     }
@@ -69,6 +73,11 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public ConstantReflectionProvider getConstantReflectionProvider() {
         return constantReflection;
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return constantFieldProvider;
     }
 
     public void reset(PartialEscapeBlockState<?> newState, ValueNode newCurrent, FixedNode newPosition, GraphEffectList newEffects) {
