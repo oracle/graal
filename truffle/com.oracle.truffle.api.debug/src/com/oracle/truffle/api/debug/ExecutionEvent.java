@@ -72,13 +72,8 @@ public final class ExecutionEvent {
         if (debugger[0] instanceof Debugger) {
             return (Debugger) debugger[0];
         }
-        Debugger dbg;
-        try {
-            dbg = Debugger.find(engine, true);
-            dbg.executionStarted(currentDepth, source);
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
+        Debugger dbg = Debugger.find(engine, true);
+        dbg.executionStarted(currentDepth, source);
         debugger[0] = dbg;
         return dbg;
     }
