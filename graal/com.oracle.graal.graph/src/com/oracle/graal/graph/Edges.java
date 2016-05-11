@@ -50,33 +50,10 @@ public abstract class Edges extends Fields {
     private final int directCount;
     private final Type type;
 
-    public final long iterationInitMask;
-
     public Edges(Type type, int directCount, ArrayList<? extends FieldsScanner.FieldInfo> edges) {
         super(edges);
         this.type = type;
         this.directCount = directCount;
-
-        long mask = 0;
-        assert edges.size() <= NodeClass.MAX_EDGES : String.format("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
-        assert edges.size() - directCount <= NodeClass.MAX_LIST_EDGES : String.format("Exceeded maximum of %d list edges (%s)",
-                        NodeClass.MAX_LIST_EDGES, type);
-
-        for (int i = edges.size() - 1; i >= 0; i--) {
-            FieldsScanner.FieldInfo f = edges.get(i);
-            assert ((f.offset & 0xFF) == f.offset) : "field offset too large!";
-            mask <<= NodeClass.NEXT_EDGE;
-            mask |= f.offset;
-            if (i >= directCount) {
-                mask |= 0x3;
-            }
-        }
-
-        this.iterationInitMask = mask;
-    }
-
-    public final long getIterationInitMask() {
-        return iterationInitMask;
     }
 
     public static void translateInto(Edges edges, ArrayList<EdgeInfo> infos) {

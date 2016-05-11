@@ -187,9 +187,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         try (DebugCloseable t1 = Init_Edges.start()) {
             successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
-            successorIteration = successors.getIterationInitMask();
+            successorIteration = computeIterationMask(successors.type(), successors.getDirectCount(), successors.getOffsets());
             inputs = new InputEdges(fs.directInputs, fs.inputs);
-            inputsIteration = inputs.getIterationInitMask();
+            inputsIteration = computeIterationMask(inputs.type(), inputs.getDirectCount(), inputs.getOffsets());
         }
         try (DebugCloseable t1 = Init_Data.start()) {
             data = new Fields(fs.data);
@@ -231,6 +231,24 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
         nodeIterableCount = Debug.counter("NodeIterable_%s", clazz);
         assert verifyIterableIds();
+    }
+
+    public static long computeIterationMask(Type type, int directCount, long[] offsets) {
+        long mask = 0;
+        assert offsets.length <= NodeClass.MAX_EDGES : String.format("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
+        assert offsets.length - directCount <= NodeClass.MAX_LIST_EDGES : String.format("Exceeded maximum of %d list edges (%s)",
+                        NodeClass.MAX_LIST_EDGES, type);
+
+        for (int i = offsets.length - 1; i >= 0; i--) {
+            long offset = offsets[i];
+            assert ((offset & 0xFF) == offset) : "field offset too large!";
+            mask <<= NodeClass.NEXT_EDGE;
+            mask |= offset;
+            if (i >= directCount) {
+                mask |= 0x3;
+            }
+        }
+        return mask;
     }
 
     private synchronized void addIterableId(int newIterableId) {
