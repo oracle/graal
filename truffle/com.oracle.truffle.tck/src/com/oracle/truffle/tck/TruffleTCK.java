@@ -343,7 +343,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Code snippet to multiplyCode two two variables. The test uses the snippet as a parameter to
+     * Code snippet to multiply two variables. The test uses the snippet as a parameter to
      * your language' s
      * {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
      * method.
