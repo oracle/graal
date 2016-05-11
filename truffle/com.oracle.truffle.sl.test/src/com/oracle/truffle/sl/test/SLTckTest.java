@@ -219,6 +219,12 @@ public class SLTckTest extends TruffleTCK {
     }
 
     @Override
+    protected String addToArray() {
+        // skip these tests; SL doesn't have arrays
+        return null;
+    }
+
+    @Override
     protected void assertDouble(String msg, double expectedValue, double actualValue) {
         // don't compare doubles, SL had to convert them to longs
     }
