@@ -34,7 +34,7 @@ import com.oracle.truffle.api.Truffle;
 final class ContextStore {
     final Object vm;
 
-    @CompilationFinal Object[] store;
+    @CompilationFinal(dimensions = 1) Object[] store;
     @CompilationFinal private Assumption storeStable = Truffle.getRuntime().createAssumption("context store stable");
 
     ContextStore(Object vm, int capacity) {

@@ -760,7 +760,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         return new DynamicObjectFactory() {
-            @CompilationFinal private final PropertyImpl[] instanceFields = properties.toArray(new PropertyImpl[properties.size()]);
+            @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields = properties.toArray(new PropertyImpl[properties.size()]);
 
             @ExplodeLoop
             public DynamicObject newInstance(Object... initialValues) {
