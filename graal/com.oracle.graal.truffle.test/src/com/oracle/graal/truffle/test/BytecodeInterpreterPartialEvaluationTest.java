@@ -87,9 +87,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     public static class Program extends RootNode {
         private final String name;
-        @CompilationFinal private final byte[] bytecodes;
-        @CompilationFinal private final FrameSlot[] locals;
-        @CompilationFinal private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
 
         public Program(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(MockLanguage.class, null, null);
@@ -535,7 +535,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     public static class InstArrayProgram extends RootNode {
         private final String name;
-        @CompilationFinal protected final Inst[] inst;
+        @CompilationFinal(dimensions = 1) protected final Inst[] inst;
         protected final FrameSlot returnSlot;
 
         public InstArrayProgram(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
