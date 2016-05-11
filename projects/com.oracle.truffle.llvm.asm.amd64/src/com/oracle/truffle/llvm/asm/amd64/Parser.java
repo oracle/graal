@@ -55,12 +55,12 @@ public class Parser {
 	public Token t;    // last recognized token
 	public Token la;   // lookahead token
 	int errDist = minErrDist;
-	
+
 	public final Scanner scanner;
 	public final Errors errors;
 	private final AsmNodeFactory factory;
 	private LLVMInlineAssemblyRootNode root;
-	
+
 
 	public Parser(String asmSnippet, @SuppressWarnings("unused") String asmFlags, @SuppressWarnings("unused") LLVMExpressionNode[] args, @SuppressWarnings("unused") LLVMBaseType retType) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
@@ -77,7 +77,7 @@ public class Parser {
 		if (errDist >= minErrDist) errors.SemErr(t.line, t.col, msg);
 		errDist = 0;
 	}
-	
+
 	void Get () {
 		for (;;) {
 			t = la;
@@ -90,15 +90,15 @@ public class Parser {
 			la = t;
 		}
 	}
-	
+
 	void Expect (int n) {
 		if (la.kind==n) Get(); else { SynErr(n); }
 	}
-	
+
 	boolean StartOf (int s) {
 		return set[s][la.kind];
 	}
-	
+
 	void ExpectWeak (int n, int follow) {
 		if (la.kind == n) Get();
 		else {
@@ -106,7 +106,7 @@ public class Parser {
 			while (!StartOf(follow)) Get();
 		}
 	}
-	
+
 	boolean WeakSeparator (int n, int syFol, int repFol) {
 		int kind = la.kind;
 		if (kind == n) { Get(); return true; }
@@ -120,7 +120,7 @@ public class Parser {
 			return StartOf(syFol);
 		}
 	}
-	
+
 	void InlineAssembly() {
 		LLVMI32Node node;
 		Expect(4);
@@ -259,7 +259,7 @@ public class Parser {
 
 	public LLVMInlineAssemblyRootNode Parse() {
 		la = new Token();
-		la.val = "";		
+		la.val = "";
 		Get();
 		InlineAssembly();
 		Expect(0);
@@ -272,7 +272,7 @@ public class Parser {
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_x}
 
 	};
-	
+
 } // end Parser
 
 
@@ -280,7 +280,7 @@ class Errors {
 	public int count = 0;                                    // number of errors detected
 	public java.io.PrintStream errorStream = System.out;     // error messages go to this stream
 	public String errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
-	
+
 	protected void printMsg(int line, int column, String msg) {
 		StringBuffer b = new StringBuffer(errMsgFormat);
 		int pos = b.indexOf("{0}");
@@ -291,7 +291,7 @@ class Errors {
 		if (pos >= 0) b.replace(pos, pos+3, msg);
 		errorStream.println(b.toString());
 	}
-	
+
 	public void SynErr (int line, int col, int n) {
 		String s;
 		switch (n) {
@@ -334,24 +334,24 @@ class Errors {
 		count++;
 	}
 
-	public void SemErr (int line, int col, String s) {	
+	public void SemErr (int line, int col, String s) {
 		printMsg(line, col, s);
 		count++;
 	}
-	
+
 	public void SemErr (String s) {
 		errorStream.println(s);
 		count++;
 	}
-	
-	public void Warning (int line, int col, String s) {	
+
+	public void Warning (int line, int col, String s) {
 		printMsg(line, col, s);
 	}
-	
+
 	public void Warning (String s) {
 		errorStream.println(s);
 	}
-	
+
 } // Errors
 
 
