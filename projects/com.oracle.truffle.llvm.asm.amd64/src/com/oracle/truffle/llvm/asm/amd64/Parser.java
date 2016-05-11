@@ -361,4 +361,5 @@ class FatalError extends RuntimeException {
 	public FatalError(String s) {
 	    super(s);
 	}
+
 }
