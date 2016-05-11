@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.debug.IntervalDumper;
+
+import jdk.vm.ci.meta.Value;
 
 class StackIntervalDumper implements IntervalDumper {
     private final StackInterval[] intervals;

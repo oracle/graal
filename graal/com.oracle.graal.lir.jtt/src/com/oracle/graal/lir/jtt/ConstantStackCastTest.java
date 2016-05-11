@@ -24,20 +24,21 @@ package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import jdk.vm.ci.common.JVMCIError;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import org.junit.Before;
-import org.junit.Test;
-
-import com.oracle.graal.lir.ConstantValue;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 /**
  * Tests move from a constant to a wider stack slot (e.g. byte constant to integer stack slot).
@@ -80,7 +81,7 @@ public class ConstantStackCastTest extends LIRTest {
                 JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
                 return new ConstantValue(srcKind, byteConst);
             } else {
-                throw JVMCIError.shouldNotReachHere("Kind not supported: " + srcKind);
+                throw GraalError.shouldNotReachHere("Kind not supported: " + srcKind);
             }
         }
 

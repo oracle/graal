@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.type.SymbolPointerStamp;
@@ -29,7 +30,6 @@ import com.oracle.graal.hotspot.word.SymbolPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotMemoryAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -54,7 +54,7 @@ public final class HotSpotSymbolConstant {
         HotSpotMetaAccessProvider hsMeta = (HotSpotMetaAccessProvider) b.getMetaAccess();
         HotSpotSymbol vmSymbol = hsMeta.lookupSymbol(symbol);
         if (vmSymbol == null) {
-            throw JVMCIError.shouldNotReachHere(String.format("VM symbol '%s' not found", symbol));
+            throw GraalError.shouldNotReachHere(String.format("VM symbol '%s' not found", symbol));
         }
 
         b.addPush(JavaKind.Object, new ConstantNode(vmSymbol.asConstant(), SymbolPointerStamp.symbolNonNull()));

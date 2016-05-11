@@ -26,19 +26,19 @@ import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.graal.code.DataSection.Data;
+import com.oracle.graal.code.DataSection.Patches;
+import com.oracle.graal.code.DataSection.SerializableData;
+import com.oracle.graal.code.DataSection.ZeroData;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.lir.asm.DataBuilder;
+
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
-
-import com.oracle.graal.code.DataSection.Data;
-import com.oracle.graal.code.DataSection.Patches;
-import com.oracle.graal.code.DataSection.SerializableData;
-import com.oracle.graal.code.DataSection.ZeroData;
-import com.oracle.graal.lir.asm.DataBuilder;
 
 public class HotSpotDataBuilder extends DataBuilder {
 
@@ -58,7 +58,7 @@ public class HotSpotDataBuilder extends DataBuilder {
                 HotSpotConstant c = (HotSpotConstant) vmConstant;
                 compressed = c.isCompressed();
             } else {
-                throw new JVMCIError(String.valueOf(constant));
+                throw new GraalError(String.valueOf(constant));
             }
 
             size = compressed ? 4 : target.wordSize;
@@ -89,7 +89,7 @@ public class HotSpotDataBuilder extends DataBuilder {
             SerializableConstant s = (SerializableConstant) constant;
             return new SerializableData(s);
         } else {
-            throw new JVMCIError(String.valueOf(constant));
+            throw new GraalError(String.valueOf(constant));
         }
     }
 }

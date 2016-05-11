@@ -28,8 +28,6 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.Invoke;
@@ -38,6 +36,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.phases.common.inlining.policy.AbstractInliningPolicy;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * <p>

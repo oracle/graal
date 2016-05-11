@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.debug.GraalError.unimplemented;
 import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static com.oracle.graal.java.BytecodeParserOptions.FailedLoopExplosionIsFatal;
 import static com.oracle.graal.java.BytecodeParserOptions.MaximumLoopExplosionCount;
-import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.Arrays;

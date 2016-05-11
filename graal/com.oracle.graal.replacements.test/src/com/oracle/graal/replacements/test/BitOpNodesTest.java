@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -38,6 +36,8 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.replacements.nodes.BitScanReverseNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class BitOpNodesTest extends GraalCompilerTest {
 

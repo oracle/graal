@@ -32,8 +32,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueConsumer;
@@ -41,6 +39,8 @@ import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 import com.oracle.graal.lir.util.IndexedValueMap;
 import com.oracle.graal.lir.util.ValueSet;
+
+import jdk.vm.ci.meta.Value;
 
 final class RegStackValueSet extends ValueSet<RegStackValueSet> {
 

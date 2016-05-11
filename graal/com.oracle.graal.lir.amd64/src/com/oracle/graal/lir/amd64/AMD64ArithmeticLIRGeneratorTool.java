@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This interface can be used to generate AMD64 LIR for arithmetic operations.

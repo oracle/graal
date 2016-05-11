@@ -40,11 +40,11 @@ import java.util.Deque;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-
 import com.oracle.graal.debug.Management;
 import com.sun.management.ThreadMXBean;
+
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 
 @SuppressWarnings("unused")
 public final class CompilationStatistics {

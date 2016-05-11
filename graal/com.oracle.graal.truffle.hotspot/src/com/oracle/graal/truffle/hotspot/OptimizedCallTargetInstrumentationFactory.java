@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into

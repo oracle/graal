@@ -25,10 +25,6 @@ package com.oracle.graal.nodes.calc;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.SerializableConstant;
-
 import com.oracle.graal.compiler.common.type.ArithmeticStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -40,6 +36,10 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.SerializableConstant;
 
 /**
  * The {@code ReinterpretNode} class represents a reinterpreting conversion that changes the stamp

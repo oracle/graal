@@ -26,14 +26,14 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.FieldsScanner;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.Value;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
@@ -125,7 +125,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             } else if (field.isAnnotationPresent(LIRInstruction.Def.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(LIRInstruction.Def.class).value()));
             } else {
-                JVMCIError.shouldNotReachHere();
+                GraalError.shouldNotReachHere();
             }
             return result;
         }
@@ -201,7 +201,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             case DEF:
                 return defs;
             default:
-                throw JVMCIError.shouldNotReachHere("unknown OperandMode: " + mode);
+                throw GraalError.shouldNotReachHere("unknown OperandMode: " + mode);
         }
     }
 

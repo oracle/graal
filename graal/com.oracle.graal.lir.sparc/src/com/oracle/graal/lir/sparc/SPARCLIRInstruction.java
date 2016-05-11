@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.

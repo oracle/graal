@@ -43,6 +43,7 @@ import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -56,7 +57,6 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -298,7 +298,7 @@ public class AArch64Move {
             super(TYPE, kind, address, state);
             this.input = input;
             if (!input.isDefaultForKind()) {
-                throw JVMCIError.shouldNotReachHere("Can only store null constants to memory");
+                throw GraalError.shouldNotReachHere("Can only store null constants to memory");
             }
         }
 
@@ -407,22 +407,22 @@ public class AArch64Move {
             } else if (isStackSlot(result)) {
                 reg2stack(crb, masm, result, asAllocatableValue(input));
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(crb, masm, result, asAllocatableValue(input));
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, result, asJavaConstant(input));
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -487,7 +487,7 @@ public class AArch64Move {
                         maskedValue = value;
                         break;
                     default:
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                 }
                 masm.mov(dst, maskedValue);
                 break;
@@ -519,7 +519,7 @@ public class AArch64Move {
                 }
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("kind=" + input.getJavaKind().getStackKind());
+                throw GraalError.shouldNotReachHere("kind=" + input.getJavaKind().getStackKind());
         }
     }
 

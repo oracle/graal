@@ -31,12 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -53,6 +47,12 @@ import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand

@@ -24,9 +24,6 @@ package com.oracle.graal.hotspot;
 
 import java.util.Map;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.StackSlot;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.LIR;
@@ -34,6 +31,9 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResultBase;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.StackSlot;
 
 public class HotSpotLIRGenerationResult extends LIRGenerationResultBase {
 

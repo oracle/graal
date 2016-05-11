@@ -33,6 +33,7 @@ import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
@@ -42,7 +43,6 @@ import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -70,7 +70,7 @@ public class CipherBlockChainingSubstitutions {
             cipherBlockChainingClass = Class.forName("com.sun.crypto.provider.CipherBlockChaining", true, cl);
             rOffset = UNSAFE.objectFieldOffset(cipherBlockChainingClass.getDeclaredField("r"));
         } catch (Exception ex) {
-            throw new JVMCIError(ex);
+            throw new GraalError(ex);
         }
     }
 

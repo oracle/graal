@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
@@ -33,7 +34,6 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
@@ -75,7 +75,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 }
             }
         }
-        throw new JVMCIError("Graal compiler configuration '%s' not found.", name);
+        throw new GraalError("Graal compiler configuration '%s' not found.", name);
     }
 
     private abstract static class LazyGraalRuntime implements Supplier<GraalRuntime> {
@@ -119,7 +119,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             if (compiler instanceof GraalJVMCICompiler) {
                 return (GraalJVMCICompiler) compiler;
             } else {
-                throw new JVMCIError("JVMCI system compiler '%s' is not a Graal compiler.", compiler.getClass().getName());
+                throw new GraalError("JVMCI system compiler '%s' is not a Graal compiler.", compiler.getClass().getName());
             }
         }
     }

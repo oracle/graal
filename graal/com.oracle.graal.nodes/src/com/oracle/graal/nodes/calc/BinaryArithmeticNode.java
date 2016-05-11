@@ -27,6 +27,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -43,7 +44,6 @@ import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 
 @NodeInfo
@@ -134,7 +134,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getY();
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
 
@@ -145,7 +145,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getX();
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }
@@ -256,7 +256,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof XorNode) {
             return new XorNode(a, new XorNode(m1, m2));
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 

@@ -24,11 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.Collection;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -43,6 +38,11 @@ import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic

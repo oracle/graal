@@ -29,19 +29,19 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.ArrayMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 
 /**
  */
@@ -200,7 +200,7 @@ final class RegisterVerifier {
     static boolean checkState(AbstractBlockBase<?> block, LIRInstruction op, TraceInterval[] inputState, Value operand, Value reg, TraceInterval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
-                throw new JVMCIError(
+                throw new GraalError(
                                 "Error in register allocation: operation (%s) in block %s expected register %s (operand %s) to contain the value of interval %s but data-flow says it contains interval %s",
                                 op, block, reg, operand, interval, inputState[asRegister(reg).number]);
             }

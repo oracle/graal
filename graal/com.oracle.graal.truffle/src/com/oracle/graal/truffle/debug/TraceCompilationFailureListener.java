@@ -27,11 +27,11 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import jdk.vm.ci.code.BailoutException;
-
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+
+import jdk.vm.ci.code.BailoutException;
 
 public final class TraceCompilationFailureListener extends AbstractDebugCompilationListener {
 

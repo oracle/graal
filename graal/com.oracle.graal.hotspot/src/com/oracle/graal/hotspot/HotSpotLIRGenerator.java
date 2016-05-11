@@ -22,12 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
 import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
@@ -41,6 +36,11 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
@@ -71,7 +71,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param saveRegisterOp saved registers
      */
     default void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -81,7 +81,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param initialInfo
      */
     default void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -93,7 +93,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param saveRegisterOp
      */
     default void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -102,7 +102,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param saveRegisterOp
      */
     default void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -114,7 +114,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param initialInfo
      */
     default void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -126,7 +126,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @return a {@code Deoptimization::UnrollBlock} pointer
      */
     default Value emitUncommonTrapCall(Value trapRequest, Value mode, SaveRegistersOp saveRegisterOp) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -137,7 +137,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @return a {@code Deoptimization::UnrollBlock} pointer
      */
     default Value emitDeoptimizationFetchUnrollInfoCall(Value mode, SaveRegistersOp saveRegisterOp) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**

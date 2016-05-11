@@ -26,9 +26,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
@@ -215,7 +214,7 @@ public class LoopFragmentInside extends LoopFragment {
         } else if (phi instanceof MemoryPhiNode) {
             ret = new MemoryPhiNode(merge, ((MemoryPhiNode) phi).getLocationIdentity());
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
         return graph.addWithoutUnique(ret);
     }

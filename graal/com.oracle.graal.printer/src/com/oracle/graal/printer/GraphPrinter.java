@@ -26,9 +26,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Graph;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 interface GraphPrinter extends Closeable {
 

@@ -32,6 +32,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writ
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -46,7 +47,6 @@ import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 
 /**
  * Uncommon trap stub.
@@ -110,7 +110,7 @@ public class UncommonTrapStub extends SnippetStub {
             case 1:
                 return providers.getRegisters().getStackPointerRegister();
             default:
-                throw JVMCIError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
+                throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }
     }
 

@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory.InjectionProvider;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NodeIntrinsificationProvider implements InjectionProvider {
 
@@ -74,7 +74,7 @@ public class NodeIntrinsificationProvider implements InjectionProvider {
         } else if (type.equals(SnippetReflectionProvider.class)) {
             return type.cast(snippetReflection);
         } else {
-            throw new JVMCIError("Cannot handle injected argument of type %s.", type.getName());
+            throw new GraalError("Cannot handle injected argument of type %s.", type.getName());
         }
     }
 }

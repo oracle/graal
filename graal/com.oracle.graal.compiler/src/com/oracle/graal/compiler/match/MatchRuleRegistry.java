@@ -30,16 +30,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.vm.ci.common.JVMCIError;
-import com.oracle.graal.serviceprovider.GraalServices;
-
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.Position;
+import com.oracle.graal.serviceprovider.GraalServices;
 
 public class MatchRuleRegistry {
 
@@ -62,7 +61,7 @@ public class MatchRuleRegistry {
                 }
             }
             if (result[i] == null) {
-                throw new JVMCIError("unknown field \"%s\" in class %s", names[i], nodeClass);
+                throw new GraalError("unknown field \"%s\" in class %s", names[i], nodeClass);
             }
         }
         return result;

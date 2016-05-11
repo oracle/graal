@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.graal.lir.Variable;
+
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.lir.Variable;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

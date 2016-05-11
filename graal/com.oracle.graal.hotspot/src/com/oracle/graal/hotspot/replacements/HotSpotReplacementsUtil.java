@@ -32,24 +32,12 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 
 import java.lang.reflect.Field;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -73,6 +61,18 @@ import com.oracle.graal.replacements.ReplacementsUtil;
 import com.oracle.graal.replacements.nodes.ReadRegisterNode;
 import com.oracle.graal.replacements.nodes.WriteRegisterNode;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 //JaCoCo Exclude
 
@@ -466,7 +466,7 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
         if (Lazy.arrayKlassComponentMirrorOffset == Integer.MAX_VALUE) {
-            throw new JVMCIError("ArrayKlass::_component_mirror does not exist");
+            throw new GraalError("ArrayKlass::_component_mirror does not exist");
         }
         return Lazy.arrayKlassComponentMirrorOffset;
     }
@@ -964,7 +964,7 @@ public class HotSpotReplacementsUtil {
         try {
             return UNSAFE.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
         } catch (Exception e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 

@@ -34,16 +34,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
@@ -75,6 +69,12 @@ import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.
@@ -308,7 +308,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 case VERIFY_LOWERING:
                     return "VerifyLoweringRound";
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
 
@@ -526,7 +526,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 f = f.parent;
                 nextState = ST_ENTER;
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
             state = nextState;
         }
@@ -587,7 +587,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 f = f.parent;
                 nextState = ST_ENTER;
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
             state = nextState;
         }

@@ -24,10 +24,6 @@ package com.oracle.graal.lir.profiling;
 
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
@@ -38,6 +34,10 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
     public static final String INVOCATION_GROUP = "METHOD_INVOCATION_COUNTER";

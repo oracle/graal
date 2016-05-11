@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -45,7 +46,6 @@ import com.oracle.graal.nodes.spi.StampProvider;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -165,7 +165,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -237,12 +237,12 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public IntrinsicContext getIntrinsic() {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
     public BailoutException bailout(String string) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -262,7 +262,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

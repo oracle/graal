@@ -24,8 +24,6 @@ package com.oracle.graal.replacements.test;
 
 import java.util.Objects;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,13 +31,15 @@ import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.nodes.WordCastNode;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests for derived oops in reference maps.

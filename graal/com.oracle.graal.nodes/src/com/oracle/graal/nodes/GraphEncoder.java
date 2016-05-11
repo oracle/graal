@@ -28,8 +28,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.vm.ci.code.Architecture;
-
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.FrequencyEncoder;
 import com.oracle.graal.compiler.common.util.TypeConversion;
@@ -45,6 +43,8 @@ import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
  * Encodes a {@link StructuredGraph} to a compact byte[] array. All nodes of the graph and edges

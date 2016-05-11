@@ -31,9 +31,9 @@ import static com.oracle.graal.bytecode.Bytecodes.DUP_X2;
 import static com.oracle.graal.bytecode.Bytecodes.POP;
 import static com.oracle.graal.bytecode.Bytecodes.POP2;
 import static com.oracle.graal.bytecode.Bytecodes.SWAP;
+import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 import static com.oracle.graal.java.BytecodeParserOptions.HideSubstitutionStates;
 import static com.oracle.graal.nodes.FrameState.TWO_SLOT_MARKER;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,11 +58,11 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
+import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 

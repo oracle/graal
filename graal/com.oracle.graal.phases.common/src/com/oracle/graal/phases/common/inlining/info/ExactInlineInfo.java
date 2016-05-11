@@ -24,12 +24,12 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.Collection;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Represents an inlining opportunity where the compiler can statically determine a monomorphic

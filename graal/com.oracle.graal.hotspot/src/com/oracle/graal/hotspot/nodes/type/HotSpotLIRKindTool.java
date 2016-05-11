@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import jdk.vm.ci.meta.LIRKind;
-
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+
+import jdk.vm.ci.meta.LIRKind;
 
 /**
  * Extension of {@link LIRKindTool} that includes support for compressed pointer kinds.

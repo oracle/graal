@@ -24,11 +24,9 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeSuccessorList;
@@ -37,6 +35,8 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.Constant;
 
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
@@ -162,7 +162,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      */
     public AbstractBeginNode defaultSuccessor() {
         if (defaultSuccessorIndex() == -1) {
-            throw new JVMCIError("unexpected");
+            throw new GraalError("unexpected");
         }
         return successors.get(defaultSuccessorIndex());
     }

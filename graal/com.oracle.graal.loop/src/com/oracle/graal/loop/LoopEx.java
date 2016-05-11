@@ -30,12 +30,11 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.iterators.NodePredicate;
@@ -283,7 +282,7 @@ public class LoopEx {
                     }
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
             counted = new CountedLoopInfo(this, iv, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
             return true;

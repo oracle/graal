@@ -25,13 +25,13 @@ package com.oracle.graal.lir.util;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.meta.Value;
 
 public final class IndexedValueMap {
     private Value[] values;

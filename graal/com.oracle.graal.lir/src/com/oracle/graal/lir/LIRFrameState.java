@@ -31,6 +31,11 @@ import static jdk.vm.ci.code.ValueUtil.isVirtualObject;
 import java.util.Arrays;
 import java.util.EnumSet;
 
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.util.IndexedValueMap;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackLockValue;
@@ -38,11 +43,6 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.util.IndexedValueMap;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR

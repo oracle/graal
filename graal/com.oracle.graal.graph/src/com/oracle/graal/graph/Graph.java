@@ -29,14 +29,13 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.options.Option;
@@ -1019,12 +1018,12 @@ public class Graph {
                     try {
                         assert node.verify();
                     } catch (AssertionError t) {
-                        throw new JVMCIError(t);
+                        throw new GraalError(t);
                     } catch (RuntimeException t) {
-                        throw new JVMCIError(t);
+                        throw new GraalError(t);
                     }
-                } catch (JVMCIError e) {
-                    throw GraalGraphJVMCIError.transformAndAddContext(e, node).addContext(this);
+                } catch (GraalError e) {
+                    throw GraalGraphError.transformAndAddContext(e, node).addContext(this);
                 }
             }
         }

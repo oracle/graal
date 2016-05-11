@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -32,6 +30,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A helper class to allow elimination of byte code instrumentation that could interfere with escape

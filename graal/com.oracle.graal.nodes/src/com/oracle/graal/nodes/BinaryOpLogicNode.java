@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -32,6 +30,8 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo
 public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Binary<ValueNode> {

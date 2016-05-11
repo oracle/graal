@@ -26,15 +26,15 @@ import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.Alwa
 
 import java.util.Map;
 
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class AbstractInliningPolicy implements InliningPolicy {
     public static final float RelevanceCapForInlining = 1.0f;

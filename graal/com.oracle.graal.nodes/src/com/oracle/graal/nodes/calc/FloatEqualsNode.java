@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -38,6 +35,9 @@ import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "==")
 public final class FloatEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
@@ -98,7 +98,7 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
             return new IntegerEqualsNode(newX, newY);
         }
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

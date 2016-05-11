@@ -23,11 +23,12 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
 import com.oracle.graal.lir.debug.IntervalDumper;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 class LinearScanIntervalDumper implements IntervalDumper {
     private final Interval[] intervals;

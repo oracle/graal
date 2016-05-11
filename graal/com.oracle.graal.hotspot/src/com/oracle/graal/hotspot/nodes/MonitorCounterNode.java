@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.nodes;
 
 import java.util.BitSet;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -36,6 +34,8 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * Node that is used to maintain a stack based counter of how many locks are currently held.

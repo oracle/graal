@@ -24,9 +24,6 @@ package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -38,6 +35,9 @@ import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.LinearScan;
 import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 

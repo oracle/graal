@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class LowTierContext extends PhaseContext {
 

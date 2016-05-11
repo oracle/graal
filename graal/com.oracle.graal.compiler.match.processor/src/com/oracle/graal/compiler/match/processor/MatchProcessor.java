@@ -62,8 +62,6 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
 import com.oracle.graal.compiler.match.MatchRule;
@@ -72,6 +70,7 @@ import com.oracle.graal.compiler.match.MatchStatement;
 import com.oracle.graal.compiler.match.MatchStatementSet;
 import com.oracle.graal.compiler.match.MatchableNode;
 import com.oracle.graal.compiler.match.MatchableNodes;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.serviceprovider.ServiceProvider;
@@ -390,7 +389,7 @@ public class MatchProcessor extends AbstractProcessor {
         if (p != null) {
             return p.getQualifiedName().toString();
         }
-        throw new JVMCIError("can't find package for %s", type);
+        throw new GraalError("can't find package for %s", type);
     }
 
     class MatchDescriptor {
@@ -783,7 +782,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private void processMatchableNode(Element element, TypeElement topDeclaringType, MatchableNode matchable, AnnotationMirror mirror) throws JVMCIError {
+    private void processMatchableNode(Element element, TypeElement topDeclaringType, MatchableNode matchable, AnnotationMirror mirror) throws GraalError {
         logMessage("processMatchableNode %s %s %s\n", topDeclaringType, element, matchable);
         String nodeClass;
         String nodePackage;
@@ -794,7 +793,7 @@ public class MatchProcessor extends AbstractProcessor {
             nodeClassMirror = e.getTypeMirror();
         }
         if (nodeClassMirror == null) {
-            throw new JVMCIError("Can't get mirror for node class %s", element);
+            throw new GraalError("Can't get mirror for node class %s", element);
         }
         if (nodeClassMirror.toString().equals(MatchableNode.class.getName())) {
             nodeClass = topDeclaringType.getQualifiedName().toString();

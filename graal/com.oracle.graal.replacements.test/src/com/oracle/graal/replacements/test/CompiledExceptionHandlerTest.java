@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,6 +37,8 @@ import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests compilation of a hot exception handler.

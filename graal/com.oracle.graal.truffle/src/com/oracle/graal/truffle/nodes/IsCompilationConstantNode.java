@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -36,6 +34,8 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable {

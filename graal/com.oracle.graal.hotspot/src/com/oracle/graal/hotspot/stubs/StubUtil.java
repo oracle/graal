@@ -36,8 +36,6 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -52,6 +50,8 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.replacements.Log;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.meta.DeoptimizationAction;
 
 //JaCoCo Exclude
 

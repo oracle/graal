@@ -24,13 +24,14 @@
 package com.oracle.graal.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Instruction that reinterprets some bit pattern as a different type. It is possible to reinterpret

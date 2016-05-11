@@ -25,10 +25,6 @@ package com.oracle.graal.nodes.java;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.graph.NodeClass;
@@ -44,6 +40,10 @@ import com.oracle.graal.nodes.extended.SwitchNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code TypeSwitchNode} performs a lookup based on the type of the input value. The type

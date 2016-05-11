@@ -27,15 +27,15 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
-
 import com.oracle.graal.lir.CompositeValue;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Represents a {@link #register} which has a shadow copy on the {@link #stackslot stack}.

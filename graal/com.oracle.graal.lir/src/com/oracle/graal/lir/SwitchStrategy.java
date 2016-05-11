@@ -25,13 +25,13 @@ package com.oracle.graal.lir;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.

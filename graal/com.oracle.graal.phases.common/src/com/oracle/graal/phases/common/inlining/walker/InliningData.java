@@ -38,6 +38,7 @@ import java.util.Set;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -64,7 +65,6 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -407,8 +407,8 @@ public class InliningData {
         } catch (BailoutException bailout) {
             throw bailout;
         } catch (AssertionError | RuntimeException e) {
-            throw new JVMCIError(e).addContext(calleeInfo.toString());
-        } catch (JVMCIError e) {
+            throw new GraalError(e).addContext(calleeInfo.toString());
+        } catch (GraalError e) {
             throw e.addContext(calleeInfo.toString());
         } catch (Throwable e) {
             throw Debug.handle(e);

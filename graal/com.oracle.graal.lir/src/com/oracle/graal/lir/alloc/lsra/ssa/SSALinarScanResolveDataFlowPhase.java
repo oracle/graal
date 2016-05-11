@@ -29,8 +29,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -41,6 +39,8 @@ import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
 import com.oracle.graal.lir.alloc.lsra.MoveResolver;
 import com.oracle.graal.lir.ssa.SSAUtil;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
+
+import jdk.vm.ci.meta.Value;
 
 class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 

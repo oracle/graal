@@ -25,9 +25,6 @@ package com.oracle.graal.replacements.nodes.arithmetic;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.addOverflowsNegatively;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.addOverflowsPositively;
 import static com.oracle.graal.compiler.common.type.IntegerStamp.carryBits;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -40,6 +37,10 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Node representing an exact integer addition that will throw an {@link ArithmeticException} in

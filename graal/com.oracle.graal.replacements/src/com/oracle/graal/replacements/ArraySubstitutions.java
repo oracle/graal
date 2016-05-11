@@ -24,13 +24,13 @@ package com.oracle.graal.replacements;
 
 import java.lang.reflect.Array;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
+
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 
 // JaCoCo Exclude
 

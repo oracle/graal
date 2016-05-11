@@ -25,10 +25,8 @@ package com.oracle.graal.phases.common;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
@@ -54,7 +52,6 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
  * This Phase processes the graph in post order, assigning the {@link FrameState} from the last
  * {@link StateSplit} node to {@link DeoptimizingNode DeoptimizingNodes}.
  */
-@SuppressWarnings("unused")
 public class FrameStateAssignmentPhase extends Phase {
 
     private static class FrameStateAssignmentClosure extends NodeIteratorClosure<FrameState> {
@@ -65,7 +62,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptBefore) {
                 DeoptimizingNode.DeoptBefore deopt = (DeoptimizingNode.DeoptBefore) node;
                 if (deopt.canDeoptimize() && deopt.stateBefore() == null) {
-                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateBefore(currentState);
                 }
             }
@@ -82,7 +79,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptDuring) {
                 DeoptimizingNode.DeoptDuring deopt = (DeoptimizingNode.DeoptDuring) node;
                 if (deopt.canDeoptimize()) {
-                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.computeStateDuring(currentState);
                 }
             }
@@ -90,7 +87,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptAfter) {
                 DeoptimizingNode.DeoptAfter deopt = (DeoptimizingNode.DeoptAfter) node;
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
-                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateAfter(currentState);
                 }
             }

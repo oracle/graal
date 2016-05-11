@@ -27,9 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
 
@@ -175,7 +174,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 } catch (Throwable t) {
                     StringBuilder str = new StringBuilder();
                     toString(str, i);
-                    throw new JVMCIError(t).addContext("effect", str);
+                    throw new GraalError(t).addContext("effect", str);
                 }
                 if (effect.isVisible() && Debug.isLogEnabled()) {
                     StringBuilder str = new StringBuilder();

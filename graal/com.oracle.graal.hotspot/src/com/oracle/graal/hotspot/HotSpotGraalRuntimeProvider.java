@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.runtime.RuntimeProvider;
+
+import jdk.vm.ci.code.TargetDescription;
 
 //JaCoCo Exclude
 

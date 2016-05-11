@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.EncodedGraph;
@@ -34,13 +39,9 @@ import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.phases.util.Providers;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
