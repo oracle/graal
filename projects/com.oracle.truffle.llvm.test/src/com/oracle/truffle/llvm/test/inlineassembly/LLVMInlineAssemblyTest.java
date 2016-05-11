@@ -35,7 +35,6 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
@@ -54,18 +53,18 @@ public final class LLVMInlineAssemblyTest {
     @Test
     public void test001() {
         String file = "inlineassembly001";
-        Assert.assertEquals(42, run(file, null, null));
+        Assert.assertEquals(42, run(file));
     }
 
     @Test
     public void test002() {
         String file = "inlineassembly002";
-        Assert.assertEquals(42, run(file, null, null));
+        Assert.assertEquals(42, run(file));
     }
 
-    private static int run(String fileName, TruffleObject foreignObject, String foreignObjectName) {
+    private static int run(String fileName) {
         Builder builder = PolyglotEngine.newBuilder();
-        builder.globalSymbol(foreignObjectName, foreignObject);
+        builder.globalSymbol(null, null);
         final PolyglotEngine engine = builder.build();
         try {
             File cFile = new File(PATH, fileName + ".c");
