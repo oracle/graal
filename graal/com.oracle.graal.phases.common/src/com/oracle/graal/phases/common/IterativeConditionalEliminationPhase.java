@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
-import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;
@@ -33,6 +32,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
 import com.oracle.graal.phases.tiers.PhaseContext;
+
+import jdk.vm.ci.code.BailoutException;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
 

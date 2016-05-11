@@ -33,11 +33,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all
@@ -54,7 +53,7 @@ public class DebugValuesPrinter {
         this.mmPrinter = mmPrinter;
     }
 
-    public void printDebugValues() throws JVMCIError {
+    public void printDebugValues() throws GraalError {
         TTY.println();
         TTY.println("<DebugValues>");
         List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
@@ -106,7 +105,7 @@ public class DebugValuesPrinter {
                         }
                         break;
                     default:
-                        throw new JVMCIError("Unknown summary type: %s", summary);
+                        throw new GraalError("Unknown summary type: %s", summary);
                 }
                 for (DebugValueMap topLevelMap : topLevelMaps) {
                     topLevelMap.reset();

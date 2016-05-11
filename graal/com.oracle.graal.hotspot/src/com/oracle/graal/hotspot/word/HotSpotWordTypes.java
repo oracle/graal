@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.SymbolPointerStamp;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Extends {@link WordTypes} with information about HotSpot metaspace pointer types.

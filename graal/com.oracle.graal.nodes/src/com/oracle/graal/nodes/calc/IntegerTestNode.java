@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
@@ -33,6 +31,8 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.TriState;
 
 /**
  * This node will perform a "test" operation on its arguments. Its result is equivalent to the

@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "a2faf07d2fa5638de5f8193c3049904f3efcd184",
+        "version" : "f9aa6a496c06ab1da018d8e84f8f9e67e033745d",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -409,6 +409,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -431,6 +432,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",

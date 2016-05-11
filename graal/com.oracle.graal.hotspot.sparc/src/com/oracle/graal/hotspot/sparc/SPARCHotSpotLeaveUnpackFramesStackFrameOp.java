@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.sparc;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.i0;
 import static jdk.vm.ci.sparc.SPARC.l7;
-import jdk.vm.ci.code.Register;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
@@ -35,6 +34,8 @@ import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
 import com.oracle.graal.lir.sparc.SPARCSaveRegistersOp;
+
+import jdk.vm.ci.code.Register;
 
 /**
  * Emits code that leaves a stack frame which is tailored to call the C++ method

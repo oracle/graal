@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.truffle.nodes.frame;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.truffle.api.frame.FrameSlot;
+
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {

@@ -25,10 +25,6 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.loop.MathUtil.add;
 import static com.oracle.graal.loop.MathUtil.divBefore;
 import static com.oracle.graal.loop.MathUtil.sub;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -42,6 +38,11 @@ import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.IntegerLessThanNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class CountedLoopInfo {
 

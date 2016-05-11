@@ -26,7 +26,9 @@ import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
-import jdk.vm.ci.common.JVMCIError;
+
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Value;
 
 public class VariableVirtualStackValueMap<K extends Value, T> extends ValueMap<K, T> {
@@ -47,7 +49,7 @@ public class VariableVirtualStackValueMap<K extends Value, T> extends ValueMap<K
         if (isVirtualStackSlot(value)) {
             return get(slots, asVirtualStackSlot(value).getId());
         }
-        throw JVMCIError.shouldNotReachHere("Unsupported Value: " + value);
+        throw GraalError.shouldNotReachHere("Unsupported Value: " + value);
     }
 
     @Override
@@ -57,7 +59,7 @@ public class VariableVirtualStackValueMap<K extends Value, T> extends ValueMap<K
         } else if (isVirtualStackSlot(value)) {
             remove(slots, asVirtualStackSlot(value).getId());
         } else {
-            throw JVMCIError.shouldNotReachHere("Unsupported Value: " + value);
+            throw GraalError.shouldNotReachHere("Unsupported Value: " + value);
         }
     }
 
@@ -68,7 +70,7 @@ public class VariableVirtualStackValueMap<K extends Value, T> extends ValueMap<K
         } else if (isVirtualStackSlot(value)) {
             put(slots, asVirtualStackSlot(value).getId(), object);
         } else {
-            throw JVMCIError.shouldNotReachHere("Unsupported Value: " + value);
+            throw GraalError.shouldNotReachHere("Unsupported Value: " + value);
         }
     }
 

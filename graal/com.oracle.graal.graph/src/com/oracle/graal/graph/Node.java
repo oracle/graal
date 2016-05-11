@@ -42,8 +42,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import sun.misc.Unsafe;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.debug.DebugCloseable;
@@ -58,6 +56,8 @@ import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
+
+import sun.misc.Unsafe;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a
@@ -900,7 +900,7 @@ public abstract class Node implements Cloneable, Formattable {
                 copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
             }
         } catch (Exception e) {
-            throw new GraalGraphJVMCIError(e).addContext(this);
+            throw new GraalGraphError(e).addContext(this);
         }
         newNode.graph = into;
         newNode.id = INITIAL_ID;
@@ -993,7 +993,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    protected VerificationError fail(String message, Object... args) throws GraalGraphJVMCIError {
+    protected VerificationError fail(String message, Object... args) throws GraalGraphError {
         throw new VerificationError(message, args).addContext(this);
     }
 

@@ -24,10 +24,8 @@ package com.oracle.graal.replacements.nodes;
 
 import java.lang.invoke.MethodHandle;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.compiler.common.type.StampPair;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -36,6 +34,8 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A call target that replaces itself in the graph when being lowered by restoring the original
@@ -89,6 +89,6 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        throw JVMCIError.shouldNotReachHere("should have replaced itself");
+        throw GraalError.shouldNotReachHere("should have replaced itself");
     }
 }

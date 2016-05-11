@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Plugin for specifying what is inlined during graph parsing. This plugin is also notified

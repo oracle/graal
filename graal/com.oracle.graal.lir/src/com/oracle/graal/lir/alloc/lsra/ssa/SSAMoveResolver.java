@@ -30,11 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.alloc.lsra.Interval;
@@ -42,6 +38,10 @@ import com.oracle.graal.lir.alloc.lsra.LinearScan;
 import com.oracle.graal.lir.alloc.lsra.MoveResolver;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
+
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 public final class SSAMoveResolver extends MoveResolver {
 
@@ -98,7 +98,7 @@ public final class SSAMoveResolver extends MoveResolver {
         if (isVirtualStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
         }
-        throw JVMCIError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
+        throw GraalError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
     }
 
     private int getStackArrayIndex(StackSlot stackSlot) {

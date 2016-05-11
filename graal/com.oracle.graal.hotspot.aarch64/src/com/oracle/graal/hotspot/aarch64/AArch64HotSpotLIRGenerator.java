@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -64,7 +65,6 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
@@ -121,12 +121,12 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitTailcall(Value[] args, Value address) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public SaveRegistersOp emitSaveAllRegisters() {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override

@@ -30,17 +30,17 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.lir.LIRInsertionBuffer;
+import com.oracle.graal.lir.LIRInstruction;
+
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.LIRInsertionBuffer;
-import com.oracle.graal.lir.LIRInstruction;
 
 /**
  */
@@ -64,7 +64,7 @@ public class MoveResolver {
         if (isRegister(location)) {
             registerBlocked[asRegister(location).number] += direction;
         } else {
-            throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+            throw GraalError.shouldNotReachHere("unhandled value " + location);
         }
     }
 
@@ -80,7 +80,7 @@ public class MoveResolver {
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }
-        throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+        throw GraalError.shouldNotReachHere("unhandled value " + location);
     }
 
     void setMultipleReadsAllowed() {

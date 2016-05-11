@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 
 @Opcode("BSWAP")
 public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
@@ -56,7 +56,7 @@ public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
                 masm.bswapq(ValueUtil.asRegister(result));
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 }

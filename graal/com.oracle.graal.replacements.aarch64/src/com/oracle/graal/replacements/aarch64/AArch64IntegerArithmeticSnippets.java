@@ -24,6 +24,7 @@
 package com.oracle.graal.replacements.aarch64;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -44,7 +45,6 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -95,7 +95,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         } else if (node instanceof UnsignedRemNode) {
             snippet = kind == JavaKind.Int ? uirem : ulrem;
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
         StructuredGraph graph = node.graph();
         Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());

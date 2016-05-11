@@ -29,9 +29,6 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
@@ -48,6 +45,9 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.instrumentation.ExtractInstrumentationPhase;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * <p>

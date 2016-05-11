@@ -25,15 +25,15 @@ package com.oracle.graal.hotspot.replacements;
 import java.lang.reflect.Method;
 import java.util.EnumMap;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyCallNode;
 import com.oracle.graal.nodes.java.DynamicNewArrayNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippets;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectCloneSnippets implements Snippets {
 
@@ -55,7 +55,7 @@ public class ObjectCloneSnippets implements Snippets {
         try {
             return ObjectCloneSnippets.class.getDeclaredMethod(name, param);
         } catch (SecurityException | NoSuchMethodException e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 

@@ -26,8 +26,6 @@ import static com.oracle.graal.nodes.calc.CompareNode.createCompareNode;
 
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.graph.Node;
@@ -53,6 +51,8 @@ import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
+
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the complexity

@@ -22,19 +22,19 @@
  */
 package com.oracle.graal.graph;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.GraalError;
 
 /**
- * This error is the graph/node aware extension of JVMCIError.
+ * This error is the graph/node aware extension of {@link GraalError}.
  */
-public class GraalGraphJVMCIError extends JVMCIError {
+public class GraalGraphError extends GraalError {
 
     private static final long serialVersionUID = -989290015525497919L;
     private Node node;
     private Graph graph;
 
     /**
-     * This constructor creates a {@link GraalGraphJVMCIError} with a message assembled via
+     * This constructor creates a {@link GraalGraphError} with a message assembled via
      * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
      * always generate the same output.
      *
@@ -42,30 +42,29 @@ public class GraalGraphJVMCIError extends JVMCIError {
      * @param args parameters to String.format - parameters that implement {@link Iterable} will be
      *            expanded into a [x, x, ...] representation.
      */
-    public GraalGraphJVMCIError(String msg, Object... args) {
+    public GraalGraphError(String msg, Object... args) {
         super(msg, args);
     }
 
     /**
-     * This constructor creates a {@link GraalGraphJVMCIError} for a given causing Throwable
-     * instance.
+     * This constructor creates a {@link GraalGraphError} for a given causing Throwable instance.
      *
      * @param cause the original exception that contains additional information on this error
      */
-    public GraalGraphJVMCIError(Throwable cause) {
+    public GraalGraphError(Throwable cause) {
         super(cause);
     }
 
     /**
-     * This constructor creates a {@link GraalGraphJVMCIError} from a given JVMCIError instance.
+     * This constructor creates a {@link GraalGraphError} from a given GraalError instance.
      *
-     * @param e the original JVMCIError
+     * @param e the original GraalError
      */
-    protected GraalGraphJVMCIError(JVMCIError e) {
+    protected GraalGraphError(GraalError e) {
         super(e);
-        if (e instanceof GraalGraphJVMCIError) {
-            node = ((GraalGraphJVMCIError) e).node;
-            graph = ((GraalGraphJVMCIError) e).graph;
+        if (e instanceof GraalGraphError) {
+            node = ((GraalGraphError) e).node;
+            graph = ((GraalGraphError) e).graph;
         }
     }
 
@@ -76,7 +75,7 @@ public class GraalGraphJVMCIError extends JVMCIError {
      * @param newGraph the graph which is in a incorrect state, if the verification error was not
      *            caused by a specific node
      */
-    GraalGraphJVMCIError addContext(Graph newGraph) {
+    GraalGraphError addContext(Graph newGraph) {
         if (newGraph != this.graph) {
             addContext("graph", newGraph);
             if (this.graph == null) {
@@ -93,7 +92,7 @@ public class GraalGraphJVMCIError extends JVMCIError {
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
      */
-    public GraalGraphJVMCIError addContext(Node newNode) {
+    public GraalGraphError addContext(Node newNode) {
         if (newNode != this.node) {
             addContext("node", newNode);
             if (this.node == null) {
@@ -104,35 +103,35 @@ public class GraalGraphJVMCIError extends JVMCIError {
     }
 
     /**
-     * Transform a JVMCIError into a GraalGraphInternalError and add a graph to the context.
+     * Transform a GraalError into a GraalGraphInternalError and add a graph to the context.
      *
      * @param e the previous error
      * @param newGraph the graph which is in a incorrect state, if the verification error was not
      *            caused by a specific node
      */
-    public static GraalGraphJVMCIError transformAndAddContext(JVMCIError e, Graph newGraph) {
-        GraalGraphJVMCIError graphError;
-        if (e instanceof GraalGraphJVMCIError) {
-            graphError = (GraalGraphJVMCIError) e;
+    public static GraalGraphError transformAndAddContext(GraalError e, Graph newGraph) {
+        GraalGraphError graphError;
+        if (e instanceof GraalGraphError) {
+            graphError = (GraalGraphError) e;
         } else {
-            graphError = new GraalGraphJVMCIError(e);
+            graphError = new GraalGraphError(e);
         }
         return graphError.addContext(newGraph);
     }
 
     /**
-     * Transform a JVMCIError into a GraalGraphInternalError and add a node to the context.
+     * Transform a GraalError into a GraalGraphInternalError and add a node to the context.
      *
      * @param e the previous error
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
      */
-    public static GraalGraphJVMCIError transformAndAddContext(JVMCIError e, Node newNode) {
-        GraalGraphJVMCIError graphError;
-        if (e instanceof GraalGraphJVMCIError) {
-            graphError = (GraalGraphJVMCIError) e;
+    public static GraalGraphError transformAndAddContext(GraalError e, Node newNode) {
+        GraalGraphError graphError;
+        if (e instanceof GraalGraphError) {
+            graphError = (GraalGraphError) e;
         } else {
-            graphError = new GraalGraphJVMCIError(e);
+            graphError = new GraalGraphError(e);
         }
         return graphError.addContext(newNode);
     }

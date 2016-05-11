@@ -28,14 +28,11 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import sun.misc.Unsafe;
-
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -50,6 +47,9 @@ import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.ObjectAccess;
+
+import jdk.vm.ci.code.TargetDescription;
+import sun.misc.Unsafe;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls
@@ -132,7 +132,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
             try {
                 return (int) UNSAFE.objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
             } catch (Exception e) {
-                throw new JVMCIError(e);
+                throw new GraalError(e);
             }
         }
 

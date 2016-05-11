@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
@@ -30,7 +31,6 @@ import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 
 /**
  */
@@ -42,7 +42,7 @@ public class ClassCastExceptionStub extends CreateExceptionStub {
 
     @Override
     protected Object getConstantParameterValue(int index, String name) {
-        JVMCIError.guarantee(index == 2, "unknown parameter %s at index %d", name, index);
+        GraalError.guarantee(index == 2, "unknown parameter %s at index %d", name, index);
         return providers.getRegisters().getThreadRegister();
     }
 

@@ -23,16 +23,17 @@
 package com.oracle.graal.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
+
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.word.WordTypes;
+
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.word.WordTypes;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 

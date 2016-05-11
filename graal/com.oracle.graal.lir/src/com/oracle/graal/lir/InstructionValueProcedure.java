@@ -24,10 +24,10 @@ package com.oracle.graal.lir;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * Functional interface for iterating over a list of values, possibly returning a value to replace

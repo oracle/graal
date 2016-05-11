@@ -30,11 +30,11 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.nodes.ValueNode;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import com.oracle.graal.nodes.ValueNode;
 
 /**
  * An {@link InvocationPlugin} for a method where the implementation of the method is provided by a
@@ -117,14 +117,14 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     /**
      * Gets the reflection API version of the substitution method.
      */
-    Method getJavaSubstitute() throws JVMCIError {
+    Method getJavaSubstitute() throws GraalError {
         Method substituteMethod = lookupSubstitute();
         int modifiers = substituteMethod.getModifiers();
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-            throw new JVMCIError("Substitution method must not be abstract or native: " + substituteMethod);
+            throw new GraalError("Substitution method must not be abstract or native: " + substituteMethod);
         }
         if (!Modifier.isStatic(modifiers)) {
-            throw new JVMCIError("Substitution method must be static: " + substituteMethod);
+            throw new GraalError("Substitution method must be static: " + substituteMethod);
         }
         return substituteMethod;
     }
@@ -163,7 +163,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 return m;
             }
         }
-        throw new JVMCIError("No method found specified by %s", this);
+        throw new GraalError("No method found specified by %s", this);
     }
 
     @Override
@@ -180,7 +180,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
             }
         }
-        throw new JVMCIError("could not find method named \"execute\" in " + c.getName());
+        throw new GraalError("could not find method named \"execute\" in " + c.getName());
     }
 
     @Override

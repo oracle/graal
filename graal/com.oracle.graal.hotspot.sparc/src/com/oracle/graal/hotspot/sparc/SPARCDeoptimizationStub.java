@@ -31,15 +31,16 @@ import static jdk.vm.ci.sparc.SPARC.o1;
 import static jdk.vm.ci.sparc.SPARC.o2;
 import static jdk.vm.ci.sparc.SPARC.o3;
 import static jdk.vm.ci.sparc.SPARC.o4;
+
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.sparc.SPARCHotSpotRegisterConfig;
-
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
 
 final class SPARCDeoptimizationStub extends DeoptimizationStub {
 

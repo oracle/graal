@@ -23,9 +23,6 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
@@ -34,6 +31,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
 
 /**
  * Represents an address of the form [base + simm13].

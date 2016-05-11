@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.vm.ci.code.site.InfopointReason;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
@@ -33,6 +31,8 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.NodeWithState;
+
+import jdk.vm.ci.code.site.InfopointReason;
 
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.

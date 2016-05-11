@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 public interface HotSpotBackendFactory {
 

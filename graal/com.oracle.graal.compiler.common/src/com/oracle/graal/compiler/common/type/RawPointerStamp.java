@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**
  * Type describing pointers to raw memory. This stamp is used for example for direct pointers to
@@ -89,7 +89,7 @@ public class RawPointerStamp extends AbstractPointerStamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw JVMCIError.shouldNotReachHere("pointer has no Java type");
+        throw GraalError.shouldNotReachHere("pointer has no Java type");
     }
 
     @Override
@@ -113,7 +113,7 @@ public class RawPointerStamp extends AbstractPointerStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw JVMCIError.shouldNotReachHere("can't read raw pointer");
+        throw GraalError.shouldNotReachHere("can't read raw pointer");
     }
 
     @Override

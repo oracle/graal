@@ -24,10 +24,10 @@ package com.oracle.graal.lir.jtt;
 
 import java.util.HashMap;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
+import jdk.vm.ci.meta.Value;
 
 public abstract class LIRTestSpecification {
     private Value result;
@@ -58,7 +58,7 @@ public abstract class LIRTestSpecification {
     }
 
     private static void defaultHandler(@SuppressWarnings("unused") LIRGeneratorTool gen, Value... args) {
-        throw new JVMCIError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
+        throw new GraalError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
     }
 
     void generate(LIRGeneratorTool gen, Value[] values) {
@@ -75,7 +75,7 @@ public abstract class LIRTestSpecification {
         } else if (values.length == 5) {
             generate(gen, values[0], values[1], values[2], values[3], values[4]);
         } else {
-            JVMCIError.unimplemented();
+            GraalError.unimplemented();
         }
 
     }

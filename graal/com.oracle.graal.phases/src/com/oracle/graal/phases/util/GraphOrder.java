@@ -26,10 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.graph.GraalGraphJVMCIError;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.nodes.AbstractEndNode;
@@ -112,7 +111,7 @@ public final class GraphOrder {
             assert node == null || node.isAlive() : node + " not alive";
             if (node != null && !visited.isMarked(node)) {
                 if (floatingOnly && node instanceof FixedNode) {
-                    throw new JVMCIError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
+                    throw new GraalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
                 }
                 visited.mark(node);
                 FrameState stateAfter = null;
@@ -141,8 +140,8 @@ public final class GraphOrder {
                     visitForward(nodes, visited, stateAfter, true);
                 }
             }
-        } catch (JVMCIError e) {
-            throw GraalGraphJVMCIError.transformAndAddContext(e, node);
+        } catch (GraalError e) {
+            throw GraalGraphError.transformAndAddContext(e, node);
         }
     }
 

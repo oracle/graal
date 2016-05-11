@@ -29,17 +29,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -73,6 +62,17 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 /**
  * HotSpot specific backend.

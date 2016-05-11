@@ -24,11 +24,12 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 

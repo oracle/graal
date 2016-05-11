@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
 
 public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
@@ -61,7 +61,7 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw JVMCIError.shouldNotReachHere("metaspace pointer has no Java type");
+        throw GraalError.shouldNotReachHere("metaspace pointer has no Java type");
     }
 
     protected void appendString(StringBuilder str) {

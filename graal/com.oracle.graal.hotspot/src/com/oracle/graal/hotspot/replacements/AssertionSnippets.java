@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import jdk.vm.ci.code.TargetDescription;
 import static com.oracle.graal.replacements.nodes.CStringConstant.cstring;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -42,6 +41,8 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.replacements.nodes.AssertionNode;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class AssertionSnippets implements Snippets {
 

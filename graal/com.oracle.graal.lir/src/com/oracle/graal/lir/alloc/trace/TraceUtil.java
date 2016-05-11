@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import jdk.vm.ci.meta.Value;
-
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.Trace;
@@ -33,6 +31,8 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+
+import jdk.vm.ci.meta.Value;
 
 public class TraceUtil {
 

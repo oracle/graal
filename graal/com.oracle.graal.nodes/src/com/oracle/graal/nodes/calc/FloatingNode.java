@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 

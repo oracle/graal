@@ -29,6 +29,7 @@ import static com.oracle.graal.hotspot.stubs.SnippetStub.SnippetGraphUnderConstr
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.ReplacementsImpl;
@@ -36,7 +37,6 @@ import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
@@ -162,7 +162,7 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
                 makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm));
                 initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
             } catch (NoSuchMethodException | SecurityException e) {
-                throw new JVMCIError(e);
+                throw new GraalError(e);
             }
             StackTraceElement makeGraphSTE = makeGraphMethod.asStackTraceElement(0);
             StackTraceElement initSTE = initMethod.asStackTraceElement(0);
@@ -216,7 +216,7 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
                 embeddableFields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("UNASSIGNED_STACK")));
                 embeddableFields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL")));
             } catch (SecurityException | NoSuchFieldException e) {
-                throw new JVMCIError(e);
+                throw new GraalError(e);
             }
         }
     }

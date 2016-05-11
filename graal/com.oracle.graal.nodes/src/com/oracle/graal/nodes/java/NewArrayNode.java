@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import java.util.Collections;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
@@ -38,6 +36,8 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code NewArrayNode} is used for all array allocations where the element type is know at

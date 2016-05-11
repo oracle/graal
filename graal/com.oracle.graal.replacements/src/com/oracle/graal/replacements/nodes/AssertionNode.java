@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -90,10 +89,10 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         assert compileTimeAssertion;
         if (value.isConstant()) {
             if (value.asJavaConstant().asInt() == 0) {
-                throw new JVMCIError("%s: failed compile-time assertion: %s", this, message);
+                throw new GraalError("%s: failed compile-time assertion: %s", this, message);
             }
         } else {
-            throw new JVMCIError("%s: failed compile-time assertion (value %s): %s", this, value, message);
+            throw new GraalError("%s: failed compile-time assertion (value %s): %s", this, value, message);
         }
     }
 

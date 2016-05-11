@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
@@ -38,6 +36,8 @@ import com.oracle.graal.nodes.spi.ValueProxy;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * A node that changes the type of its input, usually narrowing it. For example, a GuardedValueNode

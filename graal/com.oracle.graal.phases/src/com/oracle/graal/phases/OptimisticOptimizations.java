@@ -25,12 +25,12 @@ package com.oracle.graal.phases;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ProfilingInfo;
-
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ProfilingInfo;
 
 public final class OptimisticOptimizations {
 

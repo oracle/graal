@@ -37,6 +37,7 @@ import java.util.List;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRFrameState;
@@ -56,7 +57,6 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -144,7 +144,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                  */
                 final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
                 if (instr instanceof StandardOp.JumpOp) {
-                    throw JVMCIError.unimplemented("DebugInfo on jumps are not supported!");
+                    throw GraalError.unimplemented("DebugInfo on jumps are not supported!");
                 }
             }
 

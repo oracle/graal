@@ -23,11 +23,6 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.test.AllocSpy;
@@ -39,6 +34,12 @@ import com.oracle.graal.hotspot.CompileTheWorld;
 import com.oracle.graal.hotspot.CompileTheWorldOptions;
 import com.oracle.graal.hotspot.HotSpotGraalCompiler;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Used to benchmark memory usage during Graal compilation.

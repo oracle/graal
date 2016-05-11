@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
@@ -36,6 +34,8 @@ import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "==")
 public class PointerEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {

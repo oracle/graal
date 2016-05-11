@@ -37,6 +37,7 @@ import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.code.CompilationResult.CodeComment;
 import com.oracle.graal.code.CompilationResult.JumpTable;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.code.DataSection;
 import com.oracle.graal.code.SourceMapping;
 import com.oracle.graal.graph.NodeSourcePosition;
@@ -49,7 +50,6 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode.Comment;
@@ -156,7 +156,7 @@ public class HotSpotCompiledCodeBuilder {
             int o1 = ord(i1);
             int o2 = ord(i2);
             if (o1 < 0 && o2 < 0) {
-                throw new JVMCIError("Non optional infopoints cannot collide: %s and %s", i1, i2);
+                throw new GraalError("Non optional infopoints cannot collide: %s and %s", i1, i2);
             }
             return o1 - o2;
         }

@@ -32,13 +32,13 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -136,7 +136,7 @@ public enum AArch64ArithmeticOp {
                     masm.fsqrt(size, dst, src);
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere("op=" + opcode.name());
+                    throw GraalError.shouldNotReachHere("op=" + opcode.name());
             }
         }
     }
@@ -203,7 +203,7 @@ public enum AArch64ArithmeticOp {
                     masm.ashr(size, dst, src, b.asLong());
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
             }
         }
     }
@@ -292,7 +292,7 @@ public enum AArch64ArithmeticOp {
                     masm.fdiv(size, dst, src1, src2);
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
             }
         }
     }
@@ -336,7 +336,7 @@ public enum AArch64ArithmeticOp {
                     masm.frem(size, dst, src1, src2);
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }
@@ -376,7 +376,7 @@ public enum AArch64ArithmeticOp {
                     masm.sub(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }

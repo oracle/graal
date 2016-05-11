@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.hotspot.word.HotSpotOperation;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.ReplacementsImpl;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for

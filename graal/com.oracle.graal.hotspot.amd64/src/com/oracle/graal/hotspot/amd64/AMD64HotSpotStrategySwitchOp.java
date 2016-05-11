@@ -22,12 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -35,6 +29,12 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 final class AMD64HotSpotStrategySwitchOp extends AMD64ControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<AMD64HotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(AMD64HotSpotStrategySwitchOp.class);

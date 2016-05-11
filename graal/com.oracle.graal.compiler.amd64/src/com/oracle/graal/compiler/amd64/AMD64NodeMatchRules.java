@@ -47,6 +47,7 @@ import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
 import com.oracle.graal.compiler.match.MatchRule;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
@@ -65,12 +66,11 @@ import com.oracle.graal.nodes.calc.ReinterpretNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
-import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.memory.Access;
 import com.oracle.graal.nodes.memory.WriteNode;
+import com.oracle.graal.nodes.util.GraphUtil;
 
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
@@ -108,7 +108,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case DOUBLE:
                 return OperandSize.SD;
             default:
-                throw JVMCIError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
+                throw GraalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
         }
     }
 
@@ -205,7 +205,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                     op = MOVSXD;
                     break;
                 default:
-                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             kind = AMD64Kind.DWORD;
@@ -221,7 +221,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 case 32:
                     return null;
                 default:
-                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         }
         if (kind != null && op != null) {
@@ -402,7 +402,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case L2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSI2SS, QWORD, access);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 

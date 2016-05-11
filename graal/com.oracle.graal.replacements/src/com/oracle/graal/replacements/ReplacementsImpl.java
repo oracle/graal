@@ -47,6 +47,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugTimer;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -79,7 +80,6 @@ import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -135,16 +135,16 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
         if (b.parsingIntrinsic()) {
             if (hasGeneratedInvocationPluginAnnotation(method)) {
-                throw new JVMCIError("%s should have been handled by a %s", method.format("%H.%n(%p)"), GeneratedInvocationPlugin.class.getSimpleName());
+                throw new GraalError("%s should have been handled by a %s", method.format("%H.%n(%p)"), GeneratedInvocationPlugin.class.getSimpleName());
             }
             if (hasGenericInvocationPluginAnnotation(method)) {
-                throw new JVMCIError("%s should have been handled by %s", method.format("%H.%n(%p)"), WordOperationPlugin.class.getSimpleName());
+                throw new GraalError("%s should have been handled by %s", method.format("%H.%n(%p)"), WordOperationPlugin.class.getSimpleName());
             }
 
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
 
             if (method.getName().startsWith("$jacoco")) {
-                throw new JVMCIError("Found call to JaCoCo instrumentation method " + method.format("%H.%n(%p)") + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                throw new GraalError("Found call to JaCoCo instrumentation method " + method.format("%H.%n(%p)") + ". Placing \"//JaCoCo Exclude\" anywhere in " +
                                 b.getMethod().getDeclaringClass().getSourceFileName() + " should fix this.");
             }
 

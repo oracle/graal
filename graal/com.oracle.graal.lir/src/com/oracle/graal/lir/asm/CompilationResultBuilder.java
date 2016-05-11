@@ -44,6 +44,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
@@ -62,7 +63,6 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.JavaConstant;
@@ -274,7 +274,7 @@ public class CompilationResultBuilder {
         JavaConstant constant = asJavaConstant(value);
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
         return (int) c;
     }
@@ -428,7 +428,7 @@ public class CompilationResultBuilder {
                 if (afterOp != null) {
                     afterOp.accept(op);
                 }
-            } catch (JVMCIError e) {
+            } catch (GraalError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
             }
         }
@@ -442,9 +442,9 @@ public class CompilationResultBuilder {
                 crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
             }
         } catch (AssertionError t) {
-            throw new JVMCIError(t);
+            throw new GraalError(t);
         } catch (RuntimeException t) {
-            throw new JVMCIError(t);
+            throw new GraalError(t);
         }
     }
 

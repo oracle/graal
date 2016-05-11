@@ -24,13 +24,6 @@ package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.inittimer.InitTimer.timer;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.inittimer.InitTimer;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -41,6 +34,14 @@ import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.StructuredGraph;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.inittimer.InitTimer;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Common functionality of HotSpot host backends.

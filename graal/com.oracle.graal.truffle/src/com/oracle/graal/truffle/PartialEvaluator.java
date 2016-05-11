@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
@@ -89,7 +90,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -226,7 +226,7 @@ public class PartialEvaluator {
                 if (original.equals(callSiteProxyMethod)) {
                     ValueNode arg1 = arguments[0];
                     if (!arg1.isConstant()) {
-                        JVMCIError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                        GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
                     }
 
                     Object callNode = snippetReflection.asObject(Object.class, (JavaConstant) arg1.asConstant());

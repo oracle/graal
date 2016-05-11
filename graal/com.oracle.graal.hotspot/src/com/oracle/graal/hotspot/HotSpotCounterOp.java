@@ -29,20 +29,20 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstructionClass;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 public abstract class HotSpotCounterOp extends LIRInstruction {
     public static final LIRInstructionClass<HotSpotCounterOp> TYPE = LIRInstructionClass.create(HotSpotCounterOp.class);
@@ -73,7 +73,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int getDisplacementForLongIndex(TargetDescription target, long index) {
         long finalDisp = index * target.arch.getPlatformKind(JavaKind.Long).getSizeInBytes();
         if (!NumUtil.isInt(finalDisp)) {
-            throw JVMCIError.unimplemented("cannot deal with indices that big: " + index);
+            throw GraalError.unimplemented("cannot deal with indices that big: " + index);
         }
         return (int) finalDisp;
     }
@@ -136,7 +136,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
      * @param increment
      */
     public void patchCounterIncrement(Assembler asm, int[] increment) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     private static long asLong(JavaConstant value) {
@@ -157,7 +157,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int asInt(JavaConstant value) {
         long l = asLong(value);
         if (!NumUtil.isInt(l)) {
-            throw JVMCIError.shouldNotReachHere("value does not fit into int: " + l);
+            throw GraalError.shouldNotReachHere("value does not fit into int: " + l);
         }
         return (int) l;
     }

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.graal.compiler.amd64.AMD64MoveFactory;
+import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -29,9 +32,6 @@ import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-
-import com.oracle.graal.compiler.amd64.AMD64MoveFactory;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 
 public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
 

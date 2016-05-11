@@ -22,18 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
-import jdk.vm.ci.hotspot.HotSpotConstant;
-import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
@@ -47,6 +39,14 @@ import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.type.StampTool;
+
+import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Compress or uncompress an oop or metaspace pointer.
@@ -94,7 +94,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         } else if (c instanceof HotSpotConstant) {
             return ((HotSpotConstant) c).compress();
         } else {
-            throw JVMCIError.shouldNotReachHere("invalid constant input for compress op: " + c);
+            throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
     }
 
@@ -102,7 +102,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         if (c instanceof HotSpotConstant) {
             return ((HotSpotConstant) c).uncompress();
         } else {
-            throw JVMCIError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
+            throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }
     }
 
@@ -114,7 +114,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
             case Uncompress:
                 return uncompress(c);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -126,7 +126,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
             case Uncompress:
                 return compress(c);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -158,7 +158,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
                 }
                 break;
         }
-        throw JVMCIError.shouldNotReachHere(String.format("Unexpected input stamp %s", input));
+        throw GraalError.shouldNotReachHere(String.format("Unexpected input stamp %s", input));
     }
 
     public CompressionOp getOp() {
@@ -204,7 +204,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
                 result = hsGen.emitUncompress(gen.operand(getValue()), encoding, nonNull);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         gen.setResult(this, result);
     }

@@ -27,10 +27,8 @@ import static com.oracle.graal.compiler.common.GraalOptions.TraceEscapeAnalysis;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeFlood;
@@ -38,10 +36,12 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.StructuredGraph;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public final class VirtualUtil {
 
     private VirtualUtil() {
-        JVMCIError.shouldNotReachHere();
+        GraalError.shouldNotReachHere();
     }
 
     public static boolean assertNonReachable(StructuredGraph graph, List<Node> obsoleteNodes) {

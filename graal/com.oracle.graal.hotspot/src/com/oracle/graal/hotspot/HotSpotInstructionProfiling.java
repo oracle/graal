@@ -24,11 +24,6 @@ package com.oracle.graal.hotspot;
 
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.InstructionCounter;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -43,6 +38,11 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase {
     public static final String COUNTER_GROUP = "INSTRUCTION_COUNTER";

@@ -26,13 +26,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.Variable;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Represents def-use tree of a constant.

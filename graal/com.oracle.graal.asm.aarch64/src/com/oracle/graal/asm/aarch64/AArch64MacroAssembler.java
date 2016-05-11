@@ -40,11 +40,11 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 
 public class AArch64MacroAssembler extends AArch64Assembler {
 
@@ -215,7 +215,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 immediate = 0;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         AArch64Address.AddressingMode addressingMode = plan.addressingMode;
         ExtendType extendType = null;
@@ -311,7 +311,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 movx(dst, address.getBase());
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -527,7 +527,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         } else if (size == 32) {
             return ExtendType.UXTW;
         } else {
-            throw JVMCIError.shouldNotReachHere("No-op ");
+            throw GraalError.shouldNotReachHere("No-op ");
         }
     }
 
@@ -1301,7 +1301,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void pause() {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -1381,7 +1381,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 break;
             }
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 

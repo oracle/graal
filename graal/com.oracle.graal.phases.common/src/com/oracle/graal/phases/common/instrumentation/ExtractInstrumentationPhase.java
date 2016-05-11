@@ -26,6 +26,7 @@ import java.util.Map;
 
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.NodeFlood;
@@ -55,8 +56,6 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNo
 import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
-
-import jdk.vm.ci.common.JVMCIError;
 
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
@@ -143,7 +142,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
             if (end == null) {
                 // this may be caused by DeoptimizationReason.Unresolved
-                throw JVMCIError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
+                throw GraalError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
             }
         }
 

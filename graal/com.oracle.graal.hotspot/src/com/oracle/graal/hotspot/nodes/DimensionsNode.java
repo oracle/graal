@@ -26,8 +26,6 @@ import static com.oracle.graal.asm.NumUtil.roundUp;
 
 import java.util.BitSet;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.VirtualStackSlot;
@@ -38,6 +36,8 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray

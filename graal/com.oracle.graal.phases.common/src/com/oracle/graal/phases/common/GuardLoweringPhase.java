@@ -28,8 +28,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
@@ -63,6 +61,8 @@ import com.oracle.graal.phases.graph.ScheduledNodeIterator;
 import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.MidTierContext;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and

@@ -27,18 +27,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Queue;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.VirtualObject;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.JavaValue;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
@@ -53,6 +44,15 @@ import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.virtual.nodes.MaterializedObjectState;
 import com.oracle.graal.virtual.nodes.VirtualObjectState;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.
@@ -213,7 +213,7 @@ public class DebugInfoBuilder {
                 caller = computeFrameForState(state.outerFrameState());
             }
             return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, slotKinds, numLocals, numStack, numLocks);
-        } catch (JVMCIError e) {
+        } catch (GraalError e) {
             throw e.addContext("FrameState: ", state);
         }
     }
@@ -264,7 +264,7 @@ public class DebugInfoBuilder {
                 EscapeObjectState state = objectStates.get(obj);
                 if (state == null && obj.entryCount() > 0) {
                     // null states occur for objects with 0 fields
-                    throw new JVMCIError("no mapping found for virtual object %s", obj);
+                    throw new GraalError("no mapping found for virtual object %s", obj);
                 }
                 if (state instanceof MaterializedObjectState) {
                     return toJavaValue(((MaterializedObjectState) state).materializedValue());
@@ -302,7 +302,7 @@ public class DebugInfoBuilder {
                     return Value.ILLEGAL;
                 }
             }
-        } catch (JVMCIError e) {
+        } catch (GraalError e) {
             throw e.addContext("toValue: ", value);
         }
     }

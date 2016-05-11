@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -59,7 +58,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setObject(FrameSlot slot, Object value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -71,7 +70,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setByte(FrameSlot slot, byte value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -83,7 +82,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setBoolean(FrameSlot slot, boolean value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -95,7 +94,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setInt(FrameSlot slot, int value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -107,7 +106,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setLong(FrameSlot slot, long value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -119,7 +118,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setFloat(FrameSlot slot, float value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -131,7 +130,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setDouble(FrameSlot slot, double value) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -143,7 +142,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public MaterializedFrame materialize() {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

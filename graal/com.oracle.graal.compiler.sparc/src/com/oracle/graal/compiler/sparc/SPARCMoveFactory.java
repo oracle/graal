@@ -26,21 +26,22 @@ package com.oracle.graal.compiler.sparc;
 import static com.oracle.graal.lir.LIRValueUtil.asConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.compiler.sparc.SPARCLIRGenerator.ConstantTableBaseProvider;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.sparc.SPARCAddressValue;
 import com.oracle.graal.lir.sparc.SPARCMove;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.Move;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Value;
 
 public class SPARCMoveFactory implements MoveFactory {
 
@@ -61,7 +62,7 @@ public class SPARCMoveFactory implements MoveFactory {
         } else {
             assert src instanceof AllocatableValue;
             if (srcIsSlot && dstIsSlot) {
-                throw JVMCIError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
+                throw GraalError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
             } else {
                 return new Move(dst, (AllocatableValue) src);
             }
@@ -85,7 +86,7 @@ public class SPARCMoveFactory implements MoveFactory {
         } else if (src instanceof DataPointerConstant) {
             return new SPARCMove.LoadDataAddressOp(dst, (DataPointerConstant) src);
         } else {
-            throw JVMCIError.shouldNotReachHere(src.getClass().toString());
+            throw GraalError.shouldNotReachHere(src.getClass().toString());
         }
     }
 

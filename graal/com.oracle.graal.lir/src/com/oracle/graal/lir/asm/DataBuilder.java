@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.asm;
 
-import jdk.vm.ci.meta.Constant;
-
 import com.oracle.graal.code.DataSection.Data;
+
+import jdk.vm.ci.meta.Constant;
 
 public abstract class DataBuilder {
 

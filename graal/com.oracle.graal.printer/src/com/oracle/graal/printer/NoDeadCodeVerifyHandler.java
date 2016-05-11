@@ -26,9 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.debug.DebugVerifyHandler;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
@@ -73,7 +72,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                 if (discovered.put(message, Boolean.TRUE) == null) {
                     before.removeAll(after);
                     String prefix = message == null ? "" : message + ": ";
-                    JVMCIError error = new JVMCIError("%sfound dead nodes in %s: %s", prefix, graph, before);
+                    GraalError error = new GraalError("%sfound dead nodes in %s: %s", prefix, graph, before);
                     if (Options.NDCV.getValue() == INFO) {
                         System.out.println(error.getMessage());
                     } else if (Options.NDCV.getValue() == VERBOSE) {

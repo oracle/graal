@@ -40,9 +40,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
@@ -50,6 +47,9 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.TypeCheckHints;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 //JaCoCo Exclude
 

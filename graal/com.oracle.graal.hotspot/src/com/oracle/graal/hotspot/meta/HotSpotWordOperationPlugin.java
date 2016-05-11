@@ -27,15 +27,11 @@ import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINT
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
 import static com.oracle.graal.nodes.ConstantNode.forBoolean;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.nodes.LoadIndexedPointerNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MetaspacePointerStamp;
@@ -57,6 +53,10 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.replacements.WordOperationPlugin;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Extends {@link WordOperationPlugin} to handle {@linkplain HotSpotOperation HotSpot word
@@ -162,7 +162,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 break;
 
             default:
-                throw JVMCIError.shouldNotReachHere("unknown operation: " + operation.opcode());
+                throw GraalError.shouldNotReachHere("unknown operation: " + operation.opcode());
         }
     }
 }

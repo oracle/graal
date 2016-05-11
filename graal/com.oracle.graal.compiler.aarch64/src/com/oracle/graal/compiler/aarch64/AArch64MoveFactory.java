@@ -29,13 +29,13 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.aarch64.AArch64Move.LoadAddressOp;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -54,7 +54,7 @@ public class AArch64MoveFactory implements MoveFactory {
         } else {
             assert src instanceof AllocatableValue;
             if (srcIsSlot && dstIsSlot) {
-                throw JVMCIError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
+                throw GraalError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
             } else {
                 return new AArch64Move.Move(dst, (AllocatableValue) src);
             }
@@ -80,8 +80,8 @@ public class AArch64MoveFactory implements MoveFactory {
         } else if (src instanceof DataPointerConstant) {
             return new AArch64Move.LoadDataOp(dst, (DataPointerConstant) src);
         } else {
-            // throw JVMCIError.shouldNotReachHere(src.getClass().toString());
-            throw JVMCIError.unimplemented();
+            // throw GraalError.shouldNotReachHere(src.getClass().toString());
+            throw GraalError.unimplemented();
         }
     }
 

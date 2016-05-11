@@ -45,6 +45,7 @@ import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -83,7 +84,6 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -144,7 +144,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public <T> T getRequiredGraalCapability(Class<T> clazz) {
         T ret = graalRuntime.get().getCapability(clazz);
         if (ret == null) {
-            throw new JVMCIError("The VM does not expose the required Graal capability %s.", clazz.getName());
+            throw new GraalError("The VM does not expose the required Graal capability %s.", clazz.getName());
         }
         return ret;
     }

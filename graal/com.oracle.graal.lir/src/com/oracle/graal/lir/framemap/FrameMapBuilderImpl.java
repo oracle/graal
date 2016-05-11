@@ -31,6 +31,7 @@ import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -42,7 +43,6 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
@@ -82,7 +82,7 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
             return null;
         }
         if (outObjectStackSlots != null) {
-            throw JVMCIError.unimplemented();
+            throw GraalError.unimplemented();
         }
         VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects, frameMap.getTarget().getLIRKind(JavaKind.Object));
         stackSlots.add(slot);

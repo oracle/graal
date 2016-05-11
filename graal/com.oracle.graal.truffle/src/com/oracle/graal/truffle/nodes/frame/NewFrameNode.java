@@ -26,16 +26,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -67,6 +61,12 @@ import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
@@ -220,7 +220,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             escapeReason = "Must not let virtual frame object escape at node " + fixed + ".";
         }
 
-        Throwable exception = new JVMCIError(escapeReason +
+        Throwable exception = new GraalError(escapeReason +
                         " Insert a call to VirtualFrame.materialize() to convert the instance to a materialized frame object (source position of following stack trace is approximate)");
         throw GraphUtil.approxSourceException(fixed, exception);
     }
