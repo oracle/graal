@@ -1463,7 +1463,7 @@ public abstract class TruffleTCK {
         for (int i = 0; i < arr.length; i++) {
             arr[i] = i;
         }
-        TruffleObject truffleArr = JavaInterop.asTruffleObject(Arrays.asList(arr));
+        TruffleObject truffleArr = JavaInterop.asTruffleObject(arr);
 
         int index = RANDOM.nextInt(arr.length - 1);
 
