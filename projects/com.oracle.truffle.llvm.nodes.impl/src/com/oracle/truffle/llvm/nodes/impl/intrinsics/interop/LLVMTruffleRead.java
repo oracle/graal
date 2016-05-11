@@ -78,6 +78,25 @@ public final class LLVMTruffleRead {
         }
     }
 
+    private static Object doRead(VirtualFrame frame, Node foreignRead, TruffleObject value, LLVMAddress id, ToLLVMNode toLLVM, Class<?> expectedType) {
+        String name = LLVMTruffleIntrinsicUtil.readString(id);
+        try {
+            Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value, name);
+            return toLLVM.convert(frame, rawValue, expectedType);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static Object doReadIdx(VirtualFrame frame, Node foreignRead, TruffleObject value, int id, ToLLVMNode toLLVM, Class<?> expectedType) {
+        try {
+            Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value, id);
+            return toLLVM.convert(frame, rawValue, expectedType);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
     public abstract static class LLVMTruffleReadP extends LLVMAddressIntrinsic {
 
@@ -88,6 +107,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
+            return doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
             return doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -104,6 +128,11 @@ public final class LLVMTruffleRead {
         public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
             return (int) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public int executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
+            return (int) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
@@ -116,6 +145,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
+            return (long) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public long executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
             return (long) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -132,6 +166,11 @@ public final class LLVMTruffleRead {
         public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
             return (byte) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
+            return (byte) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
@@ -144,6 +183,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
+            return (float) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public float executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
             return (float) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -160,6 +204,11 @@ public final class LLVMTruffleRead {
         public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
             return (double) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public double executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
+            return (double) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
@@ -172,6 +221,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
+            return (boolean) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
             return (boolean) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -190,6 +244,11 @@ public final class LLVMTruffleRead {
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             return doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
+            return doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
@@ -202,6 +261,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
+            return (int) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public int executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
             return (int) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -218,6 +282,11 @@ public final class LLVMTruffleRead {
         public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             return (long) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public long executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
+            return (long) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
@@ -230,6 +299,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
+            return (byte) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
             return (byte) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }
@@ -246,6 +320,11 @@ public final class LLVMTruffleRead {
         public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             return (float) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public float executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
+            return (float) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
@@ -260,6 +339,11 @@ public final class LLVMTruffleRead {
         public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             return (double) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
+
+        @Specialization
+        public double executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
+            return (double) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
@@ -272,6 +356,11 @@ public final class LLVMTruffleRead {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
+            return (boolean) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+        }
+
+        @Specialization
+        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
             return (boolean) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
         }
     }

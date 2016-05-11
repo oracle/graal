@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
@@ -59,6 +60,12 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMAddressNode {
             return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr);
         }
 
+        @Specialization
+        public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
+            int incr = getTypeWidth() * val;
+            return new LLVMTruffleObject(addr, incr);
+        }
+
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI64Node.class)})
@@ -77,6 +84,12 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMAddressNode {
         public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, long val) {
             long incr = getTypeWidth() * val;
             return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr);
+        }
+
+        @Specialization
+        public LLVMTruffleObject executeTruffleObject(TruffleObject addr, long val) {
+            long incr = getTypeWidth() * val;
+            return new LLVMTruffleObject(addr, incr);
         }
 
     }
