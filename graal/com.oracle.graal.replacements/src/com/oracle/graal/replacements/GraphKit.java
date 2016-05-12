@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,17 +30,11 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.java.FrameStateBuilder;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -59,9 +53,11 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
+import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
@@ -70,12 +66,21 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.word.WordTypes;
 
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+
 /**
  * A utility for manually creating a graph. This will be expanded as necessary to support all
  * subsystems that employ manual graph creation (as opposed to {@linkplain GraphBuilderPhase
  * bytecode parsing} based graph creation).
  */
-public class GraphKit {
+public class GraphKit implements GraphBuilderTool {
 
     protected final Providers providers;
     protected final StructuredGraph graph;
@@ -103,8 +108,34 @@ public class GraphKit {
         });
     }
 
+    @Override
     public StructuredGraph getGraph() {
         return graph;
+    }
+
+    @Override
+    public ConstantReflectionProvider getConstantReflection() {
+        return providers.getConstantReflection();
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return providers.getConstantFieldProvider();
+    }
+
+    @Override
+    public MetaAccessProvider getMetaAccess() {
+        return providers.getMetaAccess();
+    }
+
+    @Override
+    public StampProvider getStampProvider() {
+        return providers.getStampProvider();
+    }
+
+    @Override
+    public boolean parsingIntrinsic() {
+        return true;
     }
 
     /**
@@ -112,8 +143,12 @@ public class GraphKit {
      *
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
-    public <T extends FloatingNode> T unique(T node) {
+    public <T extends FloatingNode & ValueNumberable> T unique(T node) {
         return graph.unique(changeToWord(node));
+    }
+
+    public <T extends ValueNode> T add(T node) {
+        return graph.add(changeToWord(node));
     }
 
     public <T extends ValueNode> T changeToWord(T node) {
@@ -123,11 +158,25 @@ public class GraphKit {
         return node;
     }
 
-    /**
-     * Appends a fixed node to the graph.
-     */
-    public <T extends FixedNode> T append(T node) {
-        T result = graph.add(changeToWord(node));
+    @Override
+    public <T extends ValueNode> T append(T node) {
+        T result = graph.addOrUnique(changeToWord(node));
+        if (result instanceof FixedNode) {
+            updateLastFixed((FixedNode) result);
+        }
+        return result;
+    }
+
+    @Override
+    public <T extends ValueNode> T recursiveAppend(T node) {
+        T result = graph.addOrUniqueWithInputs(node);
+        if (result instanceof FixedNode) {
+            updateLastFixed((FixedNode) result);
+        }
+        return result;
+    }
+
+    private void updateLastFixed(FixedNode result) {
         assert lastFixedNode != null;
         assert result.predecessor() == null;
         graph.addAfterFixed(lastFixedNode, result);
@@ -136,7 +185,6 @@ public class GraphKit {
         } else {
             lastFixedNode = null;
         }
-        return result;
     }
 
     public InvokeNode createInvoke(Class<?> declaringClass, String name, ValueNode... args) {
@@ -187,7 +235,7 @@ public class GraphKit {
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
-        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(true, returnType, false);
+        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(this, returnType, false);
         if (returnStamp == null) {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }
@@ -268,7 +316,8 @@ public class GraphKit {
 
         StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
         IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(calleeGraph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.NONE,
+                        initialReplacementContext).apply(calleeGraph);
 
         // Remove all frame states from inlinee
         calleeGraph.clearAllStateAfter();

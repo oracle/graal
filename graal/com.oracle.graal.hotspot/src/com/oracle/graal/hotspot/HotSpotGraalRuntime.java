@@ -43,6 +43,7 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugValuesPrinter;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
@@ -57,7 +58,6 @@ import com.oracle.graal.runtime.RuntimeProvider;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotProxified;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
@@ -107,7 +107,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
             HotSpotBackendFactory factory = compilerFactory.getBackendFactory(hostArchitecture);
             if (factory == null) {
-                throw new JVMCIError("No backend available for host architecture \"%s\"", hostArchitecture);
+                throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
             hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
@@ -120,7 +120,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
             HotSpotBackendFactory factory = compilerFactory.getBackendFactory(gpuArchitecture);
             if (factory == null) {
-                throw new JVMCIError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
+                throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
             try (InitTimer t = timer("create backend:", gpuArchitecture)) {
                 registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
@@ -145,7 +145,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                     case "Thread":
                         break;
                     default:
-                        throw new JVMCIError("Unsupported value for DebugSummaryValue: %s", summary);
+                        throw new GraalError("Unsupported value for DebugSummaryValue: %s", summary);
                 }
             }
         }

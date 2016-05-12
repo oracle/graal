@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
@@ -44,6 +37,13 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
@@ -116,9 +116,13 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         if (array.isConstant() && !array.isNullConstant() && index.isConstant()) {
             JavaConstant arrayConstant = array.asJavaConstant();
             if (arrayConstant != null) {
-                JavaConstant constant = constantReflection.readConstantArrayElement(arrayConstant, index.asJavaConstant().asInt());
-                if (constant != null) {
-                    return ConstantNode.forConstant(constant, metaAccess);
+                int stableDimension = ((ConstantNode) array).getStableDimension();
+                if (stableDimension > 0) {
+                    JavaConstant constant = constantReflection.readArrayElement(arrayConstant, index.asJavaConstant().asInt());
+                    boolean isDefaultStable = ((ConstantNode) array).isDefaultStable();
+                    if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
+                        return ConstantNode.forConstant(constant, stableDimension - 1, isDefaultStable, metaAccess);
+                    }
                 }
             }
         }

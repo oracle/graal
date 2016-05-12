@@ -26,10 +26,10 @@ import java.util.Map;
 
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.NodeFlood;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractEndNode;
@@ -56,8 +56,6 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNo
 import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
-
-import jdk.vm.ci.common.JVMCIError;
 
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
@@ -96,9 +94,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
         private static boolean shouldIncludeInput(Node node, NodeBitMap cfgNodes) {
             if (node instanceof FloatingNode && !(node instanceof AbstractLocalNode)) {
-                NodePosIterator iterator = node.inputs().iterator();
-                while (iterator.hasNext()) {
-                    Position pos = iterator.nextPosition();
+                for (Position pos : node.inputPositions()) {
                     if (pos.getInputType() == InputType.Value) {
                         continue;
                     }
@@ -146,7 +142,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
             if (end == null) {
                 // this may be caused by DeoptimizationReason.Unresolved
-                throw JVMCIError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
+                throw GraalError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
             }
         }
 
@@ -199,14 +195,14 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                     continue;
                 }
                 for (Node input : current.inputs()) {
-                    if (!(input instanceof ValueNode)) {
-                        continue;
-                    }
-                    if (!nodes.isMarked(input) && !replacements.containsKey(input)) {
-                        ParameterNode parameter = new ParameterNode(index++, StampPair.createSingle(((ValueNode) input).stamp()));
-                        instrumentationGraph.addWithoutUnique(parameter);
-                        replacements.put(input, parameter);
-                        instrumentationNode.addInput(input);
+                    if (input instanceof ValueNode) {
+                        ValueNode valueNode = (ValueNode) input;
+                        if (!nodes.isMarked(input) && !replacements.containsKey(input)) {
+                            ParameterNode parameter = new ParameterNode(index++, StampPair.createSingle(valueNode.stamp()));
+                            instrumentationGraph.addWithoutUnique(parameter);
+                            replacements.put(input, parameter);
+                            instrumentationNode.addInput(input);
+                        }
                     }
                 }
             }

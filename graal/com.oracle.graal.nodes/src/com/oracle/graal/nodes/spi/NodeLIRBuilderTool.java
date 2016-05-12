@@ -25,9 +25,6 @@ package com.oracle.graal.nodes.spi;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
@@ -49,6 +46,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.extended.SwitchNode;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.meta.Value;
 
 public interface NodeLIRBuilderTool extends NodeValueMap {
 

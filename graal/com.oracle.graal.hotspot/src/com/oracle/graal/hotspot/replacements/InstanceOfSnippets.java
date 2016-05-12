@@ -43,16 +43,9 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_LIKELY_P
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.TriState;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
@@ -78,6 +71,14 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
@@ -309,7 +310,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("falseValue", replacer.falseValue);
                 return args;
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         }
     }

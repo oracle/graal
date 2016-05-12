@@ -27,15 +27,8 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.refe
 
 import java.lang.ref.WeakReference;
 
-import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
-
-import sun.misc.Unsafe;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -59,6 +52,12 @@ import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.MidTierContext;
+
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.

@@ -22,22 +22,22 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
 
@@ -80,7 +80,7 @@ public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
         return "OK";
     }
 
-    @Test(expected = JVMCIError.class)
+    @Test(expected = GraalError.class)
     @SuppressWarnings("try")
     public void testVerification() {
         try (DebugConfigScope scope = Debug.disableIntercept()) {
@@ -102,11 +102,11 @@ public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
     }
 
     static long getTrackedPointer(@SuppressWarnings("unused") Object obj) {
-        throw JVMCIError.shouldNotReachHere("should be intrinsified");
+        throw GraalError.shouldNotReachHere("should be intrinsified");
     }
 
     static long getUntrackedPointer(@SuppressWarnings("unused") Object obj) {
-        throw JVMCIError.shouldNotReachHere("should be intrinsified");
+        throw GraalError.shouldNotReachHere("should be intrinsified");
     }
 
     static long getTrackedPointerIntrinsic(Object obj) {

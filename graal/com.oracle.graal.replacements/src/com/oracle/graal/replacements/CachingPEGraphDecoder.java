@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.EncodedGraph;
@@ -34,13 +39,9 @@ import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.phases.util.Providers;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
@@ -56,7 +57,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions,
                     Architecture architecture) {
-        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), architecture);
+        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getStampProvider(), architecture);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
@@ -66,8 +67,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-        return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(),
-                        providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), graphBuilderConfig,
+                        optimisticOpts, initialIntrinsicContext);
     }
 
     @SuppressWarnings("try")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
-
-import java.util.Iterator;
+package com.oracle.graal.test;
 
 /**
- * Describes an edge slot for a {@link NodeClass}.
+ * A class loader that exports all packages in the module defining the class loader to all classes
+ * in the unnamed module associated with the loader.
  */
-public interface NodePosIterator extends Iterator<Node> {
-    Position nextPosition();
+public class ExportingClassLoader extends ClassLoader {
+    public ExportingClassLoader() {
+        if (!GraalTest.JDK8OrEarlier) {
+            JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
+        }
+    }
+
+    public ExportingClassLoader(ClassLoader parent) {
+        super(parent);
+        if (!GraalTest.JDK8OrEarlier) {
+            JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
+        }
+    }
 }

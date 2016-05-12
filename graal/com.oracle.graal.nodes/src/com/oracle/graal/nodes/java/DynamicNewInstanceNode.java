@@ -24,9 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.Modifier;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -35,6 +32,9 @@ import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
 public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {

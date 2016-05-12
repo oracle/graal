@@ -25,11 +25,11 @@ package com.oracle.graal.nodes;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.memory.MemoryNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ValueNodeUtil {
 

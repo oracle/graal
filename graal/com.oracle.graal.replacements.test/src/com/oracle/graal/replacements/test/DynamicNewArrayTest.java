@@ -24,11 +24,11 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.Array;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests the implementation of Array.createInstance.

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.asm;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.lir.framemap.FrameMap;
+
+import jdk.vm.ci.code.CodeCacheProvider;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.

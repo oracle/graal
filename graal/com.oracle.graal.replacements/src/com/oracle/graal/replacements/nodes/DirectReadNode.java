@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -36,6 +32,10 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a

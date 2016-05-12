@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.REEXECUTABLE;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

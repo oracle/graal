@@ -30,13 +30,13 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -61,7 +61,7 @@ public class AArch64HotSpotMove {
             crb.recordInlineDataInCode(constant);
             if (constant.isCompressed()) {
                 // masm.forceMov(asRegister(result), 0);
-                throw JVMCIError.unimplemented();
+                throw GraalError.unimplemented();
             } else {
                 masm.movNativeAddress(asRegister(result), 0);
             }
@@ -166,7 +166,7 @@ public class AArch64HotSpotMove {
             } else {
                 // if ptr is null it has to be null after decompression
                 // masm.cmp(64, );
-                throw JVMCIError.unimplemented();
+                throw GraalError.unimplemented();
             }
 
         }

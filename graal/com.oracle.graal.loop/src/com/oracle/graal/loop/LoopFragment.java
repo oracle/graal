@@ -26,8 +26,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node;
@@ -390,7 +389,7 @@ public abstract class LoopFragment {
                     } else if (vpn instanceof GuardProxyNode) {
                         phi = graph.addWithoutUnique(new GuardPhiNode(merge));
                     } else {
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                     }
                     phi.addInput(vpn);
                     phi.addInput(newVpn);

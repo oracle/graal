@@ -31,14 +31,11 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.regi
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
 import static com.oracle.graal.hotspot.stubs.UncommonTrapStub.STACK_BANG_LOCATION;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -53,6 +50,10 @@ import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Deoptimization stub.
@@ -114,7 +115,7 @@ public class DeoptimizationStub extends SnippetStub {
             case 1:
                 return providers.getRegisters().getStackPointerRegister();
             default:
-                throw JVMCIError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
+                throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }
     }
 

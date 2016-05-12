@@ -25,7 +25,6 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
@@ -33,6 +32,8 @@ import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.meta.AllocatableValue;
 
 public class AMD64ClearRegisterOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ClearRegisterOp> TYPE = LIRInstructionClass.create(AMD64ClearRegisterOp.class);

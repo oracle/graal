@@ -32,6 +32,7 @@ import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
@@ -49,7 +50,6 @@ import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
@@ -193,7 +193,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case F2D:
                 return AArch64Kind.DOUBLE;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -301,7 +301,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case NONE:
                 return false;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -357,7 +357,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitBitCount(Value operand) {
-        throw JVMCIError.unimplemented("AArch64 ISA does not offer way to implement this more efficiently than a simple Java algorithm.");
+        throw GraalError.unimplemented("AArch64 ISA does not offer way to implement this more efficiently than a simple Java algorithm.");
     }
 
     @Override
@@ -374,7 +374,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitCountTrailingZeros(Value value) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     private Variable emitBitManipulation(AArch64BitManipulationOp.BitManipulationOpCode op, Value inputVal) {
@@ -438,27 +438,27 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public Value emitMathCos(Value input) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public Value emitMathSin(Value input) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public Value emitMathTan(Value input) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
 }

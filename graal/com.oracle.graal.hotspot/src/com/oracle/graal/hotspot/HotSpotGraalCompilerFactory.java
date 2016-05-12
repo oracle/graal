@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -42,13 +43,13 @@ import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.hotspot.services.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.runtime.JVMCIRuntime;
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
 
-public abstract class HotSpotGraalCompilerFactory extends JVMCICompilerFactory {
+public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
     /**
      * The name of the system property specifying a file containing extra Graal option settings.
@@ -82,8 +83,11 @@ public abstract class HotSpotGraalCompilerFactory extends JVMCICompilerFactory {
     static class Options {
 
         // @formatter:off
-        @Option(help = "In tiered mode compile the compiler itself using optimized first tier code.", type = OptionType.Expert)
+        @Option(help = "In tiered mode compile Graal and JVMCI using optimized first tier code.", type = OptionType.Expert)
         public static final OptionValue<Boolean> CompileGraalWithC1Only = new OptionValue<>(true);
+
+        @Option(help = "Hook into VM-level mechanism for denoting compilations to be performed in first tier.", type = OptionType.Expert)
+        public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(true);
         // @formatter:on
 
     }
@@ -175,7 +179,7 @@ public abstract class HotSpotGraalCompilerFactory extends JVMCICompilerFactory {
             savedPropsField.setAccessible(true);
             return (Properties) savedPropsField.get(null);
         } catch (Exception e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 
@@ -197,9 +201,35 @@ public abstract class HotSpotGraalCompilerFactory extends JVMCICompilerFactory {
 
     @Override
     public String[] getTrivialPrefixes() {
-        if (Options.CompileGraalWithC1Only.getValue()) {
-            return new String[]{"jdk/vm/ci", "com/oracle/graal"};
+        if (Options.UseTrivialPrefixes.getValue()) {
+            if (Options.CompileGraalWithC1Only.getValue()) {
+                return new String[]{"jdk/vm/ci", "com/oracle/graal"};
+            }
         }
         return null;
+    }
+
+    @Override
+    public int getCompilationLevelAdjustment(HotSpotVMConfig config) {
+        if (!Options.UseTrivialPrefixes.getValue()) {
+            if (Options.CompileGraalWithC1Only.getValue()) {
+                // We only decide using the class declaring the method
+                // so no need to have the method name and signature
+                // symbols converted to a String.
+                return config.compLevelAdjustmentByHolder;
+            }
+        }
+        return config.compLevelAdjustmentNone;
+    }
+
+    @Override
+    public int adjustCompilationLevel(HotSpotVMConfig config, Class<?> declaringClass, String name, String signature, boolean isOsr, int level) {
+        if (level > config.compilationLevelSimple) {
+            String declaringClassName = declaringClass.getName();
+            if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("com.oracle.graal")) {
+                return config.compilationLevelSimple;
+            }
+        }
+        return level;
     }
 }

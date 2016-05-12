@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.framemap;
 
+import com.oracle.graal.lir.LIRFrameState;
+
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.lir.LIRFrameState;
 
 public abstract class ReferenceMapBuilder {
 

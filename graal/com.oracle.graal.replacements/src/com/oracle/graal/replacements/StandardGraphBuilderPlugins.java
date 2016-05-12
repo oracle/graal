@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,24 +36,15 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
-
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.UnsignedMath;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeList;
@@ -107,7 +98,6 @@ import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNo
 import com.oracle.graal.phases.common.instrumentation.nodes.IsMethodInlinedNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.RootNameNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.RuntimePathNode;
-import com.oracle.graal.replacements.nodes.DeferredPiNode;
 import com.oracle.graal.replacements.nodes.DirectReadNode;
 import com.oracle.graal.replacements.nodes.DirectStoreNode;
 import com.oracle.graal.replacements.nodes.ReverseBytesNode;
@@ -115,6 +105,15 @@ import com.oracle.graal.replacements.nodes.VirtualizableInvokeMacroNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerSubExactNode;
+
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.
@@ -151,7 +150,7 @@ public class StandardGraphBuilderPlugins {
         try {
             STRING_VALUE_FIELD = String.class.getDeclaredField("value");
         } catch (NoSuchFieldException e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 
@@ -500,9 +499,7 @@ public class StandardGraphBuilderPlugins {
     /**
      * Substitutions for improving the performance of some critical methods in {@link Edges}. These
      * substitutions improve the performance by forcing the relevant methods to be inlined
-     * (intrinsification being a special form of inlining) and removing a checked cast. The latter
-     * cannot be done directly in Java code as {@link DeferredPiNode} is not available to the
-     * project containing {@link Edges}.
+     * (intrinsification being a special form of inlining) and removing a checked cast.
      */
     private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Edges.class);

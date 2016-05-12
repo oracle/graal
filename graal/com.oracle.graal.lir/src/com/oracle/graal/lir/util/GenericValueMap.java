@@ -24,9 +24,9 @@ package com.oracle.graal.lir.util;
 
 import java.util.Map;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
+
+import jdk.vm.ci.meta.Value;
 
 public final class GenericValueMap<T> extends ValueMap<Value, T> {
 

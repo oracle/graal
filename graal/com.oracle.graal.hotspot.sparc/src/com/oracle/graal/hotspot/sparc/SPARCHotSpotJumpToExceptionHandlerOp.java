@@ -24,15 +24,16 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.sparc.SPARCKind;
 
 /**
  * Jumps to the exception handler specified by {@link #address} and leaves the current window. It

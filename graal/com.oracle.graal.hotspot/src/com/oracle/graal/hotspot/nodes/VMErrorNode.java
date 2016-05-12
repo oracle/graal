@@ -23,11 +23,6 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.VM_ERROR;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -39,6 +34,12 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.replacements.Log;
 import com.oracle.graal.replacements.nodes.CStringConstant;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Causes the VM to exit with a description of the current Java location and an optional

@@ -25,9 +25,6 @@ package com.oracle.graal.nodes.java;
 import java.lang.ref.Reference;
 import java.util.Collections;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
@@ -38,6 +35,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code NewInstanceNode} represents the allocation of an instance class object.

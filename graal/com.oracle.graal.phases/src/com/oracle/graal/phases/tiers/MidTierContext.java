@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ProfilingInfo;
-
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ProfilingInfo;
 
 public class MidTierContext extends PhaseContext {
 

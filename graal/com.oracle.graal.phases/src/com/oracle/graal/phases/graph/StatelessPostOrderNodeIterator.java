@@ -85,9 +85,7 @@ public abstract class StatelessPostOrderNodeIterator {
             } else if (current instanceof ControlSplitNode) {
                 controlSplit((ControlSplitNode) current);
                 for (Node node : current.successors()) {
-                    if (node != null) {
-                        nodeQueue.addFirst((AbstractBeginNode) node);
-                    }
+                    nodeQueue.addFirst((AbstractBeginNode) node);
                 }
                 current = nodeQueue.pollFirst();
             } else {

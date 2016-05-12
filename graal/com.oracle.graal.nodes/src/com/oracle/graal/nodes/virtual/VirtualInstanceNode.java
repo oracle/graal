@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(nameTemplate = "VirtualInstance {p#type/s}")
 public class VirtualInstanceNode extends VirtualObjectNode {

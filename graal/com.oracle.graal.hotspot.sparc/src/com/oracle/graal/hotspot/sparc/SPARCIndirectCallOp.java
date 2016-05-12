@@ -25,10 +25,6 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g5;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRFrameState;
@@ -37,6 +33,11 @@ import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCCall;
 import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A register indirect call that complies with the extra conventions for such calls in HotSpot. In

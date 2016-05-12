@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.nodes.StructuredGraph;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Information about a graph that will potentially be inlined. This includes tracking the

@@ -28,8 +28,8 @@ import java.util.Set;
 
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
-import com.oracle.graal.graph.Node.IndirectCanonicalization;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.Node.IndirectCanonicalization;
 
 /**
  * A simple {@link NodeEventListener} implementation that accumulates event nodes in a

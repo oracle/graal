@@ -25,20 +25,10 @@ package com.oracle.graal.replacements.nodes;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MethodHandleAccessProvider;
-import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
@@ -52,6 +42,16 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
@@ -91,7 +91,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             case LINK_TO_INTERFACE:
                 return getLinkToTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -269,7 +269,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
                 targetArguments = Arrays.copyOfRange(arguments, 0, arguments.length - 1);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         StampPair targetReturnStamp = StampFactory.forDeclaredType(assumptions, targetReturnType, false);
 

@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
@@ -37,6 +36,8 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class UnsafeLoadSnippets implements Snippets {
 

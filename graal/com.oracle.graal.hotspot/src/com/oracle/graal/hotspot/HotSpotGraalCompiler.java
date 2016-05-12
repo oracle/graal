@@ -25,17 +25,6 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.code.CompilationRequestResult;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.TriState;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.code.CompilationResult;
@@ -63,6 +52,18 @@ import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
+
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationRequestResult;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
@@ -158,8 +159,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
-                            initialReplacementContext).apply(graph);
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
+                            OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
             assert !graph.isFrozen();
             return graph;
         }

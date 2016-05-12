@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "5aa3b3a72e35181e8839793757bc08b84257bcc5",
+        "version" : "f9aa6a496c06ab1da018d8e84f8f9e67e033745d",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -16,7 +16,7 @@ suite = {
       },
       {
         "name" : "truffle",
-        "version" : "9c16d110f3aa63a17e3e2cf1b857e039c507078a",
+        "version" : "85de7457d98c7862cc1165a54b61e8c928caa7b0",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -165,8 +165,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.serviceprovider",
-        "jvmci:JVMCI_API",
+        "com.oracle.graal.graph",
       ],
       "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -313,6 +312,9 @@ suite = {
         "com.oracle.graal.replacements.test",
         "com.oracle.graal.hotspot",
       ],
+      "imports" : [
+        "jdk.internal.reflect",
+      ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -407,6 +409,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -429,6 +432,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -502,7 +506,6 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.asm",
         "com.oracle.graal.code",
-        "com.oracle.graal.compiler.common",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -680,7 +683,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.graph",
         "com.oracle.graal.api.replacements",
         "com.oracle.graal.bytecode",
         "com.oracle.graal.lir",

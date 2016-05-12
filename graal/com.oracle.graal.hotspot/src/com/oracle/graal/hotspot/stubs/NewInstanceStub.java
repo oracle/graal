@@ -66,9 +66,6 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -85,6 +82,10 @@ import com.oracle.graal.nodes.memory.address.RawAddressNode;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is

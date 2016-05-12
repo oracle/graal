@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArrayLengthProvider;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.

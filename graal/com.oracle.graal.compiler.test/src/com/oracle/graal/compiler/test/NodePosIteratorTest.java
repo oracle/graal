@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.compiler.test;
 
+import java.util.Iterator;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodeClassIterable;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.graph.NodeSuccessorList;
+import com.oracle.graal.graph.Position;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.EndNode;
@@ -68,9 +70,9 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         n.i1 = i1;
         n.i2 = i2;
 
-        NodeClassIterable inputs = n.inputs();
+        NodeIterable<Node> inputs = n.inputs();
 
-        NodePosIterator iterator = inputs.iterator();
+        Iterator<Node> iterator = inputs.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), i1);
@@ -86,21 +88,21 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         Assert.assertFalse(iterator.hasNext());
         Assert.assertFalse(iterator.hasNext());
 
-        iterator = inputs.iterator();
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals("ConstantNode:i1", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals("FloatingNode:i2", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals("NodeInputList:itail[0]", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals("NodeInputList:itail[1]", iterator.nextPosition().toString());
-        Assert.assertFalse(iterator.hasNext());
-        Assert.assertFalse(iterator.hasNext());
+        Iterator<Position> positionIterator = n.inputPositions().iterator();
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals("ConstantNode:i1", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals("FloatingNode:i2", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals("NodeInputList:itail[0]", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals("NodeInputList:itail[1]", positionIterator.next().toString());
+        Assert.assertFalse(positionIterator.hasNext());
+        Assert.assertFalse(positionIterator.hasNext());
 
         iterator = inputs.iterator();
         n.i1 = i4;
@@ -126,21 +128,6 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), i4);
         Assert.assertFalse(iterator.hasNext());
-
-        iterator = inputs.withNullIterator();
-        n.i1 = null;
-        n.i2 = null;
-        n.itail.initialize(0, i3);
-        n.itail.initialize(1, null);
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.next(), i3);
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
-        Assert.assertFalse(iterator.hasNext());
     }
 
     @Test
@@ -154,8 +141,8 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         n.s2 = s2;
         n.stail = new NodeSuccessorList<>(n, new Node[]{s3, s4});
 
-        NodeClassIterable successors = n.successors();
-        NodePosIterator iterator = successors.iterator();
+        NodeIterable<Node> successors = n.successors();
+        Iterator<Node> iterator = successors.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), s1);
@@ -171,21 +158,21 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         Assert.assertFalse(iterator.hasNext());
         Assert.assertFalse(iterator.hasNext());
 
-        iterator = successors.iterator();
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(Node.class.getSimpleName() + ":s1", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(Node.class.getSimpleName() + ":s2", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[0]", iterator.nextPosition().toString());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[1]", iterator.nextPosition().toString());
-        Assert.assertFalse(iterator.hasNext());
-        Assert.assertFalse(iterator.hasNext());
+        Iterator<Position> positionIterator = n.successorPositions().iterator();
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals(Node.class.getSimpleName() + ":s1", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals(Node.class.getSimpleName() + ":s2", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[0]", positionIterator.next().toString());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertTrue(positionIterator.hasNext());
+        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[1]", positionIterator.next().toString());
+        Assert.assertFalse(positionIterator.hasNext());
+        Assert.assertFalse(positionIterator.hasNext());
 
         iterator = successors.iterator();
         n.s1 = s4;
@@ -210,21 +197,6 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         Assert.assertEquals(iterator.next(), s2);
         Assert.assertTrue(iterator.hasNext());
         Assert.assertEquals(iterator.next(), s4);
-        Assert.assertFalse(iterator.hasNext());
-
-        iterator = successors.withNullIterator();
-        n.s1 = null;
-        n.s2 = null;
-        n.stail.initialize(0, s3);
-        n.stail.initialize(1, null);
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.next(), s3);
-        Assert.assertTrue(iterator.hasNext());
-        Assert.assertNull(iterator.next());
         Assert.assertFalse(iterator.hasNext());
     }
 }

@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -38,6 +34,10 @@ import com.oracle.graal.nodes.LogicNegationNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "|<|")
 public final class IntegerBelowNode extends CompareNode {

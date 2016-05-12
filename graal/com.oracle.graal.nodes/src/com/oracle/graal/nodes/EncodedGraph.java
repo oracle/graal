@@ -24,10 +24,10 @@ package com.oracle.graal.nodes;
 
 import java.util.List;
 
+import com.oracle.graal.graph.NodeClass;
+
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import com.oracle.graal.graph.NodeClass;
 
 /**
  * A {@link StructuredGraph} encoded in a compact binary representation as a byte[] array. See

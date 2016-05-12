@@ -62,19 +62,11 @@ import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC;
-import jdk.vm.ci.sparc.SPARC.CPUFeature;
-import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler.Op3s;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
@@ -96,6 +88,15 @@ import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
 import com.oracle.graal.lir.sparc.SPARCOPFOp;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
+import jdk.vm.ci.sparc.SPARCKind;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -150,7 +151,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 opf = Opfs.Fabsd;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("Input kind: " + kind);
+                throw GraalError.shouldNotReachHere("Input kind: " + kind);
         }
         getLIRGen().append(new SPARCOPFOp(opf, g0.asValue(), input, result));
         return result;
@@ -169,7 +170,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 opf = Opfs.Fsqrtd;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("Input kind: " + kind);
+                throw GraalError.shouldNotReachHere("Input kind: " + kind);
         }
         getLIRGen().append(new SPARCOPFOp(opf, g0.asValue(), input, result));
         return result;
@@ -271,7 +272,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 } else if (aKind == WORD) {
                     getLIRGen().append(new SPARCIMulccOp(result, getLIRGen().load(a), getLIRGen().load(b)));
                 } else {
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
                 }
                 return result;
             } else {
@@ -294,7 +295,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 opcode = MulHigh.LMUL;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         return emitMulHigh(opcode, a, b);
     }
@@ -310,7 +311,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case XWORD:
                 return emitBinary(LIRKind.combine(a, b), UMulxhi, a, b);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -383,7 +384,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 result = emitSub(aLoaded, q4, false);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("missing: " + a.getPlatformKind());
+                throw GraalError.shouldNotReachHere("missing: " + a.getPlatformKind());
         }
         return result;
     }
@@ -402,7 +403,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 opcode = Rem.LUREM;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         getLIRGen().append(new RemOp(opcode, result, getLIRGen().load(a), getLIRGen().load(b), scratch1, scratch2, state));
         return result;
@@ -421,7 +422,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
             case XWORD:
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         return emitBinary(LIRKind.combine(actualA, actualB), Udivx, actualA, actualB, state);
     }
@@ -457,7 +458,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 op = Op3s.Sllx;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere(String.format("Unsupported kind %s", aKind));
+                throw GraalError.shouldNotReachHere(String.format("Unsupported kind %s", aKind));
         }
         return emitBinary(resultKind, op, a, b);
     }
@@ -475,7 +476,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 op = Op3s.Srax;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         return emitBinary(resultKind, op, a, b);
     }
@@ -493,7 +494,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 op = Op3s.Srlx;
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         return emitBinary(resultKind, op, a, b);
     }
@@ -581,7 +582,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 break;
             }
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         return result;
     }

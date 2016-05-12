@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.List;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -42,6 +38,11 @@ import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+
 /**
  * Graph decoder that simplifies nodes during decoding. The standard
  * {@link Canonicalizable#canonical node canonicalization} interface is used to canonicalize nodes
@@ -52,6 +53,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
 
     protected final MetaAccessProvider metaAccess;
     protected final ConstantReflectionProvider constantReflection;
+    protected final ConstantFieldProvider constantFieldProvider;
     protected final StampProvider stampProvider;
     protected final boolean canonicalizeReads;
 
@@ -71,6 +73,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
+        }
+
+        @Override
+        public ConstantFieldProvider getConstantFieldProvider() {
+            return constantFieldProvider;
         }
 
         @Override
@@ -103,10 +110,12 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    public SimplifyingGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, boolean canonicalizeReads, Architecture architecture) {
+    public SimplifyingGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
+                    boolean canonicalizeReads, Architecture architecture) {
         super(architecture);
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
+        this.constantFieldProvider = constantFieldProvider;
         this.stampProvider = stampProvider;
         this.canonicalizeReads = canonicalizeReads;
     }
@@ -243,8 +252,9 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             } else if (canonical instanceof ControlSinkNode) {
                 FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
                 predecessor.setNext((ControlSinkNode) canonical);
+                List<Node> successorSnapshot = node.successors().snapshot();
                 node.safeDelete();
-                for (Node successor : node.successors()) {
+                for (Node successor : successorSnapshot) {
                     successor.safeDelete();
                 }
 

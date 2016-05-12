@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.graph.spi;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Nodes can implement {@link Canonicalizable} or one of the two sub-interfaces {@link Unary} and

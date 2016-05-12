@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.code.CodeUtil;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
@@ -38,6 +36,8 @@ import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * The {@code ZeroExtendNode} converts an integer to a wider integer using zero extension.

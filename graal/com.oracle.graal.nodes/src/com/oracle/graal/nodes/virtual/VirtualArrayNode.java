@@ -24,10 +24,6 @@ package com.oracle.graal.nodes.virtual;
 
 import java.nio.ByteOrder;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
-
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
@@ -36,6 +32,10 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArrayLengthProvider;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 @NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
 public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {

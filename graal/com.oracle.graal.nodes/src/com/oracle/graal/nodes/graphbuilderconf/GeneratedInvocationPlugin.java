@@ -24,11 +24,11 @@ package com.oracle.graal.nodes.graphbuilderconf;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.nodes.ValueNode;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import com.oracle.graal.nodes.ValueNode;
 
 public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
 
@@ -43,6 +43,6 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
                 return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
             }
         }
-        throw new JVMCIError("could not find method named \"execute\" in " + c.getName());
+        throw new GraalError("could not find method named \"execute\" in " + c.getName());
     }
 }

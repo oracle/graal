@@ -37,11 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
-
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
@@ -67,6 +62,11 @@ import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.phases.schedule.SchedulePhase;
+
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
@@ -98,6 +98,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
+
+    static final int CURRENT_MAJOR_VERSION = 1;
+    static final int CURRENT_MINOR_VERSION = 0;
+
+    static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
+
+    private void writeVersion() throws IOException {
+        writeBytesRaw(MAGIC_BYTES);
+        writeByte(CURRENT_MAJOR_VERSION);
+        writeByte(CURRENT_MINOR_VERSION);
+    }
 
     private static final class ConstantPool extends LinkedHashMap<Object, Character> {
 
@@ -139,10 +150,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private static final Charset utf8 = Charset.forName("UTF-8");
 
-    public BinaryGraphPrinter(WritableByteChannel channel) {
+    public BinaryGraphPrinter(WritableByteChannel channel) throws IOException {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
+        writeVersion();
     }
 
     @Override
@@ -234,13 +246,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            int bytesWritten = 0;
-            while (bytesWritten < b.length) {
-                int toWrite = Math.min(b.length - bytesWritten, buffer.capacity());
-                ensureAvailable(toWrite);
-                buffer.put(b, bytesWritten, toWrite);
-                bytesWritten += toWrite;
-            }
+            writeBytesRaw(b);
+        }
+    }
+
+    private void writeBytesRaw(byte[] b) throws IOException {
+        int bytesWritten = 0;
+        while (bytesWritten < b.length) {
+            int toWrite = Math.min(b.length - bytesWritten, buffer.capacity());
+            ensureAvailable(toWrite);
+            buffer.put(b, bytesWritten, toWrite);
+            bytesWritten += toWrite;
         }
     }
 

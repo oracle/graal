@@ -30,11 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
@@ -177,7 +176,7 @@ public class MatchContext {
      *
      * @param name the name of a node in the match rule
      * @return the matched node
-     * @throws JVMCIError is the named node doesn't exist.
+     * @throws GraalError is the named node doesn't exist.
      */
     public Node namedNode(String name) {
         if (namedNodes != null) {
@@ -186,7 +185,7 @@ public class MatchContext {
                 return value.value;
             }
         }
-        throw new JVMCIError("missing node %s", name);
+        throw new GraalError("missing node %s", name);
     }
 
     @Override

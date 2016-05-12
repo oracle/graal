@@ -26,6 +26,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
 
 public interface CanonicalizerTool {
@@ -35,6 +36,8 @@ public interface CanonicalizerTool {
     MetaAccessProvider getMetaAccess();
 
     ConstantReflectionProvider getConstantReflection();
+
+    ConstantFieldProvider getConstantFieldProvider();
 
     boolean canonicalizeReads();
 

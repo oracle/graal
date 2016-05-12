@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.nodes.ConstantNode.forInt;
 import static com.oracle.graal.nodes.ConstantNode.forIntegerKind;
-import static jdk.vm.ci.meta.LocationIdentity.any;
 
 import java.lang.reflect.Constructor;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ValueNode;
@@ -49,6 +51,7 @@ import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
@@ -65,11 +68,9 @@ import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.WordTypes;
 import com.oracle.graal.word.nodes.WordCastNode;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -111,7 +112,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     @Override
-    public StampPair interceptType(boolean parsingIntrinsic, JavaType declaredType, boolean nonNull) {
+    public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
         Stamp wordStamp = null;
         if (declaredType instanceof ResolvedJavaType) {
             ResolvedJavaType resolved = (ResolvedJavaType) declaredType;
@@ -138,7 +139,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        StampPair wordStamp = interceptType(b.parsingIntrinsic(), field.getType(), false);
+        StampPair wordStamp = interceptType(b, field.getType(), false);
         if (wordStamp != null) {
             LoadFieldNode loadFieldNode = LoadFieldNode.createOverrideStamp(wordStamp, receiver, field);
             b.addPush(field.getJavaKind(), loadFieldNode);
@@ -218,7 +219,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         return false;
     }
 
-    protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws JVMCIError {
+    protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalError {
         Operation operation = wordMethod.getAnnotation(Word.Operation.class);
         JavaKind returnKind = wordMethod.getSignature().getReturnKind();
         switch (operation.opcode()) {
@@ -326,7 +327,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
 
             default:
-                throw new JVMCIError("Unknown opcode: %s", operation.opcode());
+                throw new GraalError("Unknown opcode: %s", operation.opcode());
         }
     }
 
@@ -340,7 +341,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             Constructor<?> cons = nodeClass.getDeclaredConstructor(ValueNode.class, ValueNode.class);
             return (ValueNode) cons.newInstance(left, right);
         } catch (Throwable ex) {
-            throw new JVMCIError(ex).addContext(nodeClass.getName());
+            throw new GraalError(ex).addContext(nodeClass.getName());
         }
     }
 

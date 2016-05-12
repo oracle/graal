@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.nodes.debug;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -116,7 +115,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         if (counterOp != null) {
             lirGen.append(counterOp);
         } else {
-            throw JVMCIError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
+            throw GraalError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
         }
     }
 

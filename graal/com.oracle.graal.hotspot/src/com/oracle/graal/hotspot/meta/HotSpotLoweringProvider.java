@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 import com.oracle.graal.nodes.spi.LoweringProvider;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.

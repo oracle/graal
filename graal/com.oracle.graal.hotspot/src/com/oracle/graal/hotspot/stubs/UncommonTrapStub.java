@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writ
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
@@ -45,8 +47,6 @@ import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LocationIdentity;
 
 /**
  * Uncommon trap stub.
@@ -110,7 +110,7 @@ public class UncommonTrapStub extends SnippetStub {
             case 1:
                 return providers.getRegisters().getStackPointerRegister();
             default:
-                throw JVMCIError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
+                throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }
     }
 

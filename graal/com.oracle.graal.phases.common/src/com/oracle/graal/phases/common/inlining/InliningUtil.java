@@ -29,19 +29,10 @@ import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -50,8 +41,9 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Fingerprint;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.GraalGraphJVMCIError;
+import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node;
@@ -99,6 +91,15 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InliningUtil {
 
@@ -472,14 +473,21 @@ public class InliningUtil {
     @SuppressWarnings("try")
     private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
         if (inlineGraph.mayHaveNodeSourcePosition() && invoke.stateAfter() != null) {
+            if (invoke.asNode().getNodeSourcePosition() == null) {
+                // Temporarily ignore the assert below.
+                return;
+            }
+
             JavaConstant constantReceiver = invoke.getInvokeKind().hasReceiver() ? invoke.getReceiver().asJavaConstant() : null;
-            NodeSourcePosition outerPos = new NodeSourcePosition(constantReceiver, FrameState.toSourcePosition(invoke.stateAfter().outerFrameState()),
-                            invoke.stateAfter().method(), invoke.bci());
+            NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
+            assert invokePos != null : "missing source information";
+
+            Map<NodeSourcePosition, NodeSourcePosition> posMap = new HashMap<>();
             for (Entry<Node, Node> entry : duplicates.entrySet()) {
                 NodeSourcePosition pos = entry.getKey().getNodeSourcePosition();
                 if (pos != null) {
-                    NodeSourcePosition newPos = pos.addCaller(outerPos);
-                    entry.getValue().setNodeSourcePosition(newPos);
+                    NodeSourcePosition callerPos = pos.addCaller(constantReceiver, invokePos);
+                    entry.getValue().setNodeSourcePosition(posMap.putIfAbsent(callerPos, callerPos));
                 }
             }
         }
@@ -733,7 +741,7 @@ public class InliningUtil {
         return replacements.getSubstitution(target, invokeBci);
     }
 
-    public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws JVMCIError {
+    public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalError {
         StructuredGraph graph = invoke.asNode().graph();
         if (!concrete.equals(((MethodCallTargetNode) invoke.callTarget()).targetMethod())) {
             assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind().hasReceiver();
@@ -754,12 +762,12 @@ public class InliningUtil {
         return macroNode;
     }
 
-    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws JVMCIError {
+    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws GraalError {
         try {
             Constructor<?> cons = macroNodeClass.getDeclaredConstructor(Invoke.class);
             return (FixedWithNextNode) cons.newInstance(invoke);
         } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
-            throw new GraalGraphJVMCIError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
+            throw new GraalGraphError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
         }
     }
 

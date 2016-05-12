@@ -53,7 +53,7 @@ public class NodeValidationChecksTest {
         try {
             graph.add(new TestNode(node, null));
             Assert.fail("Exception expected.");
-        } catch (IllegalStateException e) {
+        } catch (AssertionError e) {
             Assert.assertTrue(e.getMessage().contains("Input"));
             Assert.assertTrue(e.getMessage().contains("not alive"));
         }
@@ -66,7 +66,7 @@ public class NodeValidationChecksTest {
         try {
             graph.add(new TestNode(null, node));
             Assert.fail("Exception expected.");
-        } catch (IllegalStateException e) {
+        } catch (AssertionError e) {
             Assert.assertTrue(e.getMessage().contains("Successor"));
             Assert.assertTrue(e.getMessage().contains("not alive"));
         }

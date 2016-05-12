@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.loop;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 
@@ -44,7 +43,7 @@ public abstract class InductionVariable {
                 case Down:
                     return Up;
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }

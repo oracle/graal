@@ -34,7 +34,6 @@ import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 
 public final class TraceCompilationASTListener extends AbstractDebugCompilationListener {
 
@@ -68,27 +67,29 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                 if (parent == null) {
                     OptimizedCallTarget.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
                 } else {
-                    String fieldName = "unknownField";
-                    NodeFieldAccessor[] fields = NodeClass.get(parent).getFields();
-                    for (NodeFieldAccessor field : fields) {
-                        Object value = field.loadValue(parent);
-                        if (value == node) {
-                            fieldName = field.getName();
-                            break;
-                        } else if (value instanceof Node[]) {
-                            int index = 0;
-                            for (Node arrayNode : (Node[]) value) {
-                                if (arrayNode == node) {
-                                    fieldName = field.getName() + "[" + index + "]";
-                                    break;
-                                }
-                                index++;
-                            }
-                        }
-                    }
+                    String fieldName = getFieldName(parent, node);
                     OptimizedCallTarget.log(String.format("%s%s = %s", indent, fieldName, node.getClass().getSimpleName()));
                 }
                 return true;
+            }
+
+            @SuppressWarnings("deprecation")
+            private String getFieldName(Node parent, Node node) {
+                for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : NodeClass.get(parent).getFields()) {
+                    Object value = field.loadValue(parent);
+                    if (value == node) {
+                        return field.getName();
+                    } else if (value instanceof Node[]) {
+                        int index = 0;
+                        for (Node arrayNode : (Node[]) value) {
+                            if (arrayNode == node) {
+                                return field.getName() + "[" + index + "]";
+                            }
+                            index++;
+                        }
+                    }
+                }
+                return "unknownField";
             }
 
         }, inliningDecision);

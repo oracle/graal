@@ -33,16 +33,12 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -51,6 +47,10 @@ import com.oracle.graal.lir.alloc.OutOfRegistersException;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 
 /**
  */
@@ -710,7 +710,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // the interval is currently inactive, so no spill slot is needed for now.
             // when the split part is activated, the interval has a new chance to get a register,
             // so in the best case no stack slot is necessary
-            throw JVMCIError.shouldNotReachHere("TraceIntervals can not be inactive!");
+            throw GraalError.shouldNotReachHere("TraceIntervals can not be inactive!");
 
         } else {
             // search the position where the interval must have a register and split

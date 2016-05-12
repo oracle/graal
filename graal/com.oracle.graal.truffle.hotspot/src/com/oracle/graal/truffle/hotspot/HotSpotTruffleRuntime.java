@@ -45,6 +45,7 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.GraalDebugConfig;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
@@ -86,7 +87,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -95,6 +95,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
 
 /**
@@ -174,17 +175,17 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return createCallTargetImpl(null, rootNode);
+        return createCallTargetImpl(null, rootNode, createSpeculationLog());
     }
 
-    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
+    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
         CompilationPolicy compilationPolicy;
         if (acceptForCompilation(rootNode)) {
             compilationPolicy = new CounterAndTimeBasedCompilationPolicy();
         } else {
             compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
-        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, new HotSpotSpeculationLog());
+        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, speculationLog);
         rootNode.setCallTarget(target);
         callTargets.put(target, null);
 
@@ -192,8 +193,18 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog) {
+        return createCallTargetImpl(null, root, speculationLog);
+    }
+
+    @Override
+    public SpeculationLog createSpeculationLog() {
+        return new HotSpotSpeculationLog();
+    }
+
+    @Override
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode root) {
-        return createCallTargetImpl(source, root);
+        return createCallTargetImpl(source, root, createSpeculationLog());
     }
 
     public static void setDontInlineCallBoundaryMethod() {
@@ -249,7 +260,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withNodeSourcePosition(infoPoints);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.ALL,
+                        null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);
         Backend backend = getHotSpotBackend();
@@ -364,7 +376,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             try {
                 THREAD_EETOP_OFFSET = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
             } catch (Exception e) {
-                throw new JVMCIError(e);
+                throw new GraalError(e);
             }
         }
 

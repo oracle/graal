@@ -24,7 +24,6 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
@@ -33,6 +32,8 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.meta.Value;
 
 public class SPARCFloatCompareOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
     public static final LIRInstructionClass<SPARCFloatCompareOp> TYPE = LIRInstructionClass.create(SPARCFloatCompareOp.class);

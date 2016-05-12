@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.replacements.StringSubstitutions;
 import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests {@link StringSubstitutions}.

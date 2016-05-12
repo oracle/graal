@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 
 @NodeInfo(allowedUsageTypes = {InputType.Association, InputType.Value})
-public final class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable {
+public final class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable, Node.ValueNumberable {
 
     public static final NodeClass<SnippetLocationProxyNode> TYPE = NodeClass.create(SnippetLocationProxyNode.class);
     @Input(InputType.Unchecked) ValueNode location;

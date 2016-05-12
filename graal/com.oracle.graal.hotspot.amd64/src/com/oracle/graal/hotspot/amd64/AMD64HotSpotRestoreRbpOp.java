@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.graal.lir.Variable;
+
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.LIRKind;
-
-import com.oracle.graal.lir.Variable;
 
 public interface AMD64HotSpotRestoreRbpOp {
 

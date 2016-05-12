@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * <pre>
  *     {@literal @}NodeIntrinsic(BreakpointNode.class)
  *     static void breakpoint(Object object, Word mark, Word value) {
- *          throw new JVMCIError("");
+ *          throw new GraalError("");
  *     }
  * </pre>
  *

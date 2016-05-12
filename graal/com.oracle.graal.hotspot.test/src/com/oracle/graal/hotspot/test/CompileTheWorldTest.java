@@ -23,8 +23,6 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 import org.junit.Test;
 
@@ -32,6 +30,9 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.hotspot.CompileTheWorld;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.HotSpotGraalCompiler;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 /**
  * Tests {@link CompileTheWorld} functionality.

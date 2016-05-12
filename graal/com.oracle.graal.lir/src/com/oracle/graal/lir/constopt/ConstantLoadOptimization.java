@@ -33,11 +33,6 @@ import java.util.Deque;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
@@ -61,6 +56,11 @@ import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
 import com.oracle.graal.options.NestedBooleanOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This optimization tries to improve the handling of constants by replacing a single definition of

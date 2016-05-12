@@ -32,10 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.Util;
@@ -48,6 +44,10 @@ import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.Interval.State;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 
 /**
  */

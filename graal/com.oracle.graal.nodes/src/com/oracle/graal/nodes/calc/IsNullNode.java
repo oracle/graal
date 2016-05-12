@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.meta.TriState;
-
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -42,6 +40,8 @@ import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.type.StampTool;
 
+import jdk.vm.ci.meta.TriState;
+
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
@@ -52,6 +52,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     public IsNullNode(ValueNode object) {
         super(TYPE, object);
+        assert object != null;
     }
 
     @Override

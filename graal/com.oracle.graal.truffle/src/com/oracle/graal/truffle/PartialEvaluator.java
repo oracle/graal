@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
@@ -49,6 +50,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
@@ -88,7 +90,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -190,7 +191,7 @@ public class PartialEvaluator {
         }
 
         @Override
-        public FloatingNode interceptParameter(GraphBuilderContext b, int index, StampPair stamp) {
+        public FloatingNode interceptParameter(GraphBuilderTool b, int index, StampPair stamp) {
             if (index == 0) {
                 return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
             }
@@ -225,7 +226,7 @@ public class PartialEvaluator {
                 if (original.equals(callSiteProxyMethod)) {
                     ValueNode arg1 = arguments[0];
                     if (!arg1.isConstant()) {
-                        JVMCIError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                        GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
                     }
 
                     Object callNode = snippetReflection.asObject(Object.class, (JavaConstant) arg1.asConstant());
@@ -346,9 +347,8 @@ public class PartialEvaluator {
                         AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
             @Override
             protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-                return new DefaultTruffleCompiler.TruffleGraphBuilderPhase.Instance(providers.getMetaAccess(),
-                                providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig,
-                                optimisticOpts, initialIntrinsicContext);
+                return new DefaultTruffleCompiler.TruffleGraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(),
+                                providers.getConstantFieldProvider(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
             }
         };
     }
@@ -388,7 +388,7 @@ public class PartialEvaluator {
     }
 
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, snippetReflection);
 
         for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
             p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);

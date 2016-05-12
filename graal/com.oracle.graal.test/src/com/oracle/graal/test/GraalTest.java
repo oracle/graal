@@ -50,6 +50,8 @@ public class GraalTest {
         }
     }
 
+    public static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
     protected Method getMethod(String methodName) {
         return getMethod(getClass(), methodName);
     }

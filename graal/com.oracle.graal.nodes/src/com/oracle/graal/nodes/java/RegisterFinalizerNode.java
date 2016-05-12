@@ -23,8 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
@@ -43,6 +41,9 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object

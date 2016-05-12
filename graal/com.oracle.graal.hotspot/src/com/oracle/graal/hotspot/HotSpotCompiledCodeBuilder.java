@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
@@ -33,6 +33,16 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.Stream.Builder;
 
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.code.CompilationResult.CodeAnnotation;
+import com.oracle.graal.code.CompilationResult.CodeComment;
+import com.oracle.graal.code.CompilationResult.JumpTable;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.code.DataSection;
+import com.oracle.graal.code.SourceMapping;
+import com.oracle.graal.graph.NodeSourcePosition;
+
+import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
@@ -40,20 +50,14 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode.Comment;
 import jdk.vm.ci.hotspot.HotSpotCompiledNmethod;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.CompilationResult.CodeAnnotation;
-import com.oracle.graal.code.CompilationResult.CodeComment;
-import com.oracle.graal.code.CompilationResult.JumpTable;
-import com.oracle.graal.code.DataSection;
 
 public class HotSpotCompiledCodeBuilder {
 
@@ -152,7 +156,7 @@ public class HotSpotCompiledCodeBuilder {
             int o1 = ord(i1);
             int o2 = ord(i2);
             if (o1 < 0 && o2 < 0) {
-                throw new JVMCIError("Non optional infopoints cannot collide: %s and %s", i1, i2);
+                throw new GraalError("Non optional infopoints cannot collide: %s and %s", i1, i2);
             }
             return o1 - o2;
         }
@@ -197,30 +201,31 @@ public class HotSpotCompiledCodeBuilder {
      * {@link Infopoint} PCs to be unique.
      */
     private static Site[] getSortedSites(CompilationResult target) {
-        List<?>[] lists = new List<?>[]{target.getExceptionHandlers(), target.getInfopoints(), target.getDataPatches(), target.getMarks()};
-        int count = 0;
-        for (List<?> list : lists) {
-            if (list != null) {
-                count += list.size();
-            }
+        List<Site> sites = new ArrayList<>(
+                        target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
+        sites.addAll(target.getExceptionHandlers());
+        sites.addAll(target.getInfopoints());
+        sites.addAll(target.getDataPatches());
+        sites.addAll(target.getMarks());
+
+        /*
+         * Translate the source mapping into appropriate info points. In HotSpot only one position
+         * can really be represented and recording the end PC seems to give the best results and
+         * corresponds with what C1 and C2 do.
+         */
+        for (SourceMapping source : target.getSourceMappings()) {
+            sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(source.getSourcePosition()), InfopointReason.BYTECODE_POSITION));
+            assert verifySourcePositionReceivers(source.getSourcePosition());
         }
-        Site[] result = new Site[count];
-        int pos = 0;
-        for (List<?> list : lists) {
-            if (list != null) {
-                for (Object elem : list) {
-                    result[pos++] = (Site) elem;
-                }
-            }
-        }
+
         SiteComparator c = new SiteComparator();
-        Arrays.sort(result, c);
+        Collections.sort(sites, c);
         if (c.sawCollidingInfopoints) {
             Infopoint lastInfopoint = null;
-            List<Site> copy = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                if (result[i] instanceof Infopoint) {
-                    Infopoint info = (Infopoint) result[i];
+            List<Site> copy = new ArrayList<>(sites.size());
+            for (Site site : sites) {
+                if (site instanceof Infopoint) {
+                    Infopoint info = (Infopoint) site;
                     if (lastInfopoint == null || lastInfopoint.pcOffset != info.pcOffset) {
                         lastInfopoint = info;
                         copy.add(info);
@@ -229,11 +234,25 @@ public class HotSpotCompiledCodeBuilder {
                         assert lastInfopoint.reason.compareTo(info.reason) <= 0;
                     }
                 } else {
-                    copy.add(result[i]);
+                    copy.add(site);
                 }
             }
-            result = copy.toArray(new Site[copy.size()]);
+            sites = copy;
         }
-        return result;
+        return sites.toArray(new Site[sites.size()]);
+    }
+
+    /**
+     * Verifies that the captured receiver type agrees with the declared type of the method.
+     */
+    private static boolean verifySourcePositionReceivers(NodeSourcePosition start) {
+        NodeSourcePosition pos = start;
+        while (pos != null) {
+            if (pos.getReceiver() != null) {
+                assert ((HotSpotObjectConstant) pos.getReceiver()).asObject(pos.getMethod().getDeclaringClass()) != null;
+            }
+            pos = pos.getCaller();
+        }
+        return true;
     }
 }

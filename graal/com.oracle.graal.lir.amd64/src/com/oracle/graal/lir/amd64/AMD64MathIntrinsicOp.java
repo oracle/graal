@@ -23,14 +23,15 @@
 package com.oracle.graal.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
@@ -59,7 +60,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             case SIN:   masm.fsin(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
             case COS:   masm.fcos(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
             case TAN:   masm.ftan(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE)); break;
-            default:    throw JVMCIError.shouldNotReachHere();
+            default:    throw GraalError.shouldNotReachHere();
         }
     }
 }

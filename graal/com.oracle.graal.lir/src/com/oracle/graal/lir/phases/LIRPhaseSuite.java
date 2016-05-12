@@ -27,10 +27,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> {
     private List<LIRPhase<C>> phases;

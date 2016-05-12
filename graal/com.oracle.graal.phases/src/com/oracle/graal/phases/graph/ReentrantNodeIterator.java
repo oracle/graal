@@ -25,11 +25,11 @@ package com.oracle.graal.phases.graph;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodePosIterator;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
@@ -121,7 +121,7 @@ public final class ReentrantNodeIterator {
                 state = closure.processNode(current, state);
 
                 if (closure.continueIteration(state)) {
-                    NodePosIterator successors = current.successors().iterator();
+                    Iterator<Node> successors = current.successors().iterator();
                     if (!successors.hasNext()) {
                         if (current instanceof LoopEndNode) {
                             blockEndStates.put(current, state);

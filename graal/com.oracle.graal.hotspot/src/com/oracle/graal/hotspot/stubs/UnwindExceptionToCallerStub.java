@@ -30,7 +30,6 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
-import jdk.vm.ci.code.Register;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -44,6 +43,8 @@ import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
 
 /**
  * Stub called by an {@link UnwindNode}. This stub executes in the frame of the method throwing an

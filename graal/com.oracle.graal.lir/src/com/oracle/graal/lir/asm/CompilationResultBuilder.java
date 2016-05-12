@@ -34,22 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.site.ConstantReference;
-import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.VMConstant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.NumUtil;
@@ -60,6 +44,8 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
@@ -68,6 +54,21 @@ import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataSectionReference;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.code.site.Mark;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.InvokeTarget;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.VMConstant;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
@@ -220,6 +221,10 @@ public class CompilationResultBuilder {
         compilationResult.recordInfopoint(pos, debugInfo, reason);
     }
 
+    public void recordSourceMapping(int pcOffset, int endPcOffset, NodeSourcePosition sourcePosition) {
+        compilationResult.recordSourceMapping(pcOffset, endPcOffset, sourcePosition);
+    }
+
     public void recordInlineDataInCode(Constant data) {
         assert data != null;
         int pos = asm.position();
@@ -269,7 +274,7 @@ public class CompilationResultBuilder {
         JavaConstant constant = asJavaConstant(value);
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
         return (int) c;
     }
@@ -423,7 +428,7 @@ public class CompilationResultBuilder {
                 if (afterOp != null) {
                     afterOp.accept(op);
                 }
-            } catch (JVMCIError e) {
+            } catch (GraalError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
             }
         }
@@ -431,14 +436,15 @@ public class CompilationResultBuilder {
 
     private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
         try {
+            int start = crb.asm.position();
             op.emitCode(crb);
             if (op.getPosition() != null) {
-                crb.recordInfopoint(crb.asm.position(), new DebugInfo(op.getPosition()), InfopointReason.BYTECODE_POSITION);
+                crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
             }
         } catch (AssertionError t) {
-            throw new JVMCIError(t);
+            throw new GraalError(t);
         } catch (RuntimeException t) {
-            throw new JVMCIError(t);
+            throw new GraalError(t);
         }
     }
 

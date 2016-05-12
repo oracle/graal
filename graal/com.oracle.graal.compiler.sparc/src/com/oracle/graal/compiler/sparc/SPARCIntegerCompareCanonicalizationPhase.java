@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.compiler.sparc;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -35,6 +32,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.phases.Phase;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * SPARC only supports 32 and 64 bit integer compare.
@@ -76,7 +76,7 @@ public class SPARCIntegerCompareCanonicalizationPhase extends Phase {
                     } else if (bits == 64) {
                         newConst = JavaConstant.forLong(v.asJavaConstant().asLong());
                     } else {
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                     }
                     long mask = CodeUtil.mask(bits);
                     replacement = v.graph().addOrUnique(new ConstantNode(newConst, IntegerStamp.stampForMask(bits, newConst.asLong() & mask, newConst.asLong() & mask)));

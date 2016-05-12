@@ -28,12 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -41,6 +35,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -58,6 +53,12 @@ import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
@@ -305,7 +306,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.getInputEdges().areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
+                    if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
@@ -591,7 +592,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin, tool);
         tool.addToWorkList(trueBegin);
-        if (condition().isAlive() && condition().hasNoUsages()) {
+        if (condition() != null && condition().isAlive() && condition().hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(condition());
         }
     }
@@ -994,7 +995,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueEnds.isEmpty()) {
             GraphUtil.killCFG(oldTrueSuccessor);
         }
-
         GraphUtil.killCFG(merge);
 
         assert !merge.isAlive() : merge;
@@ -1029,7 +1029,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         return;
                     }
                 } else {
-                    throw new JVMCIError("Illegal state");
+                    throw new GraalError("Illegal state");
                 }
             } else if (node instanceof AbstractMergeNode && !(node instanceof LoopBeginNode)) {
                 for (AbstractEndNode endNode : ((AbstractMergeNode) node).cfgPredecessors()) {

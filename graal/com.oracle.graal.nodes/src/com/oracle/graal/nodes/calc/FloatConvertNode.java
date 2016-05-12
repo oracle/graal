@@ -24,9 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import java.util.EnumMap;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -39,6 +36,9 @@ import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.TTY;
@@ -47,6 +42,11 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
@@ -70,7 +70,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
     protected void run(StructuredGraph graph, HighTierContext context) {
         if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
             ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
-            JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
+            JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
             try {
                 for (IfNode n : graph.getNodes().filter(IfNode.class)) {
                     BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);

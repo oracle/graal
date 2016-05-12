@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
@@ -33,6 +30,9 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.memory.MemoryMapNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {

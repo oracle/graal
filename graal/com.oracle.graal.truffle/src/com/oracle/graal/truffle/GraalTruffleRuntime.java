@@ -45,12 +45,14 @@ import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
 import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
+import com.oracle.graal.truffle.debug.TraceCompilationASTListener;
 import com.oracle.graal.truffle.debug.TraceCompilationCallTreeListener;
 import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
 import com.oracle.graal.truffle.debug.TraceCompilationListener;
@@ -63,6 +65,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -81,9 +84,9 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -121,6 +124,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final Supplier<GraalRuntime> graalRuntime;
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
+    /**
+     * Utility method that casts the singleton {@link TruffleRuntime}.
+     */
+    public static GraalTruffleRuntime getRuntime() {
+        return (GraalTruffleRuntime) Truffle.getRuntime();
+    }
+
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
     }
@@ -134,7 +144,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public <T> T getRequiredGraalCapability(Class<T> clazz) {
         T ret = graalRuntime.get().getCapability(clazz);
         if (ret == null) {
-            throw new JVMCIError("The VM does not expose the required Graal capability %s.", clazz.getName());
+            throw new GraalError("The VM does not expose the required Graal capability %s.", clazz.getName());
         }
         return ret;
     }
@@ -168,6 +178,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
+        TraceCompilationASTListener.install(this);
         installShutdownHooks();
         compilationNotify.notifyStartup(this);
     }
@@ -178,6 +189,31 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
         callMethods = CallMethods.lookup(metaAccess);
+    }
+
+    /** Accessor for non-public state in {@link FrameDescriptor}. */
+    public void markFrameMaterializeCalled(FrameDescriptor descriptor) {
+        try {
+            getTvmci().markFrameMaterializeCalled(descriptor);
+        } catch (Throwable ex) {
+            /*
+             * Backward compatibility: do nothing on old Truffle version where the field in
+             * FrameDescriptor does not exist.
+             */
+        }
+    }
+
+    /** Accessor for non-public state in {@link FrameDescriptor}. */
+    public boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
+        try {
+            return getTvmci().getFrameMaterializeCalled(descriptor);
+        } catch (Throwable ex) {
+            /*
+             * Backward compatibility: be conservative on old Truffle version where the field in
+             * FrameDescriptor does not exist.
+             */
+            return true;
+        }
     }
 
     @Override
@@ -358,6 +394,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             }
         }
     }
+
+    public abstract SpeculationLog createSpeculationLog();
+
+    public abstract RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog);
 
     public abstract RootCallTarget createClonedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode root);
 

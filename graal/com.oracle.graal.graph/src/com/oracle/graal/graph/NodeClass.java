@@ -23,12 +23,13 @@
 package com.oracle.graal.graph;
 
 import static com.oracle.graal.compiler.common.Fields.translateInto;
+import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 import static com.oracle.graal.graph.Edges.translateInto;
+import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
 import static com.oracle.graal.graph.InputEdges.translateInto;
 import static com.oracle.graal.graph.Node.WithAllEdges;
 import static com.oracle.graal.graph.Node.newIdentityMap;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -37,10 +38,11 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.FieldIntrospection;
 import com.oracle.graal.compiler.common.Fields;
@@ -50,11 +52,14 @@ import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
+import com.oracle.graal.graph.Node.EdgeVisitor;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.graph.Node.Successor;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.Simplifiable;
@@ -80,6 +85,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final DebugTimer Init_Data = Debug.timer("NodeClass.Init.Data");
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
+
+    public static final long MAX_EDGES = 8;
+    public static final long MAX_LIST_EDGES = 6;
+    public static final long OFFSET_MASK = 0xFC;
+    public static final long LIST_MASK = 0x01;
+    public static final long NEXT_EDGE = 0x08;
 
     @SuppressWarnings("try")
     private static <T extends Annotation> T getAnnotationTimed(AnnotatedElement e, Class<T> annotationClass) {
@@ -128,6 +139,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
+    private final long inputsIteration;
+    private final long successorIteration;
 
     private static final DebugCounter ITERABLE_NODE_TYPES = Debug.counter("IterableNodeTypes");
     private final DebugCounter nodeIterableCount;
@@ -173,7 +186,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         try (DebugCloseable t1 = Init_Edges.start()) {
             successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
+            successorIteration = computeIterationMask(successors.type(), successors.getDirectCount(), successors.getOffsets());
             inputs = new InputEdges(fs.directInputs, fs.inputs);
+            inputsIteration = computeIterationMask(inputs.type(), inputs.getDirectCount(), inputs.getOffsets());
         }
         try (DebugCloseable t1 = Init_Data.start()) {
             data = new Fields(fs.data);
@@ -215,6 +230,24 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
         nodeIterableCount = Debug.counter("NodeIterable_%s", clazz);
         assert verifyIterableIds();
+    }
+
+    public static long computeIterationMask(Type type, int directCount, long[] offsets) {
+        long mask = 0;
+        assert offsets.length <= NodeClass.MAX_EDGES : String.format("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
+        assert offsets.length - directCount <= NodeClass.MAX_LIST_EDGES : String.format("Exceeded maximum of %d list edges (%s)",
+                        NodeClass.MAX_LIST_EDGES, type);
+
+        for (int i = offsets.length - 1; i >= 0; i--) {
+            long offset = offsets[i];
+            assert ((offset & 0xFF) == offset) : "field offset too large!";
+            mask <<= NodeClass.NEXT_EDGE;
+            mask |= offset;
+            if (i >= directCount) {
+                mask |= 0x3;
+            }
+        }
+        return mask;
     }
 
     private synchronized void addIterableId(int newIterableId) {
@@ -387,11 +420,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeInputList fields should not be final since they are
                         // written (via Unsafe) in clearInputs()
-                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "NodeInputList input field %s should not be final", field);
-                        JVMCIError.guarantee(!Modifier.isPublic(modifiers), "NodeInputList input field %s should not be public", field);
+                        GraalError.guarantee(!Modifier.isFinal(modifiers), "NodeInputList input field %s should not be final", field);
+                        GraalError.guarantee(!Modifier.isPublic(modifiers), "NodeInputList input field %s should not be public", field);
                     } else {
-                        JVMCIError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
-                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "Node input field %s should not be final", field);
+                        GraalError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
+                        GraalError.guarantee(!Modifier.isFinal(modifiers), "Node input field %s should not be final", field);
                         directInputs++;
                     }
                     InputType inputType;
@@ -406,18 +439,18 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeSuccessorList fields should not be final since they are
                         // written (via Unsafe) in clearSuccessors()
-                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field % should not be final", field);
-                        JVMCIError.guarantee(!Modifier.isPublic(modifiers), "NodeSuccessorList successor field %s should not be public", field);
+                        GraalError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field % should not be final", field);
+                        GraalError.guarantee(!Modifier.isPublic(modifiers), "NodeSuccessorList successor field %s should not be public", field);
                     } else {
-                        JVMCIError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
-                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "Node successor field %s should not be final", field);
+                        GraalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
+                        GraalError.guarantee(!Modifier.isFinal(modifiers), "Node successor field %s should not be final", field);
                         directSuccessors++;
                     }
                     successors.add(new EdgeInfo(offset, field.getName(), type, field.getDeclaringClass()));
                 } else {
-                    JVMCIError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
-                    JVMCIError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
-                    JVMCIError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
+                    GraalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
+                    GraalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
+                    GraalError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
                     super.scanField(field, offset);
                 }
             }
@@ -784,7 +817,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                         Fingerprint.submit("duplicating %s", node);
                     }
                     Node newNode = node.clone(graph, WithAllEdges);
-                    assert newNode.inputs().isEmpty() || newNode.hasNoUsages();
+                    assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages();
                     assert newNode.getClass() == node.getClass();
                     newNodes.put(node, newNode);
                 }
@@ -801,26 +834,27 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         NodeClass<?> nodeClass = node.getNodeClass();
         NodeClass<?> oldNodeClass = oldNode.getNodeClass();
         Edges oldEdges = oldNodeClass.getEdges(type);
-        for (NodePosIterator oldIter = oldEdges.getIterable(oldNode).iterator(); oldIter.hasNext();) {
-            Position pos = oldIter.nextPosition();
+        for (Position pos : oldEdges.getPositionsIterable(oldNode)) {
             if (!nodeClass.isValid(pos, oldNodeClass, oldEdges)) {
                 continue;
             }
             Node oldEdge = pos.get(oldNode);
-            Node target = newNodes.get(oldEdge);
-            if (target == null) {
-                Node replacement = oldEdge;
-                if (replacements != null) {
-                    replacement = replacements.replacement(oldEdge);
+            if (oldEdge != null) {
+                Node target = newNodes.get(oldEdge);
+                if (target == null) {
+                    Node replacement = oldEdge;
+                    if (replacements != null) {
+                        replacement = replacements.replacement(oldEdge);
+                    }
+                    if (replacement != oldEdge) {
+                        target = replacement;
+                    } else if (type == Edges.Type.Inputs && oldEdge.graph() == graph) {
+                        // patch to the outer world
+                        target = oldEdge;
+                    }
                 }
-                if (replacement != oldEdge) {
-                    target = replacement;
-                } else if (type == Edges.Type.Inputs && oldEdge.graph() == graph) {
-                    // patch to the outer world
-                    target = oldEdge;
-                }
+                pos.set(node, target);
             }
-            pos.set(node, target);
         }
     }
 
@@ -829,5 +863,437 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean isLeafNode() {
         return isLeafNode;
+    }
+
+    public long inputsIteration() {
+        return inputsIteration;
+    }
+
+    /**
+     * An iterator that will iterate over edges.
+     *
+     * An iterator of this type will not return null values, unless edges are modified concurrently.
+     * Concurrent modifications are detected by an assertion on a best-effort basis.
+     */
+    private static class RawEdgesIterator implements Iterator<Node> {
+        protected final Node node;
+        protected long mask;
+        protected Node nextValue;
+
+        RawEdgesIterator(Node node, long mask) {
+            this.node = node;
+            this.mask = mask;
+        }
+
+        @Override
+        public boolean hasNext() {
+            Node next = nextValue;
+            if (next != null) {
+                return true;
+            } else {
+                nextValue = forward();
+                return nextValue != null;
+            }
+        }
+
+        private Node forward() {
+            while (mask != 0) {
+                Node next = getInput();
+                mask = advanceInput();
+                if (next != null) {
+                    return next;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public Node next() {
+            Node next = nextValue;
+            if (next == null) {
+                next = forward();
+                if (next == null) {
+                    throw new NoSuchElementException();
+                } else {
+                    return next;
+                }
+            } else {
+                nextValue = null;
+                return next;
+            }
+        }
+
+        public final long advanceInput() {
+            int state = (int) mask & 0x03;
+            if (state == 0) {
+                // Skip normal field.
+                return mask >>> NEXT_EDGE;
+            } else if (state == 1) {
+                // We are iterating a node list.
+                if ((mask & 0xFFFF00) != 0) {
+                    // Node list count is non-zero, decrease by 1.
+                    return mask - 0x100;
+                } else {
+                    // Node list is finished => go to next input.
+                    return mask >>> 24;
+                }
+            } else {
+                // Need to expand node list.
+                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
+                if (nodeList != null) {
+                    int size = nodeList.size();
+                    if (size != 0) {
+                        // Set pointer to upper most index of node list.
+                        return ((mask >>> NEXT_EDGE) << 24) | (mask & 0xFD) | ((size - 1) << NEXT_EDGE);
+                    }
+                }
+                // Node list is empty or null => skip.
+                return mask >>> NEXT_EDGE;
+            }
+        }
+
+        public Node getInput() {
+            int state = (int) mask & 0x03;
+            if (state == 0) {
+                return Edges.getNodeUnsafe(node, mask & 0xFC);
+            } else if (state == 1) {
+                // We are iterating a node list.
+                NodeList<?> nodeList = Edges.getNodeListUnsafe(node, mask & 0xFC);
+                return nodeList.nodes[nodeList.size() - 1 - (int) ((mask >>> NEXT_EDGE) & 0xFFFF)];
+            } else {
+                // Node list needs to expand first.
+                return null;
+            }
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+
+        public Position nextPosition() {
+            return null;
+        }
+    }
+
+    private static final class RawEdgesWithModCountIterator extends RawEdgesIterator {
+        private final int modCount;
+
+        private RawEdgesWithModCountIterator(Node node, long mask) {
+            super(node, mask);
+            assert MODIFICATION_COUNTS_ENABLED;
+            this.modCount = node.modCount();
+        }
+
+        @Override
+        public boolean hasNext() {
+            try {
+                return super.hasNext();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Node next() {
+            try {
+                return super.next();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Position nextPosition() {
+            try {
+                return super.nextPosition();
+            } finally {
+                assert modCount == node.modCount();
+            }
+        }
+    }
+
+    public NodeIterable<Node> getSuccessorIterable(final Node node) {
+        long mask = this.successorIteration;
+        return new NodeIterable<Node>() {
+
+            @Override
+            public Iterator<Node> iterator() {
+                if (MODIFICATION_COUNTS_ENABLED) {
+                    return new RawEdgesWithModCountIterator(node, mask);
+                } else {
+                    return new RawEdgesIterator(node, mask);
+                }
+            }
+        };
+    }
+
+    public NodeIterable<Node> getInputIterable(final Node node) {
+        long mask = this.inputsIteration;
+        return new NodeIterable<Node>() {
+
+            @Override
+            public Iterator<Node> iterator() {
+                if (MODIFICATION_COUNTS_ENABLED) {
+                    return new RawEdgesWithModCountIterator(node, mask);
+                } else {
+                    return new RawEdgesIterator(node, mask);
+                }
+            }
+        };
+    }
+
+    public boolean equalSuccessors(Node node, Node other) {
+        return equalEdges(node, other, successorIteration);
+    }
+
+    public boolean equalInputs(Node node, Node other) {
+        return equalEdges(node, other, inputsIteration);
+    }
+
+    private boolean equalEdges(Node node, Node other, long mask) {
+        long myMask = mask;
+        assert other.getNodeClass() == this;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            Object v1 = UNSAFE.getObject(node, offset);
+            Object v2 = UNSAFE.getObject(other, offset);
+            if ((myMask & LIST_MASK) == 0) {
+                if (v1 != v2) {
+                    return false;
+                }
+            } else {
+                if (!Objects.equals(v1, v2)) {
+                    return false;
+                }
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+        return true;
+    }
+
+    public void pushInputs(Node node, NodeStack stack) {
+        long myMask = this.inputsIteration;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    stack.push(curNode);
+                }
+            } else {
+                pushAllHelper(stack, node, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void pushAllHelper(NodeStack stack, Node node, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    stack.push(curNode);
+                }
+            }
+        }
+    }
+
+    public void applySuccessors(Node node, EdgeVisitor consumer) {
+        applyEdges(node, consumer, this.successorIteration);
+    }
+
+    public void applyInputs(Node node, EdgeVisitor consumer) {
+        applyEdges(node, consumer, this.inputsIteration);
+    }
+
+    private static void applyEdges(Node node, EdgeVisitor consumer, long mask) {
+        long myMask = mask;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    Node newNode = consumer.apply(node, curNode);
+                    if (newNode != curNode) {
+                        UNSAFE.putObject(node, offset, newNode);
+                    }
+                }
+            } else {
+                applyHelper(node, consumer, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void applyHelper(Node node, EdgeVisitor consumer, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    Node newNode = consumer.apply(node, curNode);
+                    if (newNode != curNode) {
+                        list.initialize(i, newNode);
+                    }
+                }
+            }
+        }
+    }
+
+    public void unregisterAtSuccessorsAsPredecessor(Node node) {
+        long myMask = this.successorIteration;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    node.updatePredecessor(curNode, null);
+                    UNSAFE.putObject(node, offset, null);
+                }
+            } else {
+                unregisterAtSuccessorsAsPredecessorHelper(node, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void unregisterAtSuccessorsAsPredecessorHelper(Node node, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    node.updatePredecessor(curNode, null);
+                }
+            }
+            list.clearWithoutUpdate();
+        }
+    }
+
+    public void registerAtSuccessorsAsPredecessor(Node node) {
+        long myMask = this.successorIteration;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    assert curNode.isAlive() : "Successor not alive";
+                    node.updatePredecessor(null, curNode);
+                }
+            } else {
+                registerAtSuccessorsAsPredecessorHelper(node, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void registerAtSuccessorsAsPredecessorHelper(Node node, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    assert curNode.isAlive() : "Successor not alive";
+                    node.updatePredecessor(null, curNode);
+                }
+            }
+        }
+    }
+
+    public boolean replaceFirstInput(Node node, Node key, Node replacement) {
+        return replaceFirstEdge(node, key, replacement, this.inputsIteration);
+    }
+
+    public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
+        return replaceFirstEdge(node, key, replacement, this.successorIteration);
+    }
+
+    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask) {
+        long myMask = mask;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Object curNode = UNSAFE.getObject(node, offset);
+                if (curNode == key) {
+                    UNSAFE.putObject(node, offset, replacement);
+                    return true;
+                }
+            } else {
+                NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+                if (list != null && list.replaceFirst(key, replacement)) {
+                    return true;
+                }
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+        return false;
+    }
+
+    public void registerAtInputsAsUsage(Node node) {
+        long myMask = this.inputsIteration;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    assert curNode.isAlive() : "Input not alive";
+                    curNode.addUsage(node);
+                }
+            } else {
+                registerAtInputsAsUsageHelper(node, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void registerAtInputsAsUsageHelper(Node node, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    assert curNode.isAlive() : "Input not alive";
+                    curNode.addUsage(node);
+                }
+            }
+        }
+    }
+
+    public void unregisterAtInputsAsUsage(Node node) {
+        long myMask = this.inputsIteration;
+        while (myMask != 0) {
+            long offset = (myMask & OFFSET_MASK);
+            if ((myMask & LIST_MASK) == 0) {
+                Node curNode = Edges.getNodeUnsafe(node, offset);
+                if (curNode != null) {
+                    node.removeThisFromUsages(curNode);
+                    if (curNode.hasNoUsages()) {
+                        node.maybeNotifyZeroUsages(curNode);
+                    }
+                    UNSAFE.putObject(node, offset, null);
+                }
+            } else {
+                unregisterAtInputsAsUsageHelper(node, offset);
+            }
+            myMask >>>= NEXT_EDGE;
+        }
+    }
+
+    private static void unregisterAtInputsAsUsageHelper(Node node, long offset) {
+        NodeList<Node> list = Edges.getNodeListUnsafe(node, offset);
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    node.removeThisFromUsages(curNode);
+                    if (curNode.hasNoUsages()) {
+                        node.maybeNotifyZeroUsages(curNode);
+                    }
+                }
+            }
+            list.clearWithoutUpdate();
+        }
     }
 }

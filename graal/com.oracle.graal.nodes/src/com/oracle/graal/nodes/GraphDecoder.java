@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -36,14 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.TypeReader;
 import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -58,6 +55,10 @@ import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for
@@ -95,6 +96,8 @@ public class GraphDecoder {
 
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
+        /** The loop that contains the call. Only non-null during method inlining. */
+        public final LoopScope callerLoopScope;
         /** The target graph where decoded nodes are added to. */
         public final StructuredGraph graph;
         /** The encode graph that is decoded. */
@@ -103,6 +106,8 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionKind loopExplosion;
+        /** A list of tasks to run before the method scope is closed. */
+        public final List<Runnable> cleanupTasks;
 
         /** All return nodes encountered during decoding. */
         public final List<ReturnNode> returnNodes;
@@ -112,10 +117,12 @@ public class GraphDecoder {
         /** All merges created during loop explosion. */
         public final NodeBitMap loopExplosionMerges;
 
-        protected MethodScope(StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
+        protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
+            this.callerLoopScope = callerLoopScope;
             this.graph = graph;
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
+            this.cleanupTasks = new ArrayList<>();
             this.returnNodes = new ArrayList<>();
 
             if (encodedGraph != null) {
@@ -142,6 +149,7 @@ public class GraphDecoder {
 
     /** Decoding state maintained for each loop in the encoded graph. */
     protected static class LoopScope {
+        public final MethodScope methodScope;
         public final LoopScope outer;
         public final int loopDepth;
         public final int loopIteration;
@@ -172,6 +180,7 @@ public class GraphDecoder {
         public final Node[] initialCreatedNodes;
 
         protected LoopScope(MethodScope methodScope) {
+            this.methodScope = methodScope;
             this.outer = null;
             this.nextIterations = null;
             this.loopDepth = 0;
@@ -187,6 +196,7 @@ public class GraphDecoder {
 
         protected LoopScope(LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, Node[] initialCreatedNodes, Node[] createdNodes, Deque<LoopScope> nextIterations,
                         Map<LoopExplosionState, LoopExplosionState> iterationStates) {
+            this.methodScope = outer.methodScope;
             this.outer = outer;
             this.loopDepth = loopDepth;
             this.loopIteration = loopIteration;
@@ -268,6 +278,7 @@ public class GraphDecoder {
         public final int exceptionOrderId;
         public final int exceptionStateOrderId;
         public final int exceptionNextOrderId;
+        public JavaConstant constantReceiver;
 
         protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId, int exceptionOrderId,
                         int exceptionStateOrderId, int exceptionNextOrderId) {
@@ -335,8 +346,8 @@ public class GraphDecoder {
     @SuppressWarnings("try")
     public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
-            MethodScope methodScope = new MethodScope(graph, encodedGraph, LoopExplosionKind.NONE);
-            decode(methodScope, null);
+            MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
+            decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope, null);
             methodScope.graph.verify();
         } catch (Throwable ex) {
@@ -344,7 +355,7 @@ public class GraphDecoder {
         }
     }
 
-    protected final void decode(MethodScope methodScope, FixedWithNextNode startNode) {
+    protected final LoopScope createInitialLoopScope(MethodScope methodScope, FixedWithNextNode startNode) {
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
@@ -364,23 +375,49 @@ public class GraphDecoder {
             loopScope.nodesToProcess.set(GraphEncoder.START_NODE_ORDER_ID);
         }
 
-        while (loopScope != null) {
-            while (!loopScope.nodesToProcess.isEmpty()) {
-                loopScope = processNextNode(methodScope, loopScope);
-            }
-
-            if (loopScope.nextIterations != null && !loopScope.nextIterations.isEmpty()) {
-                /* Loop explosion: process the loop iteration. */
-                assert loopScope.nextIterations.peekFirst().loopIteration == loopScope.loopIteration + 1;
-                loopScope = loopScope.nextIterations.removeFirst();
-            } else {
-                propagateCreatedNodes(loopScope);
-                loopScope = loopScope.outer;
-            }
-        }
-
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            detectLoops(methodScope, startNode);
+            methodScope.cleanupTasks.add(() -> detectLoops(methodScope, startNode));
+        }
+        return loopScope;
+    }
+
+    protected final void decode(LoopScope initialLoopScope) {
+        LoopScope loopScope = initialLoopScope;
+        /* Process inlined methods. */
+        while (loopScope != null) {
+            MethodScope methodScope = loopScope.methodScope;
+
+            /* Process loops of method. */
+            while (loopScope != null) {
+
+                /* Process nodes of loop. */
+                while (!loopScope.nodesToProcess.isEmpty()) {
+                    loopScope = processNextNode(methodScope, loopScope);
+                    methodScope = loopScope.methodScope;
+                    /*
+                     * We can have entered a new loop, and we can have entered a new inlined method.
+                     */
+                }
+
+                /* Finished with a loop. */
+                if (loopScope.nextIterations != null && !loopScope.nextIterations.isEmpty()) {
+                    /* Loop explosion: process the loop iteration. */
+                    assert loopScope.nextIterations.peekFirst().loopIteration == loopScope.loopIteration + 1;
+                    loopScope = loopScope.nextIterations.removeFirst();
+                } else {
+                    propagateCreatedNodes(loopScope);
+                    loopScope = loopScope.outer;
+                }
+            }
+
+            /*
+             * Finished with an inlined method. Perform all registered end-of-method cleanup tasks
+             * and continue with loop that contained the call.
+             */
+            for (Runnable task : methodScope.cleanupTasks) {
+                task.run();
+            }
+            loopScope = methodScope.callerLoopScope;
         }
     }
 
@@ -500,7 +537,7 @@ public class GraphDecoder {
 
         } else if (node instanceof Invoke) {
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
-            handleInvoke(methodScope, loopScope, invokeData);
+            resultScope = handleInvoke(methodScope, loopScope, invokeData);
 
         } else if (node instanceof ReturnNode) {
             methodScope.returnNodes.add((ReturnNode) node);
@@ -538,8 +575,12 @@ public class GraphDecoder {
      * successors encoded. Instead, this information is provided separately to allow method inlining
      * without decoding and adding them to the graph upfront. For non-inlined methods, this method
      * restores the normal state. Subclasses can override it to perform method inlining.
+     *
+     * The return value is the loop scope where decoding should continue. When method inlining
+     * should be performed, the returned loop scope must be a new loop scope for the inlined method.
+     * Without inlining, the original loop scope must be returned.
      */
-    protected void handleInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+    protected LoopScope handleInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
         CallTargetNode callTarget = (CallTargetNode) ensureNodeCreated(methodScope, loopScope, invokeData.callTargetOrderId);
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
@@ -555,6 +596,7 @@ public class GraphDecoder {
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             ((InvokeWithExceptionNode) invokeData.invoke).setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, invokeData.exceptionOrderId));
         }
+        return loopScope;
     }
 
     /**
@@ -814,7 +856,6 @@ public class GraphDecoder {
                 oldStateAfter.safeDelete();
             }
         }
-
         loopExit.safeDelete();
         assert loopExitSuccessor.predecessor() == null;
         if (merge != null) {
@@ -1403,7 +1444,7 @@ public class GraphDecoder {
                  * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
                  * inside the loop.
                  */
-                JVMCIError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
+                GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
                                 "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
 
                 ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
@@ -1433,18 +1474,18 @@ public class GraphDecoder {
     protected boolean verifyEdges(MethodScope methodScope) {
         for (Node node : methodScope.graph.getNodes()) {
             assert node.isAlive();
-            node.acceptInputs((n, i) -> {
+            for (Node i : node.inputs()) {
                 assert i.isAlive();
-                assert i.usages().contains(n);
-            });
-            node.acceptSuccessors((n, s) -> {
+                assert i.usages().contains(node);
+            }
+            for (Node s : node.successors()) {
                 assert s.isAlive();
-                assert s.predecessor() == n;
-            });
+                assert s.predecessor() == node;
+            }
 
             for (Node usage : node.usages()) {
                 assert usage.isAlive();
-                assert usage.inputs().contains(node);
+                assert usage.inputs().contains(node) : node + " / " + usage + " / " + usage.inputs().count();
             }
             if (node.predecessor() != null) {
                 assert node.predecessor().isAlive();

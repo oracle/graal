@@ -28,11 +28,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -46,6 +41,11 @@ import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 import com.oracle.graal.options.NestedBooleanOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Replaces sequential {@link AMD64StackMove}s of the same type with a single

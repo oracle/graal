@@ -22,12 +22,24 @@
  */
 package com.oracle.graal.lir.gen;
 
-import jdk.vm.ci.code.BytecodePosition;
+import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.compiler.common.spi.CodeGenProviders;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.graph.NodeSourcePosition;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LabelRef;
+import com.oracle.graal.lir.SwitchStrategy;
+import com.oracle.graal.lir.Variable;
+
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -36,18 +48,6 @@ import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.spi.CodeGenProviders;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.SwitchStrategy;
-import com.oracle.graal.lir.Variable;
 
 public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
@@ -143,7 +143,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      * @param delta the value to be added
      */
     default Value emitAtomicReadAndAdd(Value address, Value delta) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     /**
@@ -153,7 +153,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      * @param newValue the new value to be written
      */
     default Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
@@ -221,7 +221,7 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
 
     <I extends LIRInstruction> I append(I op);
 
-    void setSourcePosition(BytecodePosition position);
+    void setSourcePosition(NodeSourcePosition position);
 
     void emitJump(LabelRef label);
 

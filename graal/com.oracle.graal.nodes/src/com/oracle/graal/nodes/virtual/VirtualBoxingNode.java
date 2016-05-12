@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BoxNode;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
 public final class VirtualBoxingNode extends VirtualInstanceNode {

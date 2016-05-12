@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,12 @@
  */
 package com.oracle.graal.replacements;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -47,12 +38,21 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.spi.StampProvider;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
@@ -62,6 +62,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     protected final MetaAccessProvider metaAccess;
     protected final ConstantReflectionProvider constantReflection;
+    protected final ConstantFieldProvider constantFieldProvider;
     protected final StampProvider stampProvider;
     protected final StructuredGraph graph;
     protected final ResolvedJavaMethod method;
@@ -70,14 +71,16 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
 
-    public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, ResolvedJavaMethod method, int invokeBci) {
-        this(metaAccess, constantReflection, stampProvider, method, invokeBci, AllowAssumptions.YES);
+    public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
+                    ResolvedJavaMethod method, int invokeBci) {
+        this(metaAccess, constantReflection, constantFieldProvider, stampProvider, method, invokeBci, AllowAssumptions.YES);
     }
 
-    protected IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, ResolvedJavaMethod method, int invokeBci,
-                    AllowAssumptions allowAssumptions) {
+    protected IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
+                    ResolvedJavaMethod method, int invokeBci, AllowAssumptions allowAssumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
+        this.constantFieldProvider = constantFieldProvider;
         this.stampProvider = stampProvider;
         this.graph = new StructuredGraph(method, allowAssumptions);
         this.method = method;
@@ -93,7 +96,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         if (!method.isStatic()) {
             // add the receiver
             Stamp receiverStamp = StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(method.getDeclaringClass()));
-            FloatingNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, StampPair.createSingle(receiverStamp)));
+            ValueNode receiver = graph.addWithoutUnique(new ParameterNode(javaIndex, StampPair.createSingle(receiverStamp)));
             arguments[index] = receiver;
             javaIndex = 1;
             index = 1;
@@ -108,7 +111,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
             } else {
                 stamp = StampFactory.forKind(kind);
             }
-            FloatingNode param = graph.addWithoutUnique(new ParameterNode(index, StampPair.createSingle(stamp)));
+            ValueNode param = graph.addWithoutUnique(new ParameterNode(index, StampPair.createSingle(stamp)));
             arguments[index] = param;
             javaIndex += kind.getSlotCount();
             index++;
@@ -162,7 +165,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -178,6 +181,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return constantFieldProvider;
     }
 
     @Override
@@ -229,16 +237,16 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public IntrinsicContext getIntrinsic() {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
     public BailoutException bailout(String string) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
-    public ValueNode get() {
+    public ValueNode get(boolean performNullCheck) {
         return arguments[0];
     }
 
@@ -254,7 +262,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

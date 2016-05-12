@@ -30,8 +30,15 @@ import static com.oracle.graal.compiler.common.calc.FloatConvert.L2F;
 import java.nio.ByteBuffer;
 import java.util.Formatter;
 
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -40,13 +47,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SerializableConstant;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 
 /**
  * Describes the possible values of a node that produces an int or long result.
@@ -124,7 +124,7 @@ public class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return JavaConstant.forLong(buffer.getLong());
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -161,7 +161,7 @@ public class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return metaAccess.lookupJavaType(Long.TYPE);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -727,7 +727,7 @@ public class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() << amount);
                                 default:
-                                    throw JVMCIError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere();
                             }
                         }
 
@@ -790,7 +790,7 @@ public class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >> amount);
                                 default:
-                                    throw JVMCIError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere();
                             }
                         }
 
@@ -834,7 +834,7 @@ public class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >>> amount);
                                 default:
-                                    throw JVMCIError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere();
                             }
                         }
 

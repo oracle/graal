@@ -32,6 +32,7 @@ import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
@@ -55,7 +56,6 @@ import com.oracle.graal.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -222,7 +222,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case NE:
                 return ConditionFlag.NE;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -252,7 +252,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case BT:
                 return ConditionFlag.LO;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -296,7 +296,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             }
             append(new AArch64Compare.FloatCompareOp(left, asAllocatable(right), condition, unorderedIsTrue));
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
         return mirrored;
     }
@@ -343,7 +343,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                         maskedValue = longValue;
                         break;
                     default:
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                 }
                 return AArch64MacroAssembler.isArithmeticImmediate(maskedValue);
             } else {
@@ -393,13 +393,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitByteSwap(Value operand) {
         // TODO (das) Do not generate until we support vector instructions
-        throw JVMCIError.unimplemented("Do not generate until we support vector instructions");
+        throw GraalError.unimplemented("Do not generate until we support vector instructions");
     }
 
     @Override
     public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
         // TODO (das) Do not generate until we support vector instructions
-        throw JVMCIError.unimplemented("Do not generate until we support vector instructions");
+        throw GraalError.unimplemented("Do not generate until we support vector instructions");
     }
 
     @Override
@@ -419,7 +419,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case DOUBLE:
                 return JavaConstant.forDouble(Double.longBitsToDouble(dead));
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 

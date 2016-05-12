@@ -38,23 +38,13 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.BitMap2D;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -67,6 +57,16 @@ import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
@@ -368,7 +368,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     reportFailure(numBlocks);
                 }
                 // bailout if this occurs in product mode.
-                throw new JVMCIError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
+                throw new GraalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
             }
         }
     }

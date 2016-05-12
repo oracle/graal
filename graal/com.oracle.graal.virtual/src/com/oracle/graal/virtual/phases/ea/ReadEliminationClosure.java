@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static jdk.vm.ci.meta.LocationIdentity.any;
+import static com.oracle.graal.compiler.common.LocationIdentity.any;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopExitNode;
@@ -80,7 +81,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 processIdentity(state, any());
             } else {
                 ValueNode object = GraphUtil.unproxify(access.object());
-                LoadCacheEntry identifier = new LoadCacheEntry(object, access.field().getLocationIdentity());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, new FieldLocationIdentity(access.field()));
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (node instanceof LoadFieldNode) {
                     if (cachedValue != null && access.stamp().isCompatible(cachedValue.stamp())) {
@@ -98,7 +99,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                         effects.deleteNode(store);
                         deleted = true;
                     }
-                    state.killReadCache(store.field().getLocationIdentity());
+                    state.killReadCache(identifier.identity);
                     state.addCacheEntry(identifier, value);
                 }
             }

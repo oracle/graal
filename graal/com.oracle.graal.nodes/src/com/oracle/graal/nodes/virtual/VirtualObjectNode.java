@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.IterableNodeType;
@@ -35,6 +32,9 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
 public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable, IterableNodeType {

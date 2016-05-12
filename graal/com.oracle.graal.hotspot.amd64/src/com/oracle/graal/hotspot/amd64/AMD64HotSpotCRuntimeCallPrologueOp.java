@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import jdk.vm.ci.code.Register;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -31,6 +30,8 @@ import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.Register;
 
 @Opcode
 final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {

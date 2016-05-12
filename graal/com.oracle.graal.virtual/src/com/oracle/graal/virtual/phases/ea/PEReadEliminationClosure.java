@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,15 +29,11 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
@@ -63,6 +59,12 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
 
     private static final EnumMap<JavaKind, LocationIdentity> UNBOX_LOCATIONS;
@@ -74,8 +76,8 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         }
     }
 
-    public PEReadEliminationClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        super(schedule, metaAccess, constantReflection);
+    public PEReadEliminationClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider) {
+        super(schedule, metaAccess, constantReflection, constantFieldProvider);
     }
 
     @Override
@@ -194,7 +196,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             state.killReadCache();
             return false;
         }
-        return processStore(store, store.object(), store.field().getLocationIdentity(), -1, store.value(), state, effects);
+        return processStore(store, store.object(), new FieldLocationIdentity(store.field()), -1, store.value(), state, effects);
     }
 
     private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
@@ -202,7 +204,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             state.killReadCache();
             return false;
         }
-        return processLoad(load, load.object(), load.field().getLocationIdentity(), -1, state, effects);
+        return processLoad(load, load.object(), new FieldLocationIdentity(load.field()), -1, state, effects);
     }
 
     private boolean processStoreIndexed(StoreIndexedNode store, PEReadEliminationBlockState state, GraphEffectList effects) {

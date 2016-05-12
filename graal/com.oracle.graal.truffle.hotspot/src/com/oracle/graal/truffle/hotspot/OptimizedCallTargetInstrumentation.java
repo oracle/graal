@@ -26,21 +26,21 @@ import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 
 import java.lang.reflect.Field;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.DataBuilder;
 import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.site.Mark;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
@@ -72,7 +72,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
             Field field = declaringClass.getDeclaredField(name);
             return (int) UNSAFE.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 

@@ -26,9 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.meta.Assumptions.Assumption;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -39,6 +36,9 @@ import com.oracle.graal.lir.asm.FrameContext;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.meta.Assumptions.Assumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is

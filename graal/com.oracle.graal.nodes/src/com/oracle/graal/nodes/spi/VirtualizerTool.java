@@ -24,15 +24,15 @@ package com.oracle.graal.nodes.spi;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * This tool can be used to query the current state (normal/virtualized/re-materialized) of values

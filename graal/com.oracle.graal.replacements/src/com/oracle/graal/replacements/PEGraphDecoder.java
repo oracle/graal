@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.debug.GraalError.unimplemented;
 import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static com.oracle.graal.java.BytecodeParserOptions.FailedLoopExplosionIsFatal;
 import static com.oracle.graal.java.BytecodeParserOptions.MaximumLoopExplosionCount;
-import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,18 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -95,6 +84,18 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * A graph decoder that performs partial evaluation, i.e., that performs method inlining and
  * canonicalization/simplification of nodes during decoding.
@@ -110,15 +111,13 @@ import com.oracle.graal.phases.common.inlining.InliningUtil;
 public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     public static class Options {
-        // Default value of 275 is determined experimentally with default HotSpot stack sizes on
-        // SPARC and Intel
-        @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion") public static final OptionValue<Integer> InliningDepthError = new OptionValue<>(275);
+        @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion")//
+        public static final OptionValue<Integer> InliningDepthError = new OptionValue<>(1000);
     }
 
     protected class PEMethodScope extends MethodScope {
         /** The state of the caller method. Only non-null during method inlining. */
         protected final PEMethodScope caller;
-        protected final LoopScope callerLoopScope;
         protected final ResolvedJavaMethod method;
         protected final InvokeData invokeData;
         protected final int inliningDepth;
@@ -137,10 +136,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected PEMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                         int inliningDepth, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                         ValueNode[] arguments) {
-            super(targetGraph, encodedGraph, loopExplosionKind(method, loopExplosionPlugin));
+            super(callerLoopScope, targetGraph, encodedGraph, loopExplosionKind(method, loopExplosionPlugin));
 
             this.caller = caller;
-            this.callerLoopScope = callerLoopScope;
             this.method = method;
             this.invokeData = invokeData;
             this.inliningDepth = inliningDepth;
@@ -159,12 +157,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (bytecodePosition == null) {
                 ensureOuterStateDecoded(this);
                 ensureExceptionStateDecoded(this);
-                JavaConstant constantReceiver = null;
-                if (invokeData.invoke.callTarget() != null) {
-                    // The callTarget is associated with invokes somewhat lazily so it's possible
-                    // it isn't available here.
-                    constantReceiver = invokeData.invoke.getInvokeKind().hasReceiver() ? invokeData.invoke.getReceiver().asJavaConstant() : null;
-                }
+                JavaConstant constantReceiver = invokeData.constantReceiver;
                 bytecodePosition = new NodeSourcePosition(constantReceiver, FrameState.toSourcePosition(outerState), method, invokeData.invoke.bci());
             }
             return bytecodePosition;
@@ -199,6 +192,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public ConstantReflectionProvider getConstantReflection() {
             return constantReflection;
+        }
+
+        @Override
+        public ConstantFieldProvider getConstantFieldProvider() {
+            return constantFieldProvider;
         }
 
         @Override
@@ -297,28 +295,41 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             stateSplit.setStateAfter(fs);
         }
 
+        @SuppressWarnings("try")
         @Override
         public <T extends ValueNode> T append(T v) {
             if (v.graph() != null) {
                 return v;
             }
-            T added = getGraph().addOrUnique(v);
-            if (added == v) {
-                updateLastInstruction(v);
+            try (DebugCloseable position = withNodeSoucePosition()) {
+                T added = getGraph().addOrUnique(v);
+                if (added == v) {
+                    updateLastInstruction(v);
+                }
+                return added;
             }
-            return added;
         }
 
+        private DebugCloseable withNodeSoucePosition() {
+            if (getGraph().mayHaveNodeSourcePosition()) {
+                return getGraph().withNodeSourcePosition(methodScope.getBytecodePosition());
+            }
+            return null;
+        }
+
+        @SuppressWarnings("try")
         @Override
         public <T extends ValueNode> T recursiveAppend(T v) {
             if (v.graph() != null) {
                 return v;
             }
-            T added = getGraph().addOrUniqueWithInputs(v);
-            if (added == v) {
-                updateLastInstruction(v);
+            try (DebugCloseable position = withNodeSoucePosition()) {
+                T added = getGraph().addOrUniqueWithInputs(v);
+                if (added == v) {
+                    updateLastInstruction(v);
+                }
+                return added;
             }
-            return added;
         }
 
         private <T extends ValueNode> void updateLastInstruction(T v) {
@@ -345,8 +356,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, Architecture architecture) {
-        super(metaAccess, constantReflection, stampProvider, true, architecture);
+    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
+                    Architecture architecture) {
+        super(metaAccess, constantReflection, constantFieldProvider, stampProvider, true, architecture);
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -365,7 +377,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     ParameterPlugin parameterPlugin) {
         PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, false), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, null);
-        decode(methodScope, null);
+        decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope, null);
         methodScope.graph.verify();
     }
@@ -408,7 +420,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected void handleInvoke(MethodScope s, LoopScope loopScope, InvokeData invokeData) {
+    protected LoopScope handleInvoke(MethodScope s, LoopScope loopScope, InvokeData invokeData) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         /*
@@ -417,16 +429,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          */
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
         CallTargetNode callTarget = (CallTargetNode) decodeFloatingNode(methodScope, loopScope, invokeData.callTargetOrderId);
-        if (!(callTarget instanceof MethodCallTargetNode) || !trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget)) {
-
-            /* We know that we need an invoke, so now we can add the call target to the graph. */
-            methodScope.graph.add(callTarget);
-            registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
-            super.handleInvoke(methodScope, loopScope, invokeData);
+        if (callTarget instanceof MethodCallTargetNode) {
+            MethodCallTargetNode methodCall = (MethodCallTargetNode) callTarget;
+            if (methodCall.invokeKind().hasReceiver()) {
+                invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
+            }
+            LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
+            if (inlineLoopScope != null) {
+                return inlineLoopScope;
+            }
         }
+
+        /* We know that we need an invoke, so now we can add the call target to the graph. */
+        methodScope.graph.add(callTarget);
+        registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
+        return super.handleInvoke(methodScope, loopScope, invokeData);
     }
 
-    protected boolean trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
+    protected LoopScope trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         // attempt to devirtualize the call
         ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(callTarget.invokeKind(), callTarget.receiver(), callTarget.targetMethod(), invokeData.contextType);
         if (specialCallTarget != null) {
@@ -435,16 +455,23 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         if (tryInvocationPlugin(methodScope, loopScope, invokeData, callTarget)) {
-            return true;
+            /*
+             * The invocation plugin handled the call, so decoding continues in the calling method.
+             */
+            return loopScope;
         }
-        if (tryInline(methodScope, loopScope, invokeData, callTarget)) {
-            return true;
+        LoopScope inlineLoopScope = tryInline(methodScope, loopScope, invokeData, callTarget);
+        if (inlineLoopScope != null) {
+            /*
+             * We can inline the call, so decoding continues in the inlined method.
+             */
+            return inlineLoopScope;
         }
 
         for (InlineInvokePlugin plugin : methodScope.inlineInvokePlugins) {
             plugin.notifyNotInlined(new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke), callTarget.targetMethod(), invokeData.invoke);
         }
-        return false;
+        return null;
     }
 
     protected boolean tryInvocationPlugin(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
@@ -494,14 +521,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected boolean tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
+    protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         if (!callTarget.invokeKind().isDirect()) {
-            return false;
+            return null;
         }
 
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         if (!targetMethod.canBeInlined()) {
-            return false;
+            return null;
         }
 
         ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
@@ -511,20 +538,20 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             InlineInfo inlineInfo = plugin.shouldInlineInvoke(graphBuilderContext, targetMethod, arguments);
             if (inlineInfo != null) {
                 if (inlineInfo.getMethodToInline() == null) {
-                    return false;
+                    return null;
                 } else {
                     return doInline(methodScope, loopScope, invokeData, inlineInfo, arguments);
                 }
             }
         }
-        return false;
+        return null;
     }
 
-    protected boolean doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
+    protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
         EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.isIntrinsic());
         if (graphToInline == null) {
-            return false;
+            return null;
         }
 
         if (methodScope.inliningDepth > Options.InliningDepthError.getValue()) {
@@ -542,8 +569,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         PEMethodScope inlineScope = new PEMethodScope(methodScope.graph, methodScope, loopScope, graphToInline, inlineMethod, invokeData, methodScope.inliningDepth + 1,
                         methodScope.loopExplosionPlugin, methodScope.invocationPlugins, methodScope.inlineInvokePlugins, null, arguments);
-        /* Do the actual inlining by decoding the inlineMethod */
-        decode(inlineScope, predecessor);
+
+        /*
+         * After decoding all the nodes of the inlined method, we need to re-wire the return and
+         * unwind nodes. Since inlining is non-recursive, this cannot be done at the end of this
+         * method, but must be registered as a cleanup task that runs when all nodes of the inlined
+         * methods have been decoded.
+         */
+        inlineScope.cleanupTasks.add(() -> finishInlining(methodScope, loopScope, invokeData, inlineMethod, inlineScope));
+
+        /*
+         * Do the actual inlining by returning the initial loop scope for the inlined method scope.
+         */
+        return createInitialLoopScope(inlineScope, predecessor);
+    }
+
+    protected void finishInlining(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, ResolvedJavaMethod inlineMethod, PEMethodScope inlineScope) {
+        Invoke invoke = invokeData.invoke;
+        FixedNode invokeNode = invoke.asNode();
 
         ValueNode exceptionValue = null;
         if (inlineScope.unwindNode != null) {
@@ -611,7 +654,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue()) {
             Debug.dump(Debug.INFO_LOG_LEVEL, methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
-        return true;
     }
 
     private static RuntimeException tooDeepInlining(PEMethodScope methodScope) {
@@ -677,7 +719,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
             if (node.isAlive()) {
                 node.setNodeSourcePosition(newPosition);
-                node.verify();
             }
         } else {
             super.handleFixedNode(s, loopScope, nodeOrderId, node);
@@ -764,7 +805,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (pos != null) {
                 NodeSourcePosition bytecodePosition = methodScope.getBytecodePosition();
                 node.setNodeSourcePosition(pos.addCaller(bytecodePosition));
-                node.verify();
             }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;

@@ -315,14 +315,12 @@ def _defines_package(classpath, package):
                 for f in filenames:
                     if f.endswith('.class'):
                         if root[len(classpathEntry) + 1:].replace(os.sep, '.') == package:
-                            print package
                             return True
         elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
             with zipfile.ZipFile(classpathEntry, 'r') as zf:
                 for name in zf.namelist():
                     if name.endswith('.class') and '/' in name:
                         if name[0:name.rfind('/')].replace('/', '.') == package:
-                            print package
                             return True
     return False
 
@@ -400,7 +398,6 @@ def _imports_concealed_packages_in(classpath, pathToProject, module):
             for package in imported:
                 _, visibility = lookup_package([module], package, "<unnamed>")
                 if visibility == 'concealed':
-                    print classpathEntry, package
                     return True
     return False
 

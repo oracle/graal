@@ -24,8 +24,6 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -45,6 +43,8 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.common.inlining.policy.InlineMethodSubstitutionsPolicy;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class EdgesTest extends GraalCompilerTest {
 

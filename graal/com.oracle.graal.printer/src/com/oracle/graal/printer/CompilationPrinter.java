@@ -31,6 +31,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.debug.LogStream;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.lir.util.IndexedValueMap;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.ReferenceMap;
@@ -40,10 +44,6 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.MetaUtil;
-
-import com.oracle.graal.debug.LogStream;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.lir.util.IndexedValueMap;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The

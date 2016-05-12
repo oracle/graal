@@ -24,9 +24,6 @@ package com.oracle.graal.replacements.test;
 
 import java.util.HashMap;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
@@ -38,6 +35,9 @@ import com.oracle.graal.replacements.nodes.BitCountNode;
 import com.oracle.graal.replacements.nodes.BitScanForwardNode;
 import com.oracle.graal.replacements.nodes.BitScanReverseNode;
 import com.oracle.graal.replacements.nodes.ReverseBytesNode;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests the VM independent {@link MethodSubstitution}s.

@@ -29,6 +29,7 @@ import java.util.function.Function;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.SwitchStrategy;
@@ -36,7 +37,6 @@ import com.oracle.graal.lir.aarch64.AArch64ControlFlow;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
@@ -66,7 +66,7 @@ final class AArch64HotSpotStrategySwitchOp extends AArch64ControlFlow.StrategySw
                 if (meta.isCompressed()) {
                     crb.recordInlineDataInCode(meta);
                     // masm.cmpl(keyRegister, 0xDEADDEAD);
-                    throw JVMCIError.unimplemented();
+                    throw GraalError.unimplemented();
                 } else {
                     crb.recordInlineDataInCode(meta);
                     masm.movNativeAddress(asRegister(scratch), 0x0000_DEAD_DEAD_DEADL);

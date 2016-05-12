@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.NodeInterface;
+
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
-
-import com.oracle.graal.graph.NodeInterface;
 
 /**
  * Shared interface to capture core methods of {@link AbstractFixedGuardNode} and {@link GuardNode}.

@@ -24,10 +24,6 @@ package com.oracle.graal.phases.common;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
@@ -50,6 +46,10 @@ import com.oracle.graal.nodes.extended.NullCheckNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.LowTierContext;
+
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 

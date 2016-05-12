@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import com.oracle.graal.asm.NumUtil;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
@@ -35,8 +37,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.asm.NumUtil;
 
 /**
  * This class is used to build the stack frame layout for a compiled method. A {@link StackSlot} is

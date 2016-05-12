@@ -25,8 +25,6 @@ package com.oracle.graal.nodes.type;
 import java.util.Collection;
 import java.util.Iterator;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -34,6 +32,8 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Helper class that is used to keep all stamp-related operations in one place.

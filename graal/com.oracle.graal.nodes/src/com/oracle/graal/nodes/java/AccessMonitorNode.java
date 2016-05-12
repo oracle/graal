@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.code.BailoutException;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
@@ -33,6 +31,8 @@ import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+
+import jdk.vm.ci.code.BailoutException;
 
 /**
  * The {@code AccessMonitorNode} is the base class of both monitor acquisition and release.

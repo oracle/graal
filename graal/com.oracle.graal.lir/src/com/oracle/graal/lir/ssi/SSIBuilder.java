@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -44,7 +45,6 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.ValueConsumer;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Value;
 
 public class SSIBuilder {
@@ -117,7 +117,7 @@ public class SSIBuilder {
         if (isVariable(operand)) {
             return asVariable(operand).index;
         }
-        throw JVMCIError.shouldNotReachHere("Can only handle Variables: " + operand);
+        throw GraalError.shouldNotReachHere("Can only handle Variables: " + operand);
     }
 
     private SSIBuilder.BlockData getBlockData(AbstractBlockBase<?> block) {
@@ -422,7 +422,7 @@ public class SSIBuilder {
             AbstractBlockBase<?> startBlock = getLIR().getControlFlowGraph().getStartBlock();
             if (getBlockData(startBlock).liveIn.cardinality() != 0) {
                 // bailout if this occurs in product mode.
-                throw new JVMCIError("liveIn set of first block must be empty: " + getBlockData(startBlock).liveIn);
+                throw new GraalError("liveIn set of first block must be empty: " + getBlockData(startBlock).liveIn);
             }
         }
     }

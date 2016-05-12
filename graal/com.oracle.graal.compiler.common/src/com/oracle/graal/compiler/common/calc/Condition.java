@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -372,7 +373,7 @@ public enum Condition {
                         case BT:
                             return UnsignedMath.belowThan(x, y);
                         default:
-                            throw new JVMCIError("expected condition: %s", this);
+                            throw new GraalError("expected condition: %s", this);
                     }
                 }
                 case Long: {
@@ -400,7 +401,7 @@ public enum Condition {
                         case BT:
                             return UnsignedMath.belowThan(x, y);
                         default:
-                            throw new JVMCIError("expected condition: %s", this);
+                            throw new GraalError("expected condition: %s", this);
                     }
                 }
                 case Float: {
@@ -423,7 +424,7 @@ public enum Condition {
                         case GE:
                             return x >= y;
                         default:
-                            throw new JVMCIError("expected condition: %s", this);
+                            throw new GraalError("expected condition: %s", this);
                     }
                 }
                 case Double: {
@@ -446,16 +447,16 @@ public enum Condition {
                         case GE:
                             return x >= y;
                         default:
-                            throw new JVMCIError("expected condition: %s", this);
+                            throw new GraalError("expected condition: %s", this);
                     }
                 }
                 default:
-                    throw new JVMCIError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this);
+                    throw new GraalError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this);
             }
         } else {
             Boolean equal = constantReflection.constantEquals(lt, rt);
             if (equal == null) {
-                throw new JVMCIError("could not fold %s %s %s", lt, this, rt);
+                throw new GraalError("could not fold %s %s %s", lt, this, rt);
             }
             switch (this) {
                 case EQ:
@@ -463,7 +464,7 @@ public enum Condition {
                 case NE:
                     return !equal.booleanValue();
                 default:
-                    throw new JVMCIError("expected condition: %s", this);
+                    throw new GraalError("expected condition: %s", this);
             }
         }
     }

@@ -34,8 +34,6 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
 import static com.oracle.graal.hotspot.stubs.StubUtil.fatal;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -48,6 +46,9 @@ import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler

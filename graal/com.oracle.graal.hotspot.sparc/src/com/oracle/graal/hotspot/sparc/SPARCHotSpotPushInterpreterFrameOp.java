@@ -37,14 +37,15 @@ import static jdk.vm.ci.sparc.SPARC.o3;
 import static jdk.vm.ci.sparc.SPARC.o4;
 import static jdk.vm.ci.sparc.SPARC.o5;
 import static jdk.vm.ci.sparc.SPARC.sp;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Pushes an interpreter frame to the stack.

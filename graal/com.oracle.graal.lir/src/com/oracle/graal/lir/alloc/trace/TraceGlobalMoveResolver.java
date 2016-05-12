@@ -39,17 +39,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.VirtualStackSlot;
@@ -58,6 +51,13 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  */
@@ -96,7 +96,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
             if (isRegister(location)) {
                 registerBlocked[asRegister(location).number] += direction;
             } else {
-                throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+                throw GraalError.shouldNotReachHere("unhandled value " + location);
             }
         }
     }
@@ -116,7 +116,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }
-        throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+        throw GraalError.shouldNotReachHere("unhandled value " + location);
     }
 
     private static boolean areMultipleReadsAllowed() {
@@ -458,7 +458,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         if (isVirtualStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
         }
-        throw JVMCIError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
+        throw GraalError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
     }
 
     private int getStackArrayIndex(StackSlot stackSlot) {

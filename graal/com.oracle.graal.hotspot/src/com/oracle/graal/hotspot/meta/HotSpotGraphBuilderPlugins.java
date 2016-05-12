@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.lang.invoke.VolatileCallSite;
 import java.util.zip.CRC32;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
@@ -90,11 +91,8 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.reflect.ConstantPool;
-import sun.reflect.Reflection;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -229,7 +227,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Reflection.class);
+        Registration r = new Registration(plugins, reflectionClass);
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -250,10 +248,9 @@ public class HotSpotGraphBuilderPlugins {
 
     /**
      * Emits a node to get the metaspace {@code ConstantPool} pointer given the value of the
-     * {@code constantPoolOop} field in a {@link ConstantPool} value.
+     * {@code constantPoolOop} field in a ConstantPool value.
      *
-     * @param constantPoolOop value of the {@code constantPoolOop} field in a {@link ConstantPool}
-     *            value
+     * @param constantPoolOop value of the {@code constantPoolOop} field in a ConstantPool value
      * @return a node representing the metaspace {@code ConstantPool} pointer associated with
      *         {@code constantPoolOop}
      */
@@ -269,8 +266,7 @@ public class HotSpotGraphBuilderPlugins {
     /**
      * Emits a node representing an element in a metaspace {@code ConstantPool}.
      *
-     * @param constantPoolOop value of the {@code constantPoolOop} field in a {@link ConstantPool}
-     *            value
+     * @param constantPoolOop value of the {@code constantPoolOop} field in a ConstantPool value
      */
     private static boolean readMetaspaceConstantPoolElement(GraphBuilderContext b, ValueNode constantPoolOop, ValueNode index, JavaKind elementKind, WordTypes wordTypes, HotSpotVMConfig config) {
         ValueNode constants = getMetaspaceConstantPool(b, constantPoolOop, wordTypes, config);
@@ -285,7 +281,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, HotSpotVMConfig config) {
-        Registration r = new Registration(plugins, ConstantPool.class);
+        Registration r = new Registration(plugins, constantPoolClass);
 
         r.register2("getSize0", Receiver.class, Object.class, new InvocationPlugin() {
             @Override
@@ -395,17 +391,24 @@ public class HotSpotGraphBuilderPlugins {
     public static final String aesEncryptName;
     public static final String aesDecryptName;
 
+    public static final String reflectionClass;
+    public static final String constantPoolClass;
+
     static {
         if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
             cbcEncryptName = "encrypt";
             cbcDecryptName = "decrypt";
             aesEncryptName = "encryptBlock";
             aesDecryptName = "decryptBlock";
+            reflectionClass = "sun.reflect.Reflection";
+            constantPoolClass = "sun.reflect.ConstantPool";
         } else {
             cbcEncryptName = "implEncrypt";
             cbcDecryptName = "implDecrypt";
             aesEncryptName = "implEncryptBlock";
             aesDecryptName = "implDecryptBlock";
+            reflectionClass = "jdk.internal.reflect.Reflection";
+            constantPoolClass = "jdk.internal.reflect.ConstantPool";
         }
     }
 

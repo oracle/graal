@@ -20,25 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.word;
+package com.oracle.graal.compiler.common.spi;
 
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_SYMBOL_POINTER;
-
-import com.oracle.graal.word.Pointer;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * Marker type for a metaspace pointer to a symbol.
+ * Implements the logic that decides whether a field read should be constant folded.
  */
-public abstract class SymbolPointer extends MetaspacePointer {
+public interface ConstantFieldProvider {
 
-    @HotSpotOperation(opcode = POINTER_EQ)
-    public abstract boolean equal(SymbolPointer other);
+    public interface ConstantFieldTool<T> {
 
-    @HotSpotOperation(opcode = POINTER_NE)
-    public abstract boolean notEqual(SymbolPointer other);
+        JavaConstant readValue();
 
-    @HotSpotOperation(opcode = TO_SYMBOL_POINTER)
-    public static native SymbolPointer fromWord(Pointer pointer);
+        JavaConstant getReceiver();
+
+        T foldConstant(JavaConstant ret);
+
+        T foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable);
+    }
+
+    /**
+     * Decide whether a read from the {@code field} should be constant folded. This should return
+     * {@link ConstantFieldTool#foldConstant} or {@link ConstantFieldTool#foldStableArray} if the
+     * read should be constant folded, or {@code null} otherwise.
+     */
+    <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool);
 }

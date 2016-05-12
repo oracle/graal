@@ -29,16 +29,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.TriState;
-import jdk.vm.ci.runtime.JVMCICompiler;
-
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.JavaMethodContext;
@@ -52,6 +42,16 @@ import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
@@ -250,6 +250,18 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+    }
+
+    @Override
+    public boolean maybeCompress() {
+        if (super.maybeCompress()) {
+            /*
+             * The schedule contains a NodeMap which is unusable after compression.
+             */
+            clearLastSchedule();
+            return true;
+        }
+        return false;
     }
 
     public Stamp getReturnStamp() {

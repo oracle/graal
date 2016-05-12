@@ -23,11 +23,9 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.loop.LoopEx;
@@ -49,6 +47,9 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.runtime.JVMCICompiler;
+
 public class OnStackReplacementPhase extends Phase {
 
     @Override
@@ -67,7 +68,7 @@ public class OnStackReplacementPhase extends Phase {
                 throw new BailoutException("No OnStackReplacementNode generated");
             }
             if (osrNodes.count() > 1) {
-                throw new JVMCIError("Multiple OnStackReplacementNodes generated");
+                throw new GraalError("Multiple OnStackReplacementNodes generated");
             }
             if (osr.stateAfter().locksSize() != 0) {
                 throw new BailoutException("OSR with locks not supported");
@@ -115,7 +116,7 @@ public class OnStackReplacementPhase extends Phase {
                  * we need to drop the stamp since the types we see during OSR may be too precise
                  * (if a branch was not parsed for example).
                  */
-                proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
+                proxy.replaceAndDelete(graph.addOrUnique(new OSRLocalNode(i, proxy.stamp().unrestricted())));
             } else {
                 assert value == null || value instanceof OSRLocalNode;
             }

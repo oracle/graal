@@ -27,20 +27,21 @@ import static jdk.vm.ci.sparc.SPARCKind.BYTE;
 import static jdk.vm.ci.sparc.SPARCKind.HWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARCKind;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
 import com.oracle.graal.compiler.match.MatchRule;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.memory.Access;
+
+import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARCKind;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -82,7 +83,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
                 fromKind = WORD;
                 break;
             default:
-                throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
         SPARCKind localFromKind = fromKind;
         SPARCKind localToKind = toKind;
@@ -116,7 +117,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
                 fromKind = WORD;
                 break;
             default:
-                throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
         SPARCKind localFromKind = fromKind;
         SPARCKind localToKind = toKind;

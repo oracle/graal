@@ -29,18 +29,18 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
+
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotReferenceMap;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 
 public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
@@ -91,7 +91,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             LIRKind kind = obj.getLIRKind();
             int bytes = bytesPerElement(kind);
             if (kind.isUnknownReference()) {
-                throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
+                throw GraalError.shouldNotReachHere("unknown reference alive across safepoint");
             } else {
                 Location base = null;
                 if (kind.isDerivedReference()) {

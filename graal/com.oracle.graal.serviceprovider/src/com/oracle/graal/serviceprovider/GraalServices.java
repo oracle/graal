@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
 /**
@@ -33,7 +34,7 @@ import jdk.vm.ci.services.Services;
  * JVMCI-8 or JVMCI-9. In JVMCI-8, a JVMCI specific mechanism is used to lookup services via the
  * hidden JVMCI class loader. in JVMCI-9, the standard {@link ServiceLoader} mechanism is used.
  */
-public class GraalServices {
+public final class GraalServices {
 
     private GraalServices() {
     }
@@ -44,7 +45,7 @@ public class GraalServices {
      * Gets an {@link Iterable} of the providers available for a given service.
      *
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
-     *             {@code RuntimePermission("jvmci")}
+     *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
@@ -59,7 +60,7 @@ public class GraalServices {
      *            {@code service} is available
      * @return the requested provider if available else {@code null}
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
-     *             {@code RuntimePermission("jvmci")}
+     *             {@link JVMCIPermission}
      */
     public static <S> S loadSingle(Class<S> service, boolean required) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();

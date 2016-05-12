@@ -23,12 +23,13 @@
 package com.oracle.graal.phases.common.inlining.policy;
 
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import jdk.vm.ci.code.BailoutException;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+
+import jdk.vm.ci.code.BailoutException;
 
 public class InlineEverythingPolicy implements InliningPolicy {
 

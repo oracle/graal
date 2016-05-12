@@ -36,19 +36,19 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.util.Util;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.TTY;
+import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.Variable;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.compiler.common.util.Util;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.Variable;
 
 /**
  * Represents an interval in the {@linkplain TraceLinearScan linear scan register allocator}.
@@ -713,7 +713,7 @@ final class TraceInterval extends IntervalHint {
                 TraceInterval lastChild = splitChildren.get(splitChildren.size() - 1);
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
-            throw new JVMCIError("Linear Scan Error: %s", msg);
+            throw new GraalError("Linear Scan Error: %s", msg);
         }
 
         if (!splitChildren.isEmpty()) {

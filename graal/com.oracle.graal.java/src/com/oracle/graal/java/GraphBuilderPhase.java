@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
@@ -33,6 +30,10 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Parses the bytecodes of a method and builds the IR graph.
@@ -47,7 +48,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), graphBuilderConfig, context.getOptimisticOptimizations(), null).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), context.getConstantFieldProvider(), graphBuilderConfig, context.getOptimisticOptimizations(),
+                        null).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -60,17 +62,19 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         protected final MetaAccessProvider metaAccess;
         protected final StampProvider stampProvider;
         protected final ConstantReflectionProvider constantReflection;
+        protected final ConstantFieldProvider constantFieldProvider;
         protected final GraphBuilderConfiguration graphBuilderConfig;
         protected final OptimisticOptimizations optimisticOpts;
         private final IntrinsicContext initialIntrinsicContext;
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.constantReflection = constantReflection;
+            this.constantFieldProvider = constantFieldProvider;
             this.initialIntrinsicContext = initialIntrinsicContext;
         }
 
