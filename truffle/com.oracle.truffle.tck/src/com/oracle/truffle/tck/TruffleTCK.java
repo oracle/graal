@@ -360,8 +360,8 @@ public abstract class TruffleTCK {
     /**
      * Name of a function to manipulate with an array. The function should take three parameters:
      * the array, index into the array (expected to be an instance of {@link Number}) and another
-     * number to add to value already present at the index-location in the array. The first
-     * element in the array has index zero.
+     * number to add to value already present at the index-location in the array. The first element
+     * in the array has index zero.
      * 
      * @since 0.14
      */
