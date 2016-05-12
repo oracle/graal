@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -84,6 +85,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, LLVMAddress v) {
             doWrite(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, LLVMAddress v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
@@ -94,6 +100,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, int v) {
             doWrite(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, int v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 
@@ -106,6 +117,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, long v) {
             doWrite(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, long v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI8Node.class)})
@@ -116,6 +132,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, byte v) {
             doWrite(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, byte v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 
@@ -128,6 +149,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, float v) {
             doWrite(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, float v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMDoubleNode.class)})
@@ -139,6 +165,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, double v) {
             doWrite(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, double v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI1Node.class)})
@@ -149,6 +180,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, boolean v) {
             doWrite(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, boolean v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 
@@ -162,6 +198,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, LLVMAddress v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, LLVMAddress v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI32Node.class)})
@@ -172,6 +213,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, int v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, int v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 
@@ -184,6 +230,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, long v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, long v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI8Node.class)})
@@ -194,6 +245,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, byte v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, byte v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 
@@ -206,6 +262,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, float v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, float v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMDoubleNode.class)})
@@ -217,6 +278,11 @@ public final class LLVMTruffleWrite {
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, double v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
         }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, double v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI1Node.class)})
@@ -227,6 +293,11 @@ public final class LLVMTruffleWrite {
         @Specialization
         public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, boolean v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+        }
+
+        @Specialization
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, boolean v) {
+            executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
 }

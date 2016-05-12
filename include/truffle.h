@@ -51,6 +51,8 @@ i.e., a subsequent import with the same name does not do a lookup but returns th
 void *truffle_import_cached(const char *name);
 // void truffle_export(const char *name, void *value);
 
+void *truffle_address_to_function(void *address);
+
 // Predicates:
 bool truffle_is_executable(void *object);
 bool truffle_is_null(void *object);

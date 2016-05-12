@@ -33,14 +33,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.internal.SuppressFBWarnings;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleImportCachedFactory.ImportCacheNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
 @NodeChild(type = LLVMAddressNode.class)
 public abstract class LLVMTruffleImportCached extends LLVMAddressIntrinsic {
@@ -55,16 +53,16 @@ public abstract class LLVMTruffleImportCached extends LLVMAddressIntrinsic {
 
     abstract static class ImportCache extends Node {
 
-        public abstract LLVMTruffleObject execute(String name);
+        public abstract Object execute(String name);
 
         @SuppressWarnings("unused")
         @Specialization(limit = "10", guards = {"stringEquals(name, cachedName)"})
-        public LLVMTruffleObject importValue(String name, @Cached("name") String cachedName, @Cached("resolve(cachedName)") TruffleObject value) {
-            return new LLVMTruffleObject(value);
+        public Object importValue(String name, @Cached("name") String cachedName, @Cached("resolve(cachedName)") Object value) {
+            return value;
         }
 
-        protected static TruffleObject resolve(String name) {
-            return (TruffleObject) LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
+        protected static Object resolve(String name) {
+            return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
         }
 
         @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")

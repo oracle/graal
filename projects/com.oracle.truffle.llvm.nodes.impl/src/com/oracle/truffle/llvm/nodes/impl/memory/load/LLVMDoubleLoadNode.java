@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -87,6 +88,11 @@ public abstract class LLVMDoubleLoadNode extends LLVMDoubleNode {
         @Specialization
         public double executeDouble(VirtualFrame frame, LLVMTruffleObject addr) {
             return doForeignAccess(frame, addr);
+        }
+
+        @Specialization
+        public double executeDouble(VirtualFrame frame, TruffleObject addr) {
+            return doForeignAccess(frame, new LLVMTruffleObject(addr));
         }
     }
 

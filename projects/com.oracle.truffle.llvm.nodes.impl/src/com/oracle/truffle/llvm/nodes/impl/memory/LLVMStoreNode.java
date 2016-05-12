@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -69,6 +70,14 @@ public abstract class LLVMStoreNode extends LLVMNode {
     protected void doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr, int stride, Object value) {
         try {
             ForeignAccess.sendWrite(foreignWrite, frame, addr.getObject(), (int) (addr.getOffset() / stride), value);
+        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    protected void doForeignAccess(VirtualFrame frame, TruffleObject addr, Object value) {
+        try {
+            ForeignAccess.sendWrite(foreignWrite, frame, addr, 0, value);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
@@ -117,6 +126,11 @@ public abstract class LLVMStoreNode extends LLVMNode {
             doForeignAccess(frame, address, LLVMI32Node.BYTE_SIZE, value);
         }
 
+        @Specialization
+        public void execute(VirtualFrame frame, TruffleObject address, int value) {
+            execute(frame, new LLVMTruffleObject(address), value);
+        }
+
     }
 
     @NodeChild(type = LLVMI64Node.class, value = "valueNode")
@@ -160,6 +174,11 @@ public abstract class LLVMStoreNode extends LLVMNode {
         @Specialization
         public void execute(VirtualFrame frame, LLVMTruffleObject address, double value) {
             doForeignAccess(frame, address, LLVMDoubleNode.BYTE_SIZE, value);
+        }
+
+        @Specialization
+        public void execute(VirtualFrame frame, TruffleObject address, double value) {
+            doForeignAccess(frame, address, value);
         }
 
     }
