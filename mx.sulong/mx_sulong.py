@@ -141,6 +141,14 @@ def travis2(args=None):
         with Task('TestGCC', tasks) as t:
             if t: runGCCTestCases()
 
+def travisJRuby(args=None):
+    tasks = []
+    with Task('BuildHotSpotGraalServer: product', tasks) as t:
+        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
+    with VM('server', 'product'):
+        with Task('TestJRuby', tasks) as t:
+            if t: runTestJRuby()
+
 def localGate(args=None):
     """executes the gate without downloading the dependencies and without building"""
     executeGate()
@@ -524,6 +532,23 @@ def runCompileTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
 
+def runTestJRuby(args=None):
+    """tests that JRuby can use this version of Sulong to compile and run C extensions"""
+    rubyUrl = 'http://github.com/jruby/jruby.git'
+    rubyBranch = 'truffle-head'
+    suitesDir = os.path.abspath(join(_suite.dir, '..'))
+    jrubyDir = join(suitesDir, 'jruby')
+    if os.path.isdir(jrubyDir):
+        mx.run(['git', 'checkout', rubyBranch], cwd=jrubyDir)
+        mx.run(['git', 'pull'], cwd=jrubyDir)
+    else:
+        mx.run(['git', 'clone', rubyUrl], cwd=suitesDir)
+        mx.run(['git', 'checkout', rubyBranch], cwd=jrubyDir)
+    mx.run(['ruby', 'tool/jt.rb', 'build'], cwd=jrubyDir)
+    os.environ['SULONG_DIR'] = _suite.dir
+    os.environ['SULONG_CLASSPATH'] = getClasspathOptions()[1]
+    mx.run(['ruby', 'tool/jt.rb', 'test', 'cexts'], cwd=jrubyDir)
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -808,6 +833,7 @@ mx.update_commands(_suite, {
     'su-tests-interop' : [runInteropTestCases, ''],
     'su-tests-asm' : [runAsmTestCases, ''],
     'su-tests-compile' : [runCompileTestCases, ''],
+    'su-tests-jruby' : [runTestJRuby, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
@@ -818,6 +844,7 @@ mx.update_commands(_suite, {
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
+    'su-travis-jruby' : [travisJRuby, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, '']
