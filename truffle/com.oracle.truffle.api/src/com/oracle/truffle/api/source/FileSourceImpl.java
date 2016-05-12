@@ -34,14 +34,13 @@ import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.logging.Level;
 
-final class FileSourceImpl extends Source implements Cloneable {
+final class FileSourceImpl extends Content {
 
     private final File file;
     private final String name; // Name used originally to describe the source
     private final String path; // Normalized path description of an actual file
-    private String code = null; // A cache of the file's contents
+    private String code; // A cache of the file's contents
 
     FileSourceImpl(File file, String name, String path) {
         this.file = file.getAbsoluteFile();
@@ -66,17 +65,17 @@ final class FileSourceImpl extends Source implements Cloneable {
 
     @Override
     public String getCode() {
-        if (fileCacheEnabled) {
+        if (Source.fileCacheEnabled) {
             if (code == null) {
                 try {
-                    code = read(getReader());
+                    code = Source.read(getReader());
                 } catch (IOException e) {
                 }
             }
             return code;
         }
         try {
-            return read(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+            return Source.read(new InputStreamReader(new FileInputStream(file), "UTF-8"));
         } catch (IOException e) {
         }
         return null;
@@ -112,13 +111,8 @@ final class FileSourceImpl extends Source implements Cloneable {
     }
 
     @Override
-    String findMimeType() {
-        try {
-            return Files.probeContentType(file.toPath());
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, null, ex);
-        }
-        return null;
+    String findMimeType() throws IOException {
+        return Files.probeContentType(file.toPath());
     }
 
     @Override
@@ -128,7 +122,7 @@ final class FileSourceImpl extends Source implements Cloneable {
         }
         if (obj instanceof FileSourceImpl) {
             FileSourceImpl other = (FileSourceImpl) obj;
-            return path.equals(other.path) && equalMime(other);
+            return path.equals(other.path);
         }
         return false;
     }
