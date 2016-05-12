@@ -53,7 +53,7 @@ import jdk.vm.ci.runtime.JVMCI;
 public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvider {
 
     public HotSpotGraalConstantFieldProvider(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        super(config);
+        super(config, metaAccess);
         this.metaAccess = metaAccess;
     }
 
