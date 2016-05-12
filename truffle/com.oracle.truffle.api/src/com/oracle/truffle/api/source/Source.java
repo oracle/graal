@@ -113,6 +113,7 @@ public abstract class Source {
 
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
+    private final Content content;
     private String mimeType;
     private TextMap textMap;
 
@@ -416,15 +417,12 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source() {
-    }
-
-    Source(String mimeType) {
-        this.mimeType = mimeType;
+    Source(Content content) {
+        this.content = content;
     }
 
     Content content() {
-        return null;
+        return content;
     }
 
     void reset() {
@@ -838,15 +836,8 @@ public abstract class Source {
     }
 
     private static class Impl extends Source implements Cloneable {
-        private final Content content;
-
         Impl(Content content) {
-            this.content = content;
-        }
-
-        @Override
-        Content content() {
-            return content;
+            super(content);
         }
     }
 }
