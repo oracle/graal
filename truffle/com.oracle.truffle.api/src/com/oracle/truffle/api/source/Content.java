@@ -37,6 +37,10 @@ abstract class Content {
 
     abstract String getCode();
 
+    String getCode(int byteOffset, int codeLength) {
+        return getCode().substring(byteOffset, byteOffset + codeLength);
+    }
+
     abstract String getName();
 
     abstract String getShortName();
@@ -46,4 +50,8 @@ abstract class Content {
     abstract String getPath();
 
     abstract URL getURL();
+
+    int getCodeLength() {
+        return getCode().length();
+    }
 }
