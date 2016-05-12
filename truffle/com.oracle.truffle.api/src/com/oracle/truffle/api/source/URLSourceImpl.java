@@ -34,7 +34,7 @@ import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
-final class URLSourceImpl extends Source implements Cloneable {
+final class URLSourceImpl extends Content {
 
     private static final Map<URL, WeakReference<URLSourceImpl>> urlToSource = new HashMap<>();
 
@@ -57,11 +57,10 @@ final class URLSourceImpl extends Source implements Cloneable {
     }
 
     URLSourceImpl(URL url, URLConnection conn, String name) throws IOException {
-        super(conn.getContentType());
         this.url = url;
         this.name = name;
         URLConnection c = url.openConnection();
-        code = read(new InputStreamReader(c.getInputStream()));
+        code = Source.read(new InputStreamReader(c.getInputStream()));
     }
 
     @Override
@@ -96,6 +95,16 @@ final class URLSourceImpl extends Source implements Cloneable {
 
     @Override
     void reset() {
+    }
+
+    @Override
+    String findMimeType() throws IOException {
+        return url.openConnection().getContentType();
+    }
+
+    @Override
+    Object getHashKey() {
+        return url;
     }
 
 }

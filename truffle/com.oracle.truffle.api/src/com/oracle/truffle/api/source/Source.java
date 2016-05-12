@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.logging.Level;
 
 /**
  * Representation of a guest language source code unit and its contents. Sources originate in
@@ -331,7 +332,8 @@ public abstract class Source {
      */
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
-        return URLSourceImpl.get(url, description);
+        Content content = URLSourceImpl.get(url, description);
+        return new Impl(content);
     }
 
     /**
@@ -799,13 +801,13 @@ public abstract class Source {
      */
     public String getMimeType() {
         if (mimeType == null) {
-            mimeType = findMimeType();
+            try {
+                mimeType = content().findMimeType();
+            } catch (IOException ex) {
+                LOG.log(Level.INFO, null, ex);
+            }
         }
         return mimeType;
-    }
-
-    String findMimeType() {
-        return null;
     }
 
     final boolean equalMime(Source other) {

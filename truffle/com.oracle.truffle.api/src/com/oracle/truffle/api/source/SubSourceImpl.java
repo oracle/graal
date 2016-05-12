@@ -85,7 +85,7 @@ final class SubSourceImpl extends Content {
 
     @Override
     String findMimeType() throws IOException {
-        return base.findMimeType();
+        return base.getMimeType();
     }
 
     @Override
