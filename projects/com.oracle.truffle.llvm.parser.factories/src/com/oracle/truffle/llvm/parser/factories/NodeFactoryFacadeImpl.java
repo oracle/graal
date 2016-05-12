@@ -40,7 +40,9 @@ import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -48,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -61,8 +64,11 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode.LLVMResolvedDirectCallNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
@@ -76,7 +82,6 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerN
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
@@ -343,6 +348,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType) {
+        Parser asmParser = new Parser(asmExpression, asmFlags, args, retType);
+        LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
+        CallTarget target = Truffle.getRuntime().createCallTarget(assemblyRoot);
         switch (retType) {
             case VOID:
                 return new LLVMUnsupportedInlineAssemblerNode();
@@ -353,7 +361,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             case I16:
                 return new LLVMI16UnsupportedInlineAssemblerNode();
             case I32:
-                return new LLVMI32UnsupportedInlineAssemblerNode();
+                return LLVMI32CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args));
             case I64:
                 return new LLVMI64UnsupportedInlineAssemblerNode();
             case FLOAT:

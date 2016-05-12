@@ -1,0 +1,111 @@
+/*
+ * Copyright (c) 2016, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * This is the grammar of Inline-Assembly that is used to automatically generate the Parser.java and Scanner.java
+ * files. You can download the parser generator Coco/R from http://ssw.jku.at/coco/. Then run
+ * "java -jar ../Coco.jar InlineAssembly.atg"
+ */
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import java.io.ByteArrayInputStream;
+
+COMPILER InlineAssembly
+
+//parser methods and fields here
+
+
+CHARACTERS
+digit = "0123456789".
+hexDigit = "0123456789ABCDEFabcdef".
+letter = 'a' .. 'z'.
+lf = '\n'.
+
+TOKENS
+ident = letter {letter | digit | '_'}.
+number = ["-"] digit { digit }.
+hexNumber = "0x" hexDigit { hexDigit }.
+
+PRAGMAS
+IGNORE "\n\t\r"
+
+PRODUCTIONS
+
+InlineAssembly<> =
+										(.LLVMI32Node node;.)
+  "\""
+  AddSubOperation<out node>
+  "\""
+  										(.root = factory.finishInline(node);.)
+  .
+
+AddSubOperation<out LLVMI32Node n> =	(.String op; LLVMI32Node left = null, right = null;.)
+  AddSubOp<out op>
+  (Register<out left, 1> | Immediate<out left, 1>)
+   "," Register<out right, 2>
+   ";"									(.n = factory.createBinary(op, left, right);.)
+   .
+
+AddSubOp<out String op> 				(.op = la.val;.)
+  = "addb"
+  | "adds"
+  | "addw"
+  | "addl"							
+  | "addq"
+  | "addt"
+  | "subb"
+  | "subs"
+  | "subw"
+  | "subl"						
+  | "subq"
+  | "subt"
+  .
+
+Register<out LLVMI32Node n, int index> =
+  ( "%eax"
+  | "%ebx"
+  | "%ecx"
+  | "%edx"
+  | "%esp"
+  | "%ebp"
+  | "%esi"
+  | "%edi"
+  )										(.n = LLVMI32ArgNodeGen.create(index);.)
+  .
+
+Immediate<out LLVMI32Node n, int index> =
+    "$"
+  ( number
+  | hexNumber
+  )										(.n = LLVMI32ArgNodeGen.create(index);.)
+  .
+
+END InlineAssembly.
