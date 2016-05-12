@@ -36,7 +36,6 @@ import com.oracle.graal.hotspot.nodes.LoadIndexedPointerNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MetaspacePointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.SymbolPointerStamp;
 import com.oracle.graal.hotspot.word.HotSpotOperation;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.hotspot.word.PointerCastNode;
@@ -134,11 +133,6 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
             case TO_METHOD_POINTER:
                 assert args.length == 1;
                 b.addPush(returnKind, new PointerCastNode(MethodPointerStamp.method(), args[0]));
-                break;
-
-            case TO_SYMBOL_POINTER:
-                assert args.length == 1;
-                b.addPush(returnKind, new PointerCastNode(SymbolPointerStamp.symbol(), args[0]));
                 break;
 
             case READ_KLASS_POINTER:
