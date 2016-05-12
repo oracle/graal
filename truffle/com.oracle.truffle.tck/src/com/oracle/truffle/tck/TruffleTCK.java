@@ -343,8 +343,8 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Code snippet to multiplyCode two two variables. The test uses the snippet as a parameter to
-     * your language' s
+     * Code snippet to multiply two variables. The test uses the snippet as a parameter to your
+     * language' s
      * {@link TruffleLanguage#parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
      * method.
      *
@@ -355,6 +355,18 @@ public abstract class TruffleTCK {
      */
     protected String multiplyCode(String firstName, String secondName) {
         throw new UnsupportedOperationException("multiply(String,String) method not implemeted!");
+    }
+
+    /**
+     * Name of a function to manipulate with an array. The function should take three parameters:
+     * the array, index into the array (expected to be an instance of {@link Number}) and another
+     * number to add to value already present at the index-location in the array. The first element
+     * in the array has index zero.
+     * 
+     * @since 0.14
+     */
+    protected String addToArray() {
+        throw new UnsupportedOperationException("implement addToArray() method");
     }
 
     /**
@@ -1431,6 +1443,37 @@ public abstract class TruffleTCK {
         assertEquals("Correct value", true, values.booleanValue());
         values.booleanValue(false);
         assertEquals("Correct value2", false, values.booleanValue());
+    }
+
+    /**
+     * Test for array access. Creates a {@link TruffleObject} around a Java array, fills it with
+     * integers and asks the language to add one to each of the array elements.
+     * 
+     * @since 0.14
+     */
+    @Test
+    public void addOneToAnArrayElement() throws Exception {
+        String id = addToArray();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value add = findGlobalSymbol(id);
+
+        Number[] arr = new Number[10];
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = i;
+        }
+        TruffleObject truffleArr = JavaInterop.asTruffleObject(arr);
+
+        int index = RANDOM.nextInt(arr.length - 1);
+
+        add.execute(truffleArr, index, 1);
+        final Number valueAtIndex = arr[index];
+        final Number valueAfterIndex = arr[index + 1];
+
+        assertNotNull("Non-null value expected at index " + index, valueAtIndex);
+        assertNotNull("Non-null value expected at index " + (index + 1), valueAfterIndex);
+        assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
