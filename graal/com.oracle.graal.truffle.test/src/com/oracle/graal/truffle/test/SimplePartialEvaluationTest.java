@@ -23,11 +23,11 @@
 package com.oracle.graal.truffle.test;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.SourceStackTrace;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.graal.code.SourceStackTrace;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;

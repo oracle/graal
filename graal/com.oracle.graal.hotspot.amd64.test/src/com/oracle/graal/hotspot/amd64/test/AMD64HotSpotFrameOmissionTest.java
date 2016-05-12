@@ -26,20 +26,19 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.asm.amd64.AMD64Assembler;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.
@@ -113,8 +112,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         InstalledCode installedCode = getCode(javaMethod);
 
         TargetDescription target = getCodeCache().getTarget();
-        RegisterConfig registerConfig = getCodeCache().getRegisterConfig();
-        AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
+        AMD64Assembler asm = new AMD64Assembler(target);
 
         gen.generateCode(asm);
         byte[] expectedCode = asm.close(true);

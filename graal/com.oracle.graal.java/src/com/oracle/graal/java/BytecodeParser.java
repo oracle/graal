@@ -272,12 +272,13 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
@@ -400,7 +401,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.RawConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -644,7 +644,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
         if (PrintProfilingInformation.getValue() && profilingInfo != null) {
             TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
-            TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
+            TTY.println(Util.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
         }
 
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {

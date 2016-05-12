@@ -28,7 +28,6 @@ import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.asm.NumUtil;
@@ -38,8 +37,8 @@ import com.oracle.graal.asm.NumUtil;
  */
 public class AMD64MacroAssembler extends AMD64Assembler {
 
-    public AMD64MacroAssembler(TargetDescription target, RegisterConfig registerConfig) {
-        super(target, registerConfig);
+    public AMD64MacroAssembler(TargetDescription target) {
+        super(target);
     }
 
     public final void decrementq(Register reg, int value) {

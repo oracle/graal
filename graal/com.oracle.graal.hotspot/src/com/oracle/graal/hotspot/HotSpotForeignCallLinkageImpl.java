@@ -27,6 +27,13 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.util.Set;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
+import com.oracle.graal.hotspot.stubs.Stub;
+import com.oracle.graal.word.WordTypes;
+
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -36,24 +43,16 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
-import jdk.vm.ci.hotspot.HotSpotProxified;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.word.WordTypes;
-
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget implements HotSpotForeignCallLinkage, HotSpotProxified {
+public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget implements HotSpotForeignCallLinkage {
 
     /**
      * The descriptor of the call.

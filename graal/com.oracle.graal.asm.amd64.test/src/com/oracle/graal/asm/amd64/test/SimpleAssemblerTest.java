@@ -60,7 +60,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
-                AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
+                AMD64Assembler asm = new AMD64Assembler(target);
                 Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                 asm.movl(ret, 8472);
                 asm.ret(0);
@@ -76,7 +76,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
-                AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
+                AMD64MacroAssembler asm = new AMD64MacroAssembler(target);
                 Register ret = registerConfig.getReturnRegister(JavaKind.Double);
                 Data data = new SerializableData(JavaConstant.forDouble(84.72), 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
@@ -95,7 +95,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
-                AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
+                AMD64MacroAssembler asm = new AMD64MacroAssembler(target);
                 Register ret = registerConfig.getReturnRegister(JavaKind.Double);
 
                 byte[] rawBytes = new byte[8];

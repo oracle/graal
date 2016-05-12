@@ -52,6 +52,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -141,7 +142,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         getCodeCache().addCode(method, compiledCode, null, null);
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testInvalidShortOop() {
         test((tool, state, safepoint) -> {
             PlatformKind kind = tool.target().arch.getPlatformKind(JavaKind.Short);
@@ -154,7 +155,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testInvalidShortDerivedOop() {
         test((tool, state, safepoint) -> {
             Variable baseOop = tool.newVariable(tool.target().getLIRKind(JavaKind.Object));
@@ -180,7 +181,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         return new LIRFrameState(top, vobj, state.exceptionEdge);
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedScopeValuesLength() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{JavaConstant.FALSE}, new JavaKind[0], 0, 0, 0);
@@ -188,7 +189,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedScopeSlotKindsLength() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[0], new JavaKind[]{JavaKind.Boolean}, 0, 0, 0);
@@ -196,7 +197,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testWrongMonitorType() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{JavaConstant.INT_0}, new JavaKind[]{}, 0, 0, 1);
@@ -204,7 +205,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedIllegalValue() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{Value.ILLEGAL}, new JavaKind[]{JavaKind.Int}, 1, 0, 0);
@@ -212,7 +213,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedTypeInRegister() {
         test((tool, state, safepoint) -> {
             Variable var = tool.newVariable(tool.target().getLIRKind(JavaKind.Int));
@@ -222,7 +223,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testWrongConstantType() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{JavaConstant.INT_0}, new JavaKind[]{JavaKind.Object}, 1, 0, 0);
@@ -230,7 +231,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnsupportedConstantType() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{JavaConstant.forShort((short) 0)}, new JavaKind[]{JavaKind.Short}, 1, 0, 0);
@@ -238,7 +239,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedNull() {
         test((tool, state, safepoint) -> {
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{JavaConstant.NULL_POINTER}, new JavaKind[]{JavaKind.Int}, 1, 0, 0);
@@ -246,7 +247,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedObject() {
         JavaValue wrapped = getSnippetReflection().forObject(this);
         test((tool, state, safepoint) -> {
@@ -285,7 +286,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testInvalidVirtualObjectId() {
         ResolvedJavaType obj = getMetaAccess().lookupJavaType(Object.class);
         test((tool, state, safepoint) -> {
@@ -296,7 +297,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testDuplicateVirtualObject() {
         ResolvedJavaType obj = getMetaAccess().lookupJavaType(Object.class);
         test((tool, state, safepoint) -> {
@@ -310,7 +311,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUnexpectedVirtualObject() {
         ResolvedJavaType obj = getMetaAccess().lookupJavaType(Object.class);
         test((tool, state, safepoint) -> {
@@ -322,7 +323,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    @Test(expected = InternalError.class)
+    @Test(expected = JVMCIError.class)
     public void testUndefinedVirtualObject() {
         ResolvedJavaType obj = getMetaAccess().lookupJavaType(Object.class);
         test((tool, state, safepoint) -> {

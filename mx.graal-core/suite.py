@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "f9aa6a496c06ab1da018d8e84f8f9e67e033745d",
+        "version" : "19432ed408488561d7b4b33359f89d008755e14c",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},

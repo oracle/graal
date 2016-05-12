@@ -140,7 +140,6 @@ import com.oracle.graal.debug.GraalError;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -155,13 +154,8 @@ public abstract class SPARCAssembler extends Assembler {
 
     /**
      * Constructs an assembler for the SPARC architecture.
-     *
-     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
-     *            {@link Register#CallerFrame} to physical registers. This value can be null if this
-     *            assembler instance will not be used to assemble instructions using these logical
-     *            registers.
      */
-    public SPARCAssembler(TargetDescription target, RegisterConfig registerConfig) {
+    public SPARCAssembler(TargetDescription target) {
         super(target);
     }
 

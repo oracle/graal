@@ -221,7 +221,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new SPARCMacroAssembler(getTarget(), frameMap.getRegisterConfig());
+        return new SPARCMacroAssembler(getTarget());
     }
 
     @Override
