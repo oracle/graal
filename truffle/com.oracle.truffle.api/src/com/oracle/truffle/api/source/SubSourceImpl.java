@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.net.URL;
 
-final class SubSourceImpl extends Source implements Cloneable {
+final class SubSourceImpl extends Content {
 
     private final Source base;
     private final int baseIndex;
@@ -80,6 +81,16 @@ final class SubSourceImpl extends Source implements Cloneable {
     @Override
     public String getCode() {
         return base.getCode(baseIndex, subLength);
+    }
+
+    @Override
+    String findMimeType() throws IOException {
+        return base.findMimeType();
+    }
+
+    @Override
+    Object getHashKey() {
+        return base;
     }
 
 }

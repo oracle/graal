@@ -299,7 +299,7 @@ public abstract class Source {
     public static Source subSource(Source base, int baseCharIndex, int length) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSourceImpl subSource = SubSourceImpl.create(base, baseCharIndex, length);
-        return subSource;
+        return new Impl(subSource);
     }
 
     /**
