@@ -100,7 +100,10 @@ bench-dacapo-x52 : ${bench-dacapo} {
   capabilities : [linux, x52, bench, post-merge]
   name : "bench-dacapo-linux-x52"
   run : [
-    ${bench-jvmci.mx-dacapo} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"]
+    ${bench-jvmci.mx-dacapo} [
+      "--machine-name", "x52", "--",
+      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
+    ]
   ]
 }
 
@@ -123,7 +126,11 @@ bench-specjvm2008-x52 : ${bench-specjvm2008} {
   capabilities : [linux, x52, bench, post-merge]
   name : "bench-specjvm2008-linux-x52"
   run : [
-    ${bench-jvmci.mx-specjvm2008} ["--machine-name", "x52", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--", "-it", "240s", "-wt", "120s"]
+    ${bench-jvmci.mx-specjvm2008} [
+      "--machine-name", "x52", "--",
+      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--",
+      "-it", "240s", "-wt", "120s"
+    ]
   ]
 }
 
