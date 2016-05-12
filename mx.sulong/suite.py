@@ -202,6 +202,17 @@ suite = {
 
   "projects" : {
 
+    "uk.ac.man.cs.llvm" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "",
+    },
+
     "com.oracle.truffle.llvm.test" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -348,8 +359,8 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.parser.factories",
         "com.oracle.truffle.llvm.parser.impl",
+        "com.oracle.truffle.llvm.parser.bc.impl",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -377,6 +388,20 @@ suite = {
       "dependencies" : [
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "com.oracle.truffle.llvm.parser"
+       ],
+      "checkstyle" : "com.oracle.truffle.llvm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
+
+    "com.oracle.truffle.llvm.parser.bc.impl" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.parser.factories",
+        "uk.ac.man.cs.llvm",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
