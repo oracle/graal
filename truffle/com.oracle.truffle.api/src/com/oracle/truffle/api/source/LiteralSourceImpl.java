@@ -24,12 +24,13 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
 import java.util.Objects;
 
-final class LiteralSourceImpl extends Source implements Cloneable {
+final class LiteralSourceImpl extends Content {
 
     private final String description;
     private final String code;
@@ -88,9 +89,19 @@ final class LiteralSourceImpl extends Source implements Cloneable {
         }
         if (obj instanceof LiteralSourceImpl) {
             LiteralSourceImpl other = (LiteralSourceImpl) obj;
-            return Objects.equals(description, other.description) && code.equals(other.code) && equalMime(other);
+            return Objects.equals(description, other.description) && code.equals(other.code);
         }
         return false;
+    }
+
+    @Override
+    String findMimeType() throws IOException {
+        return null;
+    }
+
+    @Override
+    Object getHashKey() {
+        return code;
     }
 
 }

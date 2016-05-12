@@ -30,11 +30,10 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.logging.Level;
 
 // TODO (mlvdv) if we keep this, hoist a superclass in common with FileSource.
 
-final class ClientManagedFileSourceImpl extends Source implements Cloneable {
+final class ClientManagedFileSourceImpl extends Content {
 
     private final File file;
     private final String name; // Name used originally to describe the source
@@ -49,7 +48,6 @@ final class ClientManagedFileSourceImpl extends Source implements Cloneable {
     }
 
     void setCode(CharSequence chars) {
-        clearTextMap();
         this.code = chars.toString();
     }
 
@@ -89,13 +87,8 @@ final class ClientManagedFileSourceImpl extends Source implements Cloneable {
     }
 
     @Override
-    String findMimeType() {
-        try {
-            return Files.probeContentType(file.toPath());
-        } catch (IOException ex) {
-            LOG.log(Level.SEVERE, null, ex);
-        }
-        return null;
+    String findMimeType() throws IOException {
+        return Files.probeContentType(file.toPath());
     }
 
     @Override
@@ -110,7 +103,7 @@ final class ClientManagedFileSourceImpl extends Source implements Cloneable {
         }
         if (obj instanceof ClientManagedFileSourceImpl) {
             ClientManagedFileSourceImpl other = (ClientManagedFileSourceImpl) obj;
-            return path.equals(other.path) && equalMime(other);
+            return path.equals(other.path);
         }
         return false;
     }

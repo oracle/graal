@@ -207,15 +207,17 @@ public abstract class Source {
             final WeakReference<Source> pathRef = nameToSource.get(path);
             source = pathRef == null ? null : pathRef.get();
             if (source == null) {
-                source = new ClientManagedFileSourceImpl(file, fileName, path, chars);
+                Content content = new ClientManagedFileSourceImpl(file, fileName, path, chars);
+                source = new Impl(content);
                 nameToSource.put(path, new WeakReference<>(source));
                 return source;
             }
         }
-        if (source instanceof ClientManagedFileSourceImpl) {
-            final ClientManagedFileSourceImpl modifiableSource = (ClientManagedFileSourceImpl) source;
+        if (source.content() instanceof ClientManagedFileSourceImpl) {
+            final ClientManagedFileSourceImpl modifiableSource = (ClientManagedFileSourceImpl) source.content();
             modifiableSource.setCode(chars);
-            return modifiableSource;
+            source.clearTextMap();
+            return source;
         } else {
             throw new IOException("Attempt to modify contents of a file Source");
         }
@@ -231,7 +233,8 @@ public abstract class Source {
      */
     public static Source fromText(CharSequence chars, String description) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
-        return new LiteralSourceImpl(description, chars.toString());
+        Content content = new LiteralSourceImpl(description, chars.toString());
+        return new Impl(content);
     }
 
     /**
@@ -259,7 +262,8 @@ public abstract class Source {
      */
     public static Source fromNamedText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
-        final Source source = new LiteralSourceImpl(name, chars.toString());
+        Content content = new LiteralSourceImpl(name, chars.toString());
+        final Source source = new Impl(content);
         nameToSource.put(name, new WeakReference<>(source));
         return source;
     }
@@ -339,7 +343,8 @@ public abstract class Source {
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
-        return new LiteralSourceImpl(description, read(reader));
+        Content content = new LiteralSourceImpl(description, read(reader));
+        return new Impl(content);
     }
 
     /**
