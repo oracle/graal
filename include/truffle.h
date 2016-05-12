@@ -45,9 +45,15 @@ extern "C" {
 */
 
 void *truffle_import(const char *name);
+/* This import function caches the result (i.e. the imported object) for a given name,
+i.e., a subsequent import with the same name does not do a lookup but returns the cached value.
+*/
+void *truffle_import_cached(const char *name);
 // void truffle_export(const char *name, void *value);
 
-// Binary:
+void *truffle_address_to_function(void *address);
+
+// Predicates:
 bool truffle_is_executable(void *object);
 bool truffle_is_null(void *object);
 bool truffle_has_size(void *object);
@@ -115,6 +121,9 @@ void truffle_write_idx_c(void *object, int idx, char value);
 void truffle_write_idx_f(void *object, int idx, float value);
 void truffle_write_idx_d(void *object, int idx, double value);
 void truffle_write_idx_b(void *object, int idx, bool value);
+
+// Strings
+void *truffle_read_string(const char *string);
 
 #if defined(__cplusplus)
 }

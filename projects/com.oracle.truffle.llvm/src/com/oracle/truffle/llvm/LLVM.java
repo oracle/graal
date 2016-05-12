@@ -59,11 +59,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This is the main LLVM execution class.
@@ -136,7 +137,7 @@ public class LLVM {
             }
 
             private void parseDynamicBitcodeLibraries(LLVMContext context) {
-                String[] dynamicLibraryPaths = LLVMOptions.getDynamicBitcodeLibraries();
+                String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
                         LLVMParserResult result = parseFile(s, context);
@@ -221,6 +222,10 @@ public class LLVM {
         Model model = (Model) contents.get(0);
         LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
+    }
+
+    public static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
+        return LLVMBitcodeVisitor.getMain(source, context, OPTIMIZATION_CONFIGURATION);
     }
 
     public static int executeMain(File file, Object... args) {

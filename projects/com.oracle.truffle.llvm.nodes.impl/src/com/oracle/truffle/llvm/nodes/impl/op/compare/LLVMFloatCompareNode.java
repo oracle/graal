@@ -54,42 +54,71 @@ public abstract class LLVMFloatCompareNode extends LLVMI1Node {
     public abstract static class LLVMFloatOltNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 < val2;
+            if (val1 < val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMFloatOgtNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 > val2;
+            if (val1 > val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMFloatOgeNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 >= val2;
+            if (val1 >= val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMFloatOleNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 <= val2;
+            if (val1 <= val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMFloatOeqNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 == val2;
+            if (val1 == val2) {
+                assert areOrdered(val1, val2);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
     public abstract static class LLVMFloatOneNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return areOrdered(val1, val2) && val1 != val2;
+            if (val1 != val2) {
+                return areOrdered(val1, val2);
+            } else {
+                return false;
+            }
         }
     }
 

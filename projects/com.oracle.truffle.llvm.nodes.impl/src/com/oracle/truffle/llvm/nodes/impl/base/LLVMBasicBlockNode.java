@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -44,6 +46,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
  */
 public class LLVMBasicBlockNode extends LLVMNode {
 
+    private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
     @Children private final LLVMNode[] statements;
@@ -51,31 +54,26 @@ public class LLVMBasicBlockNode extends LLVMNode {
 
     @CompilationFinal private final long[] successorCount;
     @CompilationFinal private long totalExecutionCount = 0;
+    private final int blockId;
 
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
     }
 
-    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction) {
+    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction, int blockId) {
         this.statements = statements;
         this.termInstruction = termInstruction;
+        this.blockId = blockId;
         successorCount = new long[termInstruction.getSuccessors().length];
     }
 
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
-        if (CompilerDirectives.inInterpreter()) {
-            incrementTotalCount();
-        }
         for (LLVMNode statement : statements) {
             statement.executeVoid(frame);
         }
-        int successorIndex = termInstruction.executeGetSuccessorIndex(frame);
-        if (CompilerDirectives.inInterpreter()) {
-            incrementSuccessorCount(successorIndex);
-        }
-        return successorIndex;
+        return termInstruction.executeGetSuccessorIndex(frame);
     }
 
     private void incrementTotalCount() {
@@ -108,14 +106,28 @@ public class LLVMBasicBlockNode extends LLVMNode {
      * @return the probability between 0 and 1
      */
     public double getBranchProbability(int successorIndex) {
-        if (totalExecutionCount == 0) {
-            // this branch was never executed yet, do not compile it
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return 0;
+        double successorBranchProbability;
+        if (successorCount[successorIndex] == 0) {
+            successorBranchProbability = 0;
         } else {
-            double successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
-            assert Double.isFinite(successorBranchProbability);
-            return successorBranchProbability;
+            successorBranchProbability = (double) successorCount[successorIndex] / totalExecutionCount;
         }
+        assert successorBranchProbability >= 0 && successorBranchProbability <= 1;
+        return successorBranchProbability;
+    }
+
+    public void increaseBranchProbabilityDeoptIfZero(int successorIndex) {
+        if (successorCount[successorIndex] == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        if (CompilerDirectives.inInterpreter()) {
+            incrementSuccessorCount(successorIndex);
+            incrementTotalCount();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(FORMAT_STRING, blockId, statements.length, Arrays.toString(termInstruction.getSuccessors()));
     }
 }

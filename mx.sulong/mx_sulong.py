@@ -23,7 +23,7 @@ _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
 _testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
-_interopTestDir = _testDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
+_interopTestDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
@@ -36,6 +36,11 @@ _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
+
+sulongDistributions = [
+    'SULONG',
+    'SULONG_TEST'
+]
 
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
@@ -442,7 +447,7 @@ def runLLVM(args=None):
             libNames.append(arg)
         else:
             sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + ['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath(['com.oracle.truffle.llvm']), "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
     """runs all the test cases"""
@@ -634,9 +639,13 @@ def compileWithClangPP(args=None):
     clangPath = _toolDir + 'tools/llvm/bin/clang++'
     return mx.run([clangPath] + args)
 
+def getClasspathOptions():
+    """gets the classpath of the Sulong distributions"""
+    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr)) for distr in sulongDistributions])]
+
 def printOptions(args=None):
     """prints the Sulong Java property options"""
-    return mx.run_java(['-cp', mx.classpath(['com.oracle.truffle.llvm.runtime']), "com.oracle.truffle.llvm.runtime.LLVMOptions"])
+    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.options.LLVMOptions"])
 
 def ensureGCCSuiteExists():
     """downloads the GCC suite if not downloaded yet"""

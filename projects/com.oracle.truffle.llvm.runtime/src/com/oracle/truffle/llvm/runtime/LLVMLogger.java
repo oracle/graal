@@ -30,17 +30,18 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public class LLVMLogger {
 
     public static void performanceWarning(String warning) {
         CompilerAsserts.neverPartOfCompilation();
-        if (LLVMOptions.printPerformanceWarnings()) {
+        if (LLVMBaseOptionFacade.printPerformanceWarnings()) {
             // Checkstyle: stop
             System.err.println(warning);
             // Checkstyle: resume
         }
-        if (LLVMOptions.performanceWarningsAreFatal()) {
+        if (LLVMBaseOptionFacade.performanceWarningsAreFatal()) {
             throw new AssertionError(warning);
         }
     }
@@ -61,7 +62,7 @@ public class LLVMLogger {
 
     public static void info(String string) {
         CompilerAsserts.neverPartOfCompilation();
-        if (LLVMOptions.debugEnabled()) {
+        if (LLVMBaseOptionFacade.debugEnabled()) {
             // Checkstyle: stop
             System.err.println(string);
             // Checkstyle: resume
