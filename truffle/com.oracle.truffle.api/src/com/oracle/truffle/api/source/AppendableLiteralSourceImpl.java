@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-final class AppendableLiteralSourceImpl extends Source implements Cloneable {
+final class AppendableLiteralSourceImpl extends Content {
 
     private final String description;
     final List<CharSequence> codeList = new ArrayList<>();
@@ -85,7 +86,16 @@ final class AppendableLiteralSourceImpl extends Source implements Cloneable {
     @Override
     public void appendCode(CharSequence chars) {
         codeList.add(chars);
-        clearTextMap();
+    }
+
+    @Override
+    String findMimeType() throws IOException {
+        return null;
+    }
+
+    @Override
+    Object getHashKey() {
+        return description;
     }
 
 }
