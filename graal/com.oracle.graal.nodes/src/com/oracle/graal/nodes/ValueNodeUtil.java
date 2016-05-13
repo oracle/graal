@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static java.lang.Character.toLowerCase;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -96,7 +98,7 @@ public class ValueNodeUtil {
      * @return the instruction representation as a string
      */
     public static String valueString(ValueNode value) {
-        return (value == null) ? "-" : ("" + value.getStackKind().getTypeChar() + value.toString(Verbosity.Id));
+        return (value == null) ? "-" : ("" + toLowerCase(value.getStackKind().getTypeChar()) + value.toString(Verbosity.Id));
     }
 
     public static ValueNode asNode(MemoryNode node) {

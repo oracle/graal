@@ -73,7 +73,7 @@ public class SPARCAssemblerTest extends GraalTest {
     @Before
     public void setup() {
         TargetDescription target = createTarget();
-        masm = new SPARCMacroAssembler(target, null);
+        masm = new SPARCMacroAssembler(target);
     }
 
     @Test

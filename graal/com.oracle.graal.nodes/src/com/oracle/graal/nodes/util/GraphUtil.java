@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.oracle.graal.code.SourceStackTrace;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeWorkList;
@@ -53,7 +54,6 @@ import com.oracle.graal.nodes.spi.ValueProxy;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.code.SourceStackTrace;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;

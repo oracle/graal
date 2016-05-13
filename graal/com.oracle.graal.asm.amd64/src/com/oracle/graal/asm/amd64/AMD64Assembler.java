@@ -50,16 +50,16 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rip;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.Register.RegisterCategory;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -313,21 +313,10 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * The register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
-     */
-    public final Register frameRegister;
-
-    /**
      * Constructs an assembler for the AMD64 architecture.
-     *
-     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
-     *            {@link Register#CallerFrame} to physical registers. This value can be null if this
-     *            assembler instance will not be used to assemble instructions using these logical
-     *            registers.
      */
-    public AMD64Assembler(TargetDescription target, RegisterConfig registerConfig) {
+    public AMD64Assembler(TargetDescription target) {
         super(target);
-        this.frameRegister = registerConfig == null ? null : registerConfig.getFrameRegister();
     }
 
     private boolean supports(CPUFeature feature) {
@@ -421,11 +410,6 @@ public class AMD64Assembler extends Assembler {
 
         AMD64Address.Scale scale = addr.getScale();
         int disp = addr.getDisplacement();
-
-        if (base.equals(Register.Frame)) {
-            assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
-            base = frameRegister;
-        }
 
         if (base.equals(AMD64.rip)) { // also matches Placeholder
             // [00 000 101] disp32

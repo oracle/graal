@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.vm.ci.inittimer.InitTimer.timer;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,12 +59,12 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
@@ -204,15 +204,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             * 
+             *
              * Draft Version 0.96
-             * 
+             *
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             * 
+             *
              * 3.2.1
-             * 
+             *
              * ...
-             * 
+             *
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

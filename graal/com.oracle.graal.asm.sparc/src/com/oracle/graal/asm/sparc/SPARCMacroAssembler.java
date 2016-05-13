@@ -34,7 +34,6 @@ import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.i7;
 import static jdk.vm.ci.sparc.SPARC.o7;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
@@ -57,8 +56,8 @@ public class SPARCMacroAssembler extends SPARCAssembler {
      */
     private boolean immediateConstantLoad;
 
-    public SPARCMacroAssembler(TargetDescription target, RegisterConfig registerConfig) {
-        super(target, registerConfig);
+    public SPARCMacroAssembler(TargetDescription target) {
+        super(target);
     }
 
     /**

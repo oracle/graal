@@ -188,7 +188,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new AMD64MacroAssembler(getTarget(), frameMap.getRegisterConfig());
+        return new AMD64MacroAssembler(getTarget());
     }
 
     @Override

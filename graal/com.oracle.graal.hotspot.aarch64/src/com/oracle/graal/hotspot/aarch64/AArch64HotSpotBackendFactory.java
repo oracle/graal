@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.inittimer.InitTimer.timer;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
@@ -57,13 +57,13 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
-import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 

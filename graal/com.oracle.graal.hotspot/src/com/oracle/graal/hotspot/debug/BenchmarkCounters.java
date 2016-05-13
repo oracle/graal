@@ -36,6 +36,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -47,7 +48,6 @@ import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.inittimer.SuppressFBWarnings;
 
 //JaCoCo Exclude
 
