@@ -56,10 +56,9 @@ final class URLSourceImpl extends Content {
         this(url, url.openConnection(), name);
     }
 
-    URLSourceImpl(URL url, URLConnection conn, String name) throws IOException {
+    URLSourceImpl(URL url, URLConnection c, String name) throws IOException {
         this.url = url;
         this.name = name;
-        URLConnection c = url.openConnection();
         code = Source.read(new InputStreamReader(c.getInputStream()));
     }
 
