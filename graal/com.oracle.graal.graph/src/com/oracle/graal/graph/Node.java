@@ -1007,8 +1007,8 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Returns an iterator that will provide all control-flow successors of this node. Normally this
-     * will be the contents of all fields marked as NodeSuccessor, but some node classes (like
-     * EndNode) may return different nodes.
+     * will be the contents of all fields annotated with {@link Successor}, but some node classes
+     * (like EndNode) may return different nodes.
      */
     public Iterable<? extends Node> cfgSuccessors() {
         return successors();

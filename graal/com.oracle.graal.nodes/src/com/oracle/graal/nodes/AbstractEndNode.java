@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
@@ -58,6 +59,10 @@ public abstract class AbstractEndNode extends FixedNode implements IterableNodeT
 
     @Override
     public Iterable<? extends Node> cfgSuccessors() {
-        return Arrays.asList(merge());
+        AbstractMergeNode merge = merge();
+        if (merge != null) {
+            return Arrays.asList(merge);
+        }
+        return Collections.emptyList();
     }
 }
