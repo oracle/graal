@@ -33,6 +33,7 @@ import java.io.StringReader;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -99,7 +100,14 @@ public class SourceTest {
         }
 
         // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
-        Source s1 = Source.fromFileName(file.getPath()).withMimeType("text/x-java");
+
+        String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
+        assertTrue("Exists, as it is the same file", new File(nonCannonical).exists());
+
+        Source s1 = Source.fromFileName(nonCannonical).withMimeType("text/x-java");
+        assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
+        assertEquals("Just the name of the file", file.getName(), s1.getShortName());
+        assertEquals("Name of the source is original path", nonCannonical, s1.getName());
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());

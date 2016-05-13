@@ -127,12 +127,15 @@ public abstract class Source {
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
-     * then cached.
+     * then cached. The {@link #getShortName() short name} of the source is equal to
+     * {@link File#getName() name of the file}. The {@link #getName() name} of the file is exactly
+     * the provided <code>fileName</code> string. The {@link #getPath() path} is
+     * {@link File#getCanonicalPath() canonical path} of the provided file name.
      *
-     * @param fileName name
+     * @param fileName path to the file with the source
      * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
-     * @return canonical representation of the file's contents.
-     * @throws IOException if the file can not be read
+     * @return source representing the file's content
+     * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName, boolean reset) throws IOException {
@@ -157,11 +160,14 @@ public abstract class Source {
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
-     * then cached.
+     * then cached. The {@link #getShortName() short name} of the source is equal to
+     * {@link File#getName() name of the file}. The {@link #getName() name} of the file is exactly
+     * the provided <code>fileName</code> string. The {@link #getPath() path} is
+     * {@link File#getCanonicalPath() canonical path} of the provided file name.
      *
-     * @param fileName name
-     * @return canonical representation of the file's contents.
-     * @throws IOException if the file can not be read
+     * @param fileName path to the file with the source
+     * @return source representing the file's content
+     * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName) throws IOException {
