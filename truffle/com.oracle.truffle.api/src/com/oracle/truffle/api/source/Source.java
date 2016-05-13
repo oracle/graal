@@ -237,8 +237,8 @@ public abstract class Source {
 
     /**
      * Creates an anonymous source from literal text that is provided incrementally after creation.
-     * The {@link #getName() name}, {@link #getShortName() short name} and
-     * {@link #getPath() path} are set to <code>name</code>.
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to <code>name</code>.
      *
      * @param name name for the newly created source
      * @return a newly created, non-indexed, initially empty, appendable source representation
@@ -352,14 +352,17 @@ public abstract class Source {
      * is not compatible with Java strings, or if your parser returns byte indices instead of
      * character indices. The returned source is then indexed by byte, not by character.
      *
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to value of <code>name</code>
+     *
      * @param bytes the raw bytes of the source
-     * @param description a note about the origin, possibly useful for debugging
+     * @param name name of the created source
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
      */
-    public static Source fromBytes(byte[] bytes, String description, Charset charset) {
-        return fromBytes(bytes, 0, bytes.length, description, charset);
+    public static Source fromBytes(byte[] bytes, String name, Charset charset) {
+        return fromBytes(bytes, 0, bytes.length, name, charset);
     }
 
     /**
@@ -368,17 +371,20 @@ public abstract class Source {
      * character indices. The returned source is then indexed by byte, not by character. Offsets are
      * relative to byteIndex.
      *
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to value of <code>name</code>
+     *
      * @param bytes the raw bytes of the source
      * @param byteIndex where the string starts in the byte array
      * @param length the length of the string in the byte array
-     * @param description a note about the origin, possibly useful for debugging
+     * @param name name of the created source
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
      */
-    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, Charset charset) {
+    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
-        Content content = new BytesSourceImpl(description, bytes, byteIndex, length, charset);
+        Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
         return new Impl(content);
     }
 

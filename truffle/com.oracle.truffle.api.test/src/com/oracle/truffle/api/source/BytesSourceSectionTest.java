@@ -34,6 +34,9 @@ public class BytesSourceSectionTest {
     public void testSectionsFromLineNumberASCII() {
         final byte[] bytes = "foo\nbar\nbaz\n".getBytes(StandardCharsets.US_ASCII);
         final Source source = Source.fromBytes(bytes, "description", StandardCharsets.US_ASCII);
+        assertEquals("description", source.getName());
+        assertEquals("description", source.getShortName());
+        assertEquals("description", source.getPath());
         assertEquals("foo", source.createSection("identifier", 1).getCode());
         assertEquals("bar", source.createSection("identifier", 2).getCode());
         assertEquals("baz", source.createSection("identifier", 3).getCode());
