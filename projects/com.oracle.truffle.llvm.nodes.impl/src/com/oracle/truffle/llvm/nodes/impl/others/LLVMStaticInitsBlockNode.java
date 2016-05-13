@@ -63,4 +63,9 @@ public class LLVMStaticInitsBlockNode extends RootNode {
         return null;
     }
 
+    @Override
+    public String toString() {
+        return "static inits (" + nodes.length + ")";
+    }
+
 }
