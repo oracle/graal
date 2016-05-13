@@ -76,7 +76,149 @@ mx_benchmark.add_java_vm(JvmciJdkVm("server" if mx_graal_core.JDK9 else "jvmci",
     "graal-core", ["-Djvmci.Compiler=graal"]))
 
 
-_dacapoIterations = {
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """Base benchmark suite for DaCapo-based benchmarks.
+
+    This suite can only run a single benchmark in one VM invocation.
+    """
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def daCapoClasspathEnvVarName(self):
+        raise NotImplementedError()
+
+    def daCapoLibraryName(self):
+        raise NotImplementedError()
+
+    def daCapoPath(self):
+        dacapo = mx.get_env(self.daCapoClasspathEnvVarName())
+        if dacapo:
+            return dacapo
+        lib = mx.library(self.daCapoLibraryName(), False)
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def daCapoIterations(self):
+        raise NotImplementedError()
+
+    def validateEnvironment(self):
+        if not self.daCapoPath():
+            raise RuntimeError(
+                "Neither " + self.daCapoClasspathEnvVarName() + " variable nor " +
+                self.daCapoLibraryName() + " library specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def postprocessRunArgs(self, benchname, runArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-n", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        if args.n:
+            if args.n.isdigit():
+                return ["-n", args.n] + remaining
+            if args.n == "-1":
+                return None
+        else:
+            iterations = self.daCapoIterations()[benchname]
+            if iterations == -1:
+                return None
+            else:
+                return ["-n", str(iterations)] + remaining
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            raise RuntimeError(
+                "Suite runs only a single benchmark.")
+        if len(benchmarks) != 1:
+            raise RuntimeError(
+                "Suite runs only a single benchmark, got: {0}".format(benchmarks))
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return None
+        return (
+            self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
+            [benchmarks[0]] + runArgs)
+
+    def benchmarks(self):
+        return self.daCapoIterations().keys()
+
+    def daCapoSuiteName(self):
+        raise NotImplementedError()
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"^===== " + re.escape(self.daCapoSuiteName()) + " ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return [
+            re.compile(
+                r"^===== " + re.escape(self.daCapoSuiteName()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return []
+        totalIterations = int(runArgs[runArgs.index("-n") + 1])
+        return [
+          mx_benchmark.StdOutRule(
+            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            {
+              "benchmark": ("<benchmark>", str),
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "time",
+              "metric.value": ("<time>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": 0
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            {
+              "benchmark": ("<benchmark>", str),
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "warmup",
+              "metric.value": ("<time>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": totalIterations - 1
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            {
+              "benchmark": ("<benchmark>", str),
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "warmup",
+              "metric.value": ("<time>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": ("$iteration", int)
+            }
+          )
+        ]
+
+
+_daCapoIterations = {
     "avrora"    : 20,
     "batik"     : 40,
     "eclipse"   : -1,
@@ -94,83 +236,23 @@ _dacapoIterations = {
 }
 
 
-class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
-    """DaCapo benchmark suite implementation.
+class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+    """DaCapo 9.12 (Bach) benchmark suite implementation."""
 
-    This suite can only run a single benchmark in one VM invocation.
-    """
     def name(self):
         return "dacapo"
 
-    def group(self):
-        return "Graal"
+    def daCapoSuiteName(self):
+        return "DaCapo 9.12"
 
-    def subgroup(self):
-        return "graal-compiler"
+    def daCapoClasspathEnvVarName(self):
+        return "DACAPO_CP"
 
-    def dacapoPath(self):
-        dacapo = mx.get_env("DACAPO_CP")
-        if dacapo:
-            return dacapo
-        lib = mx.library("DACAPO", False)
-        if lib:
-            return lib.get_path(True)
-        return None
+    def daCapoLibraryName(self):
+        return "DACAPO"
 
-    def validateEnvironment(self):
-        if not self.dacapoPath():
-            raise RuntimeError(
-                "Neither DACAPO_CP variable nor DACAPO library specified.")
-
-    def validateReturnCode(self, retcode):
-        return retcode == 0
-
-    def postprocessRunArgs(self, benchname, runArgs):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
-        args, remaining = parser.parse_known_args(runArgs)
-        if args.n:
-            if args.n.isdigit():
-                return ["-n", args.n] + remaining
-            if args.n == "-1":
-                return None
-        else:
-            iterations = _dacapoIterations[benchname]
-            if iterations == -1:
-                return None
-            else:
-                return ["-n", str(iterations)] + remaining
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is None:
-            raise RuntimeError(
-                "Suite runs only a single benchmark.")
-        if len(benchmarks) != 1:
-            raise RuntimeError(
-                "Suite runs only a single benchmark, got: {0}".format(benchmarks))
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        if runArgs is None:
-            return None
-        return (
-            self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.dacapoPath()] +
-            [benchmarks[0]] + runArgs)
-
-    def benchmarks(self):
-        return _dacapoIterations.keys()
-
-    def successPatterns(self):
-        return [
-            re.compile(
-                r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====",
-                re.MULTILINE)
-        ]
-
-    def failurePatterns(self):
-        return [
-            re.compile(
-                r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) FAILED (warmup|) =====",
-                re.MULTILINE)
-        ]
+    def daCapoIterations(self):
+        return _daCapoIterations
 
     def flakySuccessPatterns(self):
         return [
@@ -180,59 +262,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             re.compile(
                 r"^java.lang.Exception: TradeDirect:Login failure for user:",
                 re.MULTILINE),
-        ]
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        if runArgs is None:
-            return []
-        totalIterations = int(runArgs[runArgs.index("-n") + 1])
-        return [
-          mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-            {
-              "benchmark": ("<benchmark>", str),
-              "vm": "jvmci",
-              "config.name": "default",
-              "metric.name": "time",
-              "metric.value": ("<time>", int),
-              "metric.unit": "ms",
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": 0
-            }
-          ),
-          mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-            {
-              "benchmark": ("<benchmark>", str),
-              "vm": "jvmci",
-              "config.name": "default",
-              "metric.name": "warmup",
-              "metric.value": ("<time>", int),
-              "metric.unit": "ms",
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": totalIterations - 1
-            }
-          ),
-          mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-            {
-              "benchmark": ("<benchmark>", str),
-              "vm": "jvmci",
-              "config.name": "default",
-              "metric.name": "warmup",
-              "metric.value": ("<time>", int),
-              "metric.unit": "ms",
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": ("$iteration", int)
-            }
-          )
         ]
 
 
