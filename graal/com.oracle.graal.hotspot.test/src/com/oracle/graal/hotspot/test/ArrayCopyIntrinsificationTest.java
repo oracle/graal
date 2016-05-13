@@ -26,10 +26,6 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,6 +36,10 @@ import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.StructuredGraph;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests intrinsification of {@link System#arraycopy(Object, int, Object, int, int)}.

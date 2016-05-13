@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import jdk.vm.ci.code.InvalidInstalledCodeException;
-import jdk.vm.ci.hotspot.HotSpotNmethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HotSpotNmethodTest extends GraalCompilerTest {
 

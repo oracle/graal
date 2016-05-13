@@ -27,7 +27,8 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.debug.GraalError;
+
 import sun.misc.Unsafe;
 
 /**
@@ -211,7 +212,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             return UNSAFE.getByte(object, offset);
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -310,7 +311,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             UNSAFE.putByte(object, offset, (byte) value);
         } else {
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 

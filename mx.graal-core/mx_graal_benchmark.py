@@ -30,7 +30,50 @@ from os.path import join, exists
 
 import mx
 import mx_benchmark
+import mx_graal_core
 
+class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
+    def __init__(self, raw_name, raw_config_name, extra_args):
+        self.raw_name = raw_name
+        self.raw_config_name = raw_config_name
+        self.extra_args = extra_args
+
+    def name(self):
+        return self.raw_name
+
+    def config_name(self):
+        return self.raw_config_name
+
+    def dimensions(self, cwd, args, code, out):
+        return {
+            "host-vm": self.name(),
+            "host-vm-config": self.config_name(),
+            "guest-vm": "none",
+            "guest-vm-config": "none"
+        }
+
+    def post_process_command_line_args(self, args):
+        return self.extra_args + args
+
+    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        if mx_graal_core.get_vm() != self.name():
+            mx.abort("To use '{0}' VM, specify respective --vm flag.".format(
+                self.name()))
+        if mx.get_jdk_option().tag != mx_graal_core._JVMCI_JDK_TAG:
+            mx.abort("To use '{0}' VM, specify '--jdk={1}'".format(
+                self.name(), mx_graal_core._JVMCI_JDK_TAG))
+        mx.get_jdk().run_java(
+            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
+
+
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", []))
+mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", []))
+if mx_graal_core.JDK9:
+    mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"]))
+else:
+    mx_benchmark.add_java_vm(JvmciJdkVm("server-nojvmci", "default", []))
+    mx_benchmark.add_java_vm(JvmciJdkVm("client-nojvmci", "default", []))
+    mx_benchmark.add_java_vm(JvmciJdkVm("jvmci", "graal-core", ["-Djvmci.Compiler=graal"]))
 
 _dacapoIterations = {
     "avrora"    : 20,
@@ -80,15 +123,6 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def validateReturnCode(self, retcode):
         return retcode == 0
-
-    def vmAndRunArgs(self, bmSuiteArgs):
-        return mx_benchmark.splitArgs(bmSuiteArgs, "--")
-
-    def vmArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[0]
-
-    def runArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[1]
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
@@ -200,7 +234,9 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
+
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+
 
 _allSpecJVM2008Benchs = [
     'startup.helloworld',
@@ -243,6 +279,7 @@ _allSpecJVM2008Benchs = [
     'xml.validation'
 ]
 
+
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """SpecJVM2008 benchmark suite implementation.
 
@@ -278,15 +315,6 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return mx.get_env("SPECJVM2008")
-
-    def vmAndRunArgs(self, bmSuiteArgs):
-        return mx_benchmark.splitArgs(bmSuiteArgs, "--")
-
-    def vmArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[0]
-
-    def runArgs(self, bmSuiteArgs):
-        return self.vmAndRunArgs(bmSuiteArgs)[1]
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:

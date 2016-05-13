@@ -24,10 +24,10 @@ package com.oracle.graal.lir.framemap;
 
 import java.util.BitSet;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.VirtualStackSlot;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
 
 /**
  * Represents a {@link #getSlots() numbered} range of {@link VirtualStackSlot virtual stack slot} of

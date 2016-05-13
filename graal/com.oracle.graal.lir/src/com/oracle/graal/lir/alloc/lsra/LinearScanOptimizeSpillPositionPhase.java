@@ -29,9 +29,6 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -42,6 +39,9 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 
 public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 

@@ -28,13 +28,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.EnumSet;
 
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Base class to represent values that need to be stored in more than one register. This is mainly
@@ -52,7 +52,7 @@ public abstract class CompositeValue extends Value {
 
     private static final DebugCounter COMPOSITE_VALUE_COUNT = Debug.counter("CompositeValues");
 
-    public CompositeValue(LIRKind kind) {
+    public CompositeValue(ValueKind<?> kind) {
         super(kind);
         COMPOSITE_VALUE_COUNT.increment();
         assert CompositeValueClass.get(getClass()) != null;

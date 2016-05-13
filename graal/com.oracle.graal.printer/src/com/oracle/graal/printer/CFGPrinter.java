@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static java.lang.Character.toLowerCase;
+
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -515,7 +517,7 @@ class CFGPrinter extends CompilationPrinter {
             if (value.getStackKind() == JavaKind.Illegal) {
                 prefix = "v";
             } else {
-                prefix = String.valueOf(value.getStackKind().getTypeChar());
+                prefix = String.valueOf(toLowerCase(value.getStackKind().getTypeChar()));
             }
         } else {
             prefix = "?";

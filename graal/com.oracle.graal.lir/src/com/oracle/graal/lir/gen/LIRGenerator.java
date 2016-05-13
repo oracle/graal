@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.asm.Label;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.CodeGenProviders;
@@ -42,6 +43,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.ConstantValue;
@@ -63,15 +65,14 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -136,6 +137,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public LIRKind getValueKind(JavaKind javaKind) {
+        return LIRKind.fromJavaKind(target().arch, javaKind);
+    }
+
+    @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
     }
@@ -165,8 +171,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable newVariable(LIRKind lirKind) {
-        return new Variable(lirKind, res.getLIR().nextVariable());
+    public Variable newVariable(ValueKind<?> valueKind) {
+        return new Variable(valueKind, res.getLIR().nextVariable());
     }
 
     @Override
@@ -177,7 +183,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public Variable emitMove(Value input) {
         assert !(input instanceof Variable) : "Creating a copy of a variable via this method is not supported (and potentially a bug): " + input;
-        Variable result = newVariable(input.getLIRKind());
+        Variable result = newVariable(input.getValueKind());
         emitMove(result, input);
         return result;
     }
@@ -203,11 +209,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitJavaConstant(JavaConstant constant) {
-        return emitConstant(target().getLIRKind(constant.getJavaKind()), constant);
+        return emitConstant(getValueKind(constant.getJavaKind()), constant);
     }
 
     @Override
-    public AllocatableValue emitLoadConstant(LIRKind kind, Constant constant) {
+    public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
         Variable result = newVariable(kind);
         emitMoveConstant(result, constant);
         return result;
@@ -218,7 +224,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (isAllocatableValue(value)) {
             return asAllocatableValue(value);
         } else if (isConstantValue(value)) {
-            return emitLoadConstant(value.getLIRKind(), asConstant(value));
+            return emitLoadConstant(value.getValueKind(), asConstant(value));
         } else {
             return emitMove(value);
         }
@@ -252,15 +258,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      * Gets the ABI specific operand used to return a value of a given kind from a method.
      *
      * @param javaKind the kind of value being returned
-     * @param lirKind the backend type of the value being returned
+     * @param valueKind the backend type of the value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
     @Override
-    public AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind) {
+    public AllocatableValue resultOperandFor(JavaKind javaKind, ValueKind<?> valueKind) {
         Register reg = res.getFrameMapBuilder().getRegisterConfig().getReturnRegister(javaKind);
-        assert target().arch.canStoreValue(reg.getRegisterCategory(), lirKind.getPlatformKind()) : reg.getRegisterCategory() + " " + lirKind.getPlatformKind();
-        return reg.asValue(lirKind);
+        assert target().arch.canStoreValue(reg.getRegisterCategory(), valueKind.getPlatformKind()) : reg.getRegisterCategory() + " " + valueKind.getPlatformKind();
+        return reg.asValue(valueKind);
     }
 
     NodeSourcePosition currentPosition;
@@ -455,9 +461,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     protected LIRKind getAddressKind(Value base, long displacement, Value index) {
-        if (base.getLIRKind().isValue() && (index.equals(Value.ILLEGAL) || index.getLIRKind().isValue())) {
+        if (LIRKind.isValue(base) && (index.equals(Value.ILLEGAL) || LIRKind.isValue(index))) {
             return LIRKind.value(target().arch.getWordKind());
-        } else if (base.getLIRKind().isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
+        } else if (base.getValueKind() instanceof LIRKind && base.getValueKind(LIRKind.class).isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
             return LIRKind.reference(target().arch.getWordKind());
         } else {
             return LIRKind.unknownReference(target().arch.getWordKind());
@@ -481,11 +487,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw JVMCIError.unimplemented();
+        throw GraalError.unimplemented();
     }
 }

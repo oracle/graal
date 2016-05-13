@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,8 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
@@ -46,6 +42,12 @@ import com.oracle.graal.hotspot.stubs.ForeignCallStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -183,5 +185,10 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
         return foreignCalls.get(descriptor).getKilledLocations();
+    }
+
+    @Override
+    public LIRKind getValueKind(JavaKind javaKind) {
+        return LIRKind.fromJavaKind(codeCache.getTarget().arch, javaKind);
     }
 }

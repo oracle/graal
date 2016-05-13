@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -33,6 +31,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER} and
@@ -56,7 +56,7 @@ public final class PointerCastNode extends FloatingNode implements LIRLowerable,
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
-        assert value.getLIRKind().equals(generator.getLIRGeneratorTool().getLIRKind(stamp())) : "PointerCastNode shouldn't change the LIRKind";
+        assert value.getValueKind().equals(generator.getLIRGeneratorTool().getLIRKind(stamp())) : "PointerCastNode shouldn't change the LIRKind";
 
         generator.setResult(this, value);
     }

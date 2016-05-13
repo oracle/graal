@@ -24,13 +24,13 @@ package com.oracle.graal.phases.common.inlining.walker;
 
 import java.util.BitSet;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.phases.common.inlining.info.InlineInfo;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * <p>

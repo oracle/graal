@@ -29,11 +29,9 @@ import static org.junit.Assert.fail;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.CompositeValue;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
@@ -42,6 +40,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * This test verifies that {@link CompositeValue}s are immutable, i.e. that a write to a component

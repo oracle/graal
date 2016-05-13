@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo
 public final class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {

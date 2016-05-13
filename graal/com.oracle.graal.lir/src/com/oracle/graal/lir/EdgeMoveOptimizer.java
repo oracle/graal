@@ -25,14 +25,14 @@ package com.oracle.graal.lir;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.

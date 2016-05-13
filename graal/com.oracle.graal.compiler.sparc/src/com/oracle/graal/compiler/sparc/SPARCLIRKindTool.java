@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.sparc;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.sparc.SPARCKind;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
+
+import jdk.vm.ci.sparc.SPARCKind;
 
 public class SPARCLIRKindTool implements LIRKindTool {
 
@@ -52,7 +52,7 @@ public class SPARCLIRKindTool implements LIRKindTool {
             case 64:
                 return LIRKind.value(SPARCKind.DOUBLE);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 

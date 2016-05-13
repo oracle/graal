@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
-import static jdk.vm.ci.inittimer.InitTimer.timer;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.File;
 import java.io.FileReader;
@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -42,11 +43,10 @@ import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.services.HotSpotJVMCICompilerFactory;
-import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 
 public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
@@ -179,7 +179,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
             savedPropsField.setAccessible(true);
             return (Properties) savedPropsField.get(null);
         } catch (Exception e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 

@@ -24,8 +24,6 @@ package com.oracle.graal.replacements.test;
 
 import java.util.function.Function;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
@@ -38,6 +36,8 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests for expected behavior when parsing snippets and intrinsics.

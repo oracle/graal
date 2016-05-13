@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -36,6 +33,9 @@ import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests that deoptimization upon exception handling works.

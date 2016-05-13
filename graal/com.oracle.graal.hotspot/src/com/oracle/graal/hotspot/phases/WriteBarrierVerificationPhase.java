@@ -25,9 +25,7 @@ package com.oracle.graal.hotspot.phases;
 
 import java.util.Iterator;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeFlood;
 import com.oracle.graal.hotspot.nodes.ArrayRangeWriteBarrier;
@@ -50,6 +48,8 @@ import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.Phase;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Verification phase that checks if, for every write, at least one write barrier is present at all
@@ -167,7 +167,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         } else if (write instanceof LoweredAtomicReadAndWriteNode) {
             return ((LoweredAtomicReadAndWriteNode) write).getNewValue();
         } else {
-            throw JVMCIError.shouldNotReachHere(String.format("unexpected write node %s", write));
+            throw GraalError.shouldNotReachHere(String.format("unexpected write node %s", write));
         }
     }
 

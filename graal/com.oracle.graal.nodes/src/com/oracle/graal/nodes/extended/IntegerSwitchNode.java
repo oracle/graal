@@ -25,8 +25,6 @@ package com.oracle.graal.nodes.extended;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.graph.NodeClass;
@@ -40,6 +38,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key

@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.Graph;
@@ -115,6 +116,11 @@ public class GraphKit implements GraphBuilderTool {
     @Override
     public ConstantReflectionProvider getConstantReflection() {
         return providers.getConstantReflection();
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return providers.getConstantFieldProvider();
     }
 
     @Override
@@ -310,7 +316,8 @@ public class GraphKit implements GraphBuilderTool {
 
         StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
         IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(calleeGraph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.NONE,
+                        initialReplacementContext).apply(calleeGraph);
 
         // Remove all frame states from inlinee
         calleeGraph.clearAllStateAfter();

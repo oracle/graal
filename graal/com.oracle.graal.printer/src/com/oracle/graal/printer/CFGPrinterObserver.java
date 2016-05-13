@@ -45,6 +45,7 @@ import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
@@ -58,7 +59,6 @@ import com.oracle.graal.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -146,7 +146,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (FileNotFoundException e) {
-                throw new JVMCIError("Could not open " + cfgFile.getAbsolutePath());
+                throw new GraalError("Could not open " + cfgFile.getAbsolutePath());
             }
             TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
         }

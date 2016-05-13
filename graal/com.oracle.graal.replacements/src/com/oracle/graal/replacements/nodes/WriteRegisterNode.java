@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -33,6 +30,9 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Changes the value of a specific register.
@@ -60,7 +60,7 @@ public final class WriteRegisterNode extends FixedWithNextNode implements LIRLow
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value val = generator.operand(value);
-        generator.getLIRGeneratorTool().emitMove(register.asValue(val.getLIRKind()), val);
+        generator.getLIRGeneratorTool().emitMove(register.asValue(val.getValueKind()), val);
     }
 
     @Override

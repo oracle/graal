@@ -47,22 +47,23 @@ import static jdk.vm.ci.sparc.SPARCKind.DOUBLE;
 import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC;
 
 public class SPARCArithmetic {
     public static final class FloatConvertOp extends SPARCLIRInstruction {
@@ -124,7 +125,7 @@ public class SPARCArithmetic {
                     masm.bind(notOrdered);
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere("missing: " + opcode);
+                    throw GraalError.shouldNotReachHere("missing: " + opcode);
             }
         }
     }
@@ -176,10 +177,10 @@ public class SPARCArithmetic {
                         masm.sub(asRegister(x, XWORD), asRegister(scratch2, XWORD), asRegister(result, XWORD));
                         break;
                     case IUREM:
-                        JVMCIError.unimplemented();
+                        GraalError.unimplemented();
                         break;
                     default:
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                 }
             } else if (isRegister(x) && isRegister(y)) {
                 Value xLeft = x;
@@ -209,10 +210,10 @@ public class SPARCArithmetic {
                         masm.sub(asRegister(scratch1, WORD), asRegister(result, WORD), asRegister(result, WORD));
                         break;
                     default:
-                        throw JVMCIError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere();
                 }
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         }
     }
@@ -344,7 +345,7 @@ public class SPARCArithmetic {
                     masm.sub(asRegister(result, XWORD), asRegister(scratch, XWORD), asRegister(result, XWORD));
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }

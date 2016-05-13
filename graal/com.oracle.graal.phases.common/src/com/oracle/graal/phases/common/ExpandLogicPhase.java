@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -59,7 +58,7 @@ public class ExpandLogicPhase extends Phase {
             } else if (usage instanceof ConditionalNode) {
                 processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         }
         binary.safeDelete();

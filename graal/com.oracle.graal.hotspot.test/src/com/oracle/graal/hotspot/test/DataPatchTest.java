@@ -24,7 +24,6 @@
 package com.oracle.graal.hotspot.test;
 
 import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -38,6 +37,8 @@ import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 public class DataPatchTest extends GraalCompilerTest {
 

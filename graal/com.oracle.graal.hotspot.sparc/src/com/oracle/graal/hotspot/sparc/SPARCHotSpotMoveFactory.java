@@ -25,16 +25,17 @@ package com.oracle.graal.hotspot.sparc;
 import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 import static jdk.vm.ci.meta.JavaConstant.INT_0;
 import static jdk.vm.ci.meta.JavaConstant.LONG_0;
+
+import com.oracle.graal.compiler.sparc.SPARCLIRGenerator.ConstantTableBaseProvider;
+import com.oracle.graal.compiler.sparc.SPARCMoveFactory;
+import com.oracle.graal.lir.LIRInstruction;
+
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-
-import com.oracle.graal.compiler.sparc.SPARCLIRGenerator.ConstantTableBaseProvider;
-import com.oracle.graal.compiler.sparc.SPARCMoveFactory;
-import com.oracle.graal.lir.LIRInstruction;
 
 public class SPARCHotSpotMoveFactory extends SPARCMoveFactory {
 

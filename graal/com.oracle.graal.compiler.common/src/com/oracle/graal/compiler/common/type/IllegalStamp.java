@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**
  * This stamp represents the type of the {@link JavaKind#Illegal} value in the second slot of
@@ -71,7 +71,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw JVMCIError.shouldNotReachHere("illegal stamp has no Java type");
+        throw GraalError.shouldNotReachHere("illegal stamp has no Java type");
     }
 
     @Override
@@ -118,7 +118,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw JVMCIError.shouldNotReachHere("can't read values of illegal stamp");
+        throw GraalError.shouldNotReachHere("can't read values of illegal stamp");
     }
 
     private static final IllegalStamp instance = new IllegalStamp();

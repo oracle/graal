@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import com.oracle.graal.lir.framemap.FrameMap;
+import com.oracle.graal.lir.framemap.FrameMapBuilderImpl;
+
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
-
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.FrameMapBuilderImpl;
 
 public class SPARCFrameMapBuilder extends FrameMapBuilderImpl {
 

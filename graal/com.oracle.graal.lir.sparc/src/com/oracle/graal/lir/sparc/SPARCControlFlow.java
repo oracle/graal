@@ -80,16 +80,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC.CPUFeature;
-import jdk.vm.ci.sparc.SPARCKind;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.LabelHint;
 import com.oracle.graal.asm.Label;
@@ -102,6 +92,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Opcode;
@@ -110,6 +101,15 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
+import jdk.vm.ci.sparc.SPARCKind;
 
 public class SPARCControlFlow {
     // This describes the maximum offset between the first emitted (load constant in to scratch,
@@ -508,7 +508,7 @@ public class SPARCControlFlow {
                         conditionCode = CC.Xcc;
                         break;
                     default:
-                        throw new JVMCIError("switch only supported for int, long and object");
+                        throw new GraalError("switch only supported for int, long and object");
                 }
                 ConditionFlag conditionFlag = fromCondition(keyRegister.getRegisterCategory().equals(CPU), condition, false);
                 LabelHint hint = requestHint(masm, target);
@@ -732,7 +732,7 @@ public class SPARCControlFlow {
                 case GT:
                     return Greater;
             }
-            throw JVMCIError.shouldNotReachHere("Unimplemented for: " + cond);
+            throw GraalError.shouldNotReachHere("Unimplemented for: " + cond);
         } else {
             switch (cond) {
                 case EQ:
@@ -748,7 +748,7 @@ public class SPARCControlFlow {
                 case GT:
                     return unorderedIsTrue ? F_UnorderedOrGreater : F_Greater;
             }
-            throw JVMCIError.shouldNotReachHere("Unkown condition: " + cond);
+            throw GraalError.shouldNotReachHere("Unkown condition: " + cond);
         }
     }
 }

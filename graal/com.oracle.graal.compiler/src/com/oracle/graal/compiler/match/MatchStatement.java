@@ -33,7 +33,7 @@ import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.GraalGraphJVMCIError;
+import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
 
@@ -127,7 +127,7 @@ public class MatchStatement {
             } else {
                 result[i] = context.namedNode(arguments[i]);
                 if (result[i] == null) {
-                    throw new GraalGraphJVMCIError("Can't find named node %s", arguments[i]);
+                    throw new GraalGraphError("Can't find named node %s", arguments[i]);
                 }
             }
         }

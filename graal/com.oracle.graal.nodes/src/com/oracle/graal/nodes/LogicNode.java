@@ -25,8 +25,8 @@ package com.oracle.graal.nodes;
 import static com.oracle.graal.nodeinfo.InputType.Condition;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.Node.IndirectCanonicalization;
+import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
 

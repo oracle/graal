@@ -25,8 +25,6 @@ package com.oracle.graal.lir.ssi;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -35,6 +33,8 @@ import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * Utilities for working with Static-Single-Information LIR form.

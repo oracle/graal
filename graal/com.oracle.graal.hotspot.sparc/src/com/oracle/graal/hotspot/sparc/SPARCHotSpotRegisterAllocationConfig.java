@@ -89,10 +89,10 @@ import static jdk.vm.ci.sparc.SPARC.o5;
 import java.util.ArrayList;
 import java.util.BitSet;
 
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
-
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 
 public class SPARCHotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
 

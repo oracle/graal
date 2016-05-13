@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,10 @@ package com.oracle.graal.nodes;
 import java.util.EnumMap;
 import java.util.HashSet;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
-import jdk.vm.ci.meta.LocationIdentity;
 
 /**
  * A {@link LocationIdentity} with a name.

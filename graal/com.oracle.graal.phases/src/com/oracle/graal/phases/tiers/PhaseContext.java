@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,36 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.util.Providers;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+
 public class PhaseContext {
 
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
+    private final ConstantFieldProvider constantFieldProvider;
     private final LoweringProvider lowerer;
     private final Replacements replacements;
     private final StampProvider stampProvider;
 
-    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider) {
+    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
+                    StampProvider stampProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
+        this.constantFieldProvider = constantFieldProvider;
         this.lowerer = lowerer;
         this.replacements = replacements;
         this.stampProvider = stampProvider;
     }
 
     public PhaseContext(Providers providers) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider());
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider());
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -56,6 +60,10 @@ public class PhaseContext {
 
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
+    }
+
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return constantFieldProvider;
     }
 
     public LoweringProvider getLowerer() {

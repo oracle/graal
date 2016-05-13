@@ -27,15 +27,15 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
-
 import com.oracle.graal.lir.CompositeValue;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Represents a {@link #register} which has a shadow copy on the {@link #stackslot stack}.
@@ -48,8 +48,8 @@ public final class ShadowedRegisterValue extends CompositeValue {
     @Component({STACK}) protected AllocatableValue stackslot;
 
     public ShadowedRegisterValue(RegisterValue register, AllocatableValue stackslot) {
-        super(register.getLIRKind());
-        assert (register.getLIRKind().equals(stackslot.getLIRKind()));
+        super(register.getValueKind());
+        assert (register.getValueKind().equals(stackslot.getValueKind()));
         this.register = register;
         this.stackslot = stackslot;
     }

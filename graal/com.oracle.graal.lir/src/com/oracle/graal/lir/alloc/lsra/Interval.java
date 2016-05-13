@@ -36,20 +36,21 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.util.IntList;
 import com.oracle.graal.compiler.common.util.Util;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
@@ -111,7 +112,7 @@ public final class Interval {
                 case Stack:
                     return stack;
             }
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
 
         /**
@@ -475,7 +476,7 @@ public final class Interval {
     /**
      * The kind of this interval.
      */
-    private LIRKind kind;
+    private ValueKind<?> kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by
@@ -557,7 +558,7 @@ public final class Interval {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getLIRKind().equals(LIRKind.Illegal) && !kind.equals(LIRKind.Illegal)) {
+            if (newLocation.getValueKind().equals(LIRKind.Illegal) && !kind.equals(LIRKind.Illegal)) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
@@ -566,8 +567,8 @@ public final class Interval {
         } else {
             assert this.location == null || isRegister(this.location) || (isVirtualStackSlot(this.location) && isStackSlot(newLocation)) : "cannot re-assign location for " + this;
             assert isStackSlotValue(newLocation);
-            assert !newLocation.getLIRKind().equals(LIRKind.Illegal);
-            assert newLocation.getLIRKind().equals(this.kind);
+            assert !newLocation.getValueKind().equals(LIRKind.Illegal);
+            assert newLocation.getValueKind().equals(this.kind);
         }
         this.location = newLocation;
     }
@@ -580,12 +581,12 @@ public final class Interval {
         return location;
     }
 
-    public LIRKind kind() {
+    public ValueKind<?> kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    public void setKind(LIRKind kind) {
+    public void setKind(ValueKind<?> kind) {
         assert isRegister(operand) || this.kind().equals(LIRKind.Illegal) || this.kind().equals(kind) : "overwriting existing type";
         this.kind = kind;
     }
@@ -891,7 +892,7 @@ public final class Interval {
                 Interval lastChild = splitChildren.get(splitChildren.size() - 1);
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
-            throw new JVMCIError("Linear Scan Error: %s", msg);
+            throw new GraalError("Linear Scan Error: %s", msg);
         }
 
         if (!splitChildren.isEmpty()) {

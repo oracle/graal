@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public class StackMoveTest extends LIRTest {
     private static PlatformKind byteKind;
@@ -49,11 +50,11 @@ public class StackMoveTest extends LIRTest {
         @Override
         public void generate(LIRGeneratorTool gen, Value a) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
-            LIRKind lirKind = getLIRKind(a);
+            ValueKind<?> valueKind = getValueKind(a);
 
             // create slots
-            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(lirKind);
-            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(lirKind);
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(valueKind);
+            VirtualStackSlot s2 = frameMapBuilder.allocateSpillSlot(valueKind);
 
             // start emit
             gen.emitMove(s1, a);
@@ -69,8 +70,8 @@ public class StackMoveTest extends LIRTest {
             setOutput("slot2", s2);
         }
 
-        protected LIRKind getLIRKind(Value value) {
-            return value.getLIRKind();
+        protected ValueKind<?> getValueKind(Value value) {
+            return value.getValueKind();
         }
     }
 
@@ -194,7 +195,7 @@ public class StackMoveTest extends LIRTest {
 
     private static final LIRTestSpecification shortStackCopy = new StackCopySpec() {
         @Override
-        protected LIRKind getLIRKind(Value value) {
+        protected ValueKind<?> getValueKind(Value value) {
             return LIRKind.value(shortKind);
         }
     };
@@ -228,7 +229,7 @@ public class StackMoveTest extends LIRTest {
 
     private static final LIRTestSpecification byteStackCopy = new StackCopySpec() {
         @Override
-        protected LIRKind getLIRKind(Value value) {
+        protected ValueKind<?> getValueKind(Value value) {
             return LIRKind.value(byteKind);
         }
     };

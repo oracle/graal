@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.instrumentation.nodes;
 
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedNode;
@@ -30,7 +31,6 @@ import com.oracle.graal.nodes.debug.RuntimeStringNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo
@@ -57,7 +57,7 @@ public final class RootNameNode extends InstrumentationContentNode implements Lo
 
     @Override
     public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        throw JVMCIError.shouldNotReachHere("RootNameNode must be replaced before inlining an instrumentation");
+        throw GraalError.shouldNotReachHere("RootNameNode must be replaced before inlining an instrumentation");
     }
 
 }

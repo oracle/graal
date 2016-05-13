@@ -27,11 +27,7 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
@@ -45,6 +41,10 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.util.ValueSet;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends ValueSet<S>> {
 
@@ -180,7 +180,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
                 }
                 currentSet.remove(operand);
             } else {
-                assert isIllegal(operand) || !operand.getLIRKind().equals(LIRKind.Illegal) || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
+                assert isIllegal(operand) || !operand.getValueKind().equals(LIRKind.Illegal) || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
                                 operand, mode);
             }
         }

@@ -31,6 +31,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.lir.LIRInstruction;
@@ -50,8 +51,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class IntervalBuilderUtil {
 
@@ -92,14 +93,14 @@ public final class IntervalBuilderUtil {
     protected static void visitOutput(IntervalData intervalData, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
-            addDef(intervalData, (AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind(), neverSpillConstants, spillMoveFactory);
+            addDef(intervalData, (AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getValueKind(), neverSpillConstants, spillMoveFactory);
             addRegisterHint(intervalData, op, operand, mode, flags, true);
         }
     }
 
     protected static void visitTemp(IntervalData intervalData, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
-            addTemp(intervalData, (AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
+            addTemp(intervalData, (AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getValueKind());
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -109,7 +110,7 @@ public final class IntervalBuilderUtil {
             RegisterPriority p = registerPriorityOfInputOperand(flags);
             int opId = op.id();
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, p, operand.getValueKind());
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -119,7 +120,7 @@ public final class IntervalBuilderUtil {
             int opId = op.id();
             RegisterPriority p = registerPriorityOfInputOperand(flags);
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId, p, operand.getValueKind());
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -128,7 +129,7 @@ public final class IntervalBuilderUtil {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
             int opId = op.id();
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getValueKind());
         }
     }
 
@@ -143,7 +144,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addUse(IntervalData intervalData, AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
+    private static void addUse(IntervalData intervalData, AllocatableValue operand, int from, int to, RegisterPriority registerPriority, ValueKind<?> kind) {
         if (!intervalData.isProcessed(operand)) {
             return;
         }
@@ -163,7 +164,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableUse(IntervalData intervalData, Variable operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
+    private static void addVariableUse(IntervalData intervalData, Variable operand, int from, int to, RegisterPriority registerPriority, ValueKind<?> kind) {
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
 
         if (!kind.equals(LIRKind.Illegal)) {
@@ -180,7 +181,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addTemp(IntervalData intervalData, AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
+    private static void addTemp(IntervalData intervalData, AllocatableValue operand, int tempPos, RegisterPriority registerPriority, ValueKind<?> kind) {
         if (!intervalData.isProcessed(operand)) {
             return;
         }
@@ -200,7 +201,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableTemp(IntervalData intervalData, Variable operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
+    private static void addVariableTemp(IntervalData intervalData, Variable operand, int tempPos, RegisterPriority registerPriority, ValueKind<?> kind) {
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
 
         if (!kind.equals(LIRKind.Illegal)) {
@@ -221,7 +222,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addDef(IntervalData intervalData, AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind, boolean neverSpillConstants,
+    private static void addDef(IntervalData intervalData, AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, ValueKind<?> kind, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
         if (!intervalData.isProcessed(operand)) {
             return;
@@ -258,7 +259,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableDef(IntervalData intervalData, Variable operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind, boolean neverSpillConstants,
+    private static void addVariableDef(IntervalData intervalData, Variable operand, LIRInstruction op, RegisterPriority registerPriority, ValueKind<?> kind, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
         int defPos = op.id();
 
@@ -402,7 +403,7 @@ public final class IntervalBuilderUtil {
          * Object method arguments that are passed on the stack are currently not optimized because
          * this requires that the runtime visits method arguments during stack walking.
          */
-        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getLIRKind().isValue();
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && LIRKind.isValue(value);
     }
 
     /**

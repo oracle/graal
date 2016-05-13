@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.

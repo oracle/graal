@@ -133,20 +133,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.asm.Assembler;
+import com.oracle.graal.asm.Label;
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARC.CPUFeature;
 import jdk.vm.ci.sparc.SPARCKind;
-
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -155,13 +154,8 @@ public abstract class SPARCAssembler extends Assembler {
 
     /**
      * Constructs an assembler for the SPARC architecture.
-     *
-     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
-     *            {@link Register#CallerFrame} to physical registers. This value can be null if this
-     *            assembler instance will not be used to assemble instructions using these logical
-     *            registers.
      */
-    public SPARCAssembler(TargetDescription target, RegisterConfig registerConfig) {
+    public SPARCAssembler(TargetDescription target) {
         super(target);
     }
 
@@ -2365,7 +2359,7 @@ public abstract class SPARCAssembler extends Assembler {
         // Maybe fmt10(rd=0b1_1011, op3=0b11_0000, rs1=0, i=1, simm13=1), or
         // maybe op3(Wr, g0, 1, %pause).
         // What should the count be?
-        JVMCIError.unimplemented("The SPARC pause instruction is not yet implemented.");
+        GraalError.unimplemented("The SPARC pause instruction is not yet implemented.");
     }
 
     public void tcc(CC cc, ConditionFlag flag, int trap) {

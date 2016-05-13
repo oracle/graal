@@ -22,15 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
 import com.oracle.graal.compiler.common.type.RawPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -42,6 +33,15 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo
 public final class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
@@ -104,7 +104,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         }
         JavaType returnType = toJavaType(stamp(), gen.getLIRGeneratorTool().getMetaAccess());
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.NativeCall, returnType, parameterTypes,
-                        generator.getLIRGeneratorTool().target());
+                        generator.getLIRGeneratorTool());
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
         if (this.getStackKind() != JavaKind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));

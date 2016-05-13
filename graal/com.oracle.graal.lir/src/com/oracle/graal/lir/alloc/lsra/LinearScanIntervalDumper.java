@@ -23,11 +23,12 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
 import com.oracle.graal.lir.debug.IntervalDumper;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 class LinearScanIntervalDumper implements IntervalDumper {
     private final Interval[] intervals;
@@ -48,7 +49,7 @@ class LinearScanIntervalDumper implements IntervalDumper {
     private static void printInterval(Interval interval, IntervalVisitor visitor) {
         Value hint = interval.locationHint(false) != null ? interval.locationHint(false).operand : null;
         AllocatableValue operand = interval.operand;
-        String type = isRegister(operand) ? "fixed" : operand.getLIRKind().getPlatformKind().toString();
+        String type = isRegister(operand) ? "fixed" : operand.getValueKind().getPlatformKind().toString();
         char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
 

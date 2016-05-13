@@ -25,7 +25,6 @@ package com.oracle.graal.replacements.test;
 import static com.oracle.graal.nodeinfo.InputType.Guard;
 import static com.oracle.graal.nodeinfo.InputType.Memory;
 import static org.hamcrest.CoreMatchers.instanceOf;
-import jdk.vm.ci.meta.JavaKind;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,6 +50,8 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.memory.MemoryNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 

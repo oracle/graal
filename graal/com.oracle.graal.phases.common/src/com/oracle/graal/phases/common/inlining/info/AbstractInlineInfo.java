@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ParameterNode;

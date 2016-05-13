@@ -37,12 +37,12 @@ import java.util.Map;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitutionRegistry;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -798,7 +798,7 @@ public class InvocationPlugins {
             if (optional) {
                 return null;
             }
-            throw new JVMCIError("Could not resolve type " + className);
+            throw new GraalError("Could not resolve type " + className);
         }
     }
 

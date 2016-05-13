@@ -48,15 +48,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAddress;
@@ -100,6 +91,15 @@ import com.oracle.graal.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate;
 import com.oracle.graal.lir.sparc.SPARCTailDelayedLIRInstruction;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * HotSpot SPARC specific backend.
@@ -221,7 +221,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new SPARCMacroAssembler(getTarget(), frameMap.getRegisterConfig());
+        return new SPARCMacroAssembler(getTarget());
     }
 
     @Override
@@ -325,8 +325,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             if (unverifiedStub != null) {
                 crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
                 // We need to use JavaCall here because we haven't entered the frame yet.
-                CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)},
-                                getTarget());
+                CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, this);
                 Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
 
                 try (ScratchRegister sc = masm.getScratchRegister()) {

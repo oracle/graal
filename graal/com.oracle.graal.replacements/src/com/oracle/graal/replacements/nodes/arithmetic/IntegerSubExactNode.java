@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
@@ -35,6 +32,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in

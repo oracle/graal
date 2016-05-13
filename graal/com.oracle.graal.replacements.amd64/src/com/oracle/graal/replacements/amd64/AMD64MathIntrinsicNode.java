@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
@@ -40,6 +37,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo
 public final class AMD64MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
@@ -117,7 +117,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
                 result = gen.emitMathTan(input);
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
         nodeValueMap.setResult(this, result);
     }
@@ -147,7 +147,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
             case TAN:
                 return Math.tan(value);
             default:
-                throw new JVMCIError("unknown op %s", op);
+                throw new GraalError("unknown op %s", op);
         }
     }
 }

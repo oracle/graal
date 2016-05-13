@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir.aarch64;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * This interface can be used to generate AArch64 LIR for arithmetic operations.

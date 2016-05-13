@@ -27,13 +27,13 @@ import static com.oracle.graal.lir.LIR.verifyBlocks;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.

@@ -27,24 +27,10 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.function.Consumer;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.VirtualObject;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotCompiledCode;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Value;
-
 import org.junit.Test;
 
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
@@ -63,6 +49,20 @@ import com.oracle.graal.nodes.DeoptimizingFixedWithNextNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotCompiledCode;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
 
 public class JVMCIInfopointErrorTest extends GraalCompilerTest {
 
@@ -158,7 +158,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @Test(expected = JVMCIError.class)
     public void testInvalidShortDerivedOop() {
         test((tool, state, safepoint) -> {
-            Variable baseOop = tool.newVariable(tool.target().getLIRKind(JavaKind.Object));
+            Variable baseOop = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Object));
             tool.append(new ValueDef(baseOop));
 
             PlatformKind kind = tool.target().arch.getPlatformKind(JavaKind.Short);
@@ -216,7 +216,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @Test(expected = JVMCIError.class)
     public void testUnexpectedTypeInRegister() {
         test((tool, state, safepoint) -> {
-            Variable var = tool.newVariable(tool.target().getLIRKind(JavaKind.Int));
+            Variable var = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Int));
             tool.append(new ValueDef(var));
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Illegal}, 1, 0, 0);
             safepoint.accept(newState);
@@ -264,7 +264,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     public void testUnknownJavaValue() {
         try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
             /*
-             * Expected: either AssertionError or JVMCIError, depending on whether the unit test run
+             * Expected: either AssertionError or GraalError, depending on whether the unit test run
              * is with assertions enabled or disabled.
              */
             test((tool, state, safepoint) -> {
@@ -277,7 +277,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @Test(expected = Error.class)
     public void testMissingIllegalAfterDouble() {
         /*
-         * Expected: either AssertionError or JVMCIError, depending on whether the unit test run is
+         * Expected: either AssertionError or GraalError, depending on whether the unit test run is
          * with assertions enabled or disabled.
          */
         test((tool, state, safepoint) -> {

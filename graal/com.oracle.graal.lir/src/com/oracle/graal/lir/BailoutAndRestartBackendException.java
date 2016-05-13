@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir;
 
-import jdk.vm.ci.code.BailoutException;
-
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.options.StableOptionValue;
+
+import jdk.vm.ci.code.BailoutException;
 
 /**
  * Restarts the {@link LIR low-level} compilation with a modified configuration.

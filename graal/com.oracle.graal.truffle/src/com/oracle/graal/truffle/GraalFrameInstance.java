@@ -24,9 +24,7 @@ package com.oracle.graal.truffle;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.code.stack.InspectedFrame;
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.truffle.OptimizedOSRLoopNode.OSRRootNode;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -36,6 +34,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+
+import jdk.vm.ci.code.stack.InspectedFrame;
 
 public final class GraalFrameInstance implements FrameInstance {
 
@@ -55,7 +55,7 @@ public final class GraalFrameInstance implements FrameInstance {
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
             CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 
@@ -103,7 +103,7 @@ public final class GraalFrameInstance implements FrameInstance {
                 }
                 return (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
             default:
-                throw JVMCIError.unimplemented();
+                throw GraalError.unimplemented();
         }
     }
 

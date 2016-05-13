@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -384,7 +385,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                     int sourceIdx = getStateIdx(moveOp.getInput());
                     int destIdx = getStateIdx(moveOp.getResult());
                     if (sourceIdx >= 0 && destIdx >= 0) {
-                        assert isObjectValue(state[sourceIdx]) || moveOp.getInput().getLIRKind().isValue() : "move op moves object but input is not defined as object";
+                        assert isObjectValue(state[sourceIdx]) || LIRKind.isValue(moveOp.getInput()) : "move op moves object but input is not defined as object";
                         state[destIdx] = state[sourceIdx];
                         Debug.log("move value %d from %d to %d", state[sourceIdx], sourceIdx, destIdx);
                         return initValueNum;
@@ -422,7 +423,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             /*
                              * Assign a unique number to the output or temp location.
                              */
-                            state[stateIdx] = encodeValueNum(opValueNum++, !operand.getLIRKind().isValue());
+                            state[stateIdx] = encodeValueNum(opValueNum++, !LIRKind.isValue(operand));
                             Debug.log("set def %d for register %s(%d): %d", opValueNum, operand, stateIdx, state[stateIdx]);
                         }
                     }
@@ -553,7 +554,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                 /*
                  * Moves with mismatching kinds are not moves, but memory loads/stores!
                  */
-                return source.getLIRKind().equals(dest.getLIRKind());
+                return source.getValueKind().equals(dest.getValueKind());
             }
             return false;
         }

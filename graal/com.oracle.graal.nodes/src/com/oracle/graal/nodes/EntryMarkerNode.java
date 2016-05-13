@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import jdk.vm.ci.common.JVMCIError;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
@@ -45,6 +44,6 @@ public final class EntryMarkerNode extends BeginStateSplitNode implements Iterab
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        throw new JVMCIError("OnStackReplacementNode should not survive");
+        throw new GraalError("OnStackReplacementNode should not survive");
     }
 }

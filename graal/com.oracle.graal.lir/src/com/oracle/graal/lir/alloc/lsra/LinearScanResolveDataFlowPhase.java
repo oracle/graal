@@ -27,8 +27,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -36,6 +34,8 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Phase 6: resolve data flow

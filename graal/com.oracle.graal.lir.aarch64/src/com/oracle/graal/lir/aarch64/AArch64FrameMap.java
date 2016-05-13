@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.aarch64;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.framemap.FrameMap;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.LIRKind;
 
 /**
  * AArch64 specific frame map.
@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.LIRKind;
  *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

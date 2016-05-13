@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.lir.alloc.trace.lsra;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.alloc.trace.lsra.FixedInterval.FixedList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.AnyList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
@@ -131,7 +130,7 @@ class TraceIntervalWalker {
         } else {
             assert interval.state == State.Inactive : "invalid state";
             // inactiveAnyLists.removeAny(interval);
-            throw JVMCIError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere();
         }
     }
 

@@ -27,15 +27,9 @@ import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -57,6 +51,12 @@ import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Implementation of the Truffle compiler using Graal.
@@ -93,8 +93,8 @@ public abstract class TruffleCompiler {
         this.backend = backend;
         this.snippetReflection = snippetReflection;
         Providers backendProviders = backend.getProviders();
-        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
-        this.providers = backendProviders.copyWith(constantReflection);
+        ConstantFieldProvider constantFieldProvider = new TruffleConstantFieldProvider(backendProviders.getConstantFieldProvider(), backendProviders.getMetaAccess());
+        this.providers = backendProviders.copyWith(constantFieldProvider);
         this.suites = suites;
         this.lirSuites = lirSuites;
 

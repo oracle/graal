@@ -30,18 +30,18 @@ import static org.junit.Assert.assertThat;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.Test;
+
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import org.junit.Test;
-
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 public class HotSpotMonitorValueTest extends GraalCompilerTest {
 
@@ -87,7 +87,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
         try {
             return getMetaAccess().lookupJavaMethod(Object.class.getDeclaredMethod("wait", long.class));
         } catch (Exception e) {
-            throw new JVMCIError("Could not find Object.wait(long): %s", e);
+            throw new GraalError("Could not find Object.wait(long): %s", e);
         }
     }
 

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Interface for managing replacements.

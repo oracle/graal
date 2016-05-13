@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,18 +40,10 @@ import java.lang.reflect.Method;
 import java.util.EnumMap;
 import java.util.Map;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LocationIdentity;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
@@ -80,6 +72,14 @@ import com.oracle.graal.replacements.nodes.BasicArrayCopyNode;
 import com.oracle.graal.replacements.nodes.DirectObjectStoreNode;
 import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ArrayCopySnippets implements Snippets {
 
@@ -385,13 +385,13 @@ public class ArrayCopySnippets implements Snippets {
             super(providers, providers.getSnippetReflection(), target);
         }
 
-        private ResolvedJavaMethod originalArraycopy() throws JVMCIError {
+        private ResolvedJavaMethod originalArraycopy() throws GraalError {
             if (originalArraycopy == null) {
                 Method method;
                 try {
                     method = System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class);
                 } catch (NoSuchMethodException | SecurityException e) {
-                    throw new JVMCIError(e);
+                    throw new GraalError(e);
                 }
                 originalArraycopy = providers.getMetaAccess().lookupJavaMethod(method);
             }
@@ -597,7 +597,7 @@ public class ArrayCopySnippets implements Snippets {
                     CallTargetNode call = invoke.callTarget();
 
                     if (!call.targetMethod().equals(originalArraycopy)) {
-                        throw new JVMCIError("unexpected invoke %s in snippet", call.targetMethod());
+                        throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
                     InvokeNode newInvoke = graph.add(new InvokeNode(invoke.callTarget(), arraycopy.getBci()));

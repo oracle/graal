@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.AllocaNode;
@@ -30,7 +31,6 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 
 /**
  * Stub to allocate an {@link ArrayIndexOutOfBoundsException} thrown by a bytecode.
@@ -53,7 +53,7 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
                 // (MAX_INT_STRING_SIZE + 1) / wordSize, rounded up
                 return MAX_INT_STRING_SIZE / wordSize + 1;
             default:
-                throw JVMCIError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
+                throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }
     }
 

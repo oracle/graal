@@ -25,11 +25,7 @@ package com.oracle.graal.lir.profiling;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.lir.ConstantValue;
@@ -43,6 +39,11 @@ import com.oracle.graal.lir.profiling.MoveProfiler.MoveStatistics;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Inserts counters into the {@link LIR} code to the number of move instruction dynamically
@@ -114,7 +115,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             if (count > 0) {
                 names.add(name);
                 groups.add(groupName);
-                increments.add(new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.forInt(count)));
+                increments.add(new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.forInt(count)));
             }
         }
 

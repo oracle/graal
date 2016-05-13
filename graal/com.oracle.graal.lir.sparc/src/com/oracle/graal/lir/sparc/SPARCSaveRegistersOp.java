@@ -30,13 +30,6 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import java.util.Arrays;
 import java.util.Set;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.sparc.SPARC;
-
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -45,6 +38,13 @@ import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.sparc.SPARC;
 
 /**
  * Saves registers to stack slots.
@@ -101,7 +101,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
                 Register savedRegister = savedRegisters[i];
                 StackSlot slot = asStackSlot(slots[i]);
                 SPARCAddress slotAddress = (SPARCAddress) crb.asAddress(slot);
-                RegisterValue input = savedRegister.asValue(slot.getLIRKind());
+                RegisterValue input = savedRegister.asValue(slot.getValueKind());
                 SPARCMove.emitStore(input, slotAddress, slot.getPlatformKind(), DUMMY, null, crb, masm);
             }
         }

@@ -56,10 +56,10 @@ import static jdk.vm.ci.amd64.AMD64.xmm9;
 import java.util.ArrayList;
 import java.util.BitSet;
 
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
-
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 
 class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     /**

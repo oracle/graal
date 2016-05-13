@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.hotspot.word;
 
+import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
+import com.oracle.graal.word.WordTypes;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.SymbolPointerStamp;
-import com.oracle.graal.word.WordTypes;
 
 /**
  * Extends {@link WordTypes} with information about HotSpot metaspace pointer types.
@@ -53,17 +52,11 @@ public class HotSpotWordTypes extends WordTypes {
      */
     private final ResolvedJavaType methodPointerType;
 
-    /**
-     * Resolved type for {@link SymbolPointer}.
-     */
-    private final ResolvedJavaType symbolPointerType;
-
     public HotSpotWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         super(metaAccess, wordKind);
         this.metaspacePointerType = metaAccess.lookupJavaType(MetaspacePointer.class);
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
-        this.symbolPointerType = metaAccess.lookupJavaType(SymbolPointer.class);
     }
 
     @Override
@@ -76,7 +69,7 @@ public class HotSpotWordTypes extends WordTypes {
 
     @Override
     public JavaKind asKind(JavaType type) {
-        if (klassPointerType.equals(type) || methodPointerType.equals(type) || symbolPointerType.equals(type)) {
+        if (klassPointerType.equals(type) || methodPointerType.equals(type)) {
             return getWordKind();
         }
         return super.asKind(type);
@@ -88,8 +81,6 @@ public class HotSpotWordTypes extends WordTypes {
             return KlassPointerStamp.klass();
         } else if (type.equals(methodPointerType)) {
             return MethodPointerStamp.method();
-        } else if (type.equals(symbolPointerType)) {
-            return SymbolPointerStamp.symbol();
         }
         return super.getWordStamp(type);
     }

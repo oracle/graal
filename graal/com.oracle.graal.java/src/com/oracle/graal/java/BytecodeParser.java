@@ -230,14 +230,14 @@ import static com.oracle.graal.compiler.common.GraalOptions.PrintProfilingInform
 import static com.oracle.graal.compiler.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static com.oracle.graal.compiler.common.GraalOptions.StressInvokeWithExceptionNode;
 import static com.oracle.graal.compiler.common.type.StampFactory.objectNonNull;
+import static com.oracle.graal.debug.GraalError.guarantee;
+import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 import static com.oracle.graal.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static com.oracle.graal.java.BytecodeParserOptions.TraceInlineDuringParsing;
 import static com.oracle.graal.java.BytecodeParserOptions.TraceParserPlugins;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static com.oracle.graal.nodes.type.StampTool.isPointerNonNull;
 import static java.lang.String.format;
-import static jdk.vm.ci.common.JVMCIError.guarantee;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.JavaSubroutineMismatch;
@@ -262,18 +262,22 @@ import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph.Mark;
@@ -385,7 +389,6 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -397,9 +400,7 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.LocationIdentity;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.RawConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -543,7 +544,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @SuppressWarnings("serial")
-    public static class BytecodeParserError extends JVMCIError {
+    public static class BytecodeParserError extends GraalError {
 
         public BytecodeParserError(Throwable cause) {
             super(cause);
@@ -589,6 +590,7 @@ public class BytecodeParser implements GraphBuilderContext {
         this.metaAccess = graphBuilderInstance.metaAccess;
         this.stampProvider = graphBuilderInstance.stampProvider;
         this.constantReflection = graphBuilderInstance.constantReflection;
+        this.constantFieldProvider = graphBuilderInstance.constantFieldProvider;
         this.stream = new BytecodeStream(method.getCode());
         this.profilingInfo = graph.useProfilingInfo() ? method.getProfilingInfo() : null;
         this.constantPool = method.getConstantPool();
@@ -642,7 +644,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
         if (PrintProfilingInformation.getValue() && profilingInfo != null) {
             TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
-            TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
+            TTY.println(Util.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
         }
 
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
@@ -1308,6 +1310,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected final ConstantPool constantPool;
     protected final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
+    private final ConstantFieldProvider constantFieldProvider;
     private final StampProvider stampProvider;
     protected final IntrinsicContext intrinsicContext;
 
@@ -2626,6 +2629,11 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return constantFieldProvider;
     }
 
     /**

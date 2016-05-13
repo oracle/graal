@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import static com.oracle.graal.nodes.calc.CompareNode.createCompareNode;
-import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -42,6 +41,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note

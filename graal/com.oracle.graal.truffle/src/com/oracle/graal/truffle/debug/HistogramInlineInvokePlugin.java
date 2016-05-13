@@ -28,8 +28,6 @@ import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
@@ -39,6 +37,8 @@ import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
 

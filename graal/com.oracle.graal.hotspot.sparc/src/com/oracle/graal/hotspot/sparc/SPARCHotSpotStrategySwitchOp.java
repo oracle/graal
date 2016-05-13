@@ -30,12 +30,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TA
 import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.Assembler.LabelHint;
 import com.oracle.graal.asm.Label;
@@ -49,6 +43,13 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCControlFlow;
 import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 final class SPARCHotSpotStrategySwitchOp extends SPARCControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<SPARCHotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(SPARCHotSpotStrategySwitchOp.class);

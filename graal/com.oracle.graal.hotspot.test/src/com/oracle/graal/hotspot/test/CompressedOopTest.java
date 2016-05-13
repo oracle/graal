@@ -31,13 +31,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The following tests perform object/array equality and assignments in various ways. The selected

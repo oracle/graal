@@ -28,8 +28,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.MinimumPeelProbabili
 
 import java.util.List;
 
-import jdk.vm.ci.code.BytecodeFrame;
-
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
@@ -46,6 +44,8 @@ import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
+
+import jdk.vm.ci.code.BytecodeFrame;
 
 public class DefaultLoopPolicies implements LoopPolicies {
     @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(500);

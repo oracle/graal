@@ -23,14 +23,15 @@
 package com.oracle.graal.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.lir.framemap.FrameMap;
+
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.LIRKind;
-
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.lir.framemap.FrameMap;
 
 /**
  * AMD64 specific frame map.
@@ -39,7 +40,7 @@ import com.oracle.graal.lir.framemap.FrameMap;
  *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

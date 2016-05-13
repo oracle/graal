@@ -27,8 +27,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.conf
 
 import java.util.zip.CRC32;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.MethodSubstitution;
@@ -38,6 +36,8 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
 

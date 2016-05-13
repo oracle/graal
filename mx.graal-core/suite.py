@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.20.5",
+  "mxversion" : "5.23.1",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "a2faf07d2fa5638de5f8193c3049904f3efcd184",
+        "version" : "9ed5b586018bebb295d8e3254da4343459d7b231",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -409,6 +409,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -431,6 +432,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.graal.debug",
         "com.oracle.graal.asm",
       ],
       "checkstyle" : "com.oracle.graal.graph",

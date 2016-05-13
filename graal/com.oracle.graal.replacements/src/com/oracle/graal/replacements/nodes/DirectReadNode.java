@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -36,6 +33,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
@@ -69,7 +69,7 @@ public final class DirectReadNode extends FixedWithNextNode implements LIRLowera
     @Override
     public void generate(NodeLIRBuilderTool builder) {
         LIRGeneratorTool gen = builder.getLIRGeneratorTool();
-        LIRKind kind = gen.target().getLIRKind(readKind);
+        LIRKind kind = LIRKind.fromJavaKind(gen.target().arch, readKind);
         Value loaded = gen.getArithmetic().emitLoad(kind, builder.operand(address), null);
         switch (readKind) {
             case Byte:

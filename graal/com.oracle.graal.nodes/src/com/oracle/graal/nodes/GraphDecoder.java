@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -36,15 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.TypeReader;
 import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -59,6 +55,10 @@ import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
+
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for
@@ -1449,7 +1449,7 @@ public class GraphDecoder {
                  * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
                  * inside the loop.
                  */
-                JVMCIError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
+                GraalError.guarantee(value instanceof ProxyPlaceholder && ((ProxyPlaceholder) value).proxyPoint == loopExplosionMerge,
                                 "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
 
                 ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;

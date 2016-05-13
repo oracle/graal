@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import jdk.vm.ci.code.SourceStackTrace;
-
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.code.SourceStackTrace;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 public class PEAAssertionsTest extends GraalCompilerTest {

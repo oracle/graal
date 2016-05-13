@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.code.CallingConvention.Type;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.code.CallingConvention.Type;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo
 public final class HotSpotDirectCallTargetNode extends DirectCallTargetNode {

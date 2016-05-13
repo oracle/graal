@@ -29,13 +29,13 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.code.InstalledCode;
-
 import com.oracle.graal.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+
+import jdk.vm.ci.code.InstalledCode;
 
 public final class OptimizedAssumption extends AbstractAssumption {
 

@@ -23,10 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rdx;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
@@ -35,6 +31,11 @@ import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Pops the current frame off the stack including the return address and restores the return

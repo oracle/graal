@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -44,7 +45,6 @@ import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 
 public class RuntimeStringSnippets implements Snippets {
 
@@ -53,7 +53,7 @@ public class RuntimeStringSnippets implements Snippets {
         try {
             return UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
         } catch (Exception e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 
@@ -62,7 +62,7 @@ public class RuntimeStringSnippets implements Snippets {
         try {
             return UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
         } catch (Exception e) {
-            throw new JVMCIError(e);
+            throw new GraalError(e);
         }
     }
 

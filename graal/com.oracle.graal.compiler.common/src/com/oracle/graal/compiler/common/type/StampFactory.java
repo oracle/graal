@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -241,7 +242,7 @@ public class StampFactory {
                     return objectNonNull();
                 }
             default:
-                throw new JVMCIError("unexpected kind: %s", kind);
+                throw new GraalError("unexpected kind: %s", kind);
         }
     }
 

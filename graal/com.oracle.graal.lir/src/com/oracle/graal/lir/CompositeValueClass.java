@@ -26,11 +26,10 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.FieldIntrospection;
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.FieldsScanner;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.CompositeValue.Component;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRIntrospection.LIRFieldsScanner;
@@ -91,7 +90,7 @@ public final class CompositeValueClass<T> extends FieldIntrospection<T> {
             if (field.isAnnotationPresent(CompositeValue.Component.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(CompositeValue.Component.class).value()));
             } else {
-                JVMCIError.shouldNotReachHere();
+                GraalError.shouldNotReachHere();
             }
             return result;
         }

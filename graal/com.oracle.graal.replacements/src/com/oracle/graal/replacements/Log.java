@@ -24,12 +24,12 @@ package com.oracle.graal.replacements;
 
 import java.io.PrintStream;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 //JaCoCo Exclude
 

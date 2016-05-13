@@ -29,18 +29,18 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
-import jdk.vm.ci.code.Location;
-import jdk.vm.ci.code.ReferenceMap;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotReferenceMap;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
+
+import jdk.vm.ci.code.Location;
+import jdk.vm.ci.code.ReferenceMap;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.hotspot.HotSpotReferenceMap;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
@@ -63,7 +63,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
         if (isJavaConstant(v)) {
             return;
         }
-        LIRKind lirKind = v.getLIRKind();
+        LIRKind lirKind = (LIRKind) v.getValueKind();
         if (!lirKind.isValue()) {
             objectValues.add(v);
             if (lirKind.isUnknownReference()) {
@@ -88,16 +88,16 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
         int idx = 0;
         for (Value obj : objectValues) {
-            LIRKind kind = obj.getLIRKind();
+            LIRKind kind = (LIRKind) obj.getValueKind();
             int bytes = bytesPerElement(kind);
             if (kind.isUnknownReference()) {
-                throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
+                throw GraalError.shouldNotReachHere("unknown reference alive across safepoint");
             } else {
                 Location base = null;
                 if (kind.isDerivedReference()) {
                     Variable baseVariable = (Variable) kind.getDerivedReferenceBase();
                     Value baseValue = state.getLiveBasePointers().get(baseVariable.index);
-                    assert baseValue.getPlatformKind().getVectorLength() == 1 && baseValue.getLIRKind().isReference(0) && !baseValue.getLIRKind().isDerivedReference();
+                    assert baseValue.getPlatformKind().getVectorLength() == 1 && ((LIRKind) baseValue.getValueKind()).isReference(0) && !((LIRKind) baseValue.getValueKind()).isDerivedReference();
                     base = toLocation(baseValue, 0);
                 }
 

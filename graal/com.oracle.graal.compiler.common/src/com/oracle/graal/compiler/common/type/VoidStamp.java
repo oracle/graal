@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import jdk.vm.ci.common.JVMCIError;
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**
  * Singleton stamp representing the value of type {@code void}.
@@ -58,7 +58,7 @@ public final class VoidStamp extends Stamp {
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        throw JVMCIError.shouldNotReachHere("void stamp has no value");
+        throw GraalError.shouldNotReachHere("void stamp has no value");
     }
 
     @Override
@@ -111,12 +111,12 @@ public final class VoidStamp extends Stamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw JVMCIError.shouldNotReachHere("can't read values of void stamp");
+        throw GraalError.shouldNotReachHere("can't read values of void stamp");
     }
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        throw JVMCIError.shouldNotReachHere("void stamp has no value");
+        throw GraalError.shouldNotReachHere("void stamp has no value");
     }
 
     private static final VoidStamp instance = new VoidStamp();

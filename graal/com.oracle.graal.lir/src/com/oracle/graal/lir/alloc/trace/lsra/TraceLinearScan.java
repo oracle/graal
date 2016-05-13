@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
@@ -42,6 +43,7 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -69,9 +71,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -269,7 +269,7 @@ public final class TraceLinearScan {
                 if (globalStackSlots.isEnabled()) {
                     globalStackSlots.increment();
                 }
-                assert cachedStackSlot.getLIRKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getLIRKind();
+                assert cachedStackSlot.getValueKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getValueKind();
                 return cachedStackSlot;
             }
         }
@@ -731,31 +731,31 @@ public final class TraceLinearScan {
                 if (i1.operandNumber != i) {
                     Debug.log("Interval %d is on position %d in list", i1.operandNumber, i);
                     Debug.log(i1.logString());
-                    throw new JVMCIError("");
+                    throw new GraalError("");
                 }
 
                 if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
                     Debug.log(i1.logString());
-                    throw new JVMCIError("");
+                    throw new GraalError("");
                 }
 
                 if (i1.location() == null) {
                     Debug.log("Interval %d has no register assigned", i1.operandNumber);
                     Debug.log(i1.logString());
-                    throw new JVMCIError("");
+                    throw new GraalError("");
                 }
 
                 if (i1.isEmpty()) {
                     Debug.log("Interval %d has no Range", i1.operandNumber);
                     Debug.log(i1.logString());
-                    throw new JVMCIError("");
+                    throw new GraalError("");
                 }
 
                 if (i1.from() >= i1.to()) {
                     Debug.log("Interval %d has zero length range", i1.operandNumber);
                     Debug.log(i1.logString());
-                    throw new JVMCIError("");
+                    throw new GraalError("");
                 }
 
                 // special intervals that are created in MoveResolver

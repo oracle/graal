@@ -33,19 +33,19 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.ssa.SSAUtil;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterSaveLayout;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
@@ -399,7 +399,7 @@ public class StandardOp {
         @Override
         public void emitCode(CompilationResultBuilder crb) {
             if (block != null) {
-                throw new JVMCIError(this + " should have been replaced");
+                throw new GraalError(this + " should have been replaced");
             }
         }
     }
@@ -470,7 +470,7 @@ public class StandardOp {
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
-            throw new JVMCIError(this + " should have been removed");
+            throw new GraalError(this + " should have been removed");
         }
 
         @Override

@@ -23,14 +23,15 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.Value;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Performs a hard-coded tail call to the specified target, which normally should be an

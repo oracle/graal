@@ -27,12 +27,6 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.lir.CompositeValue;
@@ -41,6 +35,12 @@ import com.oracle.graal.lir.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class AMD64AddressValue extends CompositeValue {
 
@@ -51,11 +51,11 @@ public final class AMD64AddressValue extends CompositeValue {
 
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);
 
-    public AMD64AddressValue(LIRKind kind, AllocatableValue base, int displacement) {
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, int displacement) {
         this(kind, base, Value.ILLEGAL, Scale.Times1, displacement);
     }
 
-    public AMD64AddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
         super(kind);
         this.base = base;
         this.index = index;
@@ -70,7 +70,7 @@ public final class AMD64AddressValue extends CompositeValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
         if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
-            return new AMD64AddressValue(getLIRKind(), newBase, newIndex, scale, displacement);
+            return new AMD64AddressValue(getValueKind(), newBase, newIndex, scale, displacement);
         }
         return this;
     }
@@ -123,13 +123,13 @@ public final class AMD64AddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof AMD64AddressValue) {
             AMD64AddressValue addr = (AMD64AddressValue) obj;
-            return getLIRKind().equals(addr.getLIRKind()) && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
+            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ getLIRKind().hashCode();
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ getValueKind().hashCode();
     }
 }

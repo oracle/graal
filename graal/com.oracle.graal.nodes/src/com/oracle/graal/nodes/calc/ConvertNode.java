@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.graph.NodeInterface;
 import com.oracle.graal.nodes.ValueNode;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * Represents a conversion between primitive types.

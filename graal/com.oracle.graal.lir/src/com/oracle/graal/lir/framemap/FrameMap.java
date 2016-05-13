@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.compiler.common.LIRKind;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
@@ -33,10 +36,8 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
-
-import com.oracle.graal.asm.NumUtil;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This class is used to build the stack frame layout for a compiled method. A {@link StackSlot} is
@@ -240,18 +241,18 @@ public abstract class FrameMap {
      * @param additionalOffset
      * @return A spill slot denoting the reserved memory area.
      */
-    protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
+    protected StackSlot allocateNewSpillSlot(ValueKind<?> kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
     /**
-     * Returns the spill slot size for the given {@link LIRKind}. The default value is the size in
+     * Returns the spill slot size for the given {@link ValueKind}. The default value is the size in
      * bytes for the target architecture.
      *
-     * @param kind the {@link LIRKind} to be stored in the spill slot.
+     * @param kind the {@link ValueKind} to be stored in the spill slot.
      * @return the size in bytes
      */
-    public int spillSlotSize(LIRKind kind) {
+    public int spillSlotSize(ValueKind<?> kind) {
         return kind.getPlatformKind().getSizeInBytes();
     }
 
@@ -263,7 +264,7 @@ public abstract class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public StackSlot allocateSpillSlot(LIRKind kind) {
+    public StackSlot allocateSpillSlot(ValueKind<?> kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = spillSlotSize(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);

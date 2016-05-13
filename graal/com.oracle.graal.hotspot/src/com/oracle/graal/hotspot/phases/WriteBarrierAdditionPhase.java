@@ -22,9 +22,7 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePreWriteBarrier;
@@ -45,6 +43,8 @@ import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.Phase;
+
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 public class WriteBarrierAdditionPhase extends Phase {
 
@@ -126,7 +126,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 }
                 break;
             default:
-                throw new JVMCIError("unexpected barrier type: " + barrierType);
+                throw new GraalError("unexpected barrier type: " + barrierType);
         }
     }
 
@@ -147,7 +147,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 }
                 break;
             default:
-                throw new JVMCIError("unexpected barrier type: " + barrierType);
+                throw new GraalError("unexpected barrier type: " + barrierType);
         }
     }
 
@@ -168,7 +168,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 }
                 break;
             default:
-                throw new JVMCIError("unexpected barrier type: " + barrierType);
+                throw new GraalError("unexpected barrier type: " + barrierType);
         }
     }
 

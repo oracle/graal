@@ -28,9 +28,9 @@ import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
+import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import static jdk.vm.ci.inittimer.InitTimer.timer;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +43,7 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugValuesPrinter;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
@@ -57,11 +58,9 @@ import com.oracle.graal.runtime.RuntimeProvider;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotProxified;
 import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.inittimer.InitTimer;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
@@ -70,7 +69,7 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
+public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static boolean checkArrayIndexScaleInvariants() {
         assert getArrayIndexScale(JavaKind.Byte) == 1;
@@ -107,7 +106,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
             HotSpotBackendFactory factory = compilerFactory.getBackendFactory(hostArchitecture);
             if (factory == null) {
-                throw new JVMCIError("No backend available for host architecture \"%s\"", hostArchitecture);
+                throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
             hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
@@ -120,7 +119,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
             HotSpotBackendFactory factory = compilerFactory.getBackendFactory(gpuArchitecture);
             if (factory == null) {
-                throw new JVMCIError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
+                throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
             try (InitTimer t = timer("create backend:", gpuArchitecture)) {
                 registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
@@ -145,7 +144,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                     case "Thread":
                         break;
                     default:
-                        throw new JVMCIError("Unsupported value for DebugSummaryValue: %s", summary);
+                        throw new GraalError("Unsupported value for DebugSummaryValue: %s", summary);
                 }
             }
         }

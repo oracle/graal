@@ -31,14 +31,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Converts phi instructions into moves.
@@ -262,7 +262,7 @@ public class PhiResolver {
 
     private void moveToTemp(Value src) {
         assert isIllegal(temp);
-        temp = gen.newVariable(src.getLIRKind());
+        temp = gen.newVariable(src.getValueKind());
         emitMove(temp, src);
     }
 

@@ -35,7 +35,9 @@ import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.PatchLabelKind;
 import com.oracle.graal.code.CompilationResult.JumpTable;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.LabelRef;
@@ -48,10 +50,8 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64ControlFlow {
@@ -222,7 +222,7 @@ public class AArch64ControlFlow {
                         emitCompare(crb, masm, key, scratch, constVal);
                         break;
                     default:
-                        throw new JVMCIError("switch only supported for int, long and object");
+                        throw new GraalError("switch only supported for int, long and object");
                 }
             }
 

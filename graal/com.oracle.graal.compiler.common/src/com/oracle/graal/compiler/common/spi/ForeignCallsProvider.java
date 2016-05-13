@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.compiler.common.spi;
 
-import jdk.vm.ci.meta.LocationIdentity;
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.LocationIdentity;
+
+import jdk.vm.ci.code.ValueKindFactory;
 
 /**
  * Details about a set of supported {@link ForeignCallDescriptor foreign calls}.
  */
-public interface ForeignCallsProvider {
+public interface ForeignCallsProvider extends ValueKindFactory<LIRKind> {
 
     /**
      * Determines if a given foreign call is side-effect free. Deoptimization cannot return

@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 /**

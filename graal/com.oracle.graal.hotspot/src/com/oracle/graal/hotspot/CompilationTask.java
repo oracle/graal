@@ -46,8 +46,8 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -155,7 +155,7 @@ public class CompilationTask {
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
     @SuppressWarnings("try")
-    public CompilationRequestResult runCompilation() {
+    public HotSpotCompilationRequestResult runCompilation() {
         HotSpotVMConfig config = jvmciRuntime.getConfig();
         final long threadId = Thread.currentThread().getId();
         int entryBCI = getEntryBCI();
@@ -242,7 +242,7 @@ public class CompilationTask {
             }
             stats.finish(method, installedCode);
             if (result != null) {
-                return CompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
+                return HotSpotCompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
             }
             return null;
         } catch (BailoutException bailout) {
@@ -258,7 +258,7 @@ public class CompilationTask {
             /*
              * Treat bailouts as retryable.
              */
-            return CompilationRequestResult.failure(bailout.getMessage(), true);
+            return HotSpotCompilationRequestResult.failure(bailout.getMessage(), true);
         } catch (Throwable t) {
             // Log a failure event.
             EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
@@ -274,7 +274,7 @@ public class CompilationTask {
              * method. Report the result of toString instead of getMessage to ensure that the
              * exception type is included in the output in case there's no detail mesage.
              */
-            return CompilationRequestResult.failure(t.toString(), false);
+            return HotSpotCompilationRequestResult.failure(t.toString(), false);
         } finally {
             try {
                 int compiledBytecodes = 0;

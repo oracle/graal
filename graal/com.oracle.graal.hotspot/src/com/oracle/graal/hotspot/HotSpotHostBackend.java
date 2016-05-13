@@ -23,14 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
-import static jdk.vm.ci.inittimer.InitTimer.timer;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-import jdk.vm.ci.inittimer.InitTimer;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.runtime.JVMCICompiler;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -41,6 +34,14 @@ import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.StructuredGraph;
+
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Common functionality of HotSpot host backends.
@@ -88,12 +89,11 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
             return stub.getLinkage().getIncomingCallingConvention();
         }
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method());
+        CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method(), this);
         if (graph.getEntryBCI() != JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // for OSR, only a pointer is passed to the method.
             JavaType[] parameterTypes = new JavaType[]{getMetaAccess().lookupJavaType(long.class)};
-            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes,
-                            getTarget());
+            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes, this);
             cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
         }
         return cc;

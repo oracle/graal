@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Provides a capability for replacing a higher node with one or more lower level nodes.

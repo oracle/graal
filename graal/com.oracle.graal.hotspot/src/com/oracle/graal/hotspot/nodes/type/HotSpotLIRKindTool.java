@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import jdk.vm.ci.meta.LIRKind;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 /**

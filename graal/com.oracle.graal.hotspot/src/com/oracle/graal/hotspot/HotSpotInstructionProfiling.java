@@ -24,13 +24,9 @@ package com.oracle.graal.hotspot;
 
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.InstructionCounter;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
@@ -43,6 +39,11 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase {
     public static final String COUNTER_GROUP = "INSTRUCTION_COUNTER";
@@ -95,7 +96,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
                 groups[i] = COUNTER_GROUP + " " + instructionsToProfile[i];
                 // Default is zero; this value is patched to the real instruction count after
                 // assembly in method HotSpotInstructionProfiling.countInstructions
-                increments[i] = new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.INT_0);
+                increments[i] = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_0);
             }
             HotSpotCounterOp op = (HotSpotCounterOp) counterFactory.createMultiBenchmarkCounter(names, groups, increments);
             LIRInstruction inst = new InstructionCounterOp(op, instructionsToProfile);

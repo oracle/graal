@@ -24,14 +24,14 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.Collection;
 
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.util.Providers;
+
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Represents an inlining opportunity where the current class hierarchy leads to a monomorphic

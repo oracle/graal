@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.amd64;
 
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LIRKind;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
+import com.oracle.graal.debug.GraalError;
+
+import jdk.vm.ci.amd64.AMD64Kind;
 
 public class AMD64LIRKindTool implements LIRKindTool {
 
@@ -52,7 +52,7 @@ public class AMD64LIRKindTool implements LIRKindTool {
             case 64:
                 return LIRKind.value(AMD64Kind.DOUBLE);
             default:
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
         }
     }
 

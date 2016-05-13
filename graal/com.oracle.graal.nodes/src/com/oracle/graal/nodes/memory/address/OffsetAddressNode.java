@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.nodes.memory.address;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -38,6 +34,10 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.spi.PiPushable;
 import com.oracle.graal.nodes.type.StampTool;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents an address that is composed of a base and an offset. The base can be either a

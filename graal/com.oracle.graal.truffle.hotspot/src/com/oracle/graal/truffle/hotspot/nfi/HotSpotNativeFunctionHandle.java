@@ -24,15 +24,15 @@ package com.oracle.graal.truffle.hotspot.nfi;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.InvalidInstalledCodeException;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerDirectives;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.JavaKind;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
@@ -103,7 +103,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
                 graphBuilder.installNativeFunctionStub(this);
             }
         }
-        throw JVMCIError.shouldNotReachHere("NFI call stub for " + pointer.getName() + " was invalidated and could not be recompiled");
+        throw GraalError.shouldNotReachHere("NFI call stub for " + pointer.getName() + " was invalidated and could not be recompiled");
     }
 
     private boolean checkArgs(Object... args) {

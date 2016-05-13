@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
@@ -41,7 +42,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,7 +90,7 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
         } else if (src instanceof DataPointerConstant) {
             return new LeaDataOp(dst, (DataPointerConstant) src);
         } else {
-            throw JVMCIError.shouldNotReachHere(String.format("unsupported constant: %s", src));
+            throw GraalError.shouldNotReachHere(String.format("unsupported constant: %s", src));
         }
     }
 }

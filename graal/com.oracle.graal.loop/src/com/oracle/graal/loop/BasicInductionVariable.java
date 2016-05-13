@@ -25,10 +25,10 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.loop.MathUtil.add;
 import static com.oracle.graal.loop.MathUtil.mul;
 import static com.oracle.graal.loop.MathUtil.sub;
-import jdk.vm.ci.common.JVMCIError;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
@@ -104,7 +104,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (op instanceof SubNode) {
             return graph().unique(new NegateNode(rawStride));
         }
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -130,7 +130,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (op instanceof SubNode) {
             return -rawStride.asJavaConstant().asLong();
         }
-        throw JVMCIError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

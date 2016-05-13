@@ -27,12 +27,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.vm.ci.common.JVMCIError;
-
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.CFGVerifier;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
@@ -291,7 +290,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 stack[index] = block;
                 block.setId(index);
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
         } while (tos >= 0);
 

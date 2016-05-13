@@ -24,9 +24,7 @@ package com.oracle.graal.lir.dfa;
 
 import java.util.List;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
@@ -37,6 +35,10 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.util.IndexedValueMap;
 import com.oracle.graal.lir.util.ValueSet;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Record all derived reference base pointers in a frame state.
@@ -69,8 +71,8 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
             @Override
             public void put(Value v) {
-                Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
-                assert !base.getLIRKind().isValue();
+                Variable base = (Variable) v.getValueKind(LIRKind.class).getDerivedReferenceBase();
+                assert !base.getValueKind(LIRKind.class).isValue();
                 variables.put(base.index, base);
             }
 
@@ -81,8 +83,8 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
             @Override
             public void remove(Value v) {
-                Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
-                assert !base.getLIRKind().isValue();
+                Variable base = (Variable) v.getValueKind(LIRKind.class).getDerivedReferenceBase();
+                assert !base.getValueKind(LIRKind.class).isValue();
                 variables.put(base.index, null);
             }
 
@@ -114,7 +116,12 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
         @Override
         protected boolean shouldProcessValue(Value operand) {
-            return operand.getLIRKind().isDerivedReference();
+            ValueKind<?> kind = operand.getValueKind();
+            if (kind instanceof LIRKind) {
+                return ((LIRKind) kind).isDerivedReference();
+            } else {
+                return false;
+            }
         }
 
         @Override

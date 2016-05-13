@@ -24,20 +24,21 @@ package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Tests move from a constant to a wider stack slot (e.g. byte constant to integer stack slot).
@@ -50,8 +51,8 @@ public class ConstantStackCastTest extends LIRTest {
     public void setup() {
         // Necessary to get the PlatformKind on which we're currently running on
         byteKind = getBackend().getTarget().arch.getPlatformKind(JavaKind.Byte);
-        stackCopyByte.dstKind = getBackend().getTarget().getLIRKind(JavaKind.Int);
-        stackCopyByte.srcKind = getBackend().getTarget().getLIRKind(JavaKind.Byte);
+        stackCopyByte.dstKind = LIRKind.fromJavaKind(getBackend().getTarget().arch, JavaKind.Int);
+        stackCopyByte.srcKind = LIRKind.fromJavaKind(getBackend().getTarget().arch, JavaKind.Byte);
     }
 
     private static class LoadConstantStackSpec extends LIRTestSpecification {
@@ -80,7 +81,7 @@ public class ConstantStackCastTest extends LIRTest {
                 JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
                 return new ConstantValue(srcKind, byteConst);
             } else {
-                throw JVMCIError.shouldNotReachHere("Kind not supported: " + srcKind);
+                throw GraalError.shouldNotReachHere("Kind not supported: " + srcKind);
             }
         }
 

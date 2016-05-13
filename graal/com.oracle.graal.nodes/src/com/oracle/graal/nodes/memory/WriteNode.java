@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.LocationIdentity;
-
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
@@ -96,7 +95,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        throw JVMCIError.shouldNotReachHere("unexpected WriteNode before PEA");
+        throw GraalError.shouldNotReachHere("unexpected WriteNode before PEA");
     }
 
     @Override

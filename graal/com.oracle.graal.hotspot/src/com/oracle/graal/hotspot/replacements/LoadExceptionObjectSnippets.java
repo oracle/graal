@@ -31,9 +31,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writ
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -50,6 +47,10 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.replacements.nodes.ReadRegisterNode;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Snippet for loading the exception object at the start of an exception dispatcher.
