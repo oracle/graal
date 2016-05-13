@@ -78,16 +78,12 @@ bench-jvmci : {
   mx-settings : ["mx", "--vm=jvmci", "--vmbuild=product"]
   mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
-# DaCapo-related targets
-
-bench-dacapo : ${common} ${java8Downloads} {
-  downloads : {
-    DACAPO : {name : dacapo, version : "9.12"}
-  }
+bench-common-8 : ${common} ${java8Downloads} {
   setup: [
     ${bench-jvmci.mx-settings} ["build"]
   ]
@@ -96,7 +92,9 @@ bench-dacapo : ${common} ${java8Downloads} {
   ]
 }
 
-bench-dacapo-x52 : ${bench-dacapo} {
+# DaCapo-related targets
+
+bench-dacapo-x52 : ${bench-common-8} {
   capabilities : [linux, x52, bench, post-merge]
   name : "bench-dacapo-linux-x52"
   run : [
@@ -107,18 +105,25 @@ bench-dacapo-x52 : ${bench-dacapo} {
   ]
 }
 
+# Scala DaCapo-related targets
+
+bench-scala-dacapo-x52 : ${bench-common-8} {
+  capabilities : [linux, x52, bench, post-merge]
+  name : "bench-scala-dacapo-linux-x52"
+  run : [
+    ${bench-jvmci.mx-scala-dacapo} [
+      "--machine-name", "x52", "--",
+      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
+    ]
+  ]
+}
+
 # SPECJvm2008-related targets
 
-bench-specjvm2008 : ${common} {
-  downloads : ${java8Downloads.downloads} {
+bench-specjvm2008 : ${bench-common-8} {
+  downloads : {
     SPECJVM2008 : {name : specjvm2008, version : "1.01"}
   }
-  setup: [
-    ${bench-jvmci.mx-settings} ["build"]
-  ]
-  teardown : [
-    ${bench-jvmci.mx-teardown}
-  ]
   timelimit : "2:50:00"
 }
 
@@ -147,5 +152,6 @@ builds = [
   ${gateTest8}        ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9", timelimit: "1:00:00"}
 #  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
   ${bench-dacapo-x52}
+  ${bench-scala-dacapo-x52}
   ${bench-specjvm2008-x52}
 ]
