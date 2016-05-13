@@ -34,8 +34,6 @@ import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.spi.FileTypeDetector;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -104,11 +102,6 @@ public abstract class Source {
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
     // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
-    /**
-     * Index of all named sources.
-     */
-    private static final Map<String, WeakReference<Source>> nameToSource = new HashMap<>();
-
     static boolean fileCacheEnabled = true;
 
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
@@ -121,13 +114,15 @@ public abstract class Source {
     private TextMap textMap;
 
     /**
-     * Locates an existing instance by the name under which it was indexed.
+     * Locates an existing instance of a {@link Source} with given {@link #getName() name}.
      *
+     * @param name the {@link #getName() name} of a source to seek for
+     * @return found source or <code>null</code> if no source with name
+     *   is known
      * @since 0.8 or earlier
      */
     public static Source find(String name) {
-        final WeakReference<Source> nameRef = nameToSource.get(name);
-        return nameRef == null ? null : nameRef.get();
+        return Impl.findSource(name);
     }
 
     /**
@@ -141,21 +136,17 @@ public abstract class Source {
      * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName, boolean reset) throws IOException {
-
-        final WeakReference<Source> nameRef = nameToSource.get(fileName);
-        Source source = nameRef == null ? null : nameRef.get();
+        Source source = null;
         if (source == null) {
             final File file = new File(fileName);
             if (!file.canRead()) {
                 throw new IOException("Can't read file " + fileName);
             }
             final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = nameToSource.get(path);
-            source = pathRef == null ? null : pathRef.get();
+            source = null;
             if (source == null) {
                 final FileSourceImpl content = new FileSourceImpl(file, fileName, path);
                 source = new Impl(content);
-                nameToSource.put(path, new WeakReference<>(source));
             }
         }
         if (reset) {
@@ -203,18 +194,16 @@ public abstract class Source {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
 
-        final WeakReference<Source> nameRef = nameToSource.get(fileName);
-        Source source = nameRef == null ? null : nameRef.get();
+        Source source = null;
         if (source == null) {
             final File file = new File(fileName);
             // We are going to trust that the fileName is readable.
             final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = nameToSource.get(path);
+            final WeakReference<Source> pathRef = null;
             source = pathRef == null ? null : pathRef.get();
             if (source == null) {
                 Content content = new ClientManagedFileSourceImpl(file, fileName, path, chars);
                 source = new Impl(content);
-                nameToSource.put(path, new WeakReference<>(source));
                 return source;
             }
         }
@@ -271,7 +260,6 @@ public abstract class Source {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
         final Source source = new Impl(content);
-        nameToSource.put(name, new WeakReference<>(source));
         return source;
     }
 
@@ -289,7 +277,6 @@ public abstract class Source {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
         final Content content = new AppendableLiteralSourceImpl(name);
         final Source source = new Impl(content);
-        nameToSource.put(name, new WeakReference<>(source));
         return source;
     }
 
@@ -881,9 +868,45 @@ public abstract class Source {
         return mimeType.equals(other.mimeType);
     }
 
-    private static class Impl extends Source implements Cloneable {
+    private static final class Impl extends Source implements Cloneable {
+        private static ImplRef SOURCES = null;
+
         Impl(Content content) {
             super(content);
+            registerSource(this);
+        }
+
+        @Override
+        protected Impl clone() throws CloneNotSupportedException {
+            Impl clone = (Impl) super.clone();
+            registerSource(clone);
+            return clone;
+        }
+
+        static synchronized void registerSource(Impl source) {
+            SOURCES = new ImplRef(source, SOURCES);
+        }
+
+        static synchronized Source findSource(String name) {
+            ImplRef prev = null;
+            ImplRef now = SOURCES;
+            while (now != null) {
+                Impl source = now.get();
+                if (source == null) {
+                    if (prev == null) {
+                        SOURCES = now.next;
+                    } else {
+                        prev.next = now.next;
+                    }
+                } else {
+                    prev = now;
+                    if (source.getName().equals(name)) {
+                        return source;
+                    }
+                }
+                now = now.next;
+            }
+            return null;
         }
 
         @Override
@@ -899,5 +922,15 @@ public abstract class Source {
         public int hashCode() {
             return content().hashCode();
         }
+    }
+
+    private static final class ImplRef extends WeakReference<Impl> {
+        ImplRef next;
+
+        ImplRef(Impl source, ImplRef next) {
+            super(source);
+            this.next = next;
+        }
+
     }
 }

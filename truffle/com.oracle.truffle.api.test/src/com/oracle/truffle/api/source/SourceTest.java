@@ -30,7 +30,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -182,10 +185,28 @@ public class SourceTest {
 
     @Test
     public void withName() throws Exception {
-        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertEquals("/tmp/hi.tmp", orig.getName());
-        Source source = orig.withName("/path/hi.txt");
-        assertEquals("/path/hi.txt", source.getName());
+        final String tmpName = "/tmp/hi.tmp";
+        final String realName = "/path/hi.txt";
+
+        Source orig = Source.fromText("Hi", tmpName);
+        assertEquals(tmpName, orig.getName());
+        Source foundOrig = Source.find(tmpName);
+        assertEquals(orig, foundOrig);
+
+        Source source = orig.withName(realName);
+        assertEquals(realName, source.getName());
+
+        Source foundSource = Source.find(realName);
+        assertSame(source, foundSource);
+
+        WeakReference<Source> refOrig = new WeakReference<>(orig);
+        orig = null;
+        foundOrig = null;
+
+        assertGC("The source can disappear", refOrig);
+
+        Source notFoundSource = Source.find(tmpName);
+        assertNull("Original source isn't there anymore", notFoundSource);
     }
 
     @Test
@@ -202,5 +223,16 @@ public class SourceTest {
         assertNull(orig.getPath());
         Source source = orig.withPath("c:\\temp\\hi.txt");
         assertEquals("c:\\temp\\hi.txt", source.getPath());
+    }
+
+    private static void assertGC(String msg, WeakReference<?> ref) {
+        for (int i = 0; i < 100; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            System.gc();
+            System.runFinalization();
+        }
+        fail(msg + " ref: " + ref.get());
     }
 }
