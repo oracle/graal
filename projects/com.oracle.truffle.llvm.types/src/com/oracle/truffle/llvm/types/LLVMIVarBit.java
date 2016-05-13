@@ -134,7 +134,7 @@ public abstract class LLVMIVarBit {
 
     public abstract int compare(LLVMIVarBit other);
 
-    private static class LLVMVarBitByteArray extends LLVMIVarBit {
+    private static final class LLVMVarBitByteArray extends LLVMIVarBit {
 
         // big endian, e.g., arr[0] is most significant byte
         private final byte[] arr;

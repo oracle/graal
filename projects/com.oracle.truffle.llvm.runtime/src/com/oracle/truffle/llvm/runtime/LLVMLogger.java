@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
-public class LLVMLogger {
+public final class LLVMLogger {
 
     public static void performanceWarning(String warning) {
         CompilerAsserts.neverPartOfCompilation();

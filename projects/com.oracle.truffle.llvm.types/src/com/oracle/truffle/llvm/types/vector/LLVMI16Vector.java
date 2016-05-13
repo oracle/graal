@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public class LLVMI16Vector extends LLVMVector<Short> {
+public final class LLVMI16Vector extends LLVMVector<Short> {
 
     private static final int I16_SIZE = 2;
     private static final int MASK = 0xffff;
