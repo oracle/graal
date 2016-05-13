@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 

@@ -42,6 +42,7 @@ import java.lang.reflect.Field;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -49,7 +50,6 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
 import sun.misc.Unsafe;

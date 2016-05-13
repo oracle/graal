@@ -24,8 +24,8 @@ package com.oracle.graal.lir;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Represents an inlined {@link Constant} value.
@@ -34,8 +34,8 @@ public class ConstantValue extends Value {
 
     private final Constant constant;
 
-    public ConstantValue(LIRKind lirKind, Constant constant) {
-        super(lirKind);
+    public ConstantValue(ValueKind<?> kind, Constant constant) {
+        super(kind);
         this.constant = constant;
     }
 

@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
@@ -42,8 +43,8 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -71,7 +72,6 @@ import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -269,7 +269,7 @@ public final class TraceLinearScan {
                 if (globalStackSlots.isEnabled()) {
                     globalStackSlots.increment();
                 }
-                assert cachedStackSlot.getLIRKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getLIRKind();
+                assert cachedStackSlot.getValueKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getValueKind();
                 return cachedStackSlot;
             }
         }

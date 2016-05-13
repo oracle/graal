@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.aarch64;
 
 import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.aarch64.AArch64AddressValue;
@@ -36,7 +37,6 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -78,7 +78,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
             throw GraalError.unimplemented();
         } else {
-            if (indexValue.getLIRKind().isValue()) {
+            if (LIRKind.isValue(indexValue.getValueKind())) {
                 indexReference = null;
             } else {
                 indexReference = Value.ILLEGAL;

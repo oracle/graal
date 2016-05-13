@@ -89,12 +89,11 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
             return stub.getLinkage().getIncomingCallingConvention();
         }
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method());
+        CallingConvention cc = getCallingConvention(getCodeCache(), HotSpotCallingConventionType.JavaCallee, graph.method(), this);
         if (graph.getEntryBCI() != JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // for OSR, only a pointer is passed to the method.
             JavaType[] parameterTypes = new JavaType[]{getMetaAccess().lookupJavaType(long.class)};
-            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes,
-                            getTarget());
+            CallingConvention tmp = getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCallee, getMetaAccess().lookupJavaType(void.class), parameterTypes, this);
             cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
         }
         return cc;

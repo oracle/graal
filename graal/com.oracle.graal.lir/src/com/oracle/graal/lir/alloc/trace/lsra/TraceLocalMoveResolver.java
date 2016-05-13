@@ -36,10 +36,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.VirtualStackSlot;
@@ -50,7 +51,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -292,7 +292,7 @@ final class TraceLocalMoveResolver {
             return true;
         }
         if (from != null && isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
-            assert LIRKind.verifyMoveKinds(to.getLIRKind(), from.getLIRKind()) : String.format("Same register but Kind mismatch %s <- %s", to, from);
+            assert LIRKind.verifyMoveKinds(to.getValueKind(), from.getValueKind()) : String.format("Same register but Kind mismatch %s <- %s", to, from);
             return true;
         }
         return false;

@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.ArithmeticStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -38,7 +39,6 @@ import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.SerializableConstant;
 
 /**

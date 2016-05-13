@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.CodeGenProviders;
@@ -40,16 +41,17 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
-public interface LIRGeneratorTool extends BenchmarkCounterFactory {
+public interface LIRGeneratorTool extends BenchmarkCounterFactory, ValueKindFactory<LIRKind> {
 
     /**
      * Factory for creating moves.
@@ -128,9 +130,9 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      * registers can't be accessed. This method converts the {@link LIRKind} of a memory location or
      * constant to the {@link LIRKind} that will be used when it is loaded into a register.
      */
-    LIRKind toRegisterKind(LIRKind kind);
+    <K extends ValueKind<K>> K toRegisterKind(K kind);
 
-    AllocatableValue emitLoadConstant(LIRKind kind, Constant constant);
+    AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant);
 
     void emitNullCheck(Value address, LIRFrameState state);
 
@@ -167,10 +169,10 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      *
      * @param kind The type of the value that will be stored in this {@link Variable}. See
      *            {@link LIRKind} for documentation on what to pass here. Note that in most cases,
-     *            simply passing {@link Value#getLIRKind()} is wrong.
+     *            simply passing {@link Value#getValueKind()} is wrong.
      * @return A new {@link Variable}.
      */
-    Variable newVariable(LIRKind kind);
+    Variable newVariable(ValueKind<?> kind);
 
     Variable emitMove(Value input);
 
@@ -213,11 +215,11 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory {
      * Gets the ABI specific operand used to return a value of a given kind from a method.
      *
      * @param javaKind the {@link JavaKind} of value being returned
-     * @param lirKind the backend type of the value being returned
+     * @param valueKind the backend type of the value being returned
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    AllocatableValue resultOperandFor(JavaKind javaKind, LIRKind lirKind);
+    AllocatableValue resultOperandFor(JavaKind javaKind, ValueKind<?> valueKind);
 
     <I extends LIRInstruction> I append(I op);
 

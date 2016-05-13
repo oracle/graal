@@ -23,11 +23,8 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -36,6 +33,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Represents an address of the form [base + index*scale + displacement]. Both base and index are
@@ -76,7 +76,7 @@ public class AMD64AddressNode extends AddressNode implements LIRLowerable {
         if (scale.equals(Scale.Times1)) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
-            if (indexValue.getLIRKind().isValue()) {
+            if (LIRKind.isValue(indexValue)) {
                 indexReference = null;
             } else {
                 indexReference = Value.ILLEGAL;

@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.ValueConsumer;
@@ -142,7 +143,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
          * We always process registers because we have to track the largest register size that is
          * alive across safepoints in order to save and restore them.
          */
-        return isRegister(v) || !v.getLIRKind().isValue();
+        return isRegister(v) || !LIRKind.isValue(v);
     }
 
     public void addLiveValues(ReferenceMapBuilder refMap) {

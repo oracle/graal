@@ -67,6 +67,7 @@ import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -114,9 +115,9 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARCKind;
 
@@ -230,7 +231,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public void emitReturn(JavaKind javaKind, Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(javaKind, input.getLIRKind());
+            operand = resultOperandFor(javaKind, input.getValueKind());
             emitMove(operand, input);
         }
         append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, getSafepointAddressValue()));
@@ -279,10 +280,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        LIRKind kind = newValue.getLIRKind();
-        assert kind.equals(expectedValue.getLIRKind());
+        ValueKind<?> kind = newValue.getValueKind();
+        assert kind.equals(expectedValue.getValueKind());
         SPARCKind memKind = (SPARCKind) kind.getPlatformKind();
-        Variable result = newVariable(newValue.getLIRKind());
+        Variable result = newVariable(newValue.getValueKind());
         append(new CompareAndSwapOp(result, asAllocatable(address), asAllocatable(expectedValue), asAllocatable(newValue)));
         return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
     }
@@ -336,7 +337,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == XWORD : inputKind;
         if (inputKind.isReference(0)) {
             // oop
@@ -357,7 +358,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == WORD;
         if (inputKind.isReference(0)) {
             // oop

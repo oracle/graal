@@ -23,10 +23,10 @@
 package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.graal.compiler.amd64.AMD64LIRKindTool;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.meta.LIRKind;
 
 public class AMD64HotSpotLIRKindTool extends AMD64LIRKindTool implements HotSpotLIRKindTool {
 

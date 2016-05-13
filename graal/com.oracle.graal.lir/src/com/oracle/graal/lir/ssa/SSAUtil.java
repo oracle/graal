@@ -25,6 +25,7 @@ package com.oracle.graal.lir.ssa;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -144,8 +145,8 @@ public final class SSAUtil {
         assert merge.getPredecessorCount() > 1;
         for (AbstractBlockBase<?> pred : merge.getPredecessors()) {
             forEachPhiValuePair(lir, merge, pred, (phiIn, phiOut) -> {
-                assert phiIn.getLIRKind().equals(phiOut.getLIRKind()) ||
-                                (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && phiIn.getLIRKind().isUnknownReference() && phiOut.getLIRKind().isValue());
+                assert phiIn.getValueKind().equals(phiOut.getValueKind()) ||
+                                (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && LIRKind.isUnknownReference(phiIn) && LIRKind.isValue(phiOut));
             });
         }
     }

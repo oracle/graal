@@ -23,10 +23,10 @@
 package com.oracle.graal.hotspot.aarch64;
 
 import com.oracle.graal.compiler.aarch64.AArch64LIRKindTool;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.meta.LIRKind;
 
 public class AArch64HotSpotLIRKindTool extends AArch64LIRKindTool implements HotSpotLIRKindTool {
 

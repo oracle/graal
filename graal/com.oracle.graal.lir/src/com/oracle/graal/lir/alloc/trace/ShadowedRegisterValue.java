@@ -48,8 +48,8 @@ public final class ShadowedRegisterValue extends CompositeValue {
     @Component({STACK}) protected AllocatableValue stackslot;
 
     public ShadowedRegisterValue(RegisterValue register, AllocatableValue stackslot) {
-        super(register.getLIRKind());
-        assert (register.getLIRKind().equals(stackslot.getLIRKind()));
+        super(register.getValueKind());
+        assert (register.getValueKind().equals(stackslot.getValueKind()));
         this.register = register;
         this.stackslot = stackslot;
     }

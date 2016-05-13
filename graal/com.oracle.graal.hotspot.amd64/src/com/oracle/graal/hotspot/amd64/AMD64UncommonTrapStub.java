@@ -51,7 +51,7 @@ final class AMD64UncommonTrapStub extends UncommonTrapStub {
     AMD64UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotVMConfig config, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         Register[] allocatable = new Register[]{rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14};
-        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, config, allocatable);
+        registerConfig = new AMD64HotSpotRegisterConfig(target, config, allocatable);
     }
 
     @Override

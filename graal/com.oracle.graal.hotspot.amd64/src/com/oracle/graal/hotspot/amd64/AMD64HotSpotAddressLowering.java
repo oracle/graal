@@ -27,6 +27,7 @@ import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.AMD64AddressLowering;
 import com.oracle.graal.compiler.amd64.AMD64AddressNode;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.vm.ci.meta.LIRKind;
 
 public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
 

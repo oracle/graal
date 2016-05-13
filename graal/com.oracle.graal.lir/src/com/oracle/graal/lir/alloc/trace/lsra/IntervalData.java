@@ -49,8 +49,8 @@ import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class IntervalData implements IntervalDumper {
 
@@ -224,7 +224,7 @@ public final class IntervalData implements IntervalDumper {
      * Creates a new variable for a derived interval. Note that the variable is not
      * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
      */
-    private Variable createVariable(LIRKind kind) {
+    private Variable createVariable(ValueKind<?> kind) {
         return new Variable(kind, intervalsSize++);
     }
 
@@ -491,7 +491,7 @@ public final class IntervalData implements IntervalDumper {
     private static void printInterval(TraceInterval interval, IntervalVisitor visitor) {
         Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
         AllocatableValue operand = interval.operand;
-        String type = isRegister(operand) ? "fixed" : operand.getLIRKind().getPlatformKind().toString();
+        String type = isRegister(operand) ? "fixed" : operand.getValueKind().getPlatformKind().toString();
         char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
 

@@ -34,6 +34,7 @@ import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -74,7 +75,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
@@ -178,7 +178,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public Value emitCompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AArch64Kind.QWORD;
         if (inputKind.isReference(0)) {
             // oop
@@ -199,7 +199,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public Value emitUncompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AArch64Kind.DWORD;
         if (inputKind.isReference(0)) {
             // oop
@@ -289,9 +289,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private void moveValueToThread(Value value, int offset) {
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        final int transferSize = value.getLIRKind().getPlatformKind().getSizeInBytes();
+        final int transferSize = value.getValueKind().getPlatformKind().getSizeInBytes();
         final int scaledDisplacement = offset >> NumUtil.log2Ceil(transferSize);
-        AArch64AddressValue address = new AArch64AddressValue(value.getLIRKind(), thread, Value.ILLEGAL, scaledDisplacement, true, AddressingMode.IMMEDIATE_SCALED);
+        AArch64AddressValue address = new AArch64AddressValue(value.getValueKind(), thread, Value.ILLEGAL, scaledDisplacement, true, AddressingMode.IMMEDIATE_SCALED);
         append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
     }
 
@@ -309,7 +309,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     public void emitReturn(JavaKind kind, Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(kind, input.getLIRKind());
+            operand = resultOperandFor(kind, input.getValueKind());
             emitMove(operand, input);
         }
         append(new AArch64HotSpotReturnOp(operand, getStub() != null, config));

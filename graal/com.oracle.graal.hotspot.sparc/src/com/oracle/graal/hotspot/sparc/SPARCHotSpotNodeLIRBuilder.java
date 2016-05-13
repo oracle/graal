@@ -27,6 +27,7 @@ import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.sparc.SPARC.g5;
 import static jdk.vm.ci.sparc.SPARC.o7;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.compiler.sparc.SPARCNodeLIRBuilder;
@@ -62,7 +63,6 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
 
@@ -96,10 +96,9 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         AllocatableValue address = gen.asAllocatable(operand(x.getAddress()));
         AllocatableValue cmpValue = gen.asAllocatable(operand(x.expectedValue()));
         AllocatableValue newValue = gen.asAllocatable(operand(x.newValue()));
-        LIRKind kind = cmpValue.getLIRKind();
-        assert kind.equals(newValue.getLIRKind());
+        assert cmpValue.getValueKind().equals(newValue.getValueKind());
 
-        Variable result = gen.newVariable(newValue.getLIRKind());
+        Variable result = gen.newVariable(newValue.getValueKind());
         append(new CompareAndSwapOp(result, address, cmpValue, newValue));
         setResult(x, result);
     }
@@ -120,11 +119,11 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         Value metaspaceMethodSrc = operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod());
-        AllocatableValue metaspaceMethod = g5.asValue(metaspaceMethodSrc.getLIRKind());
+        AllocatableValue metaspaceMethod = g5.asValue(metaspaceMethodSrc.getValueKind());
         gen.emitMove(metaspaceMethod, metaspaceMethodSrc);
 
         Value targetAddressSrc = operand(callTarget.computedAddress());
-        AllocatableValue targetAddress = o7.asValue(targetAddressSrc.getLIRKind());
+        AllocatableValue targetAddress = o7.asValue(targetAddressSrc.getValueKind());
         gen.emitMove(targetAddress, targetAddressSrc);
         append(new SPARCIndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethod, targetAddress, callState, config()));
     }
@@ -179,7 +178,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen.target()),
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen),
                         node.arguments());
         append(new SPARCBreakpointOp(parameters));
     }

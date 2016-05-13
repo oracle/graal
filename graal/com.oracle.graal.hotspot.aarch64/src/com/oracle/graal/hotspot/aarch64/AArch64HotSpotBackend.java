@@ -250,7 +250,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
             crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget());
+            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, this);
             // See definition of IC_Klass in c1_LIRAssembler_aarch64.cpp
             // equal to scratch(1) careful!
             Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;

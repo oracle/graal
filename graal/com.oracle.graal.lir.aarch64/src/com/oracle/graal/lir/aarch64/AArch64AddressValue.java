@@ -38,8 +38,8 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class AArch64AddressValue extends CompositeValue {
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);
@@ -54,7 +54,7 @@ public final class AArch64AddressValue extends CompositeValue {
     private final boolean scaled;
     private final AddressingMode addressingMode;
 
-    public AArch64AddressValue(LIRKind kind, AllocatableValue base, AllocatableValue offset, int immediate, boolean scaled, AddressingMode addressingMode) {
+    public AArch64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue offset, int immediate, boolean scaled, AddressingMode addressingMode) {
         super(kind);
         this.base = base;
         this.offset = offset;
@@ -103,7 +103,7 @@ public final class AArch64AddressValue extends CompositeValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newOffset = (AllocatableValue) proc.doValue(inst, offset, mode, flags);
         if (!base.identityEquals(newBase) || !offset.identityEquals(newOffset)) {
-            return new AArch64AddressValue(getLIRKind(), newBase, newOffset, immediate, scaled, addressingMode);
+            return new AArch64AddressValue(getValueKind(), newBase, newOffset, immediate, scaled, addressingMode);
         }
         return this;
     }

@@ -34,6 +34,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64LIRGenerator;
 import com.oracle.graal.compiler.amd64.AMD64MoveFactoryBase.BackupSlotProvider;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.Debug;
@@ -84,7 +85,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
@@ -245,7 +245,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitReturn(JavaKind kind, Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(kind, input.getLIRKind());
+            operand = resultOperandFor(kind, input.getValueKind());
             emitMove(operand, input);
         }
         if (pollOnReturnScratchRegister == null) {
@@ -499,7 +499,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
-        arithmeticLIRGen.emitStore(v.getLIRKind(), address, v, null);
+        arithmeticLIRGen.emitStore(v.getValueKind(), address, v, null);
     }
 
     @Override
@@ -552,7 +552,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AMD64Kind.QWORD;
         if (inputKind.isReference(0)) {
             // oop
@@ -573,7 +573,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LIRKind inputKind = pointer.getLIRKind();
+        LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AMD64Kind.DWORD;
         if (inputKind.isReference(0)) {
             // oop
@@ -594,7 +594,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        if (address.getLIRKind().getPlatformKind() == AMD64Kind.DWORD) {
+        if (address.getValueKind().getPlatformKind() == AMD64Kind.DWORD) {
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             if (encoding.shift <= 3) {

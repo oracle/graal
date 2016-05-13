@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.word.nodes;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -41,8 +42,8 @@ import com.oracle.graal.word.Word.Opcode;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Casts between Word and Object exposed by the {@link Opcode#FROM_ADDRESS},
@@ -115,15 +116,15 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
-        LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
+        ValueKind<?> kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
         assert kind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes();
 
-        if (trackedPointer && kind.isValue() && !value.getLIRKind().isValue()) {
+        if (trackedPointer && LIRKind.isValue(kind) && !LIRKind.isValue(value)) {
             // just change the PlatformKind, but don't drop reference information
-            kind = value.getLIRKind().changeType(kind.getPlatformKind());
+            kind = value.getValueKind().changeType(kind.getPlatformKind());
         }
 
-        if (kind.equals(value.getLIRKind())) {
+        if (kind.equals(value.getValueKind())) {
             generator.setResult(this, value);
         } else {
             AllocatableValue result = generator.getLIRGeneratorTool().newVariable(kind);

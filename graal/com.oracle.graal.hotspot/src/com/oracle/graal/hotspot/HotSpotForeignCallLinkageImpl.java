@@ -40,7 +40,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -109,8 +109,8 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, HotSpotForeignCallsProvider foreignCalls,
                     ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, descriptor, outgoingCcType);
-        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, descriptor, incomingCcType);
+        CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, outgoingCcType);
+        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, incomingCcType);
         HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
@@ -121,17 +121,17 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, ForeignCallDescriptor descriptor, Type ccType) {
+    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, ValueKindFactory<?> valueKindFactory,
+                    ForeignCallDescriptor descriptor, Type ccType) {
         assert ccType != null;
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
             parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess, wordTypes);
         }
-        TargetDescription target = codeCache.getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, wordTypes);
         RegisterConfig regConfig = codeCache.getRegisterConfig();
-        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target);
+        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, valueKindFactory);
     }
 
     private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, WordTypes wordTypes) {

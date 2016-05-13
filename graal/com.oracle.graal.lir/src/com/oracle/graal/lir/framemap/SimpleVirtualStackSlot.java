@@ -24,15 +24,15 @@ package com.oracle.graal.lir.framemap;
 
 import com.oracle.graal.lir.VirtualStackSlot;
 
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Represents a {@link VirtualStackSlot virtual stack slot} for a specific {@link LIRKind kind}.
+ * Represents a {@link VirtualStackSlot virtual stack slot} for a specific {@link ValueKind kind}.
  */
 public class SimpleVirtualStackSlot extends VirtualStackSlot {
 
-    public SimpleVirtualStackSlot(int id, LIRKind lirKind) {
-        super(id, lirKind);
+    public SimpleVirtualStackSlot(int id, ValueKind<?> kind) {
+        super(id, kind);
     }
 
 }

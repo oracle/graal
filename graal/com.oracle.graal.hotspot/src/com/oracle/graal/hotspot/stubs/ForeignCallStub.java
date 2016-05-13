@@ -27,15 +27,8 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -59,6 +52,15 @@ import com.oracle.graal.replacements.GraphKit;
 import com.oracle.graal.replacements.nodes.ReadRegisterNode;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
@@ -219,7 +221,7 @@ public class ForeignCallStub extends Stub {
     protected StructuredGraph getGraph() {
         WordTypes wordTypes = providers.getWordTypes();
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
-        boolean isObjectResult = !linkage.getOutgoingCallingConvention().getReturn().getLIRKind().isValue();
+        boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
 
         StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
         graph.disableUnsafeAccessTracking();

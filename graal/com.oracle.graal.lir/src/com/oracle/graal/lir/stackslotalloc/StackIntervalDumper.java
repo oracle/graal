@@ -46,7 +46,7 @@ class StackIntervalDumper implements IntervalDumper {
     private static void printInterval(StackInterval interval, IntervalVisitor visitor) {
         Value hint = interval.locationHint() != null ? interval.locationHint().getOperand() : null;
         VirtualStackSlot operand = interval.getOperand();
-        String type = operand.getLIRKind().getPlatformKind().toString();
+        String type = operand.getValueKind().getPlatformKind().toString();
         char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(operand, operand, interval.location(), hint, type, typeChar);
 

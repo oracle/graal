@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -41,6 +37,10 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.

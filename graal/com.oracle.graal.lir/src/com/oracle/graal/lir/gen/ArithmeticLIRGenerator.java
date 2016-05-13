@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.Variable;
 
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
@@ -53,8 +53,8 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
         Value b = bVal;
 
         if (isNumericInteger(a.getPlatformKind())) {
-            LIRKind aKind = a.getLIRKind();
-            LIRKind bKind = b.getLIRKind();
+            LIRKind aKind = a.getValueKind(LIRKind.class);
+            LIRKind bKind = b.getValueKind(LIRKind.class);
             assert a.getPlatformKind() == b.getPlatformKind();
 
             if (aKind.isUnknownReference()) {
@@ -98,8 +98,8 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
         Value b = bVal;
 
         if (isNumericInteger(a.getPlatformKind())) {
-            LIRKind aKind = a.getLIRKind();
-            LIRKind bKind = b.getLIRKind();
+            LIRKind aKind = a.getValueKind(LIRKind.class);
+            LIRKind bKind = b.getValueKind(LIRKind.class);
             assert a.getPlatformKind() == b.getPlatformKind();
 
             if (aKind.isUnknownReference()) {

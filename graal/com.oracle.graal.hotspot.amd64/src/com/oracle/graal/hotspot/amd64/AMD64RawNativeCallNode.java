@@ -104,7 +104,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         }
         JavaType returnType = toJavaType(stamp(), gen.getLIRGeneratorTool().getMetaAccess());
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.NativeCall, returnType, parameterTypes,
-                        generator.getLIRGeneratorTool().target());
+                        generator.getLIRGeneratorTool());
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
         if (this.getStackKind() != JavaKind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));

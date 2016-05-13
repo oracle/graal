@@ -32,6 +32,7 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.metaspaceMe
 
 import com.oracle.graal.compiler.aarch64.AArch64NodeLIRBuilder;
 import com.oracle.graal.compiler.aarch64.AArch64NodeMatchRules;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.debug.Debug;
@@ -69,8 +70,8 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * LIR generator specialized for AArch64 HotSpot.
@@ -114,7 +115,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue.getLIRKind() + " != " + param.stamp();
+            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue.getValueKind() + " != " + param.stamp();
             setResult(param, gen.emitMove(paramValue));
         }
     }
@@ -143,8 +144,8 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         Value metaspaceMethodSrc = operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod());
         Value targetAddressSrc = operand(callTarget.computedAddress());
-        AllocatableValue metaspaceMethodDst = metaspaceMethodRegister.asValue(metaspaceMethodSrc.getLIRKind());
-        AllocatableValue targetAddressDst = inlineCacheRegister.asValue(targetAddressSrc.getLIRKind());
+        AllocatableValue metaspaceMethodDst = metaspaceMethodRegister.asValue(metaspaceMethodSrc.getValueKind());
+        AllocatableValue targetAddressDst = inlineCacheRegister.asValue(targetAddressSrc.getValueKind());
         gen.emitMove(metaspaceMethodDst, metaspaceMethodSrc);
         gen.emitMove(targetAddressDst, targetAddressSrc);
         append(new AArch64IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState, config()));
@@ -185,10 +186,10 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
         AllocatableValue address = gen.asAllocatable(operand(x.getAddress()));
         AllocatableValue cmpValue = gen.asAllocatable(operand(x.expectedValue()));
         AllocatableValue newValue = gen.asAllocatable(operand(x.newValue()));
-        LIRKind kind = cmpValue.getLIRKind();
-        assert kind.equals(newValue.getLIRKind());
+        ValueKind<?> kind = cmpValue.getValueKind();
+        assert kind.equals(newValue.getValueKind());
 
-        Variable result = gen.newVariable(newValue.getLIRKind());
+        Variable result = gen.newVariable(newValue.getValueKind());
         Variable scratch = gen.newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new CompareAndSwapOp(result, cmpValue, newValue, address, scratch));
         setResult(x, result);
@@ -201,7 +202,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen.target()),
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen),
                         node.arguments());
         append(new AArch64BreakpointOp(parameters));
     }

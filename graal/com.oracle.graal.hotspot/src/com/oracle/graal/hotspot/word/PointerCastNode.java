@@ -56,7 +56,7 @@ public final class PointerCastNode extends FloatingNode implements LIRLowerable,
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
-        assert value.getLIRKind().equals(generator.getLIRGeneratorTool().getLIRKind(stamp())) : "PointerCastNode shouldn't change the LIRKind";
+        assert value.getValueKind().equals(generator.getLIRGeneratorTool().getLIRKind(stamp())) : "PointerCastNode shouldn't change the LIRKind";
 
         generator.setResult(this, value);
     }

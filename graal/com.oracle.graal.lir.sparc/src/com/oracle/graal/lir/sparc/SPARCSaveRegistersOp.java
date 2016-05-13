@@ -101,7 +101,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
                 Register savedRegister = savedRegisters[i];
                 StackSlot slot = asStackSlot(slots[i]);
                 SPARCAddress slotAddress = (SPARCAddress) crb.asAddress(slot);
-                RegisterValue input = savedRegister.asValue(slot.getLIRKind());
+                RegisterValue input = savedRegister.asValue(slot.getValueKind());
                 SPARCMove.emitStore(input, slotAddress, slot.getPlatformKind(), DUMMY, null, crb, masm);
             }
         }

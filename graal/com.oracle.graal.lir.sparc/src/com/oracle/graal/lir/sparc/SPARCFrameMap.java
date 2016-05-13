@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.framemap.FrameMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARCKind;
 
@@ -98,7 +99,7 @@ public final class SPARCFrameMap extends FrameMap {
      * In SPARC we have spill slots word aligned.
      */
     @Override
-    public int spillSlotSize(LIRKind kind) {
+    public int spillSlotSize(ValueKind<?> kind) {
         return kind.getPlatformKind().getSizeInBytes();
     }
 

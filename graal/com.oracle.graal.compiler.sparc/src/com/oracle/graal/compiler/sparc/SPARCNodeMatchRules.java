@@ -28,6 +28,7 @@ import static jdk.vm.ci.sparc.SPARCKind.HWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.gen.NodeMatchRules;
 import com.oracle.graal.compiler.match.ComplexMatchResult;
 import com.oracle.graal.compiler.match.MatchRule;
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.memory.Access;
 
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
 

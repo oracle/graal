@@ -59,8 +59,8 @@ import com.oracle.graal.options.OptionType;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This optimization tries to improve the handling of constants by replacing a single definition of
@@ -303,7 +303,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 if (constTree.get(Flags.CANDIDATE, block)) {
                     constTree.set(Flags.MATERIALIZE, block);
                     // create and insert load
-                    insertLoad(tree.getConstant(), tree.getVariable().getLIRKind(), block, constTree.getCost(block).getUsages());
+                    insertLoad(tree.getConstant(), tree.getVariable().getValueKind(), block, constTree.getCost(block).getUsages());
                 } else {
                     for (AbstractBlockBase<?> dominated : block.getDominated()) {
                         if (constTree.isMarked(dominated)) {
@@ -314,7 +314,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             }
         }
 
-        private void insertLoad(Constant constant, LIRKind kind, AbstractBlockBase<?> block, List<UseEntry> usages) {
+        private void insertLoad(Constant constant, ValueKind<?> kind, AbstractBlockBase<?> block, List<UseEntry> usages) {
             assert usages != null && usages.size() > 0 : String.format("No usages %s %s %s", constant, block, usages);
             // create variable
             Variable variable = lirGen.newVariable(kind);

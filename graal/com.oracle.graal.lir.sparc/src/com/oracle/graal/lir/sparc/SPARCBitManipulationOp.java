@@ -30,6 +30,7 @@ import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -38,7 +39,6 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 

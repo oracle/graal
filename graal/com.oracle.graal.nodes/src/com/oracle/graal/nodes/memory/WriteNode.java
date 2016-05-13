@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.memory;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
@@ -40,8 +41,6 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
-
-import jdk.vm.ci.meta.LIRKind;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.

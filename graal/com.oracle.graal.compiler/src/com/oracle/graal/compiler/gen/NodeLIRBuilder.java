@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
@@ -43,8 +44,8 @@ import com.oracle.graal.compiler.match.ComplexMatchValue;
 import com.oracle.graal.compiler.match.MatchRuleRegistry;
 import com.oracle.graal.compiler.match.MatchStatement;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Node;
@@ -106,7 +107,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
@@ -244,7 +244,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             ValueNode node = phi.valueAt(i);
             Value value = getOperand(node);
             if (value != null) {
-                values.add(value.getLIRKind());
+                values.add(value.getValueKind(LIRKind.class));
             } else {
                 assert isPhiInputFromBackedge(phi, i) : String.format("Input %s to phi node %s is not yet available although it is not coming from a loop back edge", node, phi);
                 // non-java constant -> get LIRKind from stamp.
@@ -300,13 +300,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                  * new Variable.
                  */
                 value = gen.emitMove(value);
-            } else if (!allowObjectConstantToStackMove() && node instanceof ConstantNode && !value.getLIRKind().isValue()) {
+            } else if (!allowObjectConstantToStackMove() && node instanceof ConstantNode && !LIRKind.isValue(value)) {
                 /*
                  * Some constants are not allowed as inputs for PHIs in certain backends. Explicitly
                  * create a copy of this value to force it into a register. The new variable is only
                  * used in the PHI.
                  */
-                Variable result = gen.newVariable(value.getLIRKind());
+                Variable result = gen.newVariable(value.getValueKind());
                 gen.emitMove(result, value);
                 value = result;
             }
@@ -472,7 +472,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue + " " + getLIRGeneratorTool().getLIRKind(param.stamp());
+            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue + " " + getLIRGeneratorTool().getLIRKind(param.stamp());
             setResult(param, gen.emitMove(paramValue));
         }
     }
@@ -574,7 +574,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
         CallingConvention invokeCc = gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()),
-                        callTarget.signature(), gen.target());
+                        callTarget.signature(), gen);
         gen.getResult().getFrameMapBuilder().callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());

@@ -31,6 +31,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -42,8 +43,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class SSIVerifier {
 
@@ -86,8 +87,8 @@ public final class SSIVerifier {
         for (int i = 0; i < outgoingSize; i++) {
             Value incomingValue = in.getIncomingValue(i);
             Value outgoingValue = out.getOutgoingValue(i);
-            LIRKind inLIRKind = incomingValue.getLIRKind();
-            LIRKind outLIRKind = outgoingValue.getLIRKind();
+            ValueKind<?> inLIRKind = incomingValue.getValueKind();
+            ValueKind<?> outLIRKind = outgoingValue.getValueKind();
             assert LIRKind.verifyMoveKinds(inLIRKind, outLIRKind) || incomingValue.equals(Value.ILLEGAL) : String.format("Outgoing LIRKind %s (%s) an and incoming LIRKind %s (%s) do not match",
                             outgoingValue, outLIRKind, incomingValue, inLIRKind);
         }

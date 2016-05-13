@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.memory;
 
 import static com.oracle.graal.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -52,7 +53,6 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -33,7 +34,6 @@ import com.oracle.graal.lir.sparc.SPARCBlockEndOp;
 import com.oracle.graal.lir.sparc.SPARCCall;
 
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.sparc.SPARC;
 

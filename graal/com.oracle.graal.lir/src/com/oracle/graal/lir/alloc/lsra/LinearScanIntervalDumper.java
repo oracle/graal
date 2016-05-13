@@ -49,7 +49,7 @@ class LinearScanIntervalDumper implements IntervalDumper {
     private static void printInterval(Interval interval, IntervalVisitor visitor) {
         Value hint = interval.locationHint(false) != null ? interval.locationHint(false).operand : null;
         AllocatableValue operand = interval.operand;
-        String type = isRegister(operand) ? "fixed" : operand.getLIRKind().getPlatformKind().toString();
+        String type = isRegister(operand) ? "fixed" : operand.getValueKind().getPlatformKind().toString();
         char typeChar = operand.getPlatformKind().getTypeChar();
         visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
 

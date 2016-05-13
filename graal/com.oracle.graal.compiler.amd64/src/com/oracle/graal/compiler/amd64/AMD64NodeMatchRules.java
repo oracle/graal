@@ -41,6 +41,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.compiler.gen.NodeMatchRules;
@@ -72,7 +73,6 @@ import com.oracle.graal.nodes.util.GraphUtil;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 

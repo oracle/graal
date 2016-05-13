@@ -42,6 +42,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.CMOV;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Op3s;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
@@ -81,9 +82,9 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARCKind;
 
@@ -143,7 +144,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
      * integer kinds to WORD.
      */
     @Override
-    public LIRKind toRegisterKind(LIRKind kind) {
+    public <K extends ValueKind<K>> K toRegisterKind(K kind) {
         switch ((SPARCKind) kind.getPlatformKind()) {
             case BYTE:
             case HWORD:
@@ -157,7 +158,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         if (address instanceof SPARCAddressValue) {
             return (SPARCAddressValue) address;
         } else {
-            LIRKind kind = address.getLIRKind();
+            ValueKind<?> kind = address.getValueKind();
             if (address instanceof JavaConstant) {
                 long displacement = ((JavaConstant) address).asLong();
                 if (SPARCAssembler.isSimm13(displacement)) {
@@ -179,7 +180,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public void emitReturn(JavaKind javaKind, Value input) {
         AllocatableValue operand = Value.ILLEGAL;
         if (input != null) {
-            operand = resultOperandFor(javaKind, input.getLIRKind());
+            operand = resultOperandFor(javaKind, input.getValueKind());
             emitMove(operand, input);
         }
         append(new ReturnOp(operand));
@@ -271,7 +272,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         } else {
             throw GraalError.shouldNotReachHere();
         }
-        Variable result = newVariable(trueValue.getLIRKind());
+        Variable result = newVariable(trueValue.getValueKind());
         ConditionFlag finalCondition = SPARCControlFlow.fromCondition(cmpSPARCKind.isInteger(), mirrored ? cond.mirror() : cond, unorderedIsTrue);
         CC cc = CC.forKind(cmpSPARCKind);
         append(new CondMoveOp(cmove, cc, finalCondition, actualTrueValue, actualFalseValue, result));
@@ -345,7 +346,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         emitIntegerTest(left, right);
-        Variable result = newVariable(trueValue.getLIRKind());
+        Variable result = newVariable(trueValue.getValueKind());
         ConditionFlag flag = SPARCControlFlow.fromCondition(true, Condition.EQ, false);
         CC cc = CC.forKind(left.getPlatformKind());
         append(new CondMoveOp(MOVicc, cc, flag, loadSimm11(trueValue), loadSimm11(falseValue), result));
@@ -364,7 +365,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        AllocatableValue scratchValue = newVariable(key.getLIRKind());
+        AllocatableValue scratchValue = newVariable(key.getValueKind());
         AllocatableValue base = AllocatableValue.ILLEGAL;
         for (Constant c : strategy.getKeyConstants()) {
             if (!(c instanceof JavaConstant) || !getMoveFactory().canInlineConstant((JavaConstant) c)) {
@@ -383,7 +384,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input
         // value
-        Variable tmp = newVariable(key.getLIRKind());
+        Variable tmp = newVariable(key.getValueKind());
         emitMove(tmp, key);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().arch.getWordKind()))));
     }

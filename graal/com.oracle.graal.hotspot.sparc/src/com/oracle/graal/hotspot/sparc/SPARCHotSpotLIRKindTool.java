@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.sparc.SPARCLIRKindTool;
 import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
 
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.sparc.SPARCKind;
 
 public class SPARCHotSpotLIRKindTool extends SPARCLIRKindTool implements HotSpotLIRKindTool {

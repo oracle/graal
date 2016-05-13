@@ -23,18 +23,20 @@
 package com.oracle.graal.compiler.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PrimitiveConstant;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.jtt.LIRTest;
 import com.oracle.graal.lir.jtt.LIRTestSpecification;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 public class ConstantStackMoveTest extends LIRTest {
     @Before
@@ -54,7 +56,7 @@ public class ConstantStackMoveTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             PrimitiveConstant constantValue = JavaConstant.forBoxedPrimitive(primitive);
-            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(gen.target().getLIRKind(constantValue.getJavaKind()));
+            VirtualStackSlot s1 = frameMapBuilder.allocateSpillSlot(LIRKind.fromJavaKind(gen.target().arch, constantValue.getJavaKind()));
             // move stuff around
             gen.emitMoveConstant(s1, constantValue);
             gen.emitBlackhole(s1);

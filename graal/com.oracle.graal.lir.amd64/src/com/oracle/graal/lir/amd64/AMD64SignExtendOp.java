@@ -29,13 +29,13 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 
 @Opcode("CDQ")
 public class AMD64SignExtendOp extends AMD64LIRInstruction {
