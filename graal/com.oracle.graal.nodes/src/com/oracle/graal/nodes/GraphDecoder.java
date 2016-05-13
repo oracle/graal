@@ -1010,14 +1010,18 @@ public class GraphDecoder {
              * or value numbering.
              */
             node = methodScope.graph.addWithoutUnique(node);
-
         } else {
             /* Allow subclasses to canonicalize and intercept nodes. */
+            Node addedNode = node;
             node = handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
             if (!node.isAlive()) {
+                addedNode = node;
                 node = addFloatingNode(methodScope, node);
             }
-            node = handleFloatingNodeAfterAdd(methodScope, loopScope, node);
+            /* The addedNode can be either the original value of node, or an existing node from the graph, or a node
+             * created by handleFloatingNodeBeforeAdd.
+             */
+            node = handleFloatingNodeAfterAdd(methodScope, loopScope, node, addedNode == node);
         }
         registerNode(loopScope, nodeOrderId, node, false, false);
         return node;
@@ -1073,9 +1077,10 @@ public class GraphDecoder {
      * @param methodScope The current method.
      * @param loopScope The current loop.
      * @param node The node to be canonicalized.
+     * @param newlyAdded
      * @return The replacement for the node, or the node itself.
      */
-    protected Node handleFloatingNodeAfterAdd(MethodScope methodScope, LoopScope loopScope, Node node) {
+    protected Node handleFloatingNodeAfterAdd(MethodScope methodScope, LoopScope loopScope, Node node, boolean newlyAdded) {
         return node;
     }
 
