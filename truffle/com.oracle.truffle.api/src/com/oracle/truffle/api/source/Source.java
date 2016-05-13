@@ -521,7 +521,7 @@ public abstract class Source {
     }
 
     final int getCodeLength() {
-        return content() == null ? getCode().length() : content().getCodeLength();
+        return content().getCodeLength();
     }
 
     /**
@@ -748,7 +748,7 @@ public abstract class Source {
      * different source types.
      */
     Object getHashKey() {
-        return content() == null ? getName() : content().getHashKey();
+        return content().getHashKey();
     }
 
     final TextMap getTextMap() {
@@ -815,29 +815,23 @@ public abstract class Source {
         return mimeType.equals(other.mimeType);
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Source) {
-            Source other = (Source) obj;
-            if (content() == null) {
-                return super.equals(obj);
-            }
-            return content().equals(other.content()) && equalMime(other);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        if (content() == null) {
-            return super.hashCode();
-        }
-        return content().hashCode();
-    }
-
     private static class Impl extends Source implements Cloneable {
         Impl(Content content) {
             super(content);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Source) {
+                Source other = (Source) obj;
+                return content().equals(other.content()) && equalMime(other);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return content().hashCode();
         }
     }
 }
