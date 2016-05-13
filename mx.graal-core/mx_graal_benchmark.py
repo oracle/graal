@@ -147,20 +147,21 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def benchmarks(self):
         return self.daCapoIterations().keys()
 
-    def daCapoSuiteName(self):
+    def daCapoSuiteTitle(self):
+        """Title string used in the output next to the performance result."""
         raise NotImplementedError()
 
     def successPatterns(self):
         return [
             re.compile(
-                r"^===== " + re.escape(self.daCapoSuiteName()) + " ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
+                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
     def failurePatterns(self):
         return [
             re.compile(
-                r"^===== " + re.escape(self.daCapoSuiteName()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
@@ -171,7 +172,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
           mx_benchmark.StdOutRule(
-            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -186,7 +187,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           ),
           mx_benchmark.StdOutRule(
-            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -201,7 +202,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           ),
           mx_benchmark.StdOutRule(
-            r"===== " + re.escape(self.daCapoSuiteName()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -219,20 +220,20 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
 
 _daCapoIterations = {
-    "avrora"    : 20,
-    "batik"     : 40,
-    "eclipse"   : -1,
-    "fop"       : 40,
-    "h2"        : 20,
-    "jython"    : 40,
-    "luindex"   : 15,
-    "lusearch"  : 40,
-    "pmd"       : 30,
-    "sunflow"   : 30,
-    "tomcat"    : 50,
-    "tradebeans": -1,
-    "tradesoap" : -1,
-    "xalan"     : 20,
+    "avrora"     : 20,
+    "batik"      : 40,
+    "eclipse"    : -1,
+    "fop"        : 40,
+    "h2"         : 20,
+    "jython"     : 40,
+    "luindex"    : 15,
+    "lusearch"   : 40,
+    "pmd"        : 30,
+    "sunflow"    : 30,
+    "tomcat"     : 50,
+    "tradebeans" : -1,
+    "tradesoap"  : -1,
+    "xalan"      : 20,
 }
 
 
@@ -242,7 +243,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
     def name(self):
         return "dacapo"
 
-    def daCapoSuiteName(self):
+    def daCapoSuiteTitle(self):
         return "DaCapo 9.12"
 
     def daCapoClasspathEnvVarName(self):
@@ -266,6 +267,44 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+
+
+_daCapoScalaConfig = {
+    "actors"      : 10,
+    "apparat"     : 5,
+    "factorie"    : 5,
+    "kiama"       : 40,
+    "scalac"      : 20,
+    "scaladoc"    : 15,
+    "scalap"      : 120,
+    "scalariform" : 30,
+    "scalatest"   : 50,
+    "scalaxb"     : 35,
+    "specs"       : 20,
+    "tmt"         : 12
+}
+
+
+class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+    """Scala DaCapo benchmark suite implementation."""
+
+    def name(self):
+        return "scala-dacapo"
+
+    def daCapoSuiteTitle(self):
+        return "DaCapo 0.1.0-SNAPSHOT"
+
+    def daCapoClasspathEnvVarName(self):
+        return "DACAPO_SCALA_CP"
+
+    def daCapoLibraryName(self):
+        return "DACAPO_SCALA"
+
+    def daCapoIterations(self):
+        return _daCapoScalaConfig
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 
 
 _allSpecJVM2008Benchs = [
