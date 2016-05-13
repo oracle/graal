@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.types.vector;
 
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
@@ -42,7 +41,6 @@ public final class LLVMI16Vector extends LLVMVector<Short> {
         super(addr, nrElements);
     }
 
-    @ExplodeLoop
     public static LLVMI16Vector fromI16Array(LLVMAddress target, short[] vals) {
         LLVMAddress currentTarget = target;
         for (int i = 0; i < vals.length; i++) {
