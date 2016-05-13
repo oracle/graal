@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.impl;
 
+import java.util.Arrays;
+
 public final class LLVMParserAsserts {
 
     private LLVMParserAsserts() {
@@ -37,7 +39,7 @@ public final class LLVMParserAsserts {
     public static Object[] assertNoNullElement(Object[] objects) {
         for (Object o : objects) {
             if (o == null) {
-                throw new AssertionError();
+                throw new AssertionError(Arrays.toString(objects));
             }
         }
         return objects;
