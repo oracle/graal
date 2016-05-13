@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.parser.impl;
 
 public final class LLVMParserAsserts {
 
+    private LLVMParserAsserts() {
+    }
+
     public static Object[] assertNoNullElement(Object[] objects) {
         for (Object o : objects) {
             if (o == null) {
