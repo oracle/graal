@@ -224,6 +224,6 @@ public class SourceTextTest {
         Source source = Source.fromText("Hi", name);
         assertEquals(name, source.getName());
         assertEquals(name, source.getShortName());
-        assertNull(source.getPath());
+        assertEquals(name, source.getPath());
     }
 }

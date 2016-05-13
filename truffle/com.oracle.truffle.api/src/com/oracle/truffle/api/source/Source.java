@@ -39,6 +39,7 @@ import java.util.logging.Logger;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Objects;
 import java.util.logging.Level;
 
 /**
@@ -218,8 +219,8 @@ public abstract class Source {
 
     /**
      * Creates an anonymous source from literal text. The {@link #getName() name} of the source is
-     * <code>name</code>. The {@link #getShortName()} is also <code>name</code>, the
-     * {@link #getPath() path} is <code>null</code>.
+     * <code>name</code>. The {@link #getShortName()} is also <code>name</code>, as well as
+     * {@link #getPath() path}.
      *
      * @param chars textual source code
      * @param name a note about the origin, for error messages and debugging - used as
@@ -903,7 +904,7 @@ public abstract class Source {
                     }
                 } else {
                     prev = now;
-                    if (source.getName().equals(name)) {
+                    if (Objects.equals(source.getName(), name)) {
                         return source;
                     }
                 }

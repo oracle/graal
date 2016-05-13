@@ -53,7 +53,7 @@ public class SourceTest {
         Source s1 = Source.fromAppendableText("<stdio>");
         assertEquals("<stdio>", s1.getName());
         assertEquals("<stdio>", s1.getShortName());
-        assertEquals("<stdio>", s1.getPath());
+        assertEquals("Appendable path is based on name", "<stdio>", s1.getPath());
         assertNull("No mime type assigned", s1.getMimeType());
         s1.appendCode("// Hello");
         Source s2 = s1.withMimeType("text/x-c");
@@ -153,7 +153,7 @@ public class SourceTest {
         assertEquals(literal.getName(), description);
         assertEquals(literal.getShortName(), description);
         assertEquals(literal.getCode(), code);
-        assertNull(literal.getPath());
+        assertEquals("Non-appendable path is based on name", description, literal.getPath());
         assertNull(literal.getURL());
         final char[] buffer = new char[code.length()];
         assertEquals(literal.getReader().read(buffer), code.length());
@@ -223,7 +223,7 @@ public class SourceTest {
     @Test
     public void withPath() throws Exception {
         Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertNull(orig.getPath());
+        assertEquals("Path is derived from name", "/tmp/hi.tmp", orig.getPath());
         Source source = orig.withPath("c:\\temp\\hi.txt");
         assertEquals("c:\\temp\\hi.txt", source.getPath());
     }
