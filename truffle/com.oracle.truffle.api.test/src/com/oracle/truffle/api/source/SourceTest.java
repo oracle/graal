@@ -51,6 +51,9 @@ public class SourceTest {
     @Test
     public void assignMimeTypeAndIdentityForApppendable() {
         Source s1 = Source.fromAppendableText("<stdio>");
+        assertEquals("<stdio>", s1.getName());
+        assertEquals("<stdio>", s1.getShortName());
+        assertEquals("<stdio>", s1.getPath());
         assertNull("No mime type assigned", s1.getMimeType());
         s1.appendCode("// Hello");
         Source s2 = s1.withMimeType("text/x-c");

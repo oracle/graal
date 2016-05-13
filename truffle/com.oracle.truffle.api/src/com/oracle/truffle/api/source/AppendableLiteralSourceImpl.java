@@ -33,21 +33,21 @@ import java.util.List;
 
 final class AppendableLiteralSourceImpl extends Content {
 
-    private final String description;
+    private final String name;
     final List<CharSequence> codeList = new ArrayList<>();
 
-    AppendableLiteralSourceImpl(String description) {
-        this.description = description;
+    AppendableLiteralSourceImpl(String name) {
+        this.name = name;
     }
 
     @Override
     public String getName() {
-        return description;
+        return name;
     }
 
     @Override
     public String getShortName() {
-        return description;
+        return name;
     }
 
     @Override
@@ -57,7 +57,7 @@ final class AppendableLiteralSourceImpl extends Content {
 
     @Override
     public String getPath() {
-        return description;
+        return name;
     }
 
     @Override
@@ -95,7 +95,7 @@ final class AppendableLiteralSourceImpl extends Content {
 
     @Override
     Object getHashKey() {
-        return description;
+        return name;
     }
 
 }

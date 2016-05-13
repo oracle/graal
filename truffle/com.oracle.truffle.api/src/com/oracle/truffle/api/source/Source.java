@@ -235,16 +235,17 @@ public abstract class Source {
     }
 
     /**
-     * Creates an anonymous source from literal text that is provided incrementally after creation:
-     * not named and not indexed.
+     * Creates an anonymous source from literal text that is provided incrementally after creation.
+     * The {@link #getName() name}, {@link #getShortName() short name} and
+     * {@link #getPath() path} are set to <code>name</code>.
      *
-     * @param description a note about the origin, for error messages and debugging
+     * @param name name for the newly created source
      * @return a newly created, non-indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
      */
-    public static Source fromAppendableText(String description) {
+    public static Source fromAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
-        Content content = new AppendableLiteralSourceImpl(description);
+        Content content = new AppendableLiteralSourceImpl(name);
         return new Impl(content);
     }
 
