@@ -250,7 +250,7 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, source representation
      * @since 0.8 or earlier
-     * @deprecated use {@link #fromText(java.lang.String)}
+     * @deprecated use {@link #fromText(java.lang.CharSequence, java.lang.String)}
      */
     @Deprecated
     public static Source fromNamedText(CharSequence chars, String name) {
