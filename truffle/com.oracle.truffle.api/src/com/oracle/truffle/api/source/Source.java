@@ -114,6 +114,9 @@ public abstract class Source {
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
     private final Content content;
+    private String name;
+    private String shortName;
+    private String path;
     private String mimeType;
     private TextMap textMap;
 
@@ -229,13 +232,14 @@ public abstract class Source {
      * Creates an anonymous source from literal text: not named and not indexed.
      *
      * @param chars textual source code
-     * @param description a note about the origin, for error messages and debugging
+     * @param name a note about the origin, for error messages and debugging - used as
+     *            {@link Source#getName()} and {@link Source#getShortName()}
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
      */
-    public static Source fromText(CharSequence chars, String description) {
+    public static Source fromText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
-        Content content = new LiteralSourceImpl(description, chars.toString());
+        Content content = new LiteralSourceImpl(name, chars.toString());
         return new Impl(content);
     }
 
@@ -431,13 +435,17 @@ public abstract class Source {
 
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
-     * name of a guest language source code file.
+     * name of a guest language source code file. Name is supposed to be at least as long as
+     * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
+     *
+     * One can change name for an existing source by creating its clone via
+     * {@link #withName(java.lang.String)} method.
      *
      * @return the name of the guest language program
      * @since 0.8 or earlier
      */
     public String getName() {
-        return content().getName();
+        return name == null ? content().getName() : name;
     }
 
     /**
@@ -445,20 +453,27 @@ public abstract class Source {
      * described in {@link #getName()}). For example, this could be just the name of the file,
      * rather than a full path.
      *
+     * One can change name for an existing source by creating its clone via
+     * {@link #withShortName(java.lang.String)} method.
+     *
      * @return the short name of the guest language program
      * @since 0.8 or earlier
      */
     public String getShortName() {
-        return content().getShortName();
+        return shortName == null ? content().getShortName() : shortName;
     }
 
     /**
-     * The normalized, canonical name if the source is a file.
+     * The fully qualified name of the source. In case this source originates from a {@link File},
+     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     *
+     * One can change path associated with a file by calling {@link #withPath(java.lang.String)} and
+     * obtaining cloned instance of the source with new path.
      *
      * @since 0.8 or earlier
      */
     public String getPath() {
-        return content().getPath();
+        return path == null ? content().getPath() : path;
     }
 
     /**
@@ -783,6 +798,57 @@ public abstract class Source {
         try {
             Source another = (Source) clone();
             another.mimeType = mime;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * Associates the source with specified name.
+     *
+     * @param name name to be returned from {@link #getName()} method
+     * @return new (identical) source, with changed {@link #getName()}
+     * @since 0.14
+     */
+    public final Source withName(String name) {
+        try {
+            Source another = (Source) clone();
+            another.name = name;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * Associates the source with specified short name.
+     *
+     * @param shortName name to be returned from {@link #getShortName()} method
+     * @return new (identical) source, with changed {@link #getShortName()}
+     * @since 0.14
+     */
+    public final Source withShortName(String shortName) {
+        try {
+            Source another = (Source) clone();
+            another.shortName = shortName;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * Associates the source with specified short name.
+     *
+     * @param path name to be returned from {@link #getPath()} method
+     * @return new (identical) source, with changed {@link #getPath()}
+     * @since 0.14
+     */
+    public final Source withPath(String path) {
+        try {
+            Source another = (Source) clone();
+            another.path = path;
             return another;
         } catch (CloneNotSupportedException ex) {
             throw new IllegalStateException(ex);

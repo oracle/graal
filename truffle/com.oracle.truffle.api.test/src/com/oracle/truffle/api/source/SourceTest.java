@@ -179,4 +179,28 @@ public class SourceTest {
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
     }
+
+    @Test
+    public void withName() throws Exception {
+        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
+        assertEquals("/tmp/hi.tmp", orig.getName());
+        Source source = orig.withName("/path/hi.txt");
+        assertEquals("/path/hi.txt", source.getName());
+    }
+
+    @Test
+    public void withShortName() throws Exception {
+        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
+        assertEquals("/tmp/hi.tmp", orig.getShortName());
+        Source source = orig.withShortName("hi.txt");
+        assertEquals("hi.txt", source.getShortName());
+    }
+
+    @Test
+    public void withPath() throws Exception {
+        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
+        assertNull(orig.getPath());
+        Source source = orig.withPath("c:\\temp\\hi.txt");
+        assertEquals("c:\\temp\\hi.txt", source.getPath());
+    }
 }
