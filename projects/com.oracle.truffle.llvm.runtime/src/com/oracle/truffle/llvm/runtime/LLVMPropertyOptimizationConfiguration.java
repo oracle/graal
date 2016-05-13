@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 /**
  * Provides a optimization configuration based on Java properties.
  */
-public class LLVMPropertyOptimizationConfiguration implements LLVMOptimizationConfiguration {
+public final class LLVMPropertyOptimizationConfiguration implements LLVMOptimizationConfiguration {
 
     @Override
     public boolean specializeForExpectIntrinsic() {

@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-public class LLVMParserException extends RuntimeException {
+public final class LLVMParserException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 

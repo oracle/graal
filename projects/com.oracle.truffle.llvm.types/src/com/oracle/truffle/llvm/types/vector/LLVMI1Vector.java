@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public class LLVMI1Vector extends LLVMVector<Boolean> {
+public final class LLVMI1Vector extends LLVMVector<Boolean> {
 
     private static final int I1_SIZE = 1;
 

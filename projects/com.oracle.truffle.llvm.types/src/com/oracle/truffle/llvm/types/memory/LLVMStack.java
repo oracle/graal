@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 /**
  * Implements a stack that grows from the top to the bottom.
  */
-public class LLVMStack extends LLVMMemory {
+public final class LLVMStack extends LLVMMemory {
 
     private static final int STACK_SIZE_KB = 8192 * 10;
 

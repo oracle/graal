@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public class LLVMDoubleVector extends LLVMVector<Double> {
+public final class LLVMDoubleVector extends LLVMVector<Double> {
 
     private static final int DOUBLE_SIZE = 8;
 

@@ -784,6 +784,7 @@ def clangformatcheck(args=None):
     checkCFile(_suite.dir + '/include/truffle.h')
     checkCFiles(_testDir)
     checkCFiles(_interopTestDir)
+    checkCFiles(_libPath)
 
 def checkCFiles(targetDir):
     error = False
