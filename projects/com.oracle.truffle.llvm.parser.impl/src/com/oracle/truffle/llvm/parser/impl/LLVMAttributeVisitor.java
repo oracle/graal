@@ -38,7 +38,7 @@ import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.TargetSpecificAttribute;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
-public class LLVMAttributeVisitor {
+public final class LLVMAttributeVisitor {
 
     public static void visitFunctionHeader(FunctionHeader header) {
         FunctionAttributes allAttributes = header.getAttrs();

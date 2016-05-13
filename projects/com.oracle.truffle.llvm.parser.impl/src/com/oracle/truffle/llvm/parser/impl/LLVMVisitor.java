@@ -163,7 +163,7 @@ import com.oracle.truffle.llvm.types.memory.LLVMStack;
  * This class traverses the LLVM IR AST as provided by the <code>com.intel.llvm.ireditor</code>
  * project and returns an executable AST.
  */
-public class LLVMVisitor implements LLVMParserRuntime {
+public final class LLVMVisitor implements LLVMParserRuntime {
 
     private static final int HEX_BASE = 16;
 
@@ -520,8 +520,10 @@ public class LLVMVisitor implements LLVMParserRuntime {
         }
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
             FrameSlot[] deadSlots = deadSlotsAfterBlock.get(basicBlock);
-            LLVMParserAsserts.assertNoNullElement(deadSlots);
-            indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
+            if (deadSlots != null) {
+                LLVMParserAsserts.assertNoNullElement(deadSlots);
+                indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
+            }
         }
         return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, indexToSlotNuller);
     }

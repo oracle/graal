@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.types.memory;
 
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-public class LLVMHeap extends LLVMMemory {
+public final class LLVMHeap extends LLVMMemory {
 
     public static LLVMAddress allocateCString(String string) {
         LLVMAddress baseAddress = LLVMHeap.allocateMemory(string.length() + 1);

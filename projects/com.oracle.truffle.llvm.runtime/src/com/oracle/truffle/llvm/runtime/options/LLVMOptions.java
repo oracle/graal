@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
-public class LLVMOptions {
+public final class LLVMOptions {
 
     private static final String OPTION_FORMAT_STRING = "%40s (default = %5s) %s";
 

@@ -48,7 +48,7 @@ import com.intel.llvm.ireditor.lLVM_IR.ValueRef;
 /**
  * This class finds a list of phis that reference a given block.
  */
-public class LLVMPhiVisitor {
+public final class LLVMPhiVisitor {
 
     private final Map<BasicBlock, List<Phi>> basicBlockReferences = new HashMap<>();
 
