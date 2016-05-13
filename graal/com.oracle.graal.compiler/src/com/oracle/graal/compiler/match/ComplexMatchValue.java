@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.match;
 
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.Value;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * A wrapper value for the lazy evaluation of a complex match. There's an intermediate class for the

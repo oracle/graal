@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes.type;
 
 import java.util.Objects;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -34,7 +35,6 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 

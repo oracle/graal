@@ -29,6 +29,7 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
@@ -44,8 +45,8 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * A FrameMapBuilder that records allocation.
@@ -70,7 +71,7 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
     }
 
     @Override
-    public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
+    public VirtualStackSlot allocateSpillSlot(ValueKind<?> kind) {
         SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(numStackSlots++, kind);
         stackSlots.add(slot);
         return slot;
@@ -84,7 +85,7 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
         if (outObjectStackSlots != null) {
             throw GraalError.unimplemented();
         }
-        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects, frameMap.getTarget().getLIRKind(JavaKind.Object));
+        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects, LIRKind.fromJavaKind(frameMap.getTarget().arch, JavaKind.Object));
         stackSlots.add(slot);
         return slot;
     }

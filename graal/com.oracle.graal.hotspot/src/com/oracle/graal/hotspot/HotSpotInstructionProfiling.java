@@ -26,6 +26,7 @@ import java.util.List;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Assembler.InstructionCounter;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
@@ -95,7 +96,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
                 groups[i] = COUNTER_GROUP + " " + instructionsToProfile[i];
                 // Default is zero; this value is patched to the real instruction count after
                 // assembly in method HotSpotInstructionProfiling.countInstructions
-                increments[i] = new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.INT_0);
+                increments[i] = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_0);
             }
             HotSpotCounterOp op = (HotSpotCounterOp) counterFactory.createMultiBenchmarkCounter(names, groups, increments);
             LIRInstruction inst = new InstructionCounterOp(op, instructionsToProfile);

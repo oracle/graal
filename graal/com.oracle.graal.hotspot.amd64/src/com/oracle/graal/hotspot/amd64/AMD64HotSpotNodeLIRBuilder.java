@@ -29,6 +29,7 @@ import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
 import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.gen.DebugInfoBuilder;
 import com.oracle.graal.debug.Debug;
@@ -67,7 +68,6 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -117,7 +117,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue.getLIRKind() + " != " + param.stamp();
+            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp())) : paramValue.getValueKind() + " != " + param.stamp();
             setResult(param, gen.emitMove(paramValue));
         }
     }
@@ -146,8 +146,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         if (callTarget instanceof HotSpotIndirectCallTargetNode) {
             Value metaspaceMethodSrc = operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod());
             Value targetAddressSrc = operand(callTarget.computedAddress());
-            AllocatableValue metaspaceMethodDst = AMD64.rbx.asValue(metaspaceMethodSrc.getLIRKind());
-            AllocatableValue targetAddressDst = AMD64.rax.asValue(targetAddressSrc.getLIRKind());
+            AllocatableValue metaspaceMethodDst = AMD64.rbx.asValue(metaspaceMethodSrc.getValueKind());
+            AllocatableValue targetAddressDst = AMD64.rax.asValue(targetAddressSrc.getValueKind());
             gen.emitMove(metaspaceMethodDst, metaspaceMethodSrc);
             gen.emitMove(targetAddressDst, targetAddressSrc);
             append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState, config()));
@@ -190,9 +190,9 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     public void visitDirectCompareAndSwap(DirectCompareAndSwapNode x) {
         Value expected = gen.loadNonConst(operand(x.expectedValue()));
         Variable newVal = gen.load(operand(x.newValue()));
-        assert expected.getLIRKind().equals(newVal.getLIRKind());
+        assert expected.getValueKind().equals(newVal.getValueKind());
 
-        RegisterValue raxLocal = AMD64.rax.asValue(expected.getLIRKind());
+        RegisterValue raxLocal = AMD64.rax.asValue(expected.getValueKind());
         gen.emitMove(raxLocal, expected);
         append(new CompareAndSwapOp((AMD64Kind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
 
@@ -206,7 +206,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen.target()),
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMapBuilder().getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen),
                         node.arguments());
         append(new AMD64BreakpointOp(parameters));
     }

@@ -32,6 +32,7 @@ import static com.oracle.graal.compiler.common.calc.FloatConvert.F2L;
 import java.nio.ByteBuffer;
 import java.util.function.DoubleBinaryOperator;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -41,7 +42,6 @@ import com.oracle.graal.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;

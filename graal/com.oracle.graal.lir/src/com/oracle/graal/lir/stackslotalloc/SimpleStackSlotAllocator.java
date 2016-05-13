@@ -62,7 +62,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
                 slot = mapSimpleVirtualStackSlot(builder, (SimpleVirtualStackSlot) virtualSlot);
-                virtualFramesize.add(builder.getFrameMap().spillSlotSize(virtualSlot.getLIRKind()));
+                virtualFramesize.add(builder.getFrameMap().spillSlotSize(virtualSlot.getValueKind()));
             } else if (virtualSlot instanceof VirtualStackSlotRange) {
                 VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
                 slot = mapVirtualStackSlotRange(builder, slotRange);
@@ -107,7 +107,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
     }
 
     protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderTool builder, SimpleVirtualStackSlot virtualStackSlot) {
-        return builder.getFrameMap().allocateSpillSlot(virtualStackSlot.getLIRKind());
+        return builder.getFrameMap().allocateSpillSlot(virtualStackSlot.getValueKind());
     }
 
     protected StackSlot mapVirtualStackSlotRange(FrameMapBuilderTool builder, VirtualStackSlotRange virtualStackSlot) {

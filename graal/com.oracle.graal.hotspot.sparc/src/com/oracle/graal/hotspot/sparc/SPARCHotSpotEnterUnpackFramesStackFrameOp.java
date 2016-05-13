@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.meta.LIRKind.value;
 import static jdk.vm.ci.sparc.SPARC.STACK_BIAS;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.i0;
@@ -44,6 +43,7 @@ import static jdk.vm.ci.sparc.SPARC.sp;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -79,7 +79,7 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.scratch = scratch;
-        callerReturnPc = o7.asValue(value(wordKind));
+        callerReturnPc = o7.asValue(LIRKind.value(wordKind));
     }
 
     @Override

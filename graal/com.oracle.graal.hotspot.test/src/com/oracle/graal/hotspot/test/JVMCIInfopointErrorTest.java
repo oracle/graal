@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 import org.junit.Test;
 
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
@@ -58,7 +59,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -158,7 +158,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @Test(expected = JVMCIError.class)
     public void testInvalidShortDerivedOop() {
         test((tool, state, safepoint) -> {
-            Variable baseOop = tool.newVariable(tool.target().getLIRKind(JavaKind.Object));
+            Variable baseOop = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Object));
             tool.append(new ValueDef(baseOop));
 
             PlatformKind kind = tool.target().arch.getPlatformKind(JavaKind.Short);
@@ -216,7 +216,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     @Test(expected = JVMCIError.class)
     public void testUnexpectedTypeInRegister() {
         test((tool, state, safepoint) -> {
-            Variable var = tool.newVariable(tool.target().getLIRKind(JavaKind.Int));
+            Variable var = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Int));
             tool.append(new ValueDef(var));
             LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Illegal}, 1, 0, 0);
             safepoint.accept(newState);

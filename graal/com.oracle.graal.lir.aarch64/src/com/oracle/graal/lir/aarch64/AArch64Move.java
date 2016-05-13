@@ -42,6 +42,7 @@ import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
@@ -60,7 +61,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 

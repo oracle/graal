@@ -28,6 +28,7 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -35,7 +36,6 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 
 public enum AMD64Arithmetic {
     FREM,

@@ -38,8 +38,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class SPARCImmediateAddressValue extends SPARCAddressValue {
 
@@ -48,7 +48,7 @@ public final class SPARCImmediateAddressValue extends SPARCAddressValue {
 
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG);
 
-    public SPARCImmediateAddressValue(LIRKind kind, AllocatableValue base, int displacement) {
+    public SPARCImmediateAddressValue(ValueKind<?> kind, AllocatableValue base, int displacement) {
         super(kind);
         assert SPARCAssembler.isSimm13(displacement);
         this.base = base;
@@ -59,7 +59,7 @@ public final class SPARCImmediateAddressValue extends SPARCAddressValue {
     public CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         if (!base.identityEquals(newBase)) {
-            return new SPARCImmediateAddressValue(getLIRKind(), newBase, displacement);
+            return new SPARCImmediateAddressValue(getValueKind(), newBase, displacement);
         }
         return this;
     }
@@ -100,13 +100,13 @@ public final class SPARCImmediateAddressValue extends SPARCAddressValue {
     public boolean equals(Object obj) {
         if (obj instanceof SPARCImmediateAddressValue) {
             SPARCImmediateAddressValue addr = (SPARCImmediateAddressValue) obj;
-            return getLIRKind().equals(addr.getLIRKind()) && displacement == addr.displacement && base.equals(addr.base);
+            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ (displacement << 4) ^ getLIRKind().hashCode();
+        return base.hashCode() ^ (displacement << 4) ^ getValueKind().hashCode();
     }
 }

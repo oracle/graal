@@ -25,6 +25,7 @@ package com.oracle.graal.lir.profiling;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.lir.ConstantValue;
@@ -114,7 +115,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             if (count > 0) {
                 names.add(name);
                 groups.add(groupName);
-                increments.add(new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.forInt(count)));
+                increments.add(new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.forInt(count)));
             }
         }
 

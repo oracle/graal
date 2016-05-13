@@ -24,17 +24,9 @@ package com.oracle.graal.compiler.target;
 
 import java.util.Set;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -51,10 +43,21 @@ import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.phases.tiers.TargetProvider;
 import com.oracle.graal.phases.util.Providers;
 
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueKindFactory;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * Represents a compiler backend for Graal.
  */
-public abstract class Backend implements TargetProvider {
+public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKind> {
 
     private final Providers providers;
 
@@ -95,6 +98,11 @@ public abstract class Backend implements TargetProvider {
     @Override
     public TargetDescription getTarget() {
         return providers.getCodeCache().getTarget();
+    }
+
+    @Override
+    public LIRKind getValueKind(JavaKind javaKind) {
+        return LIRKind.fromJavaKind(getTarget().arch, javaKind);
     }
 
     /**

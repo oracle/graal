@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;

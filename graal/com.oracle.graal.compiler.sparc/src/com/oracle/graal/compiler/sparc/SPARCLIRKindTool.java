@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.sparc;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.GraalError;
 
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.sparc.SPARCKind;
 
 public class SPARCLIRKindTool implements LIRKindTool {

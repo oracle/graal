@@ -82,6 +82,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
@@ -110,10 +111,10 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -321,7 +322,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     private RegisterValue moveToReg(Register reg, Value v) {
-        RegisterValue ret = reg.asValue(v.getLIRKind());
+        RegisterValue ret = reg.asValue(v.getValueKind());
         getLIRGen().emitMove(ret, v);
         return ret;
     }
@@ -639,7 +640,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitReinterpret(LIRKind to, Value inputVal) {
-        LIRKind from = inputVal.getLIRKind();
+        ValueKind<?> from = inputVal.getValueKind();
         if (to.equals(from)) {
             return inputVal;
         }
@@ -1035,7 +1036,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public void emitStore(LIRKind lirKind, Value address, Value input, LIRFrameState state) {
+    public void emitStore(ValueKind<?> lirKind, Value address, Value input, LIRFrameState state) {
         AMD64AddressValue storeAddress = getAMD64LIRGen().asAddressValue(address);
         AMD64Kind kind = (AMD64Kind) lirKind.getPlatformKind();
         if (isConstantValue(input)) {

@@ -254,7 +254,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
             crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget());
+            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, this);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));

@@ -24,6 +24,7 @@ package com.oracle.graal.lir.profiling;
 
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
@@ -62,7 +63,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
             this.compilationUnitName = compilationUnitName;
             this.counterFactory = counterFactory;
             this.buffer = new LIRInsertionBuffer();
-            this.increment = new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.INT_1);
+            this.increment = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_1);
         }
 
         public void run() {

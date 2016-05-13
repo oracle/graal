@@ -25,7 +25,7 @@ package com.oracle.graal.lir;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Represents a value that is yet to be bound to a machine location (such as a {@link RegisterValue}
@@ -46,7 +46,7 @@ public final class Variable extends AllocatableValue {
      * @param kind
      * @param index
      */
-    public Variable(LIRKind kind, int index) {
+    public Variable(ValueKind<?> kind, int index) {
         super(kind);
         assert index >= 0;
         this.index = index;

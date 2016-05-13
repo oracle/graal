@@ -242,16 +242,16 @@ public class AMD64Move {
             }
 
             // backup scratch register
-            move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getValueKind()));
             for (int i = 0; i < results.length; i++) {
                 Value input = inputs[i];
                 AllocatableValue result = results[i];
                 // move stack slot
-                move((AMD64Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
-                move((AMD64Kind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
+                move((AMD64Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getValueKind()), input);
+                move((AMD64Kind) result.getPlatformKind(), crb, masm, result, scratch.asValue(result.getValueKind()));
             }
             // restore scratch register
-            move(backupKind, crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+            move(backupKind, crb, masm, scratch.asValue(backupSlot.getValueKind()), backupSlot);
         }
     }
 

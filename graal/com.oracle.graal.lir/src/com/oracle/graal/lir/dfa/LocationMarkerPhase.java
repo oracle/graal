@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.List;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
@@ -40,7 +41,6 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -81,7 +81,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
                 return false;
             }
 
-            return !operand.getLIRKind().equals(LIRKind.Illegal);
+            return !operand.getValueKind().equals(LIRKind.Illegal);
         }
 
         /**

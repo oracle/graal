@@ -27,21 +27,21 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.HashSet;
 
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
+import com.oracle.graal.lir.alloc.trace.TraceGlobalMoveResolutionPhase;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
-import com.oracle.graal.lir.alloc.trace.TraceGlobalMoveResolutionPhase;
 
 /**
  * Test global move resolver of the trace register allocator.

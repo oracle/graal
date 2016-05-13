@@ -58,8 +58,8 @@ import com.oracle.graal.options.OptionType;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Linear Scan {@link StackSlotAllocatorUtil stack slot allocator}.
@@ -259,8 +259,8 @@ public final class LSStackSlotAllocator extends AllocationPhase {
                     Debug.log(Debug.BASIC_LOG_LEVEL, "Reuse stack slot %s (reallocated from %s) for virtual stack slot %s", location, slot, virtualSlot);
                 } else {
                     // Allocate new stack slot.
-                    location = frameMapBuilder.getFrameMap().allocateSpillSlot(virtualSlot.getLIRKind());
-                    StackSlotAllocatorUtil.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotSize(virtualSlot.getLIRKind()));
+                    location = frameMapBuilder.getFrameMap().allocateSpillSlot(virtualSlot.getValueKind());
+                    StackSlotAllocatorUtil.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotSize(virtualSlot.getValueKind()));
                     StackSlotAllocatorUtil.allocatedSlots.increment();
                     Debug.log(Debug.BASIC_LOG_LEVEL, "New stack slot %s for virtual stack slot %s", location, virtualSlot);
                 }
@@ -277,7 +277,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             Illegal;
         }
 
-        private SlotSize forKind(LIRKind kind) {
+        private SlotSize forKind(ValueKind<?> kind) {
             switch (frameMapBuilder.getFrameMap().spillSlotSize(kind)) {
                 case 1:
                     return SlotSize.Size1;
@@ -330,7 +330,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
          */
         private StackSlot findFreeSlot(SimpleVirtualStackSlot slot) {
             assert slot != null;
-            SlotSize size = forKind(slot.getLIRKind());
+            SlotSize size = forKind(slot.getValueKind());
             if (size == SlotSize.Illegal) {
                 return null;
             }
@@ -345,7 +345,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
          * Adds a stack slot to the list of free slots.
          */
         private void freeSlot(StackSlot slot) {
-            SlotSize size = forKind(slot.getLIRKind());
+            SlotSize size = forKind(slot.getValueKind());
             if (size == SlotSize.Illegal) {
                 return;
             }

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.spi.LIRKindTool;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
 
 public class ObjectStamp extends AbstractObjectStamp {
 

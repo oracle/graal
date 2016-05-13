@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -44,7 +45,6 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 

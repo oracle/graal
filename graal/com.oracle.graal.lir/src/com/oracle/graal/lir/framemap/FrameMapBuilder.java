@@ -31,7 +31,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to
@@ -47,7 +47,7 @@ public abstract class FrameMapBuilder {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public abstract VirtualStackSlot allocateSpillSlot(LIRKind kind);
+    public abstract VirtualStackSlot allocateSpillSlot(ValueKind<?> kind);
 
     /**
      * Reserves a number of contiguous slots in the frame of the method being compiled. If the

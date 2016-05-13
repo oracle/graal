@@ -37,8 +37,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class SPARCIndexedAddressValue extends SPARCAddressValue {
 
@@ -47,7 +47,7 @@ public final class SPARCIndexedAddressValue extends SPARCAddressValue {
 
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG);
 
-    public SPARCIndexedAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index) {
+    public SPARCIndexedAddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index) {
         super(kind);
         this.base = base;
         this.index = index;
@@ -58,7 +58,7 @@ public final class SPARCIndexedAddressValue extends SPARCAddressValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
         if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
-            return new SPARCIndexedAddressValue(getLIRKind(), newBase, newIndex);
+            return new SPARCIndexedAddressValue(getValueKind(), newBase, newIndex);
         }
         return this;
     }
@@ -98,13 +98,13 @@ public final class SPARCIndexedAddressValue extends SPARCAddressValue {
     public boolean equals(Object obj) {
         if (obj instanceof SPARCIndexedAddressValue) {
             SPARCIndexedAddressValue addr = (SPARCIndexedAddressValue) obj;
-            return getLIRKind().equals(addr.getLIRKind()) && base.equals(addr.base) && index.equals(addr.index);
+            return getValueKind().equals(addr.getValueKind()) && base.equals(addr.base) && index.equals(addr.index);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ getLIRKind().hashCode();
+        return base.hashCode() ^ index.hashCode() ^ getValueKind().hashCode();
     }
 }

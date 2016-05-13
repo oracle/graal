@@ -50,7 +50,7 @@ final class SPARCUncommonTrapStub extends UncommonTrapStub {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
-        registerConfig = new SPARCHotSpotRegisterConfig(target.arch, allocatable, config);
+        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable, config);
     }
 
     @Override

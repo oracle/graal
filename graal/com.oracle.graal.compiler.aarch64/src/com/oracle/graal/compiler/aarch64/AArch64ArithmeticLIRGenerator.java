@@ -31,6 +31,7 @@ import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
@@ -52,9 +53,9 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements AArch64ArithmeticLIRGeneratorTool {
 
@@ -199,7 +200,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitReinterpret(LIRKind to, Value inputVal) {
-        LIRKind from = inputVal.getLIRKind();
+        ValueKind<?> from = inputVal.getValueKind();
         if (to.equals(from)) {
             return inputVal;
         }
@@ -253,7 +254,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    protected Variable emitBinary(LIRKind resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
+    protected Variable emitBinary(ValueKind<?> resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
         Variable result = getLIRGen().newVariable(resultKind);
         if (isValidBinaryConstant(op, a, b)) {
             emitBinaryConst(result, op, getLIRGen().asAllocatable(a), asJavaConstant(b));
@@ -420,7 +421,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public void emitStore(LIRKind lirKind, Value address, Value inputVal, LIRFrameState state) {
+    public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
         AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address);
         AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
 

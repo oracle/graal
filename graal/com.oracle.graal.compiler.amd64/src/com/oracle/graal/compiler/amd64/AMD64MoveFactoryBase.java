@@ -29,19 +29,19 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
-import jdk.vm.ci.meta.PlatformKind;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64PushPopStackMove;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 
 public abstract class AMD64MoveFactoryBase implements MoveFactory {
 

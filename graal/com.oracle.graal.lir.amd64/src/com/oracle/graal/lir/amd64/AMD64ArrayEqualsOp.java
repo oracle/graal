@@ -34,6 +34,7 @@ import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
@@ -45,7 +46,6 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
 import sun.misc.Unsafe;
 

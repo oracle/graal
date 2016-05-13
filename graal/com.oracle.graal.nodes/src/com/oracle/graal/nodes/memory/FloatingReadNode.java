@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import jdk.vm.ci.meta.LIRKind;
-
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.DebugCloseable;

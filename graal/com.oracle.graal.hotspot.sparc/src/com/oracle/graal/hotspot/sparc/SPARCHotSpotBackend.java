@@ -325,8 +325,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             if (unverifiedStub != null) {
                 crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
                 // We need to use JavaCall here because we haven't entered the frame yet.
-                CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)},
-                                getTarget());
+                CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, this);
                 Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
 
                 try (ScratchRegister sc = masm.getScratchRegister()) {

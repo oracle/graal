@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 
-import jdk.vm.ci.meta.LIRKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This interface can be used to generate LIR for arithmetic and simple memory access operations.
@@ -96,6 +97,6 @@ public interface ArithmeticLIRGeneratorTool {
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
-    void emitStore(LIRKind kind, Value address, Value input, LIRFrameState state);
+    void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
 }

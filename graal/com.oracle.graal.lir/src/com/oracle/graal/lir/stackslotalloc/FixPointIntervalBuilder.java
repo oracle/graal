@@ -296,7 +296,7 @@ final class FixPointIntervalBuilder {
     private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
         StackInterval interval = get(stackSlot);
         if (interval == null) {
-            interval = new StackInterval(stackSlot, stackSlot.getLIRKind());
+            interval = new StackInterval(stackSlot, stackSlot.getValueKind());
             put(stackSlot, interval);
         }
         return interval;

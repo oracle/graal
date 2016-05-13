@@ -24,7 +24,7 @@ package com.oracle.graal.lir;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * {@link VirtualStackSlot}s are stack slots that are not yet fixed to specific frame offset. They
@@ -34,8 +34,8 @@ public abstract class VirtualStackSlot extends AllocatableValue {
 
     private final int id;
 
-    public VirtualStackSlot(int id, LIRKind lirKind) {
-        super(lirKind);
+    public VirtualStackSlot(int id, ValueKind<?> kind) {
+        super(kind);
         this.id = id;
     }
 

@@ -25,7 +25,7 @@ package com.oracle.graal.lir.stackslotalloc;
 import com.oracle.graal.lir.VirtualStackSlot;
 
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.LIRKind;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class StackInterval {
 
@@ -33,12 +33,12 @@ public final class StackInterval {
     private static final int INVALID_END = Integer.MIN_VALUE;
     private final VirtualStackSlot operand;
     private StackInterval hint;
-    private final LIRKind kind;
+    private final ValueKind<?> kind;
     private int from = INVALID_START;
     private int to = INVALID_END;
     private StackSlot location;
 
-    public StackInterval(VirtualStackSlot operand, LIRKind kind) {
+    public StackInterval(VirtualStackSlot operand, ValueKind<?> kind) {
         this.operand = operand;
         this.kind = kind;
     }
@@ -69,7 +69,7 @@ public final class StackInterval {
         }
     }
 
-    public LIRKind kind() {
+    public ValueKind<?> kind() {
         return kind;
     }
 
