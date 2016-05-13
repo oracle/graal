@@ -117,8 +117,7 @@ public abstract class Source {
      * Locates an existing instance of a {@link Source} with given {@link #getName() name}.
      *
      * @param name the {@link #getName() name} of a source to seek for
-     * @return found source or <code>null</code> if no source with name
-     *   is known
+     * @return found source or <code>null</code> if no source with name is known
      * @since 0.8 or earlier
      */
     public static Source find(String name) {
@@ -218,12 +217,15 @@ public abstract class Source {
     }
 
     /**
-     * Creates an anonymous source from literal text: not named and not indexed.
+     * Creates an anonymous source from literal text. The {@link #getName() name} of the source is
+     * <code>name</code>. The {@link #getShortName()} is also <code>name</code>, the
+     * {@link #getPath() path} is <code>null</code>.
      *
      * @param chars textual source code
      * @param name a note about the origin, for error messages and debugging - used as
-     *            {@link Source#getName()} and {@link Source#getShortName()}
-     * @return a newly created, non-indexed source representation
+     *            {@link Source#getName()} and {@link Source#getShortName()}, the name can be
+     *            <code>null</code>
+     * @return a newly created, source representation
      * @since 0.8 or earlier
      */
     public static Source fromText(CharSequence chars, String name) {
