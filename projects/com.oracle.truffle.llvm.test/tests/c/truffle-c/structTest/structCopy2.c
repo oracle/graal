@@ -7,7 +7,7 @@ struct test {
 int sum(struct test *t) {
   int sum = 0;
   sum += t->a[0] + t->a[1] + t->a[2];
-  sum += t->b[0] + t->b[1] + t->b[2];
+  sum += t->b[0] + t->b[1];
   sum += t->c;
   return sum;
 }
