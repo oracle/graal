@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.impl.vars;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
@@ -212,6 +213,7 @@ public class StructLiteralNode extends LLVMAddressNode {
     }
 
     @Override
+    @ExplodeLoop
     public LLVMAddress executePointee(VirtualFrame frame) {
         LLVMAddress addr = address.executePointee(frame);
         for (int i = 0; i < offsets.length; i++) {
