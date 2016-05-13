@@ -28,7 +28,6 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 @Registration(id = DebuggerInstrument.ID)
@@ -42,7 +41,6 @@ public final class DebuggerInstrument extends TruffleInstrument {
     protected void onCreate(Env env) {
         this.instrumenter = env.getInstrumenter();
         env.registerService(this);
-        Source.setFileCaching(true);
     }
 
     public Debugger getDebugger(PolyglotEngine engine, Factory factory) {

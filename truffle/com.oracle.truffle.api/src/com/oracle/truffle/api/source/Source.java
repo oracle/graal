@@ -244,7 +244,9 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, source representation
      * @since 0.8 or earlier
+     * @deprecated use {@link #fromText(java.lang.String)}
      */
+    @Deprecated
     public static Source fromNamedText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
@@ -261,7 +263,9 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
+     * @deprecated use {@link #fromAppendableText(java.lang.String)}
      */
+    @Deprecated
     public static Source fromNamedAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
         final Content content = new AppendableLiteralSourceImpl(name);
@@ -379,7 +383,10 @@ public abstract class Source {
      * created from literal text or readers is always enabled.
      *
      * @since 0.8 or earlier
+     * @deprecated globally configurable caching is uncontrollable as it allows any piece of code to
+     *             influence behavior of completely independent piece of code
      */
+    @Deprecated
     public static void setFileCaching(boolean enabled) {
         fileCacheEnabled = enabled;
     }
