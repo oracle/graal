@@ -70,51 +70,6 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
     @Override
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
-        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
-        iterator.remove();
-        iterator.add(new TruffleGraphBuilderPhase(config));
         return suite;
-    }
-
-    public static class TruffleGraphBuilderPhase extends GraphBuilderPhase {
-        public TruffleGraphBuilderPhase(GraphBuilderConfiguration config) {
-            super(config);
-        }
-
-        @Override
-        protected void run(StructuredGraph graph, HighTierContext context) {
-            new TruffleGraphBuilderPhase.Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), getGraphBuilderConfig(),
-                            context.getOptimisticOptimizations(), null).run(graph);
-        }
-
-        public static class Instance extends GraphBuilderPhase.Instance {
-            private boolean mustInstrumentBranches;
-
-            public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider,
-                            ConstantReflectionProvider constantReflection, GraphBuilderConfiguration config,
-                            OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-                super(metaAccess, stampProvider, constantReflection, config, optimisticOpts, initialIntrinsicContext);
-                this.mustInstrumentBranches = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
-            }
-
-            @Override
-            protected void run(StructuredGraph graph) {
-                super.run(graph);
-            }
-
-            @Override
-            protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent,
-                            ResolvedJavaMethod method, int entryBCI,
-                            IntrinsicContext intrinsicContext) {
-                return new BytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext) {
-                    @Override
-                    protected void postProcessIfNode(ValueNode node) {
-                        if (mustInstrumentBranches && node.getNodeSourcePosition() == null) {
-                            node.setNodeSourcePosition(createBytecodePosition());
-                        }
-                    }
-                };
-            }
-        }
     }
 }

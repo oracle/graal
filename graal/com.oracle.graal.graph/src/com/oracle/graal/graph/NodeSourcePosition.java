@@ -52,7 +52,7 @@ public class NodeSourcePosition extends BytecodePosition {
 
     public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link) {
         if (getCaller() == null) {
-            assert newCallerReceiver == null || receiver == null : "replacing receier";
+            assert newCallerReceiver == null || receiver == null : "replacing receiver";
             return new NodeSourcePosition(newCallerReceiver, link, getMethod(), getBCI());
         } else {
             return new NodeSourcePosition(receiver, getCaller().addCaller(link), getMethod(), getBCI());

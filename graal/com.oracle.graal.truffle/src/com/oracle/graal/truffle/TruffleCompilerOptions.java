@@ -177,8 +177,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Instrument branches and output profiling information to the standard output.")
     public static final OptionValue<Boolean> TruffleInstrumentBranches = new StableOptionValue<>(false);
 
-    @Option(help = "Regex filter for names of methods in which to add branch instrumentation.")
-    public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(".*");
+    @Option(help = "Method filter for methods in which to add branch instrumentation.")
+    public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(null);
 
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionValue<Integer> TruffleInstrumentBranchesCount = new OptionValue<>(10000);

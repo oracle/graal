@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.phases;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 
@@ -30,8 +31,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.MethodFilter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -50,7 +54,7 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    private static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
+    private static final MethodFilter[] METHOD_FILTER;
     private static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     private static final Field ACCESS_TABLE_JAVA_FIELD;
     public static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
@@ -64,11 +68,18 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             throw new RuntimeException(e);
         }
         ACCESS_TABLE_JAVA_FIELD = javaField;
+
+        String filterValue = TruffleInstrumentBranchesFilter.getValue();
+        if (filterValue != null) {
+            METHOD_FILTER = MethodFilter.parse(filterValue);
+        } else {
+            METHOD_FILTER = new MethodFilter[0];
+        }
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
+        if (MethodFilter.matches(METHOD_FILTER, graph.method())) {
             ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
             JavaConstant tableConstant = context.getConstantReflection().readConstantFieldValue(tableField, null);
             try {
@@ -109,9 +120,9 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
          * source location key.
          */
         private static String encode(Node ifNode) {
-            NodeSourcePosition loc = ifNode.getNodeSourcePosition();
-            if (loc != null) {
-                return loc.toString().replace("\n", ",");
+            NodeSourcePosition pos = ifNode.getNodeSourcePosition();
+            if (pos != null) {
+                return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
             } else {
                 // IfNode has no position information, and is probably synthetic, so we do not
                 // instrument it.
@@ -121,10 +132,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
         public synchronized void dumpAccessTable() {
             // Dump accumulated profiling information.
-            System.out.println("Branch execution profile");
-            System.out.println("========================");
+            TTY.println("Branch execution profile");
+            TTY.println("========================");
             for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
+                TTY.println(entry.getKey() + ": " + entry.getValue());
             }
         }
 
