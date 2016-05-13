@@ -75,51 +75,40 @@ else:
     mx_benchmark.add_java_vm(JvmciJdkVm("client-nojvmci", "default", []))
     mx_benchmark.add_java_vm(JvmciJdkVm("jvmci", "graal-core", ["-Djvmci.Compiler=graal"]))
 
-_dacapoIterations = {
-    "avrora"    : 20,
-    "batik"     : 40,
-    "eclipse"   : -1,
-    "fop"       : 40,
-    "h2"        : 20,
-    "jython"    : 40,
-    "luindex"   : 15,
-    "lusearch"  : 40,
-    "pmd"       : 30,
-    "sunflow"   : 30,
-    "tomcat"    : 50,
-    "tradebeans": -1,
-    "tradesoap" : -1,
-    "xalan"     : 20,
-}
-
-
-class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
-    """DaCapo benchmark suite implementation.
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
     """
-    def name(self):
-        return "dacapo"
-
     def group(self):
         return "Graal"
 
     def subgroup(self):
         return "graal-compiler"
 
-    def dacapoPath(self):
-        dacapo = mx.get_env("DACAPO_CP")
+    def daCapoClasspathEnvVarName(self):
+        raise NotImplementedError()
+
+    def daCapoLibraryName(self):
+        raise NotImplementedError()
+
+    def daCapoPath(self):
+        dacapo = mx.get_env(self.daCapoClasspathEnvVarName())
         if dacapo:
             return dacapo
-        lib = mx.library("DACAPO", False)
+        lib = mx.library(self.daCapoLibraryName(), False)
         if lib:
             return lib.get_path(True)
         return None
 
+    def daCapoIterations(self):
+        raise NotImplementedError()
+
     def validateEnvironment(self):
-        if not self.dacapoPath():
+        if not self.daCapoPath():
             raise RuntimeError(
-                "Neither DACAPO_CP variable nor DACAPO library specified.")
+                "Neither " + self.daCapoClasspathEnvVarName() + " variable nor " +
+                self.daCapoLibraryName() + " library specified.")
 
     def validateReturnCode(self, retcode):
         return retcode == 0
@@ -134,7 +123,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             if args.n == "-1":
                 return None
         else:
-            iterations = _dacapoIterations[benchname]
+            iterations = self.daCapoIterations()[benchname]
             if iterations == -1:
                 return None
             else:
@@ -151,34 +140,28 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if runArgs is None:
             return None
         return (
-            self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.dacapoPath()] +
+            self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
             [benchmarks[0]] + runArgs)
 
     def benchmarks(self):
-        return _dacapoIterations.keys()
+        return self.daCapoIterations().keys()
+
+    def daCapoSuiteTitle(self):
+        """Title string used in the output next to the performance result."""
+        raise NotImplementedError()
 
     def successPatterns(self):
         return [
             re.compile(
-                r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====",
+                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
     def failurePatterns(self):
         return [
             re.compile(
-                r"^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) FAILED (warmup|) =====",
+                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
                 re.MULTILINE)
-        ]
-
-    def flakySuccessPatterns(self):
-        return [
-            re.compile(
-                r"^javax.ejb.FinderException: Cannot find account for",
-                re.MULTILINE),
-            re.compile(
-                r"^java.lang.Exception: TradeDirect:Login failure for user:",
-                re.MULTILINE),
         ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -188,7 +171,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
           mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -203,7 +186,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           ),
           mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -218,7 +201,7 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           ),
           mx_benchmark.StdOutRule(
-            r"===== DaCapo 9\.12 (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+            r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -235,7 +218,92 @@ class DaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         ]
 
 
+_daCapoIterations = {
+    "avrora"     : 20,
+    "batik"      : 40,
+    "eclipse"    : -1,
+    "fop"        : 40,
+    "h2"         : 20,
+    "jython"     : 40,
+    "luindex"    : 15,
+    "lusearch"   : 40,
+    "pmd"        : 30,
+    "sunflow"    : 30,
+    "tomcat"     : 50,
+    "tradebeans" : -1,
+    "tradesoap"  : -1,
+    "xalan"      : 20,
+}
+
+
+class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+    """DaCapo 9.12 (Bach) benchmark suite implementation."""
+
+    def name(self):
+        return "dacapo"
+
+    def daCapoSuiteTitle(self):
+        return "DaCapo 9.12"
+
+    def daCapoClasspathEnvVarName(self):
+        return "DACAPO_CP"
+
+    def daCapoLibraryName(self):
+        return "DACAPO"
+
+    def daCapoIterations(self):
+        return _daCapoIterations
+
+    def flakySuccessPatterns(self):
+        return [
+            re.compile(
+                r"^javax.ejb.FinderException: Cannot find account for",
+                re.MULTILINE),
+            re.compile(
+                r"^java.lang.Exception: TradeDirect:Login failure for user:",
+                re.MULTILINE),
+        ]
+
+
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+
+
+_daCapoScalaConfig = {
+    "actors"      : 10,
+    "apparat"     : 5,
+    "factorie"    : 5,
+    "kiama"       : 40,
+    "scalac"      : 20,
+    "scaladoc"    : 15,
+    "scalap"      : 120,
+    "scalariform" : 30,
+    "scalatest"   : 50,
+    "scalaxb"     : 35,
+    "specs"       : 20,
+    "tmt"         : 12
+}
+
+
+class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+    """Scala DaCapo benchmark suite implementation."""
+
+    def name(self):
+        return "scala-dacapo"
+
+    def daCapoSuiteTitle(self):
+        return "DaCapo 0.1.0-SNAPSHOT"
+
+    def daCapoClasspathEnvVarName(self):
+        return "DACAPO_SCALA_CP"
+
+    def daCapoLibraryName(self):
+        return "DACAPO_SCALA"
+
+    def daCapoIterations(self):
+        return _daCapoScalaConfig
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 
 
 _allSpecJVM2008Benchs = [
