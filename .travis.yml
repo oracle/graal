@@ -42,16 +42,16 @@ branches:
   only:
     - master
 env:
-  - TEST_COMMAND='mx/mx su-clangformatcheck'
-  - TEST_COMMAND='mx/mx eclipseformat --primary'
-  - TEST_COMMAND='mx/mx su-mdlcheck'
-  - TEST_COMMAND='mx/mx su-gitlogcheck'
-  - TEST_COMMAND='mx/mx pylint'
-  - TEST_COMMAND='mx/mx checkstyle'
-  - TEST_COMMAND='mx/mx checkoverlap'
-  - TEST_COMMAND='mx/mx canonicalizeprojects'
-  - TEST_COMMAND='mx/mx su-travis1'
-  - TEST_COMMAND='mx/mx su-travis2'
-  - TEST_COMMAND='mx/mx su-travis-jruby'
+  - TEST_COMMAND='mx su-clangformatcheck'
+  - TEST_COMMAND='mx eclipseformat --primary'
+  - TEST_COMMAND='mx su-mdlcheck'
+  - TEST_COMMAND='mx su-gitlogcheck'
+  - TEST_COMMAND='mx pylint'
+  - TEST_COMMAND='mx checkstyle'
+  - TEST_COMMAND='mx checkoverlap'
+  - TEST_COMMAND='mx canonicalizeprojects'
+  - TEST_COMMAND='mx su-travis1'
+  - TEST_COMMAND='mx su-travis2'
+  - TEST_COMMAND='mx su-travis-jruby'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
