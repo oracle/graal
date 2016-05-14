@@ -13,7 +13,7 @@ int main() {
   int d = 4;
   int *p = &d;
   int i;
-  for (i = 0; i < 1234567; i++) {
+  for (i = 0; i < 12345; i++) {
     *p = foo(a, b, c);
   }
   return *p;

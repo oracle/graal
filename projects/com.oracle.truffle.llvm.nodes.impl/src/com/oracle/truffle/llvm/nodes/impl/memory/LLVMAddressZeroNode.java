@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class LLVMAddressZeroNode extends LLVMAddressNode {
 
-    private LLVMAddressNode addressNode;
+    @Child private LLVMAddressNode addressNode;
     private final int size;
 
     public LLVMAddressZeroNode(LLVMAddressNode addressNode, int size) {

@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
@@ -154,20 +155,24 @@ public abstract class LLVMIVarBit {
             assert this.arr.length == getByteSize();
         }
 
+        @TruffleBoundary
         private static BigInteger bigInt(LLVMIVarBit right) {
             return new BigInteger(right.getBytes());
         }
 
+        @TruffleBoundary
         private BigInteger unsignedBigInt() {
             byte[] newArr = new byte[arr.length + 1];
             System.arraycopy(arr, 0, newArr, 1, arr.length);
             return new BigInteger(newArr);
         }
 
+        @TruffleBoundary
         private BigInteger bigInt() {
             return new BigInteger(arr);
         }
 
+        @TruffleBoundary
         private ByteBuffer getByteBuffer(int minSizeBytes, boolean signExtend) {
             int allocationSize = Math.max(minSizeBytes, getByteSize());
             ByteBuffer bb = ByteBuffer.allocate(allocationSize).order(ByteOrder.BIG_ENDIAN);
@@ -230,33 +235,38 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public byte getByteValue() {
             return getByteBuffer(Byte.BYTES, true).get();
         }
 
         @Override
+        @TruffleBoundary
         public short getShortValue() {
             return getByteBuffer(Short.BYTES, true).getShort();
         }
 
         @Override
+        @TruffleBoundary
         public int getIntValue() {
             ByteBuffer byteBuffer = getByteBuffer(Integer.BYTES, true);
-
             return byteBuffer.getInt();
         }
 
         @Override
+        @TruffleBoundary
         public int getZeroExtendedIntValue() {
             return getByteBuffer(Integer.BYTES, false).getInt();
         }
 
         @Override
+        @TruffleBoundary
         public long getLongValue() {
             return getByteBuffer(Long.BYTES, true).getLong();
         }
 
         @Override
+        @TruffleBoundary
         public long getZeroExtendedLongValue() {
             return getByteBuffer(Long.BYTES, false).getLong();
         }
@@ -268,6 +278,7 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public byte[] getSignExtendedBytes() {
             return getByteBuffer(getByteValue(), true).array();
         }
@@ -278,31 +289,37 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit mul(LLVMIVarBit right) {
             return asIVar(bigInt().multiply(bigInt(right)));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit sub(LLVMIVarBit right) {
             return asIVar(bigInt().subtract(bigInt(right)));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit div(LLVMIVarBit right) {
             return asIVar(bigInt().divide(bigInt(right)));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit rem(LLVMIVarBit right) {
             return asIVar(bigInt().remainder(bigInt(right)));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit unsignedRem(LLVMIVarBit right) {
             return asIVar(unsignedBigInt().remainder(bigInt(right)));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit unsignedDiv(LLVMIVarBit right) {
             return asIVar(unsignedBigInt().divide(bigInt(right)));
         }
@@ -334,26 +351,31 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit and(LLVMIVarBit right) {
             return performOp(right, (byte a, byte b) -> (byte) (a & b));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit or(LLVMIVarBit right) {
             return performOp(right, (byte a, byte b) -> (byte) (a | b));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit xor(LLVMIVarBit right) {
             return performOp(right, (byte a, byte b) -> (byte) (a ^ b));
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit leftShift(LLVMIVarBit right) {
             BigInteger result = new BigInteger(arr).shiftLeft(right.getIntValue());
             return asIVar(getBits(), result);
         }
 
+        @TruffleBoundary
         private LLVMIVarBit asIVar(BigInteger result) {
             return asIVar(getBits(), result);
         }
@@ -375,6 +397,7 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit logicalRightShift(LLVMIVarBit right) {
             int shiftAmount = right.getIntValue();
             BigInteger mask = BigInteger.valueOf(-1).shiftLeft(getBits() - shiftAmount).not();
@@ -383,6 +406,7 @@ public abstract class LLVMIVarBit {
         }
 
         @Override
+        @TruffleBoundary
         public LLVMIVarBit arithmeticRightShift(LLVMIVarBit right) {
             BigInteger result = bigInt().shiftRight(right.getIntValue());
             return asIVar(result);
@@ -390,6 +414,7 @@ public abstract class LLVMIVarBit {
 
     }
 
+    @TruffleBoundary
     public static LLVMIVarBit fromString(String stringValue, int bits) {
         BigInteger constAsBigInteger = new BigInteger(stringValue);
         return LLVMVarBitByteArray.asIVar(bits, constAsBigInteger);

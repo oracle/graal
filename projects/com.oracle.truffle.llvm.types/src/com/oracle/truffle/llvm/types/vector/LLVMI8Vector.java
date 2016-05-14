@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.types.vector;
 
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
@@ -65,7 +64,6 @@ public final class LLVMI8Vector extends LLVMVector<Byte> {
         return new LLVMI8Vector(addr, size);
     }
 
-    @ExplodeLoop
     public static LLVMI8Vector fromI8Array(LLVMAddress target, byte[] vals) {
         LLVMAddress currentTarget = target;
         for (int i = 0; i < vals.length; i++) {

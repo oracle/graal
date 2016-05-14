@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.types.vector;
 
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
@@ -41,7 +40,6 @@ public final class LLVMFloatVector extends LLVMVector<Float> {
         super(addr, nrElements);
     }
 
-    @ExplodeLoop
     public static LLVMFloatVector fromFloatArray(LLVMAddress target, float[] vals) {
         LLVMAddress currentTarget = target;
         for (int i = 0; i < vals.length; i++) {
