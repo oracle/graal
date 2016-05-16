@@ -109,7 +109,9 @@ public class LLVMTypeHelper {
     private static int getStructSizeByte(ResolvedStructType type) {
         int sumByte = 0;
         for (ResolvedType field : type.getFieldTypes()) {
-            sumByte += computePaddingByte(sumByte, field);
+            if (!type.isPacked()) {
+                sumByte += computePaddingByte(sumByte, field);
+            }
             sumByte += getByteSize(field);
         }
         int padding;
