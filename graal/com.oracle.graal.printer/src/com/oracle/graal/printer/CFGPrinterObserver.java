@@ -205,8 +205,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
         } else if (object instanceof InstalledCode) {
             CompilationResult compResult = Debug.contextLookup(CompilationResult.class);
-            assert compResult != null : "missing " + CompilationResult.class.getName() + " from debug context";
-            cfgPrinter.printMachineCode(disassemble(codeCache, compResult, (InstalledCode) object), message);
+            if (compResult != null) {
+                cfgPrinter.printMachineCode(disassemble(codeCache, compResult, (InstalledCode) object), message);
+            }
         } else if (object instanceof IntervalDumper) {
             if (lastLIR == cfgPrinter.lir) {
                 cfgPrinter.printIntervals(message, (IntervalDumper) object);
