@@ -243,6 +243,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.misc",
+        "jdk.internal.jimage",
         "com.sun.crypto.provider",
       ],
       "checkstyle" : "com.oracle.graal.graph",

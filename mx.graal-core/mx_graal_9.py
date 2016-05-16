@@ -155,7 +155,7 @@ def ctw(args, extraVMarguments=None):
     if args.cp:
         cp = os.path.abspath(args.cp)
     else:
-        cp = join(_jdk.home, 'lib', 'modules', 'bootmodules.jimage')
+        cp = join(_jdk.home, 'lib', 'modules')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)

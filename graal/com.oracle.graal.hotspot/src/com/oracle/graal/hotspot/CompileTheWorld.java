@@ -43,6 +43,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,6 +92,7 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import jdk.vm.ci.services.Services;
 
 /**
  * This class implements compile-the-world functionality with JVMCI.
@@ -453,8 +455,9 @@ public final class CompileTheWorld {
         private String[] readJimageEntries() {
             try {
                 // Use reflection so this can be compiled on JDK8
-                Method open = Class.forName("jdk.internal.jimage.BasicImageReader").getDeclaredMethod("open", String.class);
-                Object reader = open.invoke(null, name);
+                Path path = FileSystems.getDefault().getPath(name);
+                Method open = Class.forName("jdk.internal.jimage.BasicImageReader").getDeclaredMethod("open", Path.class);
+                Object reader = open.invoke(null, path);
                 Method getEntryNames = reader.getClass().getDeclaredMethod("getEntryNames");
                 getEntryNames.setAccessible(true);
                 String[] entries = (String[]) getEntryNames.invoke(reader);
@@ -523,7 +526,7 @@ public final class CompileTheWorld {
                 ClassPathEntry cpe;
                 if (entry.endsWith(".zip") || entry.endsWith(".jar")) {
                     cpe = new JarClassPathEntry(entry);
-                } else if (entry.endsWith(".jimage")) {
+                } else if (entry.endsWith(".jimage") || entry.endsWith("/modules")) {
                     assert JAVA_VERSION.compareTo("1.9") >= 0;
                     if (!new File(entry).isFile()) {
                         println("CompileTheWorld : Skipped classes in " + entry);
@@ -754,6 +757,7 @@ public final class CompileTheWorld {
     }
 
     public static void main(String[] args) throws Throwable {
+        Services.exportJVMCITo(CompileTheWorld.class);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
         compiler.compileTheWorld();
     }
