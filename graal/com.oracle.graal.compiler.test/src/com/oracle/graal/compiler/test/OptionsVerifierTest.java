@@ -34,13 +34,22 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+
+import org.junit.Test;
+
+import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.test.GraalTest;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;
@@ -48,12 +57,6 @@ import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
-
-import org.junit.Test;
-
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionValue options} has a class initializer
@@ -78,15 +81,17 @@ public class OptionsVerifierTest {
         private final Map<String, Object> entries = new LinkedHashMap<>();
 
         Classpath() throws IOException {
-            String[] names = (System.getProperty("sun.boot.class.path") + File.pathSeparatorChar + System.getProperty("java.class.path")).split(File.pathSeparator);
+            List<String> names = new ArrayList<>(Arrays.asList(System.getProperty("java.class.path").split(File.pathSeparator)));
+            if (GraalTest.JDK8OrEarlier) {
+                names.addAll(Arrays.asList(System.getProperty("sun.boot.class.path").split(File.pathSeparator)));
+            } else {
+                names.addAll(Arrays.asList(System.getProperty("jdk.module.path").split(File.pathSeparator)));
+            }
             for (String n : names) {
                 File path = new File(n);
                 if (path.exists()) {
                     if (path.isDirectory()) {
                         entries.put(n, path);
-                    } else if (n.endsWith(".jimage")) {
-                        URL url = path.toURI().toURL();
-                        entries.put(n, new URLClassLoader(new URL[]{url}));
                     } else if (n.endsWith(".jar") || n.endsWith(".zip")) {
                         URL url = new URL("jar", "", "file:" + n + "!/");
                         entries.put(n, new URLClassLoader(new URL[]{url}));
