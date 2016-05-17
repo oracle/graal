@@ -138,7 +138,6 @@ public class SourceSectionTest {
         SourceSection helloTo = complexHello.createSection("world", 6, 5);
         assertEquals("world", helloTo.getCode());
 
-
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hi world!");
         }

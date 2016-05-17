@@ -34,6 +34,7 @@ import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Objects;
 
 final class FileSourceImpl extends Content {
 
@@ -122,7 +123,13 @@ final class FileSourceImpl extends Content {
         }
         if (obj instanceof FileSourceImpl) {
             FileSourceImpl other = (FileSourceImpl) obj;
-            return path.equals(other.path);
+            if (!path.equals(other.path)) {
+                return false;
+            }
+            if (code == null && other.code == null) {
+                return true;
+            }
+            return Objects.equals(getCode(), other.getCode());
         }
         return false;
     }

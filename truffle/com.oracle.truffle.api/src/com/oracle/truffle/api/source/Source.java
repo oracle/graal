@@ -39,61 +39,89 @@ import java.util.logging.Logger;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
+import java.io.InputStreamReader;
 import java.util.Objects;
 import java.util.logging.Level;
 
 /**
- * Representation of a guest language source code unit and its contents. Sources originate in
- * several ways:
- * <ul>
- * <li><strong>Literal:</strong> An anonymous text string: not named and not indexed. These should
- * be considered value objects; equality is defined based on contents.<br>
- * See {@link Source#fromText(CharSequence, String)}</li>
- * <p>
- * <li><strong>Named Literal:</strong> A text string that can be retrieved by name as if it were a
- * file, but without any assumption that the name is related to a file path. Creating a new literal
- * with an already existing name will replace its predecessor in the index.<br>
- * See {@link Source#fromNamedText(CharSequence, String)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
- * absolute, canonical path name of the file. File contents are <em>read lazily</em> and contents
- * optionally <em>cached</em>. <br>
- * See {@link Source#fromFileName(String)}<br>
- * See {@link Source#fromFileName(String, boolean)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>URL:</strong> Each URL source is represented as a canonical object, indexed by the
- * URL. Contents are <em>read eagerly</em> and <em>cached</em>. <br>
- * See {@link Source#fromURL(URL, String)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>Reader:</strong> Contents are <em>read eagerly</em> and treated as an anonymous
- * (non-indexed) <em>Literal</em> . <br>
- * See {@link Source#fromReader(Reader, String)}</li>
- * <p>
- * <li><strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
+ * Representation of a source code unit and its contents. Source instances are created by using one
+ * of existing factory methods, each loading the file from a different source/medium.
+ *
+ * <h3>From a file on disk</h3>
+ *
+ * Each file is represented as a canonical object, indexed by the absolute, canonical path name of
+ * the file. File content is <em>read lazily</em> and may be optionally <em>cached</em>. Sample
+ * usage: <br>
+ *
+ * {@link SourceSnippets#fromFile}
+ *
+ * Methods of interest are {@link Source#fromFileName(String)},
+ * {@link Source#fromFileName(String, boolean)}, and {@link Source#find(String)}.
+ *
+ * <h3>Read from an URL</h3>
+ *
+ * One can read remote or in JAR resources using the {@link Source#fromURL(URL, String)} factory:
+ * <br>
+ *
+ * {@link SourceSnippets#fromURL}
+ *
+ * Each URL source is represented as a canonical object, indexed by the URL. Contents are
+ * <em>read eagerly</em> and <em>cached</em> locally.
+ *
+ * <h3>Source from a literal text</h3>
+ *
+ * An anonymous immutable code snippet can be created from a string via the
+ * {@link Source#fromText(CharSequence, String)} factory method: <br>
+ *
+ * {@link SourceSnippets#fromAString}
+ *
+ * the created {@link Source} doesn't have associated {@link #getMimeType() mime type}. One has to
+ * additionally attach one to it via {@link #withMimeType(java.lang.String)} method.
+ *
+ * <h3>Reading from a stream</h3>
+ *
+ * If one has a {@link Reader} one can convert its content into a {@link Source} via
+ * {@link Source#fromReader(Reader, String)} method: <br>
+ *
+ * {@link SourceSnippets#fromReader}
+ *
+ * the content is <em>read eagerly</em> and it doesn't have associated {@link #getMimeType() mime
+ * type}. One has to additionally attach one to it via {@link #withMimeType(java.lang.String)}
+ * method.
+ *
+ * <!-- <strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
  * {@link Source}.<br>
  * See {@link Source#subSource(Source, int, int)}<br>
- * See {@link Source#subSource(Source, int)}</li>
+ * See {@link Source#subSource(Source, int)}
  * <p>
- * <li><strong>AppendableSource:</strong> Literal contents are provided by the client,
- * incrementally, after the instance is created.<br>
+ * <strong>AppendableSource:</strong> Literal contents are provided by the client, incrementally,
+ * after the instance is created.<br>
  * See {@link Source#fromAppendableText(String)}<br>
- * See {@link Source#fromNamedAppendableText(String)}</li>
- * </ul>
+ * -->
+ *
+ * <h2>Immutability of {@link Source}</h2>
+ *
  * <p>
- * <strong>File cache:</strong>
- * <ol>
- * <li>File content caching is optional, <em>on</em> by default.</li>
- * <li>The first access to source file contents will result in the contents being read, and (if
- * enabled) cached.</li>
- * <li>If file contents have been cached, access to contents via {@link Source#getInputStream()} or
- * {@link Source#getReader()} will be provided from the cache.</li>
- * <li>Any access to file contents via the cache will result in a timestamp check and possible cache
- * reload.</li>
- * </ol>
+ * {@link Source} is an immutable object - once (lazily) loaded, it remains the same. The source
+ * object can be associated with various attributes like {@link #getName()}, {@link #getShortName()}
+ * , {@link #getPath()}, {@link #getMimeType()} and these are immutable as well. The system makes
+ * the best effort to derive values of these attributes from the location and/or content of the
+ * {@link Source} object. However, to give the user that creates the source control over these
+ * attributes, the API offers an easy way to alter values of these attributes by creating clones of
+ * the source via {@link #withMimeType(java.lang.String)}, {@link #withName(java.lang.String)},
+ * {@link #withPath(java.lang.String)} or {@link #withShortName(java.lang.String)} methods.
+ * </p>
  * <p>
+ * While {@link Source} is immutable, the world around it is changing. The content of a file from
+ * which a {@link Source#fromFileName(java.lang.String) source has been read} may change few seconds
+ * later. How can we balance the immutability with ability to see real state of the world? In this
+ * case, one can request a reload of a new version of the
+ * {@link Source#fromFileName(java.lang.String, boolean) source for the same file}. The newly loaded
+ * {@link Source} will be different than the previous one, however it will have the same attributes
+ * ({@link #getName()}, presumably also {@link #getMimeType()}, etc.). There isn't much to do about
+ * this - just keep in mind that there can be multiple different {@link Source} objects representing
+ * the same source origin.
+ * </p>
  *
  * @since 0.8 or earlier
  */
@@ -133,29 +161,27 @@ public abstract class Source {
      * {@link File#getCanonicalPath() canonical path} of the provided file name.
      *
      * @param fileName path to the file with the source
-     * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
+     * @param reload forces any existing {@link Source} cache to be cleared, forcing a re-read - as
+     *            a result the newly returned {@link Source} may have content different to any
+     *            previously loaded one, which is up-to-date with current state on the disk
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
      */
-    public static Source fromFileName(String fileName, boolean reset) throws IOException {
-        Source source = null;
-        if (source == null) {
-            final File file = new File(fileName);
-            if (!file.canRead()) {
-                throw new IOException("Can't read file " + fileName);
-            }
-            final String path = file.getCanonicalPath();
-            source = null;
-            if (source == null) {
-                final FileSourceImpl content = new FileSourceImpl(file, fileName, path);
-                source = new Impl(content);
+    public static Source fromFileName(String fileName, boolean reload) throws IOException {
+        if (!reload) {
+            Source source = find(fileName);
+            if (source != null && source.content() instanceof FileSourceImpl) {
+                return source;
             }
         }
-        if (reset) {
-            source.reset();
+        final File file = new File(fileName);
+        if (!file.canRead()) {
+            throw new IOException("Can't read file " + fileName);
         }
-        return source;
+        final String path = file.getCanonicalPath();
+        final FileSourceImpl content = new FileSourceImpl(file, fileName, path);
+        return new Impl(content);
     }
 
     /**
@@ -942,3 +968,62 @@ public abstract class Source {
 
     }
 }
+
+// @formatter:off
+class SourceSnippets {
+    public static Source fromFile(File dir, String name) throws IOException {
+        // BEGIN: SourceSnippets#fromFile
+        File file = new File(dir, name);
+        assert name.endsWith(".java") : "Imagine 'c:\\sources\\Example.java' file";
+
+        Source source = Source.fromFileName(file.getPath());
+
+        assert file.getName().equals(source.getShortName());
+        assert file.getPath().equals(source.getPath());
+        assert file.getPath().equals(source.getName());
+        assert "text/x-java".equals(source.getMimeType());
+        // END: SourceSnippets#fromFile
+        return source;
+    }
+
+    public static Source fromURL() throws IOException {
+        // BEGIN: SourceSnippets#fromURL
+        URL resource = SourceSnippets.class.getResource("sample.js");
+        Source source = Source.fromURL(resource, "/your/pkg/sample.js");
+        assert "/your/pkg/sample.js".equals(source.getShortName());
+        assert resource.toExternalForm().equals(source.getPath());
+        assert "/your/pkg/sample.js".equals(source.getName());
+        assert "application/javascript".equals(source.getMimeType());
+        // END: SourceSnippets#fromURL
+        return source;
+    }
+
+    public static Source fromReader() throws IOException {
+        // BEGIN: SourceSnippets#fromReader
+        Reader stream = new InputStreamReader(
+            SourceSnippets.class.getResourceAsStream("sample.js")
+        );
+        Source source = Source.fromReader(stream, "/your/pkg/sample.js");
+        assert "/your/pkg/sample.js".equals(source.getShortName());
+        assert "/your/pkg/sample.js".equals(source.getPath());
+        assert "/your/pkg/sample.js".equals(source.getName());
+        assert null == source.getMimeType();
+        // END: SourceSnippets#fromReader
+        return source;
+    }
+
+    public static Source fromAString() throws Exception {
+        // BEGIN: SourceSnippets#fromAString
+        Source source = Source.fromText("function() {\n"
+            + "  return 'Hi';\n"
+            + "}\n", "/my/scripts/hi.js"
+        );
+        assert "/my/scripts/hi.js".equals(source.getShortName());
+        assert "/my/scripts/hi.js".equals(source.getPath());
+        assert "/my/scripts/hi.js".equals(source.getName());
+        assert null == source.getMimeType() : "No mime type associated";
+        // END: SourceSnippets#fromAString
+        return source;
+    }
+}
+// @formatter:on

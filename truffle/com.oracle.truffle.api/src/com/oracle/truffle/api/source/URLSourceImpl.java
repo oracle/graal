@@ -29,8 +29,12 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.ref.WeakReference;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,7 +78,7 @@ final class URLSourceImpl extends Content {
 
     @Override
     public String getPath() {
-        return url.getPath();
+        return url.toExternalForm();
     }
 
     @Override
@@ -98,6 +102,16 @@ final class URLSourceImpl extends Content {
 
     @Override
     String findMimeType() throws IOException {
+        Path path;
+        try {
+            path = Paths.get(url.toURI());
+            String firstGuess = Files.probeContentType(path);
+            if (firstGuess != null) {
+                return firstGuess;
+            }
+        } catch (URISyntaxException ex) {
+            // swallow and go on
+        }
         return url.openConnection().getContentType();
     }
 
