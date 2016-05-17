@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -235,13 +236,19 @@ public final class SLContext extends ExecutionContext {
         if (a instanceof Long || a instanceof BigInteger || a instanceof String) {
             return a;
         } else if (a instanceof Number) {
-            return ((Number) a).longValue();
+            return fromForeignNumber(a);
         } else if (a instanceof TruffleObject) {
             return a;
         } else if (a instanceof SLContext) {
             return a;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException(a + " is not a Truffle value");
+    }
+
+    @TruffleBoundary
+    private static long fromForeignNumber(Object a) {
+        return ((Number) a).longValue();
     }
 
     public CallTarget parse(Source source) throws IOException {

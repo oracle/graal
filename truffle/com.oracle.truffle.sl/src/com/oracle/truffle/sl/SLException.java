@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -62,11 +63,13 @@ public class SLException extends RuntimeException {
 
     public SLException(String message) {
         super(message);
+        CompilerAsserts.neverPartOfCompilation();
         initCause(new Throwable("Java stack trace"));
     }
 
     @Override
     public synchronized Throwable fillInStackTrace() {
+        CompilerAsserts.neverPartOfCompilation();
         return fillInSLStackTrace(this);
     }
 
