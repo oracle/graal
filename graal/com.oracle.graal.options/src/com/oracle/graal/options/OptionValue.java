@@ -45,7 +45,7 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * try (OverrideScope s = OptionValue.override(myOption, myValue) {
+     * try (OverrideScope s = OptionValue.override(myOption, myValue)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
@@ -75,7 +75,7 @@ public class OptionValue<T> {
      * Map&lt;OptionValue, Object&gt; overrides = new HashMap&lt;&gt;();
      * overrides.put(myOption1, myValue1);
      * overrides.put(myOption2, myValue2);
-     * try (OverrideScope s = OptionValue.override(overrides) {
+     * try (OverrideScope s = OptionValue.override(overrides)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
@@ -101,7 +101,7 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * try (OverrideScope s = OptionValue.override(myOption1, myValue1, myOption2, myValue2) {
+     * try (OverrideScope s = OptionValue.override(myOption1, myValue1, myOption2, myValue2)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>

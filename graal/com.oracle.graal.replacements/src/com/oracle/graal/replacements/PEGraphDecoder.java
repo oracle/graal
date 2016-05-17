@@ -797,15 +797,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node) {
+    protected Node addFloatingNode(MethodScope s, Node node) {
+        Node addedNode = super.addFloatingNode(s, node);
         PEMethodScope methodScope = (PEMethodScope) s;
-
+        NodeSourcePosition pos = node.getNodeSourcePosition();
         if (methodScope.isInlinedMethod()) {
-            NodeSourcePosition pos = node.getNodeSourcePosition();
             if (pos != null) {
                 NodeSourcePosition bytecodePosition = methodScope.getBytecodePosition();
                 node.setNodeSourcePosition(pos.addCaller(bytecodePosition));
             }
+        }
+        return addedNode;
+    }
+
+    @Override
+    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node) {
+        PEMethodScope methodScope = (PEMethodScope) s;
+
+        if (methodScope.isInlinedMethod()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
 

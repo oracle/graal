@@ -1010,7 +1010,6 @@ public class GraphDecoder {
              * or value numbering.
              */
             node = methodScope.graph.addWithoutUnique(node);
-
         } else {
             /* Allow subclasses to canonicalize and intercept nodes. */
             node = handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
@@ -1069,6 +1068,9 @@ public class GraphDecoder {
 
     /**
      * Hook for subclasses to process a non-fixed node after it is added to the graph.
+     *
+     * If this method replaces a node with another node, it must update its source position if the
+     * original node has the source position set.
      *
      * @param methodScope The current method.
      * @param loopScope The current loop.

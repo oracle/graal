@@ -24,14 +24,17 @@ package com.oracle.graal.truffle.phases;
 
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeSourcePosition;
@@ -43,16 +46,18 @@ import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    private static final Pattern METHOD_REGEX_FILTER = Pattern.compile(TruffleInstrumentBranchesFilter.getValue());
-    private static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
+    private static final MethodFilter[] METHOD_FILTER;
     private static final Field ACCESS_TABLE_JAVA_FIELD;
+    static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     public static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
 
@@ -64,24 +69,29 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             throw new RuntimeException(e);
         }
         ACCESS_TABLE_JAVA_FIELD = javaField;
+
+        String filterValue = TruffleInstrumentBranchesFilter.getValue();
+        if (filterValue != null) {
+            METHOD_FILTER = MethodFilter.parse(filterValue);
+        } else {
+            METHOD_FILTER = new MethodFilter[0];
+        }
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        if (METHOD_REGEX_FILTER.matcher(graph.method().getName()).matches()) {
-            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
-            JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
-            try {
-                for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-                    BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
-                    if (p != null) {
-                        insertCounter(graph, tableField, tableConstant, n, p, true);
-                        insertCounter(graph, tableField, tableConstant, n, p, false);
-                    }
+        ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
+        JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
+        try {
+            for (IfNode n : graph.getNodes().filter(IfNode.class)) {
+                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
+                if (p != null) {
+                    insertCounter(graph, tableField, tableConstant, n, p, true);
+                    insertCounter(graph, tableField, tableConstant, n, p, false);
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -104,14 +114,29 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         public int tableCount = 0;
 
         /*
-         * Node source location is determined by its inlining chain. The first location in the chain
-         * refers to the location in the original method, so we use that to determine the unique
-         * source location key.
+         * Node source location is determined by its inlining chain. A flag value controls whether
+         * we discriminate nodes by their inlining site, or only by the method in which they were
+         * defined.
          */
-        private static String encode(Node ifNode) {
-            NodeSourcePosition loc = ifNode.getNodeSourcePosition();
-            if (loc != null) {
-                return loc.toString().replace("\n", ",");
+        private static String filterAndEncode(Node ifNode) {
+            NodeSourcePosition pos = ifNode.getNodeSourcePosition();
+            if (pos != null) {
+                if (!MethodFilter.matches(METHOD_FILTER, pos.getMethod())) {
+                    return null;
+                }
+                if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                    StringBuilder sb = new StringBuilder();
+                    while (pos != null) {
+                        MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
+                        pos = pos.getCaller();
+                        if (pos != null) {
+                            sb.append(CodeUtil.NEW_LINE);
+                        }
+                    }
+                    return sb.toString();
+                } else {
+                    return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
+                }
             } else {
                 // IfNode has no position information, and is probably synthetic, so we do not
                 // instrument it.
@@ -119,17 +144,22 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        public synchronized ArrayList<String> accessTableToList() {
+            return pointMap.entrySet().stream().map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+        }
+
         public synchronized void dumpAccessTable() {
             // Dump accumulated profiling information.
-            System.out.println("Branch execution profile");
-            System.out.println("========================");
-            for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
+            TTY.println("Branch execution profile");
+            TTY.println("========================");
+            for (String line : accessTableToList()) {
+                TTY.println(line);
+                TTY.println();
             }
         }
 
         public synchronized Point getOrCreatePoint(IfNode n) {
-            String key = encode(n);
+            String key = filterAndEncode(n);
             if (key == null) {
                 return null;
             }
