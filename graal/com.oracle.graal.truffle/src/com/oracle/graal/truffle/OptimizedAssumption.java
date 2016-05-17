@@ -60,14 +60,22 @@ public final class OptimizedAssumption extends AbstractAssumption {
     }
 
     @Override
-    public synchronized void invalidate() {
+    public void invalidate() {
         if (isValid) {
             invalidateImpl();
         }
     }
 
     @TruffleBoundary
-    private void invalidateImpl() {
+    private synchronized void invalidateImpl() {
+        /*
+         * Check again, now that we are holding the lock. Since isValid is defined volatile,
+         * double-checked locking is allowed.
+         */
+        if (!isValid) {
+            return;
+        }
+
         boolean invalidatedInstalledCode = false;
         Entry e = first;
         while (e != null) {
