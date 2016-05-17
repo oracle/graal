@@ -77,20 +77,18 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        if (MethodFilter.matches(METHOD_FILTER, graph.method())) {
-            ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
-            JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
-            try {
-                for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-                    BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
-                    if (p != null) {
-                        insertCounter(graph, tableField, tableConstant, n, p, true);
-                        insertCounter(graph, tableField, tableConstant, n, p, false);
-                    }
+        ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
+        JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
+        try {
+            for (IfNode n : graph.getNodes().filter(IfNode.class)) {
+                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
+                if (p != null) {
+                    insertCounter(graph, tableField, tableConstant, n, p, true);
+                    insertCounter(graph, tableField, tableConstant, n, p, false);
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -113,25 +111,32 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         public int tableCount = 0;
 
         /*
-         * Node source location is determined by its inlining chain. The first location in the chain
-         * refers to the location in the original method, so we use that to determine the unique
-         * source location key.
+         * Node source location is determined by its inlining chain. A flag value controls whether we discriminate
+         * nodes by their inlining site, or only by the method in which they were defined.
          */
-        private static String encode(Node ifNode) {
+        private static String filterAndEncode(Node ifNode) {
             NodeSourcePosition pos = ifNode.getNodeSourcePosition();
             if (pos != null) {
                 if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                    boolean matched = false;
                     StringBuilder sb = new StringBuilder();
                     while (pos != null) {
+                        if (MethodFilter.matches(METHOD_FILTER, pos.getMethod())) {
+                            matched = true;
+                        }
                         MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
                         pos = pos.getCaller();
                         if (pos != null) {
                             sb.append(CodeUtil.NEW_LINE);
                         }
                     }
-                    return sb.toString();
+                    return (matched) ? (sb.toString()) : null;
                 } else {
-                    return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
+                    if (MethodFilter.matches(METHOD_FILTER, pos.getMethod())) {
+                        return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
+                    } else {
+                        return null;
+                    }
                 }
             } else {
                 // IfNode has no position information, and is probably synthetic, so we do not instrument it.
@@ -145,11 +150,12 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             TTY.println("========================");
             for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
                 TTY.println(entry.getKey() + ": " + entry.getValue());
+                TTY.println();
             }
         }
 
         public synchronized Point getOrCreatePoint(IfNode n) {
-            String key = encode(n);
+            String key = filterAndEncode(n);
             if (key == null) {
                 return null;
             }
