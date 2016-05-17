@@ -41,6 +41,8 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import com.oracle.graal.debug.Management;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionValue;
 import com.sun.management.ThreadMXBean;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -49,8 +51,13 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 @SuppressWarnings("unused")
 public final class CompilationStatistics {
 
+    public static class Options {
+        @Option(help = "Enables CompilationStatistics.")//
+        public static final OptionValue<Boolean> UseCompilationStatistics = new OptionValue<>(false);
+    }
+
     private static final long RESOLUTION = 100000000;
-    private static final boolean ENABLED = Boolean.getBoolean("jvmci.comp.stats");
+    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue();
 
     private static final CompilationStatistics DUMMY = new CompilationStatistics(null, false);
 
