@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.spi.FileTypeDetector;
@@ -150,7 +149,7 @@ public abstract class Source {
      * @since 0.8 or earlier
      */
     public static Source find(String name) {
-        return Impl.findSource(name);
+        return SourceImpl.findSource(name);
     }
 
     /**
@@ -181,7 +180,7 @@ public abstract class Source {
         }
         final String path = file.getCanonicalPath();
         final FileSourceImpl content = new FileSourceImpl(file, fileName, path);
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     /**
@@ -230,7 +229,7 @@ public abstract class Source {
         // We are going to trust that the fileName is readable.
         final String path = file.getCanonicalPath();
         Content content = new ClientManagedFileSourceImpl(file, fileName, path, chars);
-        Source source = new Impl(content);
+        Source source = new SourceImpl(content);
         return source;
     }
 
@@ -249,7 +248,7 @@ public abstract class Source {
     public static Source fromText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     /**
@@ -264,7 +263,7 @@ public abstract class Source {
     public static Source fromAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
         Content content = new AppendableLiteralSourceImpl(name);
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     /**
@@ -282,7 +281,7 @@ public abstract class Source {
     public static Source fromNamedText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
-        final Source source = new Impl(content);
+        final Source source = new SourceImpl(content);
         return source;
     }
 
@@ -301,7 +300,7 @@ public abstract class Source {
     public static Source fromNamedAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
         final Content content = new AppendableLiteralSourceImpl(name);
-        final Source source = new Impl(content);
+        final Source source = new SourceImpl(content);
         return source;
     }
 
@@ -319,7 +318,7 @@ public abstract class Source {
     public static Source subSource(Source base, int baseCharIndex, int length) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSourceImpl subSource = SubSourceImpl.create(base, baseCharIndex, length);
-        return new Impl(subSource);
+        return new SourceImpl(subSource);
     }
 
     /**
@@ -350,7 +349,7 @@ public abstract class Source {
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
         Content content = URLSourceImpl.get(url, description);
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     /**
@@ -365,7 +364,7 @@ public abstract class Source {
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
         Content content = new LiteralSourceImpl(description, read(reader));
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     /**
@@ -406,7 +405,7 @@ public abstract class Source {
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
         Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
-        return new Impl(content);
+        return new SourceImpl(content);
     }
 
     // TODO (mlvdv) enable per-file choice whether to cache?
@@ -900,72 +899,6 @@ public abstract class Source {
                         Objects.equals(getName(), other.getName()) &&
                         Objects.equals(getShortName(), other.getShortName()) &&
                         Objects.equals(getPath(), other.getPath());
-    }
-
-    private static final class Impl extends Source implements Cloneable {
-        private static ImplRef SOURCES = null;
-
-        Impl(Content content) {
-            super(content);
-            registerSource(this);
-        }
-
-        @Override
-        protected Impl clone() throws CloneNotSupportedException {
-            Impl clone = (Impl) super.clone();
-            registerSource(clone);
-            return clone;
-        }
-
-        static synchronized void registerSource(Impl source) {
-            SOURCES = new ImplRef(source, SOURCES);
-        }
-
-        static synchronized Source findSource(String name) {
-            ImplRef prev = null;
-            ImplRef now = SOURCES;
-            while (now != null) {
-                Impl source = now.get();
-                if (source == null) {
-                    if (prev == null) {
-                        SOURCES = now.next;
-                    } else {
-                        prev.next = now.next;
-                    }
-                } else {
-                    prev = now;
-                    if (Objects.equals(source.getName(), name)) {
-                        return source;
-                    }
-                }
-                now = now.next;
-            }
-            return null;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Source) {
-                Source other = (Source) obj;
-                return content().equals(other.content()) && equalAttributes(other);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return content().hashCode();
-        }
-    }
-
-    private static final class ImplRef extends WeakReference<Impl> {
-        ImplRef next;
-
-        ImplRef(Impl source, ImplRef next) {
-            super(source);
-            this.next = next;
-        }
-
     }
 }
 
