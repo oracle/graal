@@ -43,18 +43,25 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -435,13 +442,21 @@ public final class CompileTheWorld {
 
         @Override
         public List<String> getClassNames() throws IOException {
+            String prop = System.getProperty("CompileTheWorld.limitmods");
+            Set<String> limitmods = prop == null ? null : new HashSet<>(Arrays.asList(prop.split(",")));
             List<String> classNames = new ArrayList<>();
             String[] entries = readJimageEntries();
             for (String e : entries) {
-                if (e.endsWith(".class")) {
+                if (e.endsWith(".class") && !e.endsWith("module-info.class")) {
                     assert e.charAt(0) == '/' : e;
                     int endModule = e.indexOf('/', 1);
                     assert endModule != -1 : e;
+                    if (limitmods != null) {
+                        String module = e.substring(1, endModule);
+                        if (!limitmods.contains(module)) {
+                            continue;
+                        }
+                    }
                     // Strip the module prefix and convert to dotted form
                     String className = e.substring(endModule + 1).replace('/', '.');
                     // Strip ".class" suffix
@@ -467,6 +482,27 @@ public final class CompileTheWorld {
                 return new String[0];
             }
         }
+    }
+
+    /**
+     * Determines if a given path denotes a jimage file.
+     *
+     * @param path file path
+     * @return {@code true} if the 4 byte integer (in native endianness) at the start of
+     *         {@code path}'s contents is {@code 0xCAFEDADA}
+     */
+    static boolean isJImage(String path) {
+        try {
+            FileChannel channel = FileChannel.open(Paths.get(path), StandardOpenOption.READ);
+            ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+            map.order(ByteOrder.nativeOrder()).asIntBuffer().get(0);
+            int magic = map.asIntBuffer().get(0);
+            if (magic == 0xCAFEDADA) {
+                return true;
+            }
+        } catch (IOException e) {
+        }
+        return false;
     }
 
     /**
@@ -526,13 +562,8 @@ public final class CompileTheWorld {
                 ClassPathEntry cpe;
                 if (entry.endsWith(".zip") || entry.endsWith(".jar")) {
                     cpe = new JarClassPathEntry(entry);
-                } else if (entry.endsWith(".jimage") || entry.endsWith("/modules")) {
+                } else if (isJImage(entry)) {
                     assert JAVA_VERSION.compareTo("1.9") >= 0;
-                    if (!new File(entry).isFile()) {
-                        println("CompileTheWorld : Skipped classes in " + entry);
-                        println();
-                        continue;
-                    }
                     cpe = new ImageClassPathEntry(entry);
                 } else {
                     if (!new File(entry).isDirectory()) {

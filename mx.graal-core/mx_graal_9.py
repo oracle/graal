@@ -145,6 +145,7 @@ def ctw(args, extraVMarguments=None):
     parser = ArgumentParser(prog='mx ctw')
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
+    parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
 
@@ -154,16 +155,29 @@ def ctw(args, extraVMarguments=None):
 
     if args.cp:
         cp = os.path.abspath(args.cp)
+        if _vm.jvmciMode == 'disabled':
+            mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
+        # Compile all classes in the JRT image by default.
         cp = join(_jdk.home, 'lib', 'modules')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+        if _vm.jvmciMode != 'disabled':
+            # To be able to load all classes in the JRT with Class.forName,
+            # all JDK modules need to be made root modules.
+            limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
+            nonBootJDKModules = [m.name for m in _jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+            if nonBootJDKModules:
+                vmargs.append('-addmods')
+                vmargs.append(','.join(nonBootJDKModules))
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if _vm.jvmciMode == 'disabled':
-        vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp]
+        vmargs.append('-XX:+CompileTheWorld')
     else:
+        if args.limitmods:
+            vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
         if _vm.jvmciMode == 'jit':
             vmargs += ['-XX:+BootstrapJVMCI']
         vmargs += ['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld']
