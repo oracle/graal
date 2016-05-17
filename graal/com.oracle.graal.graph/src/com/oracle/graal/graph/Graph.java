@@ -230,7 +230,8 @@ public class Graph {
     }
 
     /**
-     * Determines if assertions are enabled for the {@link Graph} class.
+     * We only want the expensive modification count tracking when assertions are enabled for the
+     * {@link Graph} class.
      */
     @SuppressWarnings("all")
     public static boolean isModificationCountsEnabled() {
@@ -277,7 +278,7 @@ public class Graph {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeModCounts.length) {
-                nodeModCounts = Arrays.copyOf(nodeModCounts, id + 30);
+                nodeModCounts = Arrays.copyOf(nodeModCounts, id * 2 + 30);
             }
             nodeModCounts[id]++;
         } else {
@@ -297,7 +298,7 @@ public class Graph {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeUsageModCounts.length) {
-                nodeUsageModCounts = Arrays.copyOf(nodeUsageModCounts, id + 30);
+                nodeUsageModCounts = Arrays.copyOf(nodeUsageModCounts, id * 2 + 30);
             }
             nodeUsageModCounts[id]++;
         } else {
