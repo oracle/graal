@@ -22,6 +22,16 @@
  */
 package com.oracle.graal.truffle.phases;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.MethodFilter;
@@ -35,22 +45,13 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
@@ -113,8 +114,9 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         public int tableCount = 0;
 
         /*
-         * Node source location is determined by its inlining chain. A flag value controls whether we discriminate
-         * nodes by their inlining site, or only by the method in which they were defined.
+         * Node source location is determined by its inlining chain. A flag value controls whether
+         * we discriminate nodes by their inlining site, or only by the method in which they were
+         * defined.
          */
         private static String filterAndEncode(Node ifNode) {
             NodeSourcePosition pos = ifNode.getNodeSourcePosition();
@@ -136,7 +138,8 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                     return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
                 }
             } else {
-                // IfNode has no position information, and is probably synthetic, so we do not instrument it.
+                // IfNode has no position information, and is probably synthetic, so we do not
+                // instrument it.
                 return null;
             }
         }

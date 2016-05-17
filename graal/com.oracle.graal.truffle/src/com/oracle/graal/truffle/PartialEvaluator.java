@@ -347,7 +347,7 @@ public class PartialEvaluator {
                         AllowAssumptions.from(graph.getAssumptions() != null), architecture) {
             @Override
             protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-                return new GraphBuilderPhase.Instance(providers.getMetaAccess(),providers.getStampProvider(), providers.getConstantReflection(),
+                return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(),
                                 providers.getConstantFieldProvider(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
             }
         };

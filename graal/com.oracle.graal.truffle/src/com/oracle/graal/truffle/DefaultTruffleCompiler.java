@@ -22,30 +22,15 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.ListIterator;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.java.BytecodeParser;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
-import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.runtime.RuntimeProvider;
-
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 

@@ -22,6 +22,14 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
@@ -31,13 +39,6 @@ import com.oracle.graal.truffle.test.nodes.RootTestNode;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import static org.junit.Assert.assertNotNull;
 
 public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
@@ -86,6 +87,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue(filterFlag);
         }
-        Assert.assertEquals(InstrumentBranchesPhase.instrumentation.accessTableToList().get(0), "com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java:53) [bci: 4]\n[0] state = ELSE");
+        Assert.assertEquals(InstrumentBranchesPhase.instrumentation.accessTableToList().get(0),
+                        "com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java:54) [bci: 4]\n[0] state = ELSE");
     }
 }
