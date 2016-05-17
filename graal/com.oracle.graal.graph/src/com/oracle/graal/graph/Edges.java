@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
+import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
 import static com.oracle.graal.graph.Node.NOT_ITERABLE;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
@@ -343,7 +343,7 @@ public abstract class Edges extends Fields {
 
         private EdgesWithModCountIterator(Node node, Edges edges) {
             super(node, edges);
-            assert MODIFICATION_COUNTS_ENABLED;
+            assert isModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -371,7 +371,7 @@ public abstract class Edges extends Fields {
 
             @Override
             public Iterator<Position> iterator() {
-                if (MODIFICATION_COUNTS_ENABLED) {
+                if (isModificationCountsEnabled()) {
                     return new EdgesWithModCountIterator(node, Edges.this);
                 } else {
                     return new EdgesIterator(node, Edges.this);

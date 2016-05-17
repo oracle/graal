@@ -25,7 +25,7 @@ package com.oracle.graal.graph;
 import static com.oracle.graal.compiler.common.Fields.translateInto;
 import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
 import static com.oracle.graal.graph.Edges.translateInto;
-import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
+import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
 import static com.oracle.graal.graph.InputEdges.translateInto;
 import static com.oracle.graal.graph.Node.WithAllEdges;
 import static com.oracle.graal.graph.Node.newIdentityMap;
@@ -981,7 +981,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         private RawEdgesWithModCountIterator(Node node, long mask) {
             super(node, mask);
-            assert MODIFICATION_COUNTS_ENABLED;
+            assert isModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -1019,7 +1019,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
             @Override
             public Iterator<Node> iterator() {
-                if (MODIFICATION_COUNTS_ENABLED) {
+                if (isModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);
@@ -1034,7 +1034,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
             @Override
             public Iterator<Node> iterator() {
-                if (MODIFICATION_COUNTS_ENABLED) {
+                if (isModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);

@@ -24,7 +24,7 @@ package com.oracle.graal.graph;
 
 import static com.oracle.graal.graph.Edges.Type.Inputs;
 import static com.oracle.graal.graph.Edges.Type.Successors;
-import static com.oracle.graal.graph.Graph.MODIFICATION_COUNTS_ENABLED;
+import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
@@ -503,27 +503,27 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final int modCount() {
-        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+        if (isModificationCountsEnabled() && graph != null) {
             return graph.modCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+        if (isModificationCountsEnabled() && graph != null) {
             graph.incModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+        if (isModificationCountsEnabled() && graph != null) {
             return graph.usageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+        if (isModificationCountsEnabled() && graph != null) {
             graph.incUsageModCount(this);
         }
     }
