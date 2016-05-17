@@ -229,13 +229,11 @@ public class Graph {
         this(null);
     }
 
-    public static final boolean MODIFICATION_COUNTS_ENABLED = assertionsEnabled();
-
     /**
      * Determines if assertions are enabled for the {@link Graph} class.
      */
     @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
+    public static boolean isModificationCountsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled;
@@ -253,7 +251,7 @@ public class Graph {
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
-        if (MODIFICATION_COUNTS_ENABLED) {
+        if (isModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
@@ -810,7 +808,7 @@ public class Graph {
                 nextId++;
             }
         }
-        if (MODIFICATION_COUNTS_ENABLED) {
+        if (isModificationCountsEnabled()) {
             // This will cause any current iteration to fail with an assertion
             Arrays.fill(nodeModCounts, 0);
             Arrays.fill(nodeUsageModCounts, 0);
