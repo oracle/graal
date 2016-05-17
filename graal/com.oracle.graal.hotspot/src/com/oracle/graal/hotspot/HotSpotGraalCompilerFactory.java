@@ -127,7 +127,8 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
                 boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
                 GraalJarsOptionDescriptorsProvider odp = jdk8OrEarlier ? GraalJarsOptionDescriptorsProvider.create() : null;
 
-                String optionsFile = System.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
+                Properties savedProps = getSavedProperties(jdk8OrEarlier);
+                String optionsFile = savedProps.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
                 if (optionsFile != null) {
                     File graalOptions = new File(optionsFile);
@@ -149,8 +150,6 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
                         }
                     }
                 }
-
-                Properties savedProps = getSavedProperties(jdk8OrEarlier);
 
                 Map<String, String> optionSettings = new HashMap<>();
                 for (Map.Entry<Object, Object> e : savedProps.entrySet()) {

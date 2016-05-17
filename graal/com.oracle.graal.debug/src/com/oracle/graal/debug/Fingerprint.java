@@ -40,6 +40,9 @@ public class Fingerprint implements AutoCloseable {
         @Option(help = "Enables execution fingerprinting.")//
         public static final OptionValue<Boolean> UseFingerprinting = new OptionValue<>(false);
 
+        @Option(help = "Limit number of events shown in fingerprinting error message.")//
+        public static final OptionValue<Integer> FingerprintErrorEventTailLength = new OptionValue<>(50);
+
         @Option(help = "Fingerprinting event at which to execute breakpointable code.")//
         public static final OptionValue<Integer> FingerprintingBreakpointEvent = new OptionValue<>(-1);
     }
@@ -133,7 +136,7 @@ public class Fingerprint implements AutoCloseable {
         return index == -1 ? events.size() : index;
     }
 
-    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Integer.getInteger("jvmci.fingerprint.errorEventTailLength", 50);
+    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Options.FingerprintErrorEventTailLength.getValue();
 
     private String tail() {
         int start = Math.max(index - MAX_EVENT_TAIL_IN_ERROR_MESSAGE, 0);
