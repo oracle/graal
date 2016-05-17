@@ -94,7 +94,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     static final class IntrinsifyFrameAccessorsSpeculationReason implements SpeculationReason {
         private final FrameDescriptor frameDescriptor;
 
-        public IntrinsifyFrameAccessorsSpeculationReason(FrameDescriptor frameDescriptor) {
+        IntrinsifyFrameAccessorsSpeculationReason(FrameDescriptor frameDescriptor) {
             this.frameDescriptor = frameDescriptor;
         }
 
