@@ -449,10 +449,6 @@ public abstract class Source {
         return content;
     }
 
-    void reset() {
-        content().reset();
-    }
-
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
      * name of a guest language source code file. Name is supposed to be at least as long as

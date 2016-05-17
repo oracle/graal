@@ -96,10 +96,6 @@ final class URLSourceImpl extends Content {
     }
 
     @Override
-    void reset() {
-    }
-
-    @Override
     String findMimeType() throws IOException {
         Path path;
         try {

@@ -69,10 +69,6 @@ final class AppendableLiteralSourceImpl extends Content {
     }
 
     @Override
-    void reset() {
-    }
-
-    @Override
     public void appendCode(CharSequence chars) {
         text.append(chars);
     }

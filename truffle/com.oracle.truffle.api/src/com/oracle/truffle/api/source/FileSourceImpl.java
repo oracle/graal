@@ -113,10 +113,4 @@ final class FileSourceImpl extends Content {
     String findMimeType() throws IOException {
         return Files.probeContentType(file.toPath());
     }
-
-    @Override
-    void reset() {
-        this.code = null;
-    }
-
 }

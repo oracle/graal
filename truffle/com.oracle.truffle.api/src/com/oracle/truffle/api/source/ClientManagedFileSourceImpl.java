@@ -94,10 +94,4 @@ final class ClientManagedFileSourceImpl extends Content {
     public int hashCode() {
         return path.hashCode();
     }
-
-    @Override
-    void reset() {
-        this.code = null;
-    }
-
 }
