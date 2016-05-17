@@ -175,10 +175,10 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleProfilingEnabled = new OptionValue<>(true);
 
     @Option(help = "Instrument branches and output profiling information to the standard output.")
-    public static final OptionValue<Boolean> TruffleInstrumentBranches = new StableOptionValue<>(false);
+    public static final OptionValue<Boolean> TruffleInstrumentBranches = new OptionValue<>(false);
 
     @Option(help = "Instrument branches by considering different inlining sites as different branches.")
-    public static final OptionValue<Boolean> TruffleInstrumentBranchesPerInlineSite = new StableOptionValue<>(false);
+    public static final OptionValue<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionValue<>(false);
 
     @Option(help = "Method filter for methods in which to add branch instrumentation.")
     public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(null);
