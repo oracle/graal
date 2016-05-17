@@ -895,11 +895,11 @@ public abstract class Source {
         return mimeType;
     }
 
-    final boolean equalMime(Source other) {
-        if (mimeType == null) {
-            return other.mimeType == null;
-        }
-        return mimeType.equals(other.mimeType);
+    final boolean equalAttributes(Source other) {
+        return Objects.equals(getMimeType(), other.getMimeType()) &&
+            Objects.equals(getName(), other.getName()) &&
+            Objects.equals(getShortName(), other.getShortName()) &&
+            Objects.equals(getPath(), other.getPath());
     }
 
     private static final class Impl extends Source implements Cloneable {
@@ -947,7 +947,7 @@ public abstract class Source {
         public boolean equals(Object obj) {
             if (obj instanceof Source) {
                 Source other = (Source) obj;
-                return content().equals(other.content()) && equalMime(other);
+                return content().equals(other.content()) && equalAttributes(other);
             }
             return false;
         }

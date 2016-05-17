@@ -38,7 +38,6 @@ final class ClientManagedFileSourceImpl extends Content {
     private final File file;
     private final String name; // Name used originally to describe the source
     private final String path; // Normalized path description of an actual file
-    private String code; // The file's contents, as provided by the client
 
     ClientManagedFileSourceImpl(File file, String name, String path, CharSequence chars) {
         this.file = file.getAbsoluteFile();
@@ -94,18 +93,6 @@ final class ClientManagedFileSourceImpl extends Content {
     @Override
     public int hashCode() {
         return path.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof ClientManagedFileSourceImpl) {
-            ClientManagedFileSourceImpl other = (ClientManagedFileSourceImpl) obj;
-            return path.equals(other.path);
-        }
-        return false;
     }
 
     @Override

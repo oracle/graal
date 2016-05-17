@@ -33,7 +33,6 @@ import java.util.Objects;
 final class LiteralSourceImpl extends Content {
 
     private final String name;
-    private final String code;
 
     LiteralSourceImpl(String name, String code) {
         this.name = name;
@@ -77,21 +76,6 @@ final class LiteralSourceImpl extends Content {
     @Override
     public int hashCode() {
         return Objects.hash(name, code);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (obj instanceof LiteralSourceImpl) {
-            LiteralSourceImpl other = (LiteralSourceImpl) obj;
-            return Objects.equals(name, other.name) && code.equals(other.code);
-        }
-        return false;
     }
 
     @Override

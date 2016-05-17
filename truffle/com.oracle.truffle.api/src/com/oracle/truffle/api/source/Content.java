@@ -27,8 +27,11 @@ package com.oracle.truffle.api.source;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URL;
+import java.util.Objects;
 
 abstract class Content {
+    String code;
+
     abstract void reset();
 
     abstract String findMimeType() throws IOException;
@@ -58,5 +61,16 @@ abstract class Content {
     @SuppressWarnings("unused")
     void appendCode(CharSequence chars) {
         throw new UnsupportedOperationException();
+    }
+
+    public final boolean equals(Object obj) {
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Content other = (Content) obj;
+        if (code == null && other.code == null) {
+            return true;
+        }
+        return Objects.equals(code, other.code);
     }
 }

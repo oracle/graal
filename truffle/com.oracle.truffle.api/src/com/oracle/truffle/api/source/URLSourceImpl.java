@@ -54,7 +54,6 @@ final class URLSourceImpl extends Content {
 
     private final URL url;
     private final String name;
-    private String code; // A cache of the source contents
 
     URLSourceImpl(URL url, String name) throws IOException {
         this(url, url.openConnection(), name);
