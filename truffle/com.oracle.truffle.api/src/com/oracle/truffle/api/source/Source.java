@@ -897,9 +897,9 @@ public abstract class Source {
 
     final boolean equalAttributes(Source other) {
         return Objects.equals(getMimeType(), other.getMimeType()) &&
-            Objects.equals(getName(), other.getName()) &&
-            Objects.equals(getShortName(), other.getShortName()) &&
-            Objects.equals(getPath(), other.getPath());
+                        Objects.equals(getName(), other.getName()) &&
+                        Objects.equals(getShortName(), other.getShortName()) &&
+                        Objects.equals(getPath(), other.getPath());
     }
 
     private static final class Impl extends Source implements Cloneable {
