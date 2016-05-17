@@ -28,13 +28,11 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 final class AppendableLiteralSourceImpl extends Content {
 
     private final String name;
-    final List<CharSequence> codeList = new ArrayList<>();
+    private final StringBuffer text = new StringBuffer();
 
     AppendableLiteralSourceImpl(String name) {
         this.name = name;
@@ -52,7 +50,7 @@ final class AppendableLiteralSourceImpl extends Content {
 
     @Override
     public String getCode() {
-        return getCodeFromIndex(0);
+        return text.toString();
     }
 
     @Override
@@ -74,18 +72,9 @@ final class AppendableLiteralSourceImpl extends Content {
     void reset() {
     }
 
-    private String getCodeFromIndex(int index) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = index; i < codeList.size(); i++) {
-            CharSequence s = codeList.get(i);
-            sb.append(s);
-        }
-        return sb.toString();
-    }
-
     @Override
     public void appendCode(CharSequence chars) {
-        codeList.add(chars);
+        text.append(chars);
     }
 
     @Override
