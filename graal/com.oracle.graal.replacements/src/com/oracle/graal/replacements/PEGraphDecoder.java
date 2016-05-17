@@ -291,7 +291,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public void setStateAfter(StateSplit stateSplit) {
             Node stateAfter = decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             getGraph().add(stateAfter);
-            FrameState fs = (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter, true);
+            FrameState fs = (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
             stateSplit.setStateAfter(fs);
         }
 
@@ -797,17 +797,25 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node, boolean isNewlyAdded) {
+    protected Node addFloatingNode(MethodScope s, Node node) {
+        Node addedNode = super.addFloatingNode(s, node);
         PEMethodScope methodScope = (PEMethodScope) s;
-
+        NodeSourcePosition pos = node.getNodeSourcePosition();
         if (methodScope.isInlinedMethod()) {
-            NodeSourcePosition pos = node.getNodeSourcePosition();
-            if (isNewlyAdded && pos != null) {
+            if (pos != null) {
                 NodeSourcePosition bytecodePosition = methodScope.getBytecodePosition();
                 node.setNodeSourcePosition(pos.addCaller(bytecodePosition));
             }
+        }
+        return addedNode;
+    }
+
+    @Override
+    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node) {
+        PEMethodScope methodScope = (PEMethodScope) s;
+
+        if (methodScope.isInlinedMethod()) {
             if (node instanceof FrameState) {
-                assert isNewlyAdded;
                 FrameState frameState = (FrameState) node;
 
                 ensureOuterStateDecoded(methodScope);
@@ -826,7 +834,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                                 invokeArgsList);
 
             } else if (node instanceof MonitorIdNode) {
-                assert isNewlyAdded;
                 ensureOuterStateDecoded(methodScope);
                 InliningUtil.processMonitorId(methodScope.outerState, (MonitorIdNode) node);
                 return node;

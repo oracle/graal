@@ -47,6 +47,7 @@ import java.util.Map;
 
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
@@ -118,10 +119,13 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         private static String encode(Node ifNode) {
             NodeSourcePosition pos = ifNode.getNodeSourcePosition();
             if (pos != null) {
-                return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
+                if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                    return pos.toString();
+                } else {
+                    return MetaUtil.appendLocation(new StringBuilder(), pos.getMethod(), pos.getBCI()).toString();
+                }
             } else {
-                // IfNode has no position information, and is probably synthetic, so we do not
-                // instrument it.
+                // IfNode has no position information, and is probably synthetic, so we do not instrument it.
                 return null;
             }
         }
