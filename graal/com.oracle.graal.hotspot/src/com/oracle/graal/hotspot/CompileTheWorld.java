@@ -43,17 +43,25 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -91,6 +99,7 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import jdk.vm.ci.services.Services;
 
 /**
  * This class implements compile-the-world functionality with JVMCI.
@@ -100,8 +109,9 @@ public final class CompileTheWorld {
     private static final String JAVA_VERSION = System.getProperty("java.specification.version");
 
     /**
-     * Magic token to trigger reading files from {@code rt.jar} if {@link #JAVA_VERSION} denotes a
-     * JDK earlier than 9 otherwise from {@code java.base} module.
+     * Magic token to denote that JDK classes are to be compiled. If {@link #JAVA_VERSION} denotes a
+     * JDK earlier than 9, then the classes in {@code rt.jar} are compiled. Otherwise the classes in
+     * {@code <java.home>/lib/modules} are compiled.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -246,24 +256,20 @@ public final class CompileTheWorld {
             GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
         if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
-            final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
+            boolean jdk8OrEarlier = JAVA_VERSION.compareTo("1.9") < 0;
             String bcpEntry = null;
-            boolean useRtJar = JAVA_VERSION.compareTo("1.9") < 0;
-            for (int i = 0; i < entries.length && bcpEntry == null; i++) {
-                String entry = entries[i];
-                File entryFile = new File(entry);
-                if (useRtJar) {
+            if (jdk8OrEarlier) {
+                final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
+                for (int i = 0; i < entries.length && bcpEntry == null; i++) {
+                    String entry = entries[i];
+                    File entryFile = new File(entry);
                     // We stop at rt.jar, unless it is the first boot class path entry.
                     if (entryFile.getName().endsWith("rt.jar") && entryFile.isFile()) {
                         bcpEntry = entry;
                     }
-                } else {
-                    if (entryFile.getName().endsWith("java.base") && entryFile.isDirectory()) {
-                        bcpEntry = entry;
-                    } else if (entryFile.getName().equals("bootmodules.jimage")) {
-                        bcpEntry = entry;
-                    }
                 }
+            } else {
+                bcpEntry = System.getProperty("java.home") + "/lib/modules".replace('/', File.separatorChar);
             }
             compile(bcpEntry);
         } else {
@@ -413,6 +419,11 @@ public final class CompileTheWorld {
     }
 
     /**
+     * Name of the property that limits the set of modules processed by CompileTheWorld.
+     */
+    public static final String LIMITMODS_PROPERTY_NAME = "CompileTheWorld.limitmods";
+
+    /**
      * A class path entry that is a jimage file.
      */
     static class ImageClassPathEntry extends ClassPathEntry {
@@ -433,13 +444,21 @@ public final class CompileTheWorld {
 
         @Override
         public List<String> getClassNames() throws IOException {
+            String prop = System.getProperty(LIMITMODS_PROPERTY_NAME);
+            Set<String> limitmods = prop == null ? null : new HashSet<>(Arrays.asList(prop.split(",")));
             List<String> classNames = new ArrayList<>();
             String[] entries = readJimageEntries();
             for (String e : entries) {
-                if (e.endsWith(".class")) {
+                if (e.endsWith(".class") && !e.endsWith("module-info.class")) {
                     assert e.charAt(0) == '/' : e;
                     int endModule = e.indexOf('/', 1);
                     assert endModule != -1 : e;
+                    if (limitmods != null) {
+                        String module = e.substring(1, endModule);
+                        if (!limitmods.contains(module)) {
+                            continue;
+                        }
+                    }
                     // Strip the module prefix and convert to dotted form
                     String className = e.substring(endModule + 1).replace('/', '.');
                     // Strip ".class" suffix
@@ -453,8 +472,9 @@ public final class CompileTheWorld {
         private String[] readJimageEntries() {
             try {
                 // Use reflection so this can be compiled on JDK8
-                Method open = Class.forName("jdk.internal.jimage.BasicImageReader").getDeclaredMethod("open", String.class);
-                Object reader = open.invoke(null, name);
+                Path path = FileSystems.getDefault().getPath(name);
+                Method open = Class.forName("jdk.internal.jimage.BasicImageReader").getDeclaredMethod("open", Path.class);
+                Object reader = open.invoke(null, path);
                 Method getEntryNames = reader.getClass().getDeclaredMethod("getEntryNames");
                 getEntryNames.setAccessible(true);
                 String[] entries = (String[]) getEntryNames.invoke(reader);
@@ -464,6 +484,27 @@ public final class CompileTheWorld {
                 return new String[0];
             }
         }
+    }
+
+    /**
+     * Determines if a given path denotes a jimage file.
+     *
+     * @param path file path
+     * @return {@code true} if the 4 byte integer (in native endianness) at the start of
+     *         {@code path}'s contents is {@code 0xCAFEDADA}
+     */
+    static boolean isJImage(String path) {
+        try {
+            FileChannel channel = FileChannel.open(Paths.get(path), StandardOpenOption.READ);
+            ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+            map.order(ByteOrder.nativeOrder()).asIntBuffer().get(0);
+            int magic = map.asIntBuffer().get(0);
+            if (magic == 0xCAFEDADA) {
+                return true;
+            }
+        } catch (IOException e) {
+        }
+        return false;
     }
 
     /**
@@ -523,13 +564,8 @@ public final class CompileTheWorld {
                 ClassPathEntry cpe;
                 if (entry.endsWith(".zip") || entry.endsWith(".jar")) {
                     cpe = new JarClassPathEntry(entry);
-                } else if (entry.endsWith(".jimage")) {
+                } else if (isJImage(entry)) {
                     assert JAVA_VERSION.compareTo("1.9") >= 0;
-                    if (!new File(entry).isFile()) {
-                        println("CompileTheWorld : Skipped classes in " + entry);
-                        println();
-                        continue;
-                    }
                     cpe = new ImageClassPathEntry(entry);
                 } else {
                     if (!new File(entry).isDirectory()) {
@@ -754,6 +790,7 @@ public final class CompileTheWorld {
     }
 
     public static void main(String[] args) throws Throwable {
+        Services.exportJVMCITo(CompileTheWorld.class);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
         compiler.compileTheWorld();
     }

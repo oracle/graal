@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.23.1",
+  "mxversion" : "5.24.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -243,6 +243,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.misc",
+        "jdk.internal.jimage",
         "com.sun.crypto.provider",
       ],
       "checkstyle" : "com.oracle.graal.graph",

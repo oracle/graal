@@ -40,10 +40,11 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 public class CompileTheWorldTest extends GraalCompilerTest {
 
     @Test
-    public void testRtJar() throws Throwable {
+    public void testJDK() throws Throwable {
         boolean originalSetting = ExitVMOnException.getValue();
         // Compile a couple classes in rt.jar
         HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
+        System.setProperty(CompileTheWorld.LIMITMODS_PROPERTY_NAME, "java.base");
         new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), CompileTheWorld.SUN_BOOT_CLASS_PATH, new Config("-Inline"), 1, 5, null, null, true).compile();
         assert ExitVMOnException.getValue() == originalSetting;
     }
