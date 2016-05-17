@@ -109,8 +109,9 @@ public final class CompileTheWorld {
     private static final String JAVA_VERSION = System.getProperty("java.specification.version");
 
     /**
-     * Magic token to trigger reading files from {@code rt.jar} if {@link #JAVA_VERSION} denotes a
-     * JDK earlier than 9 otherwise from {@code java.base} module.
+     * Magic token to denote that JDK classes are to be compiled. If {@link #JAVA_VERSION} denotes a
+     * JDK earlier than 9, then the classes in {@code rt.jar} are compiled. Otherwise the classes in
+     * {@code <java.home>/lib/modules} are compiled.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -255,24 +256,20 @@ public final class CompileTheWorld {
             GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
         if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
-            final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
+            boolean jdk8OrEarlier = JAVA_VERSION.compareTo("1.9") < 0;
             String bcpEntry = null;
-            boolean useRtJar = JAVA_VERSION.compareTo("1.9") < 0;
-            for (int i = 0; i < entries.length && bcpEntry == null; i++) {
-                String entry = entries[i];
-                File entryFile = new File(entry);
-                if (useRtJar) {
+            if (jdk8OrEarlier) {
+                final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
+                for (int i = 0; i < entries.length && bcpEntry == null; i++) {
+                    String entry = entries[i];
+                    File entryFile = new File(entry);
                     // We stop at rt.jar, unless it is the first boot class path entry.
                     if (entryFile.getName().endsWith("rt.jar") && entryFile.isFile()) {
                         bcpEntry = entry;
                     }
-                } else {
-                    if (entryFile.getName().endsWith("java.base") && entryFile.isDirectory()) {
-                        bcpEntry = entry;
-                    } else if (entryFile.getName().equals("bootmodules.jimage")) {
-                        bcpEntry = entry;
-                    }
                 }
+            } else {
+                bcpEntry = System.getProperty("java.home") + "/lib/modules".replace('/', File.separatorChar);
             }
             compile(bcpEntry);
         } else {
@@ -422,6 +419,11 @@ public final class CompileTheWorld {
     }
 
     /**
+     * Name of the property that limits the set of modules processed by CompileTheWorld.
+     */
+    public static final String LIMITMODS_PROPERTY_NAME = "CompileTheWorld.limitmods";
+
+    /**
      * A class path entry that is a jimage file.
      */
     static class ImageClassPathEntry extends ClassPathEntry {
@@ -442,7 +444,7 @@ public final class CompileTheWorld {
 
         @Override
         public List<String> getClassNames() throws IOException {
-            String prop = System.getProperty("CompileTheWorld.limitmods");
+            String prop = System.getProperty(LIMITMODS_PROPERTY_NAME);
             Set<String> limitmods = prop == null ? null : new HashSet<>(Arrays.asList(prop.split(",")));
             List<String> classNames = new ArrayList<>();
             String[] entries = readJimageEntries();
