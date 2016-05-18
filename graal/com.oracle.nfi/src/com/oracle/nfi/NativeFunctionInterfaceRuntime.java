@@ -50,8 +50,8 @@ public final class NativeFunctionInterfaceRuntime {
 
         NativeFunctionInterfaceAccess access = null;
         Class<?> servicesClass = null;
-        boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-        if (!jdk8OrEarlier) {
+        boolean java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        if (!java8OrEarlier) {
             Iterator<NativeFunctionInterfaceAccess> providers = ServiceLoader.load(NativeFunctionInterfaceAccess.class).iterator();
             if (providers.hasNext()) {
                 access = providers.next();
