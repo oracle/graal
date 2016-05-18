@@ -28,7 +28,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -153,11 +152,7 @@ final class SymbolInvokerImpl {
                 return execute(frame);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                if (e.getCause() instanceof UnsupportedSpecializationException) {
-                    throw (UnsupportedSpecializationException) e.getCause();
-                } else {
-                    throw new AssertionError(e);
-                }
+                throw e.raise();
             }
         }
     }
