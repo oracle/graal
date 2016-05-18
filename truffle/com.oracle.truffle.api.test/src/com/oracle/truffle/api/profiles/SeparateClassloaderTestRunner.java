@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.profiles;
 
+import com.oracle.truffle.api.source.Source;
 import java.net.URLClassLoader;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
@@ -62,6 +63,9 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
                 return super.findClass(name);
             }
             if (name.contains("ContextStore")) {
+                return super.findClass(name);
+            }
+            if (name.contains(Source.class.getPackage().getName())) {
                 return super.findClass(name);
             }
             return super.loadClass(name);

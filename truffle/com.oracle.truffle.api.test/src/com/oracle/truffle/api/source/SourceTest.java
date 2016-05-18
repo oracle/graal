@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.profiles.SeparateClassloaderTestRunner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
@@ -39,7 +40,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(SeparateClassloaderTestRunner.class)
 public class SourceTest {
     @Test
     public void assignMimeTypeAndIdentity() {
