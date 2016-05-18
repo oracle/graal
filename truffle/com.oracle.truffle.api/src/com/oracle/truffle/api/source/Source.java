@@ -33,14 +33,12 @@ import java.io.Reader;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.spi.FileTypeDetector;
-import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import java.io.InputStreamReader;
 import java.util.Objects;
-import java.util.logging.Level;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -125,8 +123,6 @@ import java.util.logging.Level;
  * @since 0.8 or earlier
  */
 public abstract class Source {
-    static final Logger LOG = Logger.getLogger(Source.class.getName());
-
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
     // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
@@ -884,7 +880,7 @@ public abstract class Source {
             try {
                 mimeType = content().findMimeType();
             } catch (IOException ex) {
-                LOG.log(Level.INFO, null, ex);
+                ex.printStackTrace();
             }
         }
         return mimeType;
