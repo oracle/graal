@@ -520,6 +520,21 @@ public abstract class Source {
         return path == null ? content().getPath() : path;
     }
 
+    /** Check to recognize internal sources from the user provided ones.
+     * The internal sources are provided by the infrastructure, language,
+     * system library and should be avoided by default from being presented
+     * to user. For example when stepping into a function call in a debugger,
+     * internal sources are supposed to be skipped.
+     *
+     * One can specify a source is internal when {@link Builder#internal building it}.
+     *
+     * @return boolean flag to check whether a source is internal or not
+     * @since 0.14
+     */
+    public boolean isInternal() {
+        return false;
+    }
+
     /**
      * The URL if the source is retrieved via URL.
      *
@@ -930,6 +945,7 @@ public abstract class Source {
         private String name;
         private String mimeType;
         private String content;
+        private boolean internal;
 
         private Builder(Object source) {
             this.source = source;
@@ -943,7 +959,13 @@ public abstract class Source {
         @SuppressWarnings("unchecked")
         public Builder<Source> mimeType(String mimeType) {
             Objects.nonNull(mimeType);
+            this.mimeType = mimeType;
             return (Builder<Source>) this;
+        }
+
+        public Builder<R> internal(boolean internal) {
+            this.internal = internal;
+            return this;
         }
 
         public Builder<R> content(String code) {

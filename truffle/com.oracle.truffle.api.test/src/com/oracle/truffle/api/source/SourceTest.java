@@ -34,6 +34,7 @@ import java.io.StringReader;
 import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -296,6 +297,25 @@ public class SourceTest {
 
         assertEquals("Old source1 remains unchanged", text, original.getCode());
         assertEquals("Old source2 remains unchanged", text, still.getCode());
+    }
+
+    @Test
+    public void normalSourceIsntInternal() throws IOException {
+        Source source = Source.newWithText("anything")
+            .mimeType("text/plain")
+            .build();
+
+        assertFalse("Not internal", source.isInternal());
+    }
+
+    @Test
+    public void markSourceAsInternal() throws IOException {
+        Source source = Source.newWithText("anything internal")
+            .mimeType("text/plain")
+            .internal(true)
+            .build();
+
+        assertTrue("This source is internal", source.isInternal());
     }
 
     private static void assertGC(String msg, WeakReference<?> ref) {
