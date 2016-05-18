@@ -55,6 +55,9 @@ import com.oracle.truffle.sl.nodes.SLTargetableNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
+/**
+ * The node for converting a foreign primitive or boxed primitive value to an SL value.
+ */
 @NodeChild(type = SLExpressionNode.class)
 public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
 
@@ -82,6 +85,9 @@ public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
         return String.valueOf(value);
     }
 
+    /*
+     * In case the foreign object is a boxed primitive we unbox it using the UNBOX message.
+     */
     @Specialization(guards = "isBoxedPrimitive(frame, value)")
     public Object unbox(VirtualFrame frame, TruffleObject value) {
         Object unboxed = doUnbox(frame, value);

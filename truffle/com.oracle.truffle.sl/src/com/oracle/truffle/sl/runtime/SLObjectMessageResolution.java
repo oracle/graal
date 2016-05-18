@@ -58,8 +58,14 @@ import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 
+/**
+ * The class containing all message resolution implementations of an SL object.
+ */
 @MessageResolution(receiverType = SLObjectType.class, language = SLLanguage.class)
 public class SLObjectMessageResolution {
+    /*
+     * An SL object resolves the WRITE message and maps it to an object property write access.
+     */
     @Resolve(message = "WRITE")
     public abstract static class SLForeignWriteNode extends Node {
 
@@ -79,6 +85,9 @@ public class SLObjectMessageResolution {
             abstract Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value);
         }
 
+        /*
+         * The write access speculates on a constant identifier.
+         */
         private static final class SLMonomorphicNameWriteNode extends SLWriteNode {
 
             private final String cachedName;
@@ -113,6 +122,9 @@ public class SLObjectMessageResolution {
         }
     }
 
+    /*
+     * An SL object resolves the READ message and maps it to an object property read access.
+     */
     @Resolve(message = "READ")
     public abstract static class SLForeignReadNode extends Node {
 
@@ -130,6 +142,9 @@ public class SLObjectMessageResolution {
             abstract Object execute(DynamicObject receiver, String name);
         }
 
+        /*
+         * The write access speculates on a constant identifier.
+         */
         private static final class SLMonomorphicNameReadNode extends SLReadNode {
 
             private final String name;
@@ -160,6 +175,11 @@ public class SLObjectMessageResolution {
         }
     }
 
+    /*
+     * An SL object resolves the INVOKE message and maps it to an object property read access
+     * followed by an function invocation. The object property must be an SL function object, which
+     * is executed eventually.
+     */
     @Resolve(message = "INVOKE")
     public abstract static class SLForeignInvokeNode extends Node {
 
@@ -170,6 +190,9 @@ public class SLObjectMessageResolution {
             if (property instanceof SLFunction) {
                 SLFunction function = (SLFunction) property;
                 Object[] arr = new Object[arguments.length];
+                // Before the arguments can be used by the SLFunction, they need to be converted to
+                // SL
+                // values.
                 for (int i = 0; i < arguments.length; i++) {
                     arr[i] = SLContext.fromForeignValue(arguments[i]);
                 }

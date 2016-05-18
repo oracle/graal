@@ -81,21 +81,37 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
         return cacheNode.executeObject(SLContext.castSLObject(object));
     }
 
+    /*
+     * The child node to access the foreign object.
+     */
     @Child private Node foreignRead;
+
+    /*
+     * The child node to convert the result of the foreign object access to an SL value.
+     */
     @Child private SLForeignToSLTypeNode toSLType;
 
+    /*
+     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
+     * data.
+     */
     @Specialization
     public Object doForeignObject(VirtualFrame frame, TruffleObject object) {
+        // Lazily insert the foreign object access nodes upon the first execution.
         if (foreignRead == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            // SL maps a property access to a READ message if the receiver is a foreign object.
             this.foreignRead = insert(Message.READ.createNode());
             this.toSLType = insert(SLForeignToSLTypeNodeGen.create(getSourceSection(), null));
         }
         try {
+            // Perform the foreign object access.
             Object result = ForeignAccess.sendRead(foreignRead, frame, object, propertyName);
+            // Convert the result to an SL value.
             Object slValue = toSLType.executeWithTarget(frame, result);
             return slValue;
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            // In case the foreign access is not successful, we return null.
             return SLNull.SINGLETON;
         }
     }
