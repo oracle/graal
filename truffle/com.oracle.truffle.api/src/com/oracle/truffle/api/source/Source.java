@@ -827,7 +827,7 @@ public abstract class Source {
      * @return new (identical) source, with changed {@link #getName()}
      * @since 0.14
      */
-    public final Source withName(String newName) {
+    final Source withName(String newName) {
         try {
             Source another = (Source) clone();
             another.name = newName;
@@ -844,7 +844,7 @@ public abstract class Source {
      * @return new (identical) source, with changed {@link #getShortName()}
      * @since 0.14
      */
-    public final Source withShortName(String newShortName) {
+    final Source withShortName(String newShortName) {
         try {
             Source another = (Source) clone();
             another.shortName = newShortName;
@@ -861,7 +861,7 @@ public abstract class Source {
      * @return new (identical) source, with changed {@link #getPath()}
      * @since 0.14
      */
-    public final Source withPath(String newPath) {
+    final Source withPath(String newPath) {
         try {
             Source another = (Source) clone();
             another.path = newPath;
