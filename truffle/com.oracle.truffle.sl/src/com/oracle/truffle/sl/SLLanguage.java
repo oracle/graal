@@ -289,15 +289,18 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 long start = System.nanoTime();
                 /* Call the main entry point, without any arguments. */
                 try {
-                    result = main.execute().get();
+                    result = executeAndThrow(main);
                     if (result != null) {
                         out.println(result);
                     }
                 } catch (UnsupportedSpecializationException ex) {
                     out.println(formatTypeError(ex));
+                } catch (UnsupportedTypeException ex) {
+                    out.println(formatTypeError((UnsupportedSpecializationException) ex.getCause()));
                 } catch (SLUndefinedFunctionException ex) {
                     out.println(String.format("Undefined function: %s", ex.getFunctionName()));
                 }
+
                 long end = System.nanoTime();
                 totalRuntime += end - start;
 
@@ -310,6 +313,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             printScript("after execution", null, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
         }
         return totalRuntime;
+    }
+
+    @SuppressWarnings("unused")
+    private static Object executeAndThrow(Value main) throws IOException, UnsupportedTypeException {
+        return main.execute().get();
     }
 
     /**
