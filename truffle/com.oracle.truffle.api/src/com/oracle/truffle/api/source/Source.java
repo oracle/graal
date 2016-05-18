@@ -132,6 +132,7 @@ public abstract class Source {
 
     static boolean fileCacheEnabled = true;
 
+    private static final Source EMPTY = new SourceImpl(new LiteralSourceImpl("<empty>", ""));
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
     private final Content content;
@@ -152,6 +153,10 @@ public abstract class Source {
         return SourceImpl.findSource(name);
     }
 
+    public static Builder<Source> newFromFile(File file) throws IOException {
+        return EMPTY.new Builder<Source>(file);
+    }
+
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
      * then cached. The {@link #getShortName() short name} of the source is equal to
@@ -166,7 +171,9 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(String fileName, boolean reload) throws IOException {
         if (!reload) {
             Source source = find(fileName);
@@ -194,7 +201,9 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(String fileName) throws IOException {
         return fromFileName(fileName, false);
     }
@@ -220,7 +229,9 @@ public abstract class Source {
      * @throws IOException if the file cannot be found, or if an existing Source not created by this
      *             method matches the file name
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
@@ -244,11 +255,17 @@ public abstract class Source {
      *            <code>null</code>
      * @return a newly created, source representation
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
         return new SourceImpl(content);
+    }
+
+    public static Builder<Void> newWithText(String text) {
+        return EMPTY.new Builder<>(text);
     }
 
     /**
@@ -352,6 +369,10 @@ public abstract class Source {
         return new SourceImpl(content);
     }
 
+    public static Builder<Source> newFromURL(URL url) {
+        return EMPTY.new Builder<Source>(url);
+    }
+
     /**
      * Creates a source whose contents will be read immediately and cached.
      *
@@ -360,11 +381,18 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
+     * @deprecated 
      */
+    @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
         Content content = new LiteralSourceImpl(description, read(reader));
         return new SourceImpl(content);
+    }
+
+    public static Builder<Void> newFromReader(Reader reader) {
+        // TBD: read only once vs. build twice
+        return EMPTY.new Builder<>(reader);
     }
 
     /**
@@ -896,6 +924,45 @@ public abstract class Source {
                         Objects.equals(getShortName(), other.getShortName()) &&
                         Objects.equals(getPath(), other.getPath());
     }
+
+    public final class Builder<R> {
+        private final Object source;
+        private String name;
+        private String mimeType;
+        private String content;
+
+        private Builder(Object source) {
+            this.source = source;
+        }
+
+        public Builder<R> name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Builder<Source> mimeType(String mimeType) {
+            Objects.nonNull(mimeType);
+            return (Builder<Source>) this;
+        }
+
+        public Builder<R> content(String code) {
+            this.content = code;
+            return this;
+        }
+
+        public Builder<R> content(byte[] arr, int offset, int length, Charset encoding) {
+            // TBD: use the array bytes as content
+            return this;
+        }
+
+        public R build() throws IOException {
+            if (mimeType == null) {
+                throw new IOException("Unknown mime type for " + source);
+            }
+            return null;
+        }
+    }
 }
 
 // @formatter:off
@@ -905,7 +972,7 @@ class SourceSnippets {
         File file = new File(dir, name);
         assert name.endsWith(".java") : "Imagine 'c:\\sources\\Example.java' file";
 
-        Source source = Source.fromFileName(file.getPath());
+        Source source = Source.newFromFile(file).build();
 
         assert file.getName().equals(source.getShortName());
         assert file.getPath().equals(source.getPath());
@@ -918,7 +985,9 @@ class SourceSnippets {
     public static Source fromURL() throws IOException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
-        Source source = Source.fromURL(resource, "/your/pkg/sample.js");
+        Source source = Source.newFromURL(resource)
+            .name("/your/pkg/sample.js")
+            .build();
         assert "/your/pkg/sample.js".equals(source.getShortName());
         assert resource.toExternalForm().equals(source.getPath());
         assert "/your/pkg/sample.js".equals(source.getName());
@@ -932,25 +1001,30 @@ class SourceSnippets {
         Reader stream = new InputStreamReader(
             SourceSnippets.class.getResourceAsStream("sample.js")
         );
-        Source source = Source.fromReader(stream, "/your/pkg/sample.js");
+        Source source = Source.newFromReader(stream)
+            .name("/your/pkg/sample.js")
+            .mimeType("application/javascript")
+            .build();
         assert "/your/pkg/sample.js".equals(source.getShortName());
         assert "/your/pkg/sample.js".equals(source.getPath());
         assert "/your/pkg/sample.js".equals(source.getName());
-        assert null == source.getMimeType();
+        assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromReader
         return source;
     }
 
     public static Source fromAString() throws Exception {
         // BEGIN: SourceSnippets#fromAString
-        Source source = Source.fromText("function() {\n"
+        Source source = Source.newWithText("function() {\n"
             + "  return 'Hi';\n"
-            + "}\n", "/my/scripts/hi.js"
-        );
+            + "}\n")
+            .name("/my/scripts/hi.js")
+            .mimeType("application/javascript")
+            .build();
         assert "/my/scripts/hi.js".equals(source.getShortName());
         assert "/my/scripts/hi.js".equals(source.getPath());
         assert "/my/scripts/hi.js".equals(source.getName());
-        assert null == source.getMimeType() : "No mime type associated";
+        assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromAString
         return source;
     }
