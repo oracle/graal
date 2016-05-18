@@ -71,11 +71,15 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
         }
         int arrayDim = getArrayDimensions(field.getType());
         if (dimensions < 0) {
-            assert dimensions == -1 : "Negative @CompilationFinal dimensions";
+            if (dimensions != -1) {
+                throw new IllegalArgumentException("Negative @CompilationFinal dimensions");
+            }
             return arrayDim;
         }
-        assert dimensions <= arrayDim : String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field);
-        return Math.min(dimensions, arrayDim);
+        if (dimensions > arrayDim) {
+            throw new IllegalArgumentException(String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field));
+        }
+        return dimensions;
     }
 
     private static int getArrayDimensions(JavaType type) {
