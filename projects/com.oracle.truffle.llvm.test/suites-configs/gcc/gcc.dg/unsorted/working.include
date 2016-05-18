@@ -561,8 +561,4 @@ gcc.dg/torture/stackalign/pr16660-2.c
 gcc.dg/torture/stackalign/global-1.c
 gcc.dg/torture/stackalign/alloca-1.c
 gcc.dg/autopar/pr39500-2.c
-gcc.dg/vect/vec-scal-opt2.c
-gcc.dg/vect/vec-scal-opt.c
-gcc.dg/vect/vec-scal-opt1.c
-gcc.dg/ipa/pure-const-2.c
 gcc.dg/ipa/inlinehint-3.c
