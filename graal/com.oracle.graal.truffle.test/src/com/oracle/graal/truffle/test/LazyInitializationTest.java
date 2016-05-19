@@ -31,18 +31,29 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.compiler.common.spi.CodeGenProviders;
 import com.oracle.graal.compiler.common.util.Util;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.phases.tiers.TargetProvider;
+import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.SubprocessUtil;
 
 import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
@@ -55,6 +66,8 @@ public class LazyInitializationTest {
 
     private final Class<?> hotSpotVMEventListener;
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
+
+    private static boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     public LazyInitializationTest() {
         hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
@@ -94,11 +107,11 @@ public class LazyInitializationTest {
         boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
-        args.add("-XX:+TraceClassLoading");
+        args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+load=info");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         args.addAll(Arrays.asList(tests));
 
-        ArrayList<Class<?>> loadedGraalClasses = new ArrayList<>();
+        ArrayList<String> loadedGraalClassNames = new ArrayList<>();
 
         ProcessBuilder processBuilder = new ProcessBuilder(args);
         if (VERBOSE) {
@@ -118,17 +131,14 @@ public class LazyInitializationTest {
             if (VERBOSE) {
                 System.out.println(line);
             }
-            int index = line.indexOf("[Loaded ");
+            String traceClassLoadingPrefix = Java8OrEarlier ? "[Loaded " : "[info][class,load] ";
+            int index = line.indexOf(traceClassLoadingPrefix);
             if (index != -1) {
-                int start = index + "[Loaded ".length();
+                int start = index + traceClassLoadingPrefix.length();
                 int end = line.indexOf(' ', start);
                 String loadedClass = line.substring(start, end);
                 if (isGraalClass(loadedClass)) {
-                    try {
-                        loadedGraalClasses.add(Class.forName(loadedClass));
-                    } catch (ClassNotFoundException e) {
-                        Assert.fail("loaded class " + loadedClass + " not found");
-                    }
+                    loadedGraalClassNames.add(loadedClass);
                 }
             } else if (line.startsWith("OK (")) {
                 Assert.assertTrue(testCount == 0);
@@ -145,7 +155,7 @@ public class LazyInitializationTest {
         Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
         Assert.assertNotEquals("test count" + suffix, 0, testCount);
 
-        checkAllowedGraalClasses(loadedGraalClasses, suffix);
+        checkAllowedGraalClasses(loadedGraalClassNames, suffix);
     }
 
     private static boolean isGraalClass(String className) {
@@ -157,9 +167,17 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses, String errorMessageSuffix) {
+    private void checkAllowedGraalClasses(List<String> loadedGraalClassNames, String errorMessageSuffix) {
         HashSet<Class<?>> whitelist = new HashSet<>();
+        List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
+        for (String name : loadedGraalClassNames) {
+            try {
+                loadedGraalClasses.add(Class.forName(name));
+            } catch (ClassNotFoundException e) {
+                Assert.fail("loaded class " + name + " not found");
+            }
+        }
         /*
          * Look for all loaded OptionDescriptors classes, and whitelist the classes that declare the
          * options. They may be loaded by the option parsing code.
@@ -176,14 +194,18 @@ public class LazyInitializationTest {
             }
         }
 
+        List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
             if (whitelist.contains(cls)) {
                 continue;
             }
 
             if (!isGraalClassAllowed(cls)) {
-                Assert.fail("loaded class: " + cls.getName() + errorMessageSuffix);
+                forbiddenClasses.add(cls.getName());
             }
+        }
+        if (!forbiddenClasses.isEmpty()) {
+            Assert.fail("loaded forbidden classes:\n    " + forbiddenClasses.stream().collect(Collectors.joining("\n    ")) + "\n" + errorMessageSuffix);
         }
     }
 
@@ -226,6 +248,26 @@ public class LazyInitializationTest {
         if (hotSpotVMEventListener != null && hotSpotVMEventListener.isAssignableFrom(cls)) {
             // HotSpotVMEventListeners need to be loaded on JVMCI startup.
             return true;
+        }
+
+        if (!Java8OrEarlier) {
+            // In JDK9 without the JVMCI class loader, Graal classes are considered "remote"
+            // and are thus verified which in turn means extra class resolving is done
+            // during verification. Below are the list of extra classes resolved during
+            // verification of the above Graal classes.
+            if (cls.equals(GraalError.class) ||
+                            Backend.class.isAssignableFrom(cls) ||
+                            CodeGenProviders.class.isAssignableFrom(cls) ||
+                            RuntimeProvider.class.isAssignableFrom(cls) ||
+                            Thread.class.isAssignableFrom(cls) ||
+                            cls.equals(FrameMap.ReferenceMapBuilderFactory.class) ||
+                            cls.equals(GraalRuntime.class) ||
+                            cls.equals(DebugConfig.class) ||
+                            cls.equals(CompilationResultBuilderFactory.class) ||
+                            cls.equals(CompilerConfiguration.class) ||
+                            cls.equals(TargetProvider.class)) {
+                return true;
+            }
         }
 
         // No other class from the com.oracle.graal package should be loaded.
