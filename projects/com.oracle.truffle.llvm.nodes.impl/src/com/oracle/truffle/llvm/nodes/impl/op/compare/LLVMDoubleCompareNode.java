@@ -139,35 +139,35 @@ public abstract class LLVMDoubleCompareNode extends LLVMI1Node {
     public abstract static class LLVMDoubleUgtNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || val1 > val2;
+            return !(val1 <= val2);
         }
     }
 
     public abstract static class LLVMDoubleUgeNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || val1 >= val2;
+            return !(val1 < val2);
         }
     }
 
     public abstract static class LLVMDoubleUleNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || val1 <= val2;
+            return !(val1 > val2);
         }
     }
 
     public abstract static class LLVMDoubleUltNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || val1 < val2;
+            return !(val1 >= val2);
         }
     }
 
     public abstract static class LLVMDoubleUneNode extends LLVMDoubleCompareNode {
         @Specialization
         public boolean executeI1(double val1, double val2) {
-            return !areOrdered(val1, val2) || val1 != val2;
+            return !(val1 == val2);
         }
     }
 

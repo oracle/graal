@@ -139,35 +139,35 @@ public abstract class LLVMFloatCompareNode extends LLVMI1Node {
     public abstract static class LLVMFloatUgtNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return !areOrdered(val1, val2) || val1 > val2;
+            return !(val1 <= val2);
         }
     }
 
     public abstract static class LLVMFloatUgeNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return !areOrdered(val1, val2) || val1 >= val2;
+            return !(val1 < val2);
         }
     }
 
     public abstract static class LLVMFloatUleNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return !areOrdered(val1, val2) || val1 <= val2;
+            return !(val1 > val2);
         }
     }
 
     public abstract static class LLVMFloatUltNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return !areOrdered(val1, val2) || val1 < val2;
+            return !(val1 >= val2);
         }
     }
 
     public abstract static class LLVMFloatUneNode extends LLVMFloatCompareNode {
         @Specialization
         public boolean executeI1(float val1, float val2) {
-            return !areOrdered(val1, val2) || val1 != val2;
+            return !(val1 == val2);
         }
     }
 
