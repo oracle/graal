@@ -306,11 +306,6 @@ public abstract class DSLExpression {
         }
 
         @Override
-        public Object resolveConstant() {
-            return resolvedVariable.getConstantValue();
-        }
-
-        @Override
         public int hashCode() {
             return Objects.hash(receiver, name);
         }
