@@ -298,6 +298,32 @@ public class SourceTest {
         assertEquals("Old source2 remains unchanged", text, still.getCode());
     }
 
+    @Test
+    public void subSourceHashAndEquals() {
+        Source src = Source.fromText("One Two Three", "counting.en");
+        Source one = Source.subSource(src, 0, 3);
+        Source two = Source.subSource(src, 4, 3);
+        Source three = Source.subSource(src, 8);
+
+        Source oneSnd = Source.subSource(src, 0, 3);
+        Source twoSnd = Source.subSource(src, 4, 3);
+        Source threeSnd = Source.subSource(src, 8);
+
+        assertNotEquals("One: " + one.getCode() + " two: " + two.getCode(), one, two);
+        assertNotEquals(three, two);
+        assertNotEquals(one, three);
+
+        assertNotEquals(oneSnd, twoSnd);
+
+        assertEquals(one, oneSnd);
+        assertEquals(two, twoSnd);
+        assertEquals(three, threeSnd);
+
+        assertEquals(one.hashCode(), oneSnd.hashCode());
+        assertEquals(two.hashCode(), twoSnd.hashCode());
+        assertEquals(three.hashCode(), threeSnd.hashCode());
+    }
+
     private static void assertGC(String msg, WeakReference<?> ref) {
         for (int i = 0; i < 100; i++) {
             if (ref.get() == null) {
