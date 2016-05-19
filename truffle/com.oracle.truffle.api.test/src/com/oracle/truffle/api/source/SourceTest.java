@@ -330,17 +330,11 @@ public class SourceTest {
         File f2 = File.createTempFile("subSource", ".js");
 
         try (FileWriter w = new FileWriter(f1)) {
-            w.write("function test() {\n"
-                + "  return 1;\n"
-                + "}\n"
-            );
+            w.write("function test() {\n" + "  return 1;\n" + "}\n");
         }
 
         try (FileWriter w = new FileWriter(f2)) {
-            w.write("function test() {\n"
-                + "  return 1;\n"
-                + "}\n"
-            );
+            w.write("function test() {\n" + "  return 1;\n" + "}\n");
         }
 
         Source s1 = Source.fromFileName(f1.getPath());
