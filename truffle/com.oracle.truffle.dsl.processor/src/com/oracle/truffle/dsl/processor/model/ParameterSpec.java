@@ -58,7 +58,7 @@ public class ParameterSpec {
         this.anyType = anyTypeTemp;
     }
 
-    public boolean isAnnotated() {
+    public boolean isCached() {
         return false;
     }
 

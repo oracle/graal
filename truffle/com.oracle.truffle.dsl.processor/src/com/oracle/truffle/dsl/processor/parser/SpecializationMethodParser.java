@@ -26,7 +26,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.model.AnnotatedParameterSpec;
+import com.oracle.truffle.dsl.processor.model.CachedParameterSpec;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -53,7 +53,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
-        spec.getAnnotations().add(new AnnotatedParameterSpec(getContext().getDeclaredType(Cached.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(Cached.class)));
         return spec;
     }
 

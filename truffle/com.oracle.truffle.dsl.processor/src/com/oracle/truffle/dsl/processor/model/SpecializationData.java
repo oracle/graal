@@ -96,6 +96,19 @@ public final class SpecializationData extends TemplateMethod {
         return false;
     }
 
+    public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
+        Set<VariableElement> boundVars = guardExpression.getExpression().findBoundVariableElements();
+
+        for (CacheExpression cache : getCaches()) {
+            VariableElement cacheVar = cache.getParameter().getVariableElement();
+            if (boundVars.contains(cacheVar)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void setKind(SpecializationKind kind) {
         this.kind = kind;
     }
@@ -338,6 +351,41 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
         return false;
+    }
+
+    public boolean isConstantLimit() {
+        if (hasMultipleInstances()) {
+            DSLExpression expression = getLimitExpression();
+            if (expression == null) {
+                return true;
+            } else {
+                Object constant = expression.resolveConstant();
+                if (constant != null && constant instanceof Integer) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public int getMaximumNumberOfInstances() {
+        if (hasMultipleInstances()) {
+            DSLExpression expression = getLimitExpression();
+            if (expression == null) {
+                return 3; // default limit
+            } else {
+                Object constant = expression.resolveConstant();
+                if (constant != null && constant instanceof Integer) {
+                    return (int) constant;
+                } else {
+                    return Integer.MAX_VALUE;
+                }
+            }
+        } else {
+            return 1;
+        }
     }
 
     public boolean isReachableAfter(SpecializationData prev) {

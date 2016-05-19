@@ -1382,6 +1382,7 @@ public class PolyglotEngine {
         }
 
     } // end of SPIAccessor
+
 }
 
 class PolyglotEngineSnippets {

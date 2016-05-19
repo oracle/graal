@@ -73,6 +73,10 @@ public abstract class DSLExpression {
         return variables;
     }
 
+    public Object resolveConstant() {
+        return null;
+    }
+
     public boolean containsComparisons() {
         final AtomicBoolean found = new AtomicBoolean();
         this.accept(new AbstractDSLExpressionVisitor() {
@@ -302,6 +306,11 @@ public abstract class DSLExpression {
         }
 
         @Override
+        public Object resolveConstant() {
+            return resolvedVariable.getConstantValue();
+        }
+
+        @Override
         public int hashCode() {
             return Objects.hash(receiver, name);
         }
@@ -360,6 +369,11 @@ public abstract class DSLExpression {
                 return resolvedValueInt == other.resolvedValueInt;
             }
             return false;
+        }
+
+        @Override
+        public Object resolveConstant() {
+            return resolvedValueInt;
         }
 
         @Override

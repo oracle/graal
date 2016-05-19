@@ -69,6 +69,10 @@ public final class SpecializationGroup {
         updateChildren(children);
     }
 
+    public boolean isEmpty() {
+        return typeGuards.isEmpty() && guards.isEmpty();
+    }
+
     public List<TypeGuard> getAllGuards() {
         List<TypeGuard> collectedGuards = new ArrayList<>();
         collectedGuards.addAll(typeGuards);
@@ -76,6 +80,17 @@ public final class SpecializationGroup {
             collectedGuards.addAll(parent.getAllGuards());
         }
         return collectedGuards;
+    }
+
+    public List<SpecializationData> collectSpecializations() {
+        List<SpecializationData> specializations = new ArrayList<>();
+        if (specialization != null) {
+            specializations.add(specialization);
+        }
+        for (SpecializationGroup group : children) {
+            specializations.addAll(group.collectSpecializations());
+        }
+        return specializations;
     }
 
     public List<GuardExpression> findElseConnectableGuards() {
@@ -210,12 +225,24 @@ public final class SpecializationGroup {
         return new SpecializationGroup(specialization);
     }
 
-    public static SpecializationGroup create(List<SpecializationData> specializations) {
+    public static SpecializationGroup createDefault(List<SpecializationData> specializations) {
         List<SpecializationGroup> groups = new ArrayList<>();
         for (SpecializationData specialization : specializations) {
             groups.add(new SpecializationGroup(specialization));
         }
-        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+        SpecializationGroup group = new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+
+        return group;
+    }
+    
+    public static SpecializationGroup createFlat(List<SpecializationData> specializations) {
+        SpecializationGroup group = createDefault(specializations);
+
+        // trim groups
+        while (group.isEmpty() && group.getChildren().size() == 1) {
+            group = group.getChildren().iterator().next();
+        }
+        return group;
     }
 
     @Override
@@ -360,4 +387,5 @@ public final class SpecializationGroup {
         }
         return parentChildren.get(index - 1);
     }
+
 }

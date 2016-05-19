@@ -22,25 +22,29 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.model.NodeData;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
+
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 
 public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
@@ -54,7 +58,6 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             }
         }
         List<CodeTypeElement> generatedNodes = generateNodes(context, node);
-
         if (!generatedNodes.isEmpty() || !enclosedTypes.isEmpty()) {
             CodeTypeElement type;
             if (generatedNodes.isEmpty()) {
@@ -106,6 +109,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
                     }
                 }
             }
+
             new NodeFactoryFactory(context, node, second).createFactoryMethods(first);
             ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
 
@@ -127,14 +131,26 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
     }
 
     private static String getAccessorClassName(NodeData node) {
-        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : NodeGenFactory.nodeTypeName(node);
+        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : DefaultNodeGenFactory.nodeTypeName(node);
     }
 
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
-        return Arrays.asList(new NodeGenFactory(context, node).create());
+        DSLGenerator generator = node.getTypeSystem().getOptions().defaultGenerator();
+        CodeTypeElement type;
+        switch (generator) {
+            case FLAT:
+                type = new FlatNodeGenFactory(context, node).create();
+                break;
+            case DEFAULT:
+                type = new DefaultNodeGenFactory(context, node).create();
+                break;
+            default:
+                throw new AssertionError();
+        }
+        return Arrays.asList(type);
     }
 
     private static ExecutableElement createGetFactories(ProcessorContext context, NodeData node) {

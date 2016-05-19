@@ -64,7 +64,7 @@ public class ContainsTest {
                                     if (node.getNode() instanceof DSLNode) {
                                         // assert that the final specialization is always Object
                                         Assert.assertEquals(Object.class, ((DSLNode) node.getNode()).getMetadata0().getSpecializedTypes()[0]);
-                                    } else {
+                                    } else if (node.getNode() instanceof SpecializedNode) {
                                         Assert.assertTrue(((SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("F2Node_"));
                                     }
                                 }

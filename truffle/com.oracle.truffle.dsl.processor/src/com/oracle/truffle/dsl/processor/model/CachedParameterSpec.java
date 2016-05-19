@@ -28,13 +28,13 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-public final class AnnotatedParameterSpec extends ParameterSpec {
+public final class CachedParameterSpec extends ParameterSpec {
 
     private final DeclaredType annotationType;
 
-    public AnnotatedParameterSpec(DeclaredType type) {
+    public CachedParameterSpec(DeclaredType cachedType) {
         super("annotated", Collections.<TypeMirror> emptyList());
-        this.annotationType = type;
+        this.annotationType = cachedType;
     }
 
     public DeclaredType getAnnotationType() {
@@ -42,7 +42,7 @@ public final class AnnotatedParameterSpec extends ParameterSpec {
     }
 
     @Override
-    public boolean isAnnotated() {
+    public boolean isCached() {
         return true;
     }
 

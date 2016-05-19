@@ -36,6 +36,28 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DSLOptions {
+
+    public enum DSLGenerator {
+        DEFAULT,
+        FLAT
+    }
+
+    /**
+     * Switches the default generator mode.
+     */
+    DSLGenerator defaultGenerator() default DSLGenerator.DEFAULT;
+
+    /**
+     * Whether the flat generator layout will perform boxing elimination or not. This flag has no
+     * effect with the default generator layout.
+     */
+    boolean flatLayoutBoxingElimination() default true;
+
+    /*
+     * Warning: all internal flags below this are going do not have any effect with the flat
+     * generator layout.
+     */
+
     /**
      * Lazy class loading ensures that all generated specialization classes are loaded lazily.
      * Disabling this feature will eagerly load all classes but will also reduce the generated code

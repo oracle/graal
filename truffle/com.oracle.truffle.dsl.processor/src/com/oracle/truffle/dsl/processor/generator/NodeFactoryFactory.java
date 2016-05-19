@@ -254,7 +254,7 @@ class NodeFactoryFactory {
         if (node.getSpecializations().isEmpty()) {
             body.nullLiteral();
         } else {
-            body.startNew(NodeGenFactory.nodeType(node));
+            body.startNew(DefaultNodeGenFactory.nodeType(node));
             for (VariableElement var : method.getParameters()) {
                 body.string(var.getSimpleName().toString());
             }
