@@ -108,7 +108,7 @@ public final class ExecuteGenerator extends MessageGenerator {
 
         }
         w.append("            } catch (UnsupportedSpecializationException e) {\n");
-        w.append("                throw UnsupportedTypeException.raise(e.getSuppliedValues());\n");
+        w.append("                throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
         w.append("            }\n");
         w.append("        }\n");
         w.append("\n");

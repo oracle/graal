@@ -152,7 +152,7 @@ final class SymbolInvokerImpl {
                 return execute(frame);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw e.raise();
             }
         }
     }

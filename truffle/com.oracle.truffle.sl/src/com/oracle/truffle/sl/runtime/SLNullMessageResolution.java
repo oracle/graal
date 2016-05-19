@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,47 +40,34 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.sl.SLLanguage;
 
 /**
- * The SL type for a {@code null} (i.e., undefined) value. In Truffle, it is generally discouraged
- * to use the Java {@code null} value to represent the guest language {@code null} value. It is not
- * possible to specialize on Java {@code null} (since you cannot ask it for the Java class), and
- * there is always the danger of a spurious {@link NullPointerException}. Representing the guest
- * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
- * practice.
+ * The class containing all message resolution implementations of {@link SLNull}.
  */
-public final class SLNull implements TruffleObject {
-
-    /**
-     * The canonical value to represent {@code null} in SL.
+@MessageResolution(receiverType = SLNull.class, language = SLLanguage.class)
+public class SLNullMessageResolution {
+    /*
+     * An SL function resolves the IS_NULL message.
      */
-    public static final SLNull SINGLETON = new SLNull();
+    @Resolve(message = "IS_NULL")
+    public abstract static class SLForeignIsNullNode extends Node {
 
-    /**
-     * Disallow instantiation from outside to ensure that the {@link #SINGLETON} is the only
-     * instance.
-     */
-    private SLNull() {
+        public Object access(Object receiver) {
+            return SLNull.SINGLETON == receiver;
+        }
     }
 
-    /**
-     * This method is, e.g., called when using the {@code null} value in a string concatenation. So
-     * changing it has an effect on SL programs.
-     */
-    @Override
-    public String toString() {
-        return "null";
-    }
+    @CanResolve
+    public abstract static class CheckNull extends Node {
 
-    /**
-     * In case you want some of your objects to co-operate with other languages, you need to make
-     * them implement {@link TruffleObject} and provide additional {@link SLNullMessageResolution
-     * foreign access implementation}.
-     */
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return SLNullMessageResolutionForeign.createAccess();
+        protected static boolean test(TruffleObject receiver) {
+            return receiver instanceof SLNull;
+        }
     }
 }

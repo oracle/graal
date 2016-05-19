@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,47 +40,58 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 
 /**
- * The SL type for a {@code null} (i.e., undefined) value. In Truffle, it is generally discouraged
- * to use the Java {@code null} value to represent the guest language {@code null} value. It is not
- * possible to specialize on Java {@code null} (since you cannot ask it for the Java class), and
- * there is always the danger of a spurious {@link NullPointerException}. Representing the guest
- * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
- * practice.
+ * The class containing all message resolution implementations of {@link SLFunction}.
  */
-public final class SLNull implements TruffleObject {
-
-    /**
-     * The canonical value to represent {@code null} in SL.
+@MessageResolution(receiverType = SLFunction.class, language = SLLanguage.class)
+public class SLFunctionMessageResolution {
+    /*
+     * An SL function resolves an EXECUTE message.
      */
-    public static final SLNull SINGLETON = new SLNull();
+    @Resolve(message = "EXECUTE")
+    public abstract static class SLForeignFunctionExecuteNode extends Node {
 
-    /**
-     * Disallow instantiation from outside to ensure that the {@link #SINGLETON} is the only
-     * instance.
-     */
-    private SLNull() {
+        @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
+
+        public Object access(VirtualFrame frame, SLFunction receiver, Object[] arguments) {
+            Object[] arr = new Object[arguments.length];
+            // Before the arguments can be used by the SLFunction, they need to be converted to SL
+            // values.
+            for (int i = 0; i < arr.length; i++) {
+                arr[i] = fromForeignValue(arguments[i]);
+            }
+            Object result = dispatch.executeDispatch(frame, receiver, arr);
+            return result;
+        }
     }
 
-    /**
-     * This method is, e.g., called when using the {@code null} value in a string concatenation. So
-     * changing it has an effect on SL programs.
+    /*
+     * An SL function should respond to an IS_EXECUTABLE message with true.
      */
-    @Override
-    public String toString() {
-        return "null";
+    @Resolve(message = "IS_EXECUTABLE")
+    public abstract static class SLForeignIsExecutableNode extends Node {
+        public Object access(Object receiver) {
+            return receiver instanceof SLFunction;
+        }
     }
 
-    /**
-     * In case you want some of your objects to co-operate with other languages, you need to make
-     * them implement {@link TruffleObject} and provide additional {@link SLNullMessageResolution
-     * foreign access implementation}.
-     */
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return SLNullMessageResolutionForeign.createAccess();
+    @CanResolve
+    public abstract static class CheckFunction extends Node {
+
+        protected static boolean test(TruffleObject receiver) {
+            return receiver instanceof SLFunction;
+        }
     }
 }
