@@ -87,8 +87,10 @@ final class BytesSourceImpl extends Content {
     }
 
     @Override
-    public String getCode(int byteOffset, int codeLength) {
-        ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex + byteOffset, codeLength);
+    public String getCode(int offset, int codeLength) {
+        // indexing by byte rather than char seems very strange
+        // and is probably broken
+        ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex + offset, codeLength);
         CharBuffer chb;
         try {
             chb = decoder.decode(bb);
