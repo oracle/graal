@@ -32,6 +32,7 @@ import java.lang.ref.WeakReference;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -104,7 +105,7 @@ final class URLSourceImpl extends Content {
             if (firstGuess != null) {
                 return firstGuess;
             }
-        } catch (URISyntaxException ex) {
+        } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
         }
         return url.openConnection().getContentType();
