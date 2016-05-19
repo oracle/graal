@@ -488,7 +488,7 @@ public class FlatNodeGenFactory {
                 TypeMirror evaluatedType = signatureParameters.get(i);
                 TypeMirror specializedType = specialization.findParameterOrDie(node.getChildExecutions().get(i)).getType();
 
-                if (!isSubtypeBoxed(context, specializedType, evaluatedType)) {
+                if (!isSubtypeBoxed(context, evaluatedType, specializedType) && !isSubtypeBoxed(context, specializedType, evaluatedType)) {
                     // not compatible parameter
                     continue outer;
                 }
@@ -1620,6 +1620,7 @@ public class FlatNodeGenFactory {
                 List<AssumptionExpression> assumptions = specialization.getAssumptionExpressions();
                 String countName = specialization != null ? "count" + specialization.getIndex() + "_" : null;
                 boolean needsDuplicationCheck = specialization.hasMultipleInstances();
+                String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
                 if (needsDuplicationCheck) {
                     CodeTree[] duplicationGuards = createMethodGuardCheck(guardExpressions, specialization, frameState, execution.isFastPath());
@@ -1647,7 +1648,7 @@ public class FlatNodeGenFactory {
                         builder.end();
                         builder.startBlock();
                     } else {
-                        builder.declaration("boolean", "duplicateFound_", CodeTreeBuilder.singleString("false"));
+                        builder.declaration("boolean", duplicateFoundName, CodeTreeBuilder.singleString("false"));
                         duplicationGuard = combineTrees(" && ", stateCheck, duplicationGuard);
                     }
 
@@ -1656,7 +1657,7 @@ public class FlatNodeGenFactory {
                     if (useSpecializationClass) {
                         builder.statement("break");
                     } else {
-                        builder.statement("duplicateFound_ = true");
+                        builder.startStatement().string(duplicateFoundName, " = true").end();
                     }
                     builder.end();
 
@@ -1673,7 +1674,7 @@ public class FlatNodeGenFactory {
                     if (useSpecializationClass) {
                         builder.string(createSpecializationLocalName(specialization), " == null");
                     } else {
-                        builder.string("!duplicateFound_");
+                        builder.string("!", duplicateFoundName);
                     }
                     builder.end().startBlock();
                 }
@@ -1734,6 +1735,19 @@ public class FlatNodeGenFactory {
                 }
 
                 if (useSpecializationClass) {
+                    // initialize caches that that are bound by caches
+                    for (CacheExpression cache : specialization.getCaches()) {
+                        String name = createFieldName(specialization, cache.getParameter());
+                        LocalVariable evaluatedVar = frameState.get(name);
+                        if (evaluatedVar == null) {
+                            CodeTree initializer = DSLExpressionGenerator.write(cache.getExpression(), null, castBoundTypes(bindExpressionValues(cache.getExpression(), specialization, frameState)));
+                            TypeMirror type = cache.getExpression().getResolvedType();
+                            LocalVariable var = new LocalVariable(type, name.substring(0, name.length() - 1), null);
+                            frameState.set(name, var);
+                            builder.tree(var.createDeclaration(initializer));
+                        }
+                    }
+
                     builder.startStatement();
                     builder.string(createSpecializationLocalName(specialization), " = ");
                     builder.startNew(createSpecializationTypeName(specialization));
@@ -1830,7 +1844,7 @@ public class FlatNodeGenFactory {
 
                 if (needsDuplicationCheck) {
                     if (!useSpecializationClass) {
-                        builder.statement("duplicateFound_ = true");
+                        builder.startStatement().string(duplicateFoundName, " = true").end();
                     }
                     if (!guards.isEmpty()) {
                         builder.end();
@@ -1840,7 +1854,7 @@ public class FlatNodeGenFactory {
                     if (useSpecializationClass) {
                         builder.string(createSpecializationLocalName(specialization), " != null");
                     } else {
-                        builder.string("duplicateFound_");
+                        builder.string(duplicateFoundName);
                     }
                     builder.end().startBlock();
                     builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization));
@@ -2434,7 +2448,7 @@ public class FlatNodeGenFactory {
     }
 
     private ExecutableTypeData createExecuteAndSpecializeType() {
-        SpecializationData polymorphicSpecialization = node.getPolymorphicSpecialization();
+        SpecializationData polymorphicSpecialization = node.getGenericSpecialization();
         TypeMirror polymorphicType = polymorphicSpecialization.getReturnType().getType();
 
         List<TypeMirror> parameters = new ArrayList<>();

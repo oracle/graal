@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowC
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheNodeFieldFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrder2Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrderFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCodeGenerationPosNegGuardFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndDynamicParameterFactory;
@@ -397,7 +398,37 @@ public class CachedTest {
 
     @Test
     public void testCachesOrder() {
-        CallTarget root = createCallTarget(TestCachesOrderFactory.getInstance());
+        CallTarget root = createCallTarget(TestCachesOrder2Factory.getInstance());
+        assertEquals(42, root.call(21));
+        assertEquals(44, root.call(22));
+        assertEquals(46, root.call(23));
+    }
+
+    @NodeChild
+    static class TestCachesOrder2 extends ValueNode {
+
+        @Specialization(guards = "cachedValue == value")
+        static int do1(int value, //
+                        @Cached("value") int cachedValue,
+                        @Cached("get(cachedValue)") int intermediateValue, //
+                        @Cached("transform(intermediateValue)") int boundByGuard, //
+                        @Cached("new()") Object notBoundByGuards) {
+            return intermediateValue;
+        }
+
+        protected int get(int i) {
+            return i * 2;
+        }
+
+        protected int transform(int i) {
+            return i * 3;
+        }
+
+    }
+
+    @Test
+    public void testCachesOrder2() {
+        CallTarget root = createCallTarget(TestCachesOrder2Factory.getInstance());
         assertEquals(42, root.call(21));
         assertEquals(42, root.call(22));
         assertEquals(42, root.call(23));
