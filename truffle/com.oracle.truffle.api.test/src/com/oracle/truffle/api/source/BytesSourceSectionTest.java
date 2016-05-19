@@ -59,4 +59,17 @@ public class BytesSourceSectionTest {
         assertEquals("bar", source.createSection("identifier", 4, 3).getCode());
         assertEquals("baz", source.createSection("identifier", 8, 3).getCode());
     }
+
+    @Test
+    public void testOffsetWithInternationalChars() {
+        final String horse = "xxxP\u0159\u00EDli\u0161 \u017Elu\u0165ou\u010Dk\u00FD k\u016F\u0148 \u00FAp\u011Bl \u010F\u00E1belsk\u00E9 \u00F3dy.xxx";
+        final byte[] bytes = horse.getBytes(StandardCharsets.UTF_8);
+        final Source source = Source.fromBytes(bytes, 3, bytes.length - 6, "description", StandardCharsets.UTF_8);
+
+        assertEquals(source.getLength(), horse.length() - 6);
+        String[] words = source.getCode().split(" ");
+
+        String sndWord = source.getCode(words[0].length() + 1, words[1].length());
+        assertEquals(words[1], sndWord);
+    }
 }
