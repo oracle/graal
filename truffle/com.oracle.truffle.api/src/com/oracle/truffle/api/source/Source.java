@@ -874,7 +874,7 @@ public abstract class Source {
             try {
                 mimeType = content().findMimeType();
             } catch (IOException ex) {
-                ex.printStackTrace();
+                // swallow and return null
             }
         }
         return mimeType;
