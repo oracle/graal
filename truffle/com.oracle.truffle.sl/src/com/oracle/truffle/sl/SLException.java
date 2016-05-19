@@ -68,7 +68,8 @@ public class SLException extends RuntimeException {
     }
 
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
         CompilerAsserts.neverPartOfCompilation();
         return fillInSLStackTrace(this);
     }
@@ -78,7 +79,7 @@ public class SLException extends RuntimeException {
      * {@link StackTraceElement} elements based on the source sections of the call nodes on the
      * stack.
      */
-    static Throwable fillInSLStackTrace(Throwable t) {
+    public static Throwable fillInSLStackTrace(Throwable t) {
         final List<StackTraceElement> stackTrace = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
             public Void visitFrame(FrameInstance frame) {
