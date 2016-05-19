@@ -324,6 +324,39 @@ public class SourceTest {
         assertEquals(three.hashCode(), threeSnd.hashCode());
     }
 
+    @Test
+    public void subSourceFromTwoFiles() throws Exception {
+        File f1 = File.createTempFile("subSource", ".js");
+        File f2 = File.createTempFile("subSource", ".js");
+
+        try (FileWriter w = new FileWriter(f1)) {
+            w.write("function test() {\n"
+                + "  return 1;\n"
+                + "}\n"
+            );
+        }
+
+        try (FileWriter w = new FileWriter(f2)) {
+            w.write("function test() {\n"
+                + "  return 1;\n"
+                + "}\n"
+            );
+        }
+
+        Source s1 = Source.fromFileName(f1.getPath());
+        Source s2 = Source.fromFileName(f2.getPath());
+
+        assertNotEquals("Different sources", s1, s2);
+        assertEquals("But same content", s1.getCode(), s2.getCode());
+
+        Source sub1 = Source.subSource(s1, 0, 8);
+        Source sub2 = Source.subSource(s2, 0, 8);
+
+        assertNotEquals("Different sub sources", sub1, sub2);
+        assertEquals("with the same content", sub1.getCode(), sub2.getCode());
+        assertNotEquals("and different hash", sub1.hashCode(), sub2.hashCode());
+    }
+
     private static void assertGC(String msg, WeakReference<?> ref) {
         for (int i = 0; i < 100; i++) {
             if (ref.get() == null) {
