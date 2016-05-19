@@ -383,8 +383,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     private static final class OptimizedVirtualizingOSRLoopNode extends OptimizedOSRLoopNode {
 
         private final int invalidationBackoff;
-        @CompilationFinal private final FrameSlot[] readFrameSlots;
-        @CompilationFinal private final FrameSlot[] writtenFrameSlots;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
 
         private VirtualizingOSRRootNode previousRoot;
 
@@ -462,11 +462,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private static final class VirtualizingOSRRootNode extends OSRRootNode {
 
-        @CompilationFinal private final FrameSlot[] readFrameSlots;
-        @CompilationFinal private final FrameSlot[] writtenFrameSlots;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
 
-        @CompilationFinal private final byte[] readFrameSlotsTags;
-        @CompilationFinal private final byte[] writtenFrameSlotsTags;
+        @CompilationFinal(dimensions = 1) private final byte[] readFrameSlotsTags;
+        @CompilationFinal(dimensions = 1) private final byte[] writtenFrameSlotsTags;
         private final int maxTagsLength;
 
         VirtualizingOSRRootNode(VirtualizingOSRRootNode previousRoot, OptimizedOSRLoopNode loop, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage,

@@ -88,7 +88,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
     private final ValueProfile exceptionProfile = ValueProfile.createClassProfile();
 
-    @CompilationFinal private Class<?>[] profiledArgumentTypes;
+    @CompilationFinal(dimensions = 1) private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private Assumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
     @CompilationFinal private Assumption profiledReturnTypeAssumption;
