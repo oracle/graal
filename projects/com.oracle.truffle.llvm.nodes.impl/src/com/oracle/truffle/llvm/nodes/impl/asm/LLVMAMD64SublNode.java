@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMAsmSublNode extends LLVMI32Node {
+public abstract class LLVMAMD64SublNode extends LLVMI32Node {
 
     @Specialization
     protected int executeI32(int left, int right) {
