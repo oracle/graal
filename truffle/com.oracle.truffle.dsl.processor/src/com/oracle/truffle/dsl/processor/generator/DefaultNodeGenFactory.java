@@ -232,10 +232,7 @@ public class DefaultNodeGenFactory {
         }
     }
 
-    public CodeTypeElement create() {
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(FINAL), nodeTypeName(node), node.getTemplateType().asType());
-        ElementUtils.setVisibility(clazz.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
-
+    public CodeTypeElement create(CodeTypeElement clazz) {
         for (NodeChildData child : node.getChildren()) {
             clazz.addOptional(createAccessChildMethod(child));
         }

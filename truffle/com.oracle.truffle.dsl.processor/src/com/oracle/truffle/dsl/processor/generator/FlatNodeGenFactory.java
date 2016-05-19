@@ -103,7 +103,7 @@ public class FlatNodeGenFactory {
     private static final String METHOD_FALLBACK_GUARD = "fallbackGuard_";
     private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
     private static final String NAME_SUFFIX = "_";
-    private static final String NODE_SUFFIX = "NodeGen";
+
     private static final String VARARGS_NAME = "args";
 
     private final ProcessorContext context;
@@ -153,10 +153,6 @@ public class FlatNodeGenFactory {
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
     }
 
-    private static String createNodeTypeName(NodeData node) {
-        return resolveNodeId(node) + NODE_SUFFIX;
-    }
-
     private static String createSpecializationTypeName(SpecializationData s) {
         return ElementUtils.firstLetterUpperCase(s.getId()) + "Data";
     }
@@ -189,14 +185,6 @@ public class FlatNodeGenFactory {
         return assumption.getId() + NAME_SUFFIX;
     }
 
-    private static String resolveNodeId(NodeData node) {
-        String nodeid = node.getNodeId();
-        if (nodeid.endsWith("Node") && !nodeid.equals("Node")) {
-            nodeid = nodeid.substring(0, nodeid.length() - 4);
-        }
-        return nodeid;
-    }
-
     private static String nodeFieldName(NodeExecutionData execution) {
         return execution.getName() + NAME_SUFFIX;
     }
@@ -225,10 +213,7 @@ public class FlatNodeGenFactory {
         return !specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty();
     }
 
-    public CodeTypeElement create() {
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(FINAL), createNodeTypeName(node), node.getTemplateType().asType());
-        ElementUtils.setVisibility(clazz.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
-
+    public CodeTypeElement create(CodeTypeElement clazz) {
         for (NodeChildData child : node.getChildren()) {
             clazz.addOptional(createAccessChildMethod(child));
         }
@@ -240,7 +225,8 @@ public class FlatNodeGenFactory {
 
             clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), field.getType(), field.getName()));
             if (field.getGetter() != null && field.getGetter().getModifiers().contains(Modifier.ABSTRACT)) {
-                CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(), field.getGetter());
+                CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(),
+                                field.getGetter());
                 method.getModifiers().remove(Modifier.ABSTRACT);
                 method.createBuilder().startReturn().string("this.").string(field.getName()).end();
                 clazz.add(method);
@@ -253,7 +239,8 @@ public class FlatNodeGenFactory {
 
         for (NodeExecutionData execution : node.getChildExecutions()) {
             if (execution.getChild() != null) {
-                clazz.add(createNodeField(PRIVATE, execution.getNodeType(), nodeFieldName(execution), Child.class));
+                clazz.add(createNodeField(PRIVATE, execution.getNodeType(), nodeFieldName(execution),
+                                Child.class));
             }
         }
 
@@ -261,7 +248,8 @@ public class FlatNodeGenFactory {
 
         createFields(clazz);
 
-        List<ExecutableTypeData> executableTypes = filterExecutableTypes(node.getExecutableTypes(), reachableSpecializations);
+        List<ExecutableTypeData> executableTypes = filterExecutableTypes(node.getExecutableTypes(),
+                        reachableSpecializations);
         List<ExecutableTypeData> genericExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> specializedExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> voidExecutableTypes = new ArrayList<>();
@@ -302,7 +290,8 @@ public class FlatNodeGenFactory {
 
         for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
-                clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem, context.getType(Object.class), type));
+                clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem,
+                                context.getType(Object.class), type));
             }
         }
 
@@ -374,15 +363,18 @@ public class FlatNodeGenFactory {
                     baseType = context.getType(Object.class);
                 }
 
-                CodeTypeElement cacheType = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, FINAL, STATIC), createSpecializationTypeName(specialization), baseType);
+                CodeTypeElement cacheType = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, FINAL,
+                                STATIC), createSpecializationTypeName(specialization), baseType);
 
                 Class<?> annotationType;
                 if (useNode) {
                     annotationType = Child.class;
                     cacheType.add(createNodeField(null, cacheType.asType(), "next_", Child.class));
 
-                    CodeExecutableElement getNodeCost = new CodeExecutableElement(modifiers(PUBLIC), context.getType(NodeCost.class), "getCost");
-                    getNodeCost.createBuilder().startReturn().staticReference(context.getType(NodeCost.class), "NONE").end();
+                    CodeExecutableElement getNodeCost = new CodeExecutableElement(modifiers(PUBLIC),
+                                    context.getType(NodeCost.class), "getCost");
+                    getNodeCost.createBuilder().startReturn().staticReference(context.getType(NodeCost.class),
+                                    "NONE").end();
                     cacheType.add(getNodeCost);
                 } else {
                     annotationType = CompilationFinal.class;
@@ -392,7 +384,8 @@ public class FlatNodeGenFactory {
                 cacheType.getEnclosedElements().addAll(fields);
                 cacheType.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cacheType));
 
-                clazz.add(createNodeField(PRIVATE, cacheType.asType(), createSpecializationFieldName(specialization), annotationType));
+                clazz.add(createNodeField(PRIVATE, cacheType.asType(),
+                                createSpecializationFieldName(specialization), annotationType));
                 clazz.add(cacheType);
 
             } else {
