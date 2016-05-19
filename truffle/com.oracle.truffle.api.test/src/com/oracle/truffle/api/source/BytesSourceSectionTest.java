@@ -61,6 +61,17 @@ public class BytesSourceSectionTest {
     }
 
     @Test
+    public void testEqualsImpliesSameHasCode() {
+        final byte[] bytes = "Ahoj".getBytes(StandardCharsets.US_ASCII);
+        final byte[] clone = bytes.clone();
+        final Source sourceOrig = Source.fromBytes(bytes, "description", StandardCharsets.US_ASCII);
+        final Source sourceClone = Source.fromBytes(clone, "description", StandardCharsets.US_ASCII);
+
+        assertEquals("The sources are equal", sourceClone, sourceOrig);
+        assertEquals("Equal sources have to have the same hash", sourceClone.hashCode(), sourceOrig.hashCode());
+    }
+
+    @Test
     public void testOffsetWithInternationalChars() {
         final String horse = "xxxP\u0159\u00EDli\u0161 \u017Elu\u0165ou\u010Dk\u00FD k\u016F\u0148 \u00FAp\u011Bl \u010F\u00E1belsk\u00E9 \u00F3dy.xxx";
         final byte[] bytes = horse.getBytes(StandardCharsets.UTF_8);

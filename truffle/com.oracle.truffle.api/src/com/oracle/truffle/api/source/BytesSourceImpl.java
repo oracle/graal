@@ -93,7 +93,16 @@ final class BytesSourceImpl extends Content {
 
     @Override
     Object getHashKey() {
-        return bytes;
+        int hash = bytes.length;
+        if (bytes.length > 0) {
+            int oneFourth = bytes.length / 4;
+            int oneHalf = bytes.length / 2;
+            hash ^= bytes[0];
+            hash ^= (bytes[oneFourth] << 8);
+            hash ^= (bytes[oneHalf] << 16);
+            hash ^= (bytes[oneHalf + oneFourth] << 24);
+        }
+        return hash;
     }
 
 }
