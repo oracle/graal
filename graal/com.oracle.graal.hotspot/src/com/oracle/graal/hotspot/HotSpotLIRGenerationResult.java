@@ -30,12 +30,12 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGenerationResultBase;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 
-public class HotSpotLIRGenerationResult extends LIRGenerationResultBase {
+public class HotSpotLIRGenerationResult extends LIRGenerationResult {
 
     /**
      * The slot reserved for storing the original return address when a frame is marked for
