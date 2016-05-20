@@ -31,29 +31,21 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.compiler.CompilerThreadFactory;
-import com.oracle.graal.compiler.common.spi.CodeGenProviders;
 import com.oracle.graal.compiler.common.util.Util;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.options.OptionsParser.OptionDescriptorsProvider;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.phases.tiers.TargetProvider;
-import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.SubprocessUtil;
 
 import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
@@ -90,6 +82,29 @@ public class LazyInitializationTest {
     private static final String VERBOSE_PROPERTY = "LazyInitializationTest.verbose";
     private static final boolean VERBOSE = Boolean.getBoolean(VERBOSE_PROPERTY);
 
+    private static final Pattern CLASS_INIT_LOG_PATTERN = Pattern.compile("\\[info\\]\\[class,init\\] \\d+ Initializing '([^']+)'");
+
+    /**
+     * Extracts the class name from a line of log output.
+     */
+    private static String extractClass(String line) {
+        if (Java8OrEarlier) {
+            String traceClassLoadingPrefix = "[Loaded ";
+            int index = line.indexOf(traceClassLoadingPrefix);
+            if (index != -1) {
+                int start = index + traceClassLoadingPrefix.length();
+                int end = line.indexOf(' ', start);
+                return line.substring(start, end);
+            }
+        } else {
+            Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
+            if (matcher.find()) {
+                return matcher.group(1).replace('/', '.');
+            }
+        }
+        return null;
+    }
+
     /**
      * Spawn a new VM, execute unit tests, and check which classes are loaded.
      */
@@ -107,7 +122,7 @@ public class LazyInitializationTest {
         boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
-        args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+load=info");
+        args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         args.addAll(Arrays.asList(tests));
 
@@ -131,12 +146,8 @@ public class LazyInitializationTest {
             if (VERBOSE) {
                 System.out.println(line);
             }
-            String traceClassLoadingPrefix = Java8OrEarlier ? "[Loaded " : "[info][class,load] ";
-            int index = line.indexOf(traceClassLoadingPrefix);
-            if (index != -1) {
-                int start = index + traceClassLoadingPrefix.length();
-                int end = line.indexOf(' ', start);
-                String loadedClass = line.substring(start, end);
+            String loadedClass = extractClass(line);
+            if (loadedClass != null) {
                 if (isGraalClass(loadedClass)) {
                     loadedGraalClassNames.add(loadedClass);
                 }
@@ -248,26 +259,6 @@ public class LazyInitializationTest {
         if (hotSpotVMEventListener != null && hotSpotVMEventListener.isAssignableFrom(cls)) {
             // HotSpotVMEventListeners need to be loaded on JVMCI startup.
             return true;
-        }
-
-        if (!Java8OrEarlier) {
-            // In JDK9 without the JVMCI class loader, Graal classes are considered "remote"
-            // and are thus verified which in turn means extra class resolving is done
-            // during verification. Below are the list of extra classes resolved during
-            // verification of the above Graal classes.
-            if (cls.equals(GraalError.class) ||
-                            Backend.class.isAssignableFrom(cls) ||
-                            CodeGenProviders.class.isAssignableFrom(cls) ||
-                            RuntimeProvider.class.isAssignableFrom(cls) ||
-                            Thread.class.isAssignableFrom(cls) ||
-                            cls.equals(FrameMap.ReferenceMapBuilderFactory.class) ||
-                            cls.equals(GraalRuntime.class) ||
-                            cls.equals(DebugConfig.class) ||
-                            cls.equals(CompilationResultBuilderFactory.class) ||
-                            cls.equals(CompilerConfiguration.class) ||
-                            cls.equals(TargetProvider.class)) {
-                return true;
-            }
         }
 
         // No other class from the com.oracle.graal package should be loaded.
