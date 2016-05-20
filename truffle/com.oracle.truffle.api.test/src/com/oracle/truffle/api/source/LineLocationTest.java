@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.profiles.SeparateClassloaderTestRunner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -31,7 +32,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(SeparateClassloaderTestRunner.class)
 public class LineLocationTest {
 
     @Test
@@ -63,7 +66,7 @@ public class LineLocationTest {
     @Test
     public void lineLocationMixedTest() throws IOException {
         final Source s1 = createSourceFile("same contents", "Testfile");
-        final Source s2 = Source.fromText("same contents", "literal test source");
+        final Source s2 = Source.fromText("same contents", null).withName("literal test source");
         final LineLocation s1l1 = s1.createLineLocation(1);
         final LineLocation s2l1 = s2.createLineLocation(1);
         assertEquals(s1l1.compareTo(s2l1), 0);

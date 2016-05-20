@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.profiles.SeparateClassloaderTestRunner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
@@ -30,10 +31,18 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.ref.WeakReference;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(SeparateClassloaderTestRunner.class)
 public class SourceTest {
     @Test
     public void assignMimeTypeAndIdentity() {
@@ -48,6 +57,9 @@ public class SourceTest {
     @Test
     public void assignMimeTypeAndIdentityForApppendable() {
         Source s1 = Source.fromAppendableText("<stdio>");
+        assertEquals("<stdio>", s1.getName());
+        assertEquals("<stdio>", s1.getShortName());
+        assertEquals("Appendable path is based on name", "<stdio>", s1.getPath());
         assertNull("No mime type assigned", s1.getMimeType());
         s1.appendCode("// Hello");
         Source s2 = s1.withMimeType("text/x-c");
@@ -93,7 +105,14 @@ public class SourceTest {
         }
 
         // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
-        Source s1 = Source.fromFileName(file.getPath()).withMimeType("text/x-java");
+
+        String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
+        assertTrue("Exists, as it is the same file", new File(nonCannonical).exists());
+
+        Source s1 = Source.fromFileName(nonCannonical).withMimeType("text/x-java");
+        assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
+        assertEquals("Just the name of the file", file.getName(), s1.getShortName());
+        assertEquals("Name of the source is original path", nonCannonical, s1.getName());
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
@@ -131,7 +150,7 @@ public class SourceTest {
         }
 
         Source s1 = Source.fromURL(file.toURI().toURL(), "Hello.java");
-        assertEquals("Threated as plain", "text/plain", s1.getMimeType());
+        assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertEquals("// Hello", s1.getCode());
@@ -147,7 +166,7 @@ public class SourceTest {
         assertEquals(literal.getName(), description);
         assertEquals(literal.getShortName(), description);
         assertEquals(literal.getCode(), code);
-        assertNull(literal.getPath());
+        assertEquals("Non-appendable path is based on name", description, literal.getPath());
         assertNull(literal.getURL());
         final char[] buffer = new char[code.length()];
         assertEquals(literal.getReader().read(buffer), code.length());
@@ -178,5 +197,168 @@ public class SourceTest {
         final Source source2 = Source.fromFileName(code2, path);
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
+    }
+
+    @Test
+    public void withName() throws Exception {
+        final String tmpName = "/tmp/hi.tmp";
+        final String realName = "/path/hi.txt";
+
+        Source orig = Source.fromText("Hi", tmpName);
+        assertEquals(tmpName, orig.getName());
+        Source foundOrig = Source.find(tmpName);
+        assertEquals(orig, foundOrig);
+
+        Source source = orig.withName(realName);
+        assertEquals(realName, source.getName());
+
+        Source foundSource = Source.find(realName);
+        assertSame(source, foundSource);
+
+        WeakReference<Source> refOrig = new WeakReference<>(orig);
+        orig = null;
+        foundOrig = null;
+
+        assertGC("The source can disappear", refOrig);
+
+        Source notFoundSource = Source.find(tmpName);
+        assertNull("Original source isn't there anymore", notFoundSource);
+    }
+
+    @Test
+    public void withShortName() throws Exception {
+        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
+        assertEquals("/tmp/hi.tmp", orig.getShortName());
+        Source source = orig.withShortName("hi.txt");
+        assertEquals("hi.txt", source.getShortName());
+    }
+
+    @Test
+    public void withPath() throws Exception {
+        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
+        assertEquals("Path is derived from name", "/tmp/hi.tmp", orig.getPath());
+        Source source = orig.withPath("c:\\temp\\hi.txt");
+        assertEquals("c:\\temp\\hi.txt", source.getPath());
+    }
+
+    @Test
+    public void relativeURL() throws Exception {
+        URL resource = SourceSnippets.class.getResource("sample.js");
+        assertNotNull("Sample js file found", resource);
+        SourceSnippets.fromURL();
+    }
+
+    @Test
+    public void fileSample() throws Exception {
+        File sample = File.createTempFile("sample", ".java");
+        sample.deleteOnExit();
+        SourceSnippets.fromFile(sample.getParentFile(), sample.getName());
+        sample.delete();
+    }
+
+    @Test
+    public void stringSample() throws Exception {
+        SourceSnippets.fromAString();
+    }
+
+    @Test
+    public void readerSample() throws Exception {
+        SourceSnippets.fromReader();
+    }
+
+    @Test
+    public void fileWithReload() throws Exception {
+        File file = File.createTempFile("ChangeMe", ".java");
+        file.deleteOnExit();
+
+        String text;
+        try (FileWriter w = new FileWriter(file)) {
+            text = "// Hello";
+            w.write(text);
+        }
+
+        Source original = Source.fromFileName(file.getPath());
+        assertEquals(text, original.getCode());
+
+        String newText;
+        try (FileWriter w = new FileWriter(file)) {
+            newText = "// Hello World!";
+            w.write(newText);
+        }
+
+        Source still = Source.fromFileName(file.getPath(), false);
+        assertEquals(original, still);
+        assertEquals(text, still.getCode());
+
+        Source reloaded = Source.fromFileName(file.getPath(), true);
+        assertNotEquals(original, reloaded);
+        assertEquals("New source has the new text", newText, reloaded.getCode());
+
+        assertEquals("Old source1 remains unchanged", text, original.getCode());
+        assertEquals("Old source2 remains unchanged", text, still.getCode());
+    }
+
+    @Test
+    public void subSourceHashAndEquals() {
+        Source src = Source.fromText("One Two Three", "counting.en");
+        Source one = Source.subSource(src, 0, 3);
+        Source two = Source.subSource(src, 4, 3);
+        Source three = Source.subSource(src, 8);
+
+        Source oneSnd = Source.subSource(src, 0, 3);
+        Source twoSnd = Source.subSource(src, 4, 3);
+        Source threeSnd = Source.subSource(src, 8);
+
+        assertNotEquals("One: " + one.getCode() + " two: " + two.getCode(), one, two);
+        assertNotEquals(three, two);
+        assertNotEquals(one, three);
+
+        assertNotEquals(oneSnd, twoSnd);
+
+        assertEquals(one, oneSnd);
+        assertEquals(two, twoSnd);
+        assertEquals(three, threeSnd);
+
+        assertEquals(one.hashCode(), oneSnd.hashCode());
+        assertEquals(two.hashCode(), twoSnd.hashCode());
+        assertEquals(three.hashCode(), threeSnd.hashCode());
+    }
+
+    @Test
+    public void subSourceFromTwoFiles() throws Exception {
+        File f1 = File.createTempFile("subSource", ".js");
+        File f2 = File.createTempFile("subSource", ".js");
+
+        try (FileWriter w = new FileWriter(f1)) {
+            w.write("function test() {\n" + "  return 1;\n" + "}\n");
+        }
+
+        try (FileWriter w = new FileWriter(f2)) {
+            w.write("function test() {\n" + "  return 1;\n" + "}\n");
+        }
+
+        Source s1 = Source.fromFileName(f1.getPath());
+        Source s2 = Source.fromFileName(f2.getPath());
+
+        assertNotEquals("Different sources", s1, s2);
+        assertEquals("But same content", s1.getCode(), s2.getCode());
+
+        Source sub1 = Source.subSource(s1, 0, 8);
+        Source sub2 = Source.subSource(s2, 0, 8);
+
+        assertNotEquals("Different sub sources", sub1, sub2);
+        assertEquals("with the same content", sub1.getCode(), sub2.getCode());
+        assertNotEquals("and different hash", sub1.hashCode(), sub2.hashCode());
+    }
+
+    private static void assertGC(String msg, WeakReference<?> ref) {
+        for (int i = 0; i < 100; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            System.gc();
+            System.runFinalization();
+        }
+        fail(msg + " ref: " + ref.get());
     }
 }

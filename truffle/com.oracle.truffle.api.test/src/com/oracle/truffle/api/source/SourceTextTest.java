@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.source;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -39,6 +40,21 @@ public class SourceTextTest {
     @Test
     public void emptyTextTest0() {
         assertEquals(emptySource.getLineCount(), 0);
+    }
+
+    @Test
+    public void noName() {
+        assertNull(emptySource.getName());
+    }
+
+    @Test
+    public void noShortName() {
+        assertNull(emptySource.getShortName());
+    }
+
+    @Test
+    public void noPath() {
+        assertNull(emptySource.getPath());
     }
 
     // Temp disable of empty text tests
@@ -202,4 +218,12 @@ public class SourceTextTest {
         longSource.getLineStartOffset(4);
     }
 
+    @Test
+    public void nameAndShortNameNoPath() {
+        final String name = "/tmp/hi.txt";
+        Source source = Source.fromText("Hi", name);
+        assertEquals(name, source.getName());
+        assertEquals(name, source.getShortName());
+        assertEquals(name, source.getPath());
+    }
 }

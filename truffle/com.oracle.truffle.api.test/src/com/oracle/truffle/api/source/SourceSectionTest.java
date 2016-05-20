@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.io.File;
+import java.io.FileWriter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -123,5 +125,28 @@ public class SourceSectionTest {
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange6() {
         longSource.createSection("test", 1, 1, 1, -1);
+    }
+
+    @Test
+    public void onceObtainedAlwaysTheSame() throws Exception {
+        File sample = File.createTempFile("hello", ".tmp");
+        sample.deleteOnExit();
+        try (FileWriter w = new FileWriter(sample)) {
+            w.write("Hello world!");
+        }
+        Source complexHello = Source.fromFileName(sample.getPath(), true);
+        SourceSection helloTo = complexHello.createSection("world", 6, 5);
+        assertEquals("world", helloTo.getCode());
+
+        try (FileWriter w = new FileWriter(sample)) {
+            w.write("Hi world!");
+        }
+        Source simpleHi = Source.fromFileName(sample.getPath(), true);
+        SourceSection hiTo = simpleHi.createSection("world", 3, 5);
+        assertEquals("world", hiTo.getCode());
+
+        assertEquals("Previously allocated sections remain the same", "world", helloTo.getCode());
+
+        sample.delete();
     }
 }

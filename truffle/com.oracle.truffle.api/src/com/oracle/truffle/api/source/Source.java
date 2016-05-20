@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,156 +27,168 @@ package com.oracle.truffle.api.source;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
-import java.lang.ref.WeakReference;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.file.Files;
 import java.nio.file.spi.FileTypeDetector;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
+import java.io.InputStreamReader;
+import java.util.Objects;
 
 /**
- * Representation of a guest language source code unit and its contents. Sources originate in
- * several ways:
- * <ul>
- * <li><strong>Literal:</strong> An anonymous text string: not named and not indexed. These should
- * be considered value objects; equality is defined based on contents.<br>
- * See {@link Source#fromText(CharSequence, String)}</li>
- * <p>
- * <li><strong>Named Literal:</strong> A text string that can be retrieved by name as if it were a
- * file, but without any assumption that the name is related to a file path. Creating a new literal
- * with an already existing name will replace its predecessor in the index.<br>
- * See {@link Source#fromNamedText(CharSequence, String)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
- * absolute, canonical path name of the file. File contents are <em>read lazily</em> and contents
- * optionally <em>cached</em>. <br>
- * See {@link Source#fromFileName(String)}<br>
- * See {@link Source#fromFileName(String, boolean)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>URL:</strong> Each URL source is represented as a canonical object, indexed by the
- * URL. Contents are <em>read eagerly</em> and <em>cached</em>. <br>
- * See {@link Source#fromURL(URL, String)}<br>
- * See {@link Source#find(String)}</li>
- * <p>
- * <li><strong>Reader:</strong> Contents are <em>read eagerly</em> and treated as an anonymous
- * (non-indexed) <em>Literal</em> . <br>
- * See {@link Source#fromReader(Reader, String)}</li>
- * <p>
- * <li><strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
+ * Representation of a source code unit and its contents. Source instances are created by using one
+ * of existing factory methods, each loading the file from a different source/medium.
+ *
+ * <h3>From a file on disk</h3>
+ *
+ * Each file is represented as a canonical object, indexed by the absolute, canonical path name of
+ * the file. File content is <em>read lazily</em> and may be optionally <em>cached</em>. Sample
+ * usage: <br>
+ *
+ * {@link SourceSnippets#fromFile}
+ *
+ * Methods of interest are {@link Source#fromFileName(String)},
+ * {@link Source#fromFileName(String, boolean)}, and {@link Source#find(String)}.
+ *
+ * <h3>Read from an URL</h3>
+ *
+ * One can read remote or in JAR resources using the {@link Source#fromURL(URL, String)} factory:
+ * <br>
+ *
+ * {@link SourceSnippets#fromURL}
+ *
+ * Each URL source is represented as a canonical object, indexed by the URL. Contents are
+ * <em>read eagerly</em> and <em>cached</em> locally.
+ *
+ * <h3>Source from a literal text</h3>
+ *
+ * An anonymous immutable code snippet can be created from a string via the
+ * {@link Source#fromText(CharSequence, String)} factory method: <br>
+ *
+ * {@link SourceSnippets#fromAString}
+ *
+ * the created {@link Source} doesn't have associated {@link #getMimeType() mime type}. One has to
+ * additionally attach one to it via {@link #withMimeType(java.lang.String)} method.
+ *
+ * <h3>Reading from a stream</h3>
+ *
+ * If one has a {@link Reader} one can convert its content into a {@link Source} via
+ * {@link Source#fromReader(Reader, String)} method: <br>
+ *
+ * {@link SourceSnippets#fromReader}
+ *
+ * the content is <em>read eagerly</em> and it doesn't have associated {@link #getMimeType() mime
+ * type}. One has to additionally attach one to it via {@link #withMimeType(java.lang.String)}
+ * method.
+ *
+ * <!-- <strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
  * {@link Source}.<br>
  * See {@link Source#subSource(Source, int, int)}<br>
- * See {@link Source#subSource(Source, int)}</li>
+ * See {@link Source#subSource(Source, int)}
  * <p>
- * <li><strong>AppendableSource:</strong> Literal contents are provided by the client,
- * incrementally, after the instance is created.<br>
+ * <strong>AppendableSource:</strong> Literal contents are provided by the client, incrementally,
+ * after the instance is created.<br>
  * See {@link Source#fromAppendableText(String)}<br>
- * See {@link Source#fromNamedAppendableText(String)}</li>
- * </ul>
+ * -->
+ *
+ * <h2>Immutability of {@link Source}</h2>
+ *
  * <p>
- * <strong>File cache:</strong>
- * <ol>
- * <li>File content caching is optional, <em>on</em> by default.</li>
- * <li>The first access to source file contents will result in the contents being read, and (if
- * enabled) cached.</li>
- * <li>If file contents have been cached, access to contents via {@link Source#getInputStream()} or
- * {@link Source#getReader()} will be provided from the cache.</li>
- * <li>Any access to file contents via the cache will result in a timestamp check and possible cache
- * reload.</li>
- * </ol>
+ * {@link Source} is an immutable object - once (lazily) loaded, it remains the same. The source
+ * object can be associated with various attributes like {@link #getName()}, {@link #getShortName()}
+ * , {@link #getPath()}, {@link #getMimeType()} and these are immutable as well. The system makes
+ * the best effort to derive values of these attributes from the location and/or content of the
+ * {@link Source} object. However, to give the user that creates the source control over these
+ * attributes, the API offers an easy way to alter values of these attributes by creating clones of
+ * the source via {@link #withMimeType(java.lang.String)}, {@link #withName(java.lang.String)},
+ * {@link #withPath(java.lang.String)} or {@link #withShortName(java.lang.String)} methods.
+ * </p>
  * <p>
+ * While {@link Source} is immutable, the world around it is changing. The content of a file from
+ * which a {@link Source#fromFileName(java.lang.String) source has been read} may change few seconds
+ * later. How can we balance the immutability with ability to see real state of the world? In this
+ * case, one can request a reload of a new version of the
+ * {@link Source#fromFileName(java.lang.String, boolean) source for the same file}. The newly loaded
+ * {@link Source} will be different than the previous one, however it will have the same attributes
+ * ({@link #getName()}, presumably also {@link #getMimeType()}, etc.). There isn't much to do about
+ * this - just keep in mind that there can be multiple different {@link Source} objects representing
+ * the same source origin.
+ * </p>
  *
  * @since 0.8 or earlier
  */
 public abstract class Source {
-    private static final Logger LOG = Logger.getLogger(Source.class.getName());
-
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
     // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
-    /**
-     * Index of all named sources.
-     */
-    private static final Map<String, WeakReference<Source>> nameToSource = new HashMap<>();
-
-    private static boolean fileCacheEnabled = true;
+    static boolean fileCacheEnabled = true;
 
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
+    private final Content content;
+    private String name;
+    private String shortName;
+    private String path;
+    private String mimeType;
+    private TextMap textMap;
+
     /**
-     * Locates an existing instance by the name under which it was indexed.
+     * Locates an existing instance of a {@link Source} with given {@link #getName() name}.
      *
+     * @param name the {@link #getName() name} of a source to seek for
+     * @return found source or <code>null</code> if no source with name is known
      * @since 0.8 or earlier
      */
     public static Source find(String name) {
-        final WeakReference<Source> nameRef = nameToSource.get(name);
-        return nameRef == null ? null : nameRef.get();
+        return SourceImpl.findSource(name);
     }
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
-     * then cached.
+     * then cached. The {@link #getShortName() short name} of the source is equal to
+     * {@link File#getName() name of the file}. The {@link #getName() name} of the file is exactly
+     * the provided <code>fileName</code> string. The {@link #getPath() path} is
+     * {@link File#getCanonicalPath() canonical path} of the provided file name.
      *
-     * @param fileName name
-     * @param reset forces any existing {@link Source} cache to be cleared, forcing a re-read
-     * @return canonical representation of the file's contents.
-     * @throws IOException if the file can not be read
+     * @param fileName path to the file with the source
+     * @param reload forces any existing {@link Source} cache to be cleared, forcing a re-read - as
+     *            a result the newly returned {@link Source} may have content different to any
+     *            previously loaded one, which is up-to-date with current state on the disk
+     * @return source representing the file's content
+     * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
      */
-    public static Source fromFileName(String fileName, boolean reset) throws IOException {
-
-        final WeakReference<Source> nameRef = nameToSource.get(fileName);
-        Source source = nameRef == null ? null : nameRef.get();
-        if (source == null) {
-            final File file = new File(fileName);
-            if (!file.canRead()) {
-                throw new IOException("Can't read file " + fileName);
-            }
-            final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = nameToSource.get(path);
-            source = pathRef == null ? null : pathRef.get();
-            if (source == null) {
-                source = new FileSource(file, fileName, path);
-                nameToSource.put(path, new WeakReference<>(source));
+    public static Source fromFileName(String fileName, boolean reload) throws IOException {
+        if (!reload) {
+            Source source = find(fileName);
+            if (source != null && source.content() instanceof FileSourceImpl) {
+                return source;
             }
         }
-        if (reset) {
-            source.reset();
+        final File file = new File(fileName);
+        if (!file.canRead()) {
+            throw new IOException("Can't read file " + fileName);
         }
-        return source;
+        final String path = file.getCanonicalPath();
+        final FileSourceImpl content = new FileSourceImpl(file, fileName, path);
+        return new SourceImpl(content);
     }
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
-     * then cached.
+     * then cached. The {@link #getShortName() short name} of the source is equal to
+     * {@link File#getName() name of the file}. The {@link #getName() name} of the file is exactly
+     * the provided <code>fileName</code> string. The {@link #getPath() path} is
+     * {@link File#getCanonicalPath() canonical path} of the provided file name.
      *
-     * @param fileName name
-     * @return canonical representation of the file's contents.
-     * @throws IOException if the file can not be read
+     * @param fileName path to the file with the source
+     * @return source representing the file's content
+     * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
      */
     public static Source fromFileName(String fileName) throws IOException {
@@ -209,53 +221,45 @@ public abstract class Source {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
 
-        final WeakReference<Source> nameRef = nameToSource.get(fileName);
-        Source source = nameRef == null ? null : nameRef.get();
-        if (source == null) {
-            final File file = new File(fileName);
-            // We are going to trust that the fileName is readable.
-            final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = nameToSource.get(path);
-            source = pathRef == null ? null : pathRef.get();
-            if (source == null) {
-                source = new ClientManagedFileSource(file, fileName, path, chars);
-                nameToSource.put(path, new WeakReference<>(source));
-                return source;
-            }
-        }
-        if (source instanceof ClientManagedFileSource) {
-            final ClientManagedFileSource modifiableSource = (ClientManagedFileSource) source;
-            modifiableSource.setCode(chars);
-            return modifiableSource;
-        } else {
-            throw new IOException("Attempt to modify contents of a file Source");
-        }
+        final File file = new File(fileName);
+        // We are going to trust that the fileName is readable.
+        final String path = file.getCanonicalPath();
+        Content content = new ClientManagedFileSourceImpl(file, fileName, path, chars);
+        Source source = new SourceImpl(content);
+        return source;
     }
 
     /**
-     * Creates an anonymous source from literal text: not named and not indexed.
+     * Creates an anonymous source from literal text. The {@link #getName() name} of the source is
+     * <code>name</code>. The {@link #getShortName()} is also <code>name</code>, as well as
+     * {@link #getPath() path}.
      *
      * @param chars textual source code
-     * @param description a note about the origin, for error messages and debugging
-     * @return a newly created, non-indexed source representation
+     * @param name a note about the origin, for error messages and debugging - used as
+     *            {@link Source#getName()} and {@link Source#getShortName()}, the name can be
+     *            <code>null</code>
+     * @return a newly created, source representation
      * @since 0.8 or earlier
      */
-    public static Source fromText(CharSequence chars, String description) {
+    public static Source fromText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
-        return new LiteralSource(description, chars.toString());
+        Content content = new LiteralSourceImpl(name, chars.toString());
+        return new SourceImpl(content);
     }
 
     /**
-     * Creates an anonymous source from literal text that is provided incrementally after creation:
-     * not named and not indexed.
+     * Creates an anonymous source from literal text that is provided incrementally after creation.
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to <code>name</code>.
      *
-     * @param description a note about the origin, for error messages and debugging
+     * @param name name for the newly created source
      * @return a newly created, non-indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
      */
-    public static Source fromAppendableText(String description) {
+    public static Source fromAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
-        return new AppendableLiteralSource(description);
+        Content content = new AppendableLiteralSourceImpl(name);
+        return new SourceImpl(content);
     }
 
     /**
@@ -267,11 +271,13 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, source representation
      * @since 0.8 or earlier
+     * @deprecated use {@link #fromText(java.lang.CharSequence, java.lang.String)}
      */
+    @Deprecated
     public static Source fromNamedText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
-        final Source source = new LiteralSource(name, chars.toString());
-        nameToSource.put(name, new WeakReference<>(source));
+        Content content = new LiteralSourceImpl(name, chars.toString());
+        final Source source = new SourceImpl(content);
         return source;
     }
 
@@ -284,11 +290,13 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
+     * @deprecated use {@link #fromAppendableText(java.lang.String)}
      */
+    @Deprecated
     public static Source fromNamedAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
-        final Source source = new AppendableLiteralSource(name);
-        nameToSource.put(name, new WeakReference<>(source));
+        final Content content = new AppendableLiteralSourceImpl(name);
+        final Source source = new SourceImpl(content);
         return source;
     }
 
@@ -305,8 +313,8 @@ public abstract class Source {
      */
     public static Source subSource(Source base, int baseCharIndex, int length) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
-        final SubSource subSource = SubSource.create(base, baseCharIndex, length);
-        return subSource;
+        final SubSourceImpl subSource = SubSourceImpl.create(base, baseCharIndex, length);
+        return new SourceImpl(subSource);
     }
 
     /**
@@ -336,7 +344,8 @@ public abstract class Source {
      */
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
-        return URLSource.get(url, description);
+        Content content = URLSourceImpl.get(url, description);
+        return new SourceImpl(content);
     }
 
     /**
@@ -350,41 +359,47 @@ public abstract class Source {
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
-        return new LiteralSource(description, read(reader));
+        Content content = new LiteralSourceImpl(description, read(reader));
+        return new SourceImpl(content);
     }
 
     /**
-     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
-     * is not compatible with Java strings, or if your parser returns byte indices instead of
-     * character indices. The returned source is then indexed by byte, not by character.
+     * Creates a source from raw bytes. This can be used if your parser returns byte indices instead
+     * of character indices. The returned source is however still indexed by character.
+     *
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to value of <code>name</code>
      *
      * @param bytes the raw bytes of the source
-     * @param description a note about the origin, possibly useful for debugging
+     * @param name name of the created source
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
      */
-    public static Source fromBytes(byte[] bytes, String description, Charset charset) {
-        return fromBytes(bytes, 0, bytes.length, description, charset);
+    public static Source fromBytes(byte[] bytes, String name, Charset charset) {
+        return fromBytes(bytes, 0, bytes.length, name, charset);
     }
 
     /**
-     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
-     * is not compatible with Java strings, or if your parser returns byte indices instead of
-     * character indices. The returned source is then indexed by byte, not by character. Offsets are
-     * relative to byteIndex.
+     * Creates a source from raw bytes. This can be used if your parser returns byte indices instead
+     * of character indices. The returned source is however still indexed by character. Offsets are
+     * starting at byteIndex.
+     *
+     * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
+     * are set to value of <code>name</code>
      *
      * @param bytes the raw bytes of the source
      * @param byteIndex where the string starts in the byte array
-     * @param length the length of the string in the byte array
-     * @param description a note about the origin, possibly useful for debugging
+     * @param length the length of bytes to use from the byte array
+     * @param name name of the created source
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
      */
-    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, Charset charset) {
+    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
-        return new BytesSource(description, bytes, byteIndex, length, charset);
+        Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
+        return new SourceImpl(content);
     }
 
     // TODO (mlvdv) enable per-file choice whether to cache?
@@ -393,12 +408,15 @@ public abstract class Source {
      * created from literal text or readers is always enabled.
      *
      * @since 0.8 or earlier
+     * @deprecated globally configurable caching is uncontrollable as it allows any piece of code to
+     *             influence behavior of completely independent piece of code
      */
+    @Deprecated
     public static void setFileCaching(boolean enabled) {
         fileCacheEnabled = enabled;
     }
 
-    private static String read(Reader reader) throws IOException {
+    static String read(Reader reader) throws IOException {
         final BufferedReader bufferedReader = new BufferedReader(reader);
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
@@ -417,39 +435,56 @@ public abstract class Source {
         return builder.toString();
     }
 
-    private Source() {
+    Source(Content content) {
+        this.content = content;
     }
 
-    private String mimeType;
-    private TextMap textMap;
-
-    abstract void reset();
+    Content content() {
+        return content;
+    }
 
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
-     * name of a guest language source code file.
+     * name of a guest language source code file. Name is supposed to be at least as long as
+     * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
+     *
+     * One can change name for an existing source by creating its clone via
+     * {@link #withName(java.lang.String)} method.
      *
      * @return the name of the guest language program
      * @since 0.8 or earlier
      */
-    public abstract String getName();
+    public String getName() {
+        return name == null ? content().getName() : name;
+    }
 
     /**
      * Returns a short version of the name of the resource holding a guest language program (as
      * described in {@link #getName()}). For example, this could be just the name of the file,
      * rather than a full path.
      *
+     * One can change name for an existing source by creating its clone via
+     * {@link #withShortName(java.lang.String)} method.
+     *
      * @return the short name of the guest language program
      * @since 0.8 or earlier
      */
-    public abstract String getShortName();
+    public String getShortName() {
+        return shortName == null ? content().getShortName() : shortName;
+    }
 
     /**
-     * The normalized, canonical name if the source is a file.
+     * The fully qualified name of the source. In case this source originates from a {@link File},
+     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     *
+     * One can change path associated with a file by calling {@link #withPath(java.lang.String)} and
+     * obtaining cloned instance of the source with new path.
      *
      * @since 0.8 or earlier
      */
-    public abstract String getPath();
+    public String getPath() {
+        return path == null ? content().getPath() : path;
+    }
 
     /**
      * The URL if the source is retrieved via URL.
@@ -457,14 +492,31 @@ public abstract class Source {
      * @return URL or <code>null</code>
      * @since 0.8 or earlier
      */
-    public abstract URL getURL();
+    public URL getURL() {
+        return content().getURL();
+    }
 
     /**
      * Access to the source contents.
      *
      * @since 0.8 or earlier
      */
-    public abstract Reader getReader();
+    public Reader getReader() {
+        try {
+            return content().getReader();
+        } catch (final IOException ex) {
+            return new Reader() {
+                @Override
+                public int read(char[] cbuf, int off, int len) throws IOException {
+                    throw ex;
+                }
+
+                @Override
+                public void close() throws IOException {
+                }
+            };
+        }
+    }
 
     /**
      * Access to the source contents.
@@ -489,7 +541,9 @@ public abstract class Source {
      *
      * @since 0.8 or earlier
      */
-    public abstract String getCode();
+    public String getCode() {
+        return content().getCode();
+    }
 
     /**
      * Returns a subsection of the code test.
@@ -571,7 +625,8 @@ public abstract class Source {
      * @since 0.8 or earlier
      */
     public void appendCode(CharSequence chars) {
-        throw new UnsupportedOperationException();
+        content().appendCode(chars);
+        clearTextMap();
     }
 
     /**
@@ -714,7 +769,7 @@ public abstract class Source {
      * different source types.
      */
     Object getHashKey() {
-        return getName();
+        return content().getHashKey();
     }
 
     final TextMap getTextMap() {
@@ -756,6 +811,57 @@ public abstract class Source {
     }
 
     /**
+     * Associates the source with specified name.
+     *
+     * @param newName name to be returned from {@link #getName()} method
+     * @return new (identical) source, with changed {@link #getName()}
+     * @since 0.14
+     */
+    final Source withName(String newName) {
+        try {
+            Source another = (Source) clone();
+            another.name = newName;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * Associates the source with specified short name.
+     *
+     * @param newShortName name to be returned from {@link #getShortName()} method
+     * @return new (identical) source, with changed {@link #getShortName()}
+     * @since 0.14
+     */
+    final Source withShortName(String newShortName) {
+        try {
+            Source another = (Source) clone();
+            another.shortName = newShortName;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
+     * Associates the source with specified short name.
+     *
+     * @param newPath name to be returned from {@link #getPath()} method
+     * @return new (identical) source, with changed {@link #getPath()}
+     * @since 0.14
+     */
+    final Source withPath(String newPath) {
+        try {
+            Source another = (Source) clone();
+            another.path = newPath;
+            return another;
+        } catch (CloneNotSupportedException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /**
      * MIME type that is associated with this source. By default file extensions known to the system
      * are used to determine the MIME type (via registered {@link FileTypeDetector} classes), yet
      * one can directly {@link #withMimeType(java.lang.String) provide a MIME type} to each source.
@@ -765,707 +871,78 @@ public abstract class Source {
      */
     public String getMimeType() {
         if (mimeType == null) {
-            mimeType = findMimeType();
+            try {
+                mimeType = content().findMimeType();
+            } catch (IOException ex) {
+                // swallow and return null
+            }
         }
         return mimeType;
     }
 
-    String findMimeType() {
-        return null;
+    final boolean equalAttributes(Source other) {
+        return Objects.equals(getMimeType(), other.getMimeType()) &&
+                        Objects.equals(getName(), other.getName()) &&
+                        Objects.equals(getShortName(), other.getShortName()) &&
+                        Objects.equals(getPath(), other.getPath());
     }
-
-    final boolean equalMime(Source other) {
-        if (mimeType == null) {
-            return other.mimeType == null;
-        }
-        return mimeType.equals(other.mimeType);
-    }
-
-    private static final class LiteralSource extends Source implements Cloneable {
-
-        private final String description;
-        private final String code;
-
-        LiteralSource(String description, String code) {
-            this.description = description;
-            this.code = code;
-        }
-
-        @Override
-        public String getName() {
-            return description;
-        }
-
-        @Override
-        public String getShortName() {
-            return description;
-        }
-
-        @Override
-        public String getCode() {
-            return code;
-        }
-
-        @Override
-        public String getPath() {
-            return null;
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            return new StringReader(code);
-        }
-
-        @Override
-        void reset() {
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(description, code);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (obj instanceof LiteralSource) {
-                LiteralSource other = (LiteralSource) obj;
-                return Objects.equals(description, other.description) && code.equals(other.code) && equalMime(other);
-            }
-            return false;
-        }
-    }
-
-    private static final class AppendableLiteralSource extends Source implements Cloneable {
-        private final String description;
-        final List<CharSequence> codeList = new ArrayList<>();
-
-        AppendableLiteralSource(String description) {
-            this.description = description;
-        }
-
-        @Override
-        public String getName() {
-            return description;
-        }
-
-        @Override
-        public String getShortName() {
-            return description;
-        }
-
-        @Override
-        public String getCode() {
-            return getCodeFromIndex(0);
-        }
-
-        @Override
-        public String getPath() {
-            return description;
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            return new StringReader(getCode());
-        }
-
-        @Override
-        void reset() {
-        }
-
-        private String getCodeFromIndex(int index) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = index; i < codeList.size(); i++) {
-                CharSequence s = codeList.get(i);
-                sb.append(s);
-            }
-            return sb.toString();
-        }
-
-        @Override
-        public void appendCode(CharSequence chars) {
-            codeList.add(chars);
-            clearTextMap();
-        }
-
-    }
-
-    private static final class FileSource extends Source implements Cloneable {
-
-        private final File file;
-        private final String name; // Name used originally to describe the source
-        private final String path;  // Normalized path description of an actual file
-
-        private String code = null;  // A cache of the file's contents
-
-        FileSource(File file, String name, String path) {
-            this.file = file.getAbsoluteFile();
-            this.name = name;
-            this.path = path;
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getShortName() {
-            return file.getName();
-        }
-
-        @Override
-        Object getHashKey() {
-            return path;
-        }
-
-        @Override
-        public String getCode() {
-            if (fileCacheEnabled) {
-                if (code == null) {
-                    try {
-                        code = read(getReader());
-                    } catch (IOException e) {
-                    }
-                }
-                return code;
-            }
-            try {
-                return read(new InputStreamReader(new FileInputStream(file), "UTF-8"));
-            } catch (IOException e) {
-            }
-            return null;
-        }
-
-        @Override
-        public String getPath() {
-            return path;
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            if (code != null) {
-                return new StringReader(code);
-            }
-            try {
-                return new InputStreamReader(new FileInputStream(file), "UTF-8");
-            } catch (FileNotFoundException e) {
-
-                throw new RuntimeException("Can't find file " + path, e);
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException("Unsupported encoding in file " + path, e);
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return path.hashCode();
-        }
-
-        @Override
-        String findMimeType() {
-            try {
-                return Files.probeContentType(file.toPath());
-            } catch (IOException ex) {
-                LOG.log(Level.SEVERE, null, ex);
-            }
-            return null;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof FileSource) {
-                FileSource other = (FileSource) obj;
-                return path.equals(other.path) && equalMime(other);
-            }
-            return false;
-        }
-
-        @Override
-        void reset() {
-            this.code = null;
-        }
-    }
-
-    // TODO (mlvdv) if we keep this, hoist a superclass in common with FileSource.
-    private static final class ClientManagedFileSource extends Source implements Cloneable {
-
-        private final File file;
-        private final String name; // Name used originally to describe the source
-        private final String path;  // Normalized path description of an actual file
-        private String code;  // The file's contents, as provided by the client
-
-        ClientManagedFileSource(File file, String name, String path, CharSequence chars) {
-            this.file = file.getAbsoluteFile();
-            this.name = name;
-            this.path = path;
-            setCode(chars);
-        }
-
-        void setCode(CharSequence chars) {
-            clearTextMap();
-            this.code = chars.toString();
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getShortName() {
-            return file.getName();
-        }
-
-        @Override
-        Object getHashKey() {
-            return path;
-        }
-
-        @Override
-        public String getCode() {
-            return code;
-        }
-
-        @Override
-        public String getPath() {
-            return path;
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            return new StringReader(code);
-        }
-
-        @Override
-        String findMimeType() {
-            try {
-                return Files.probeContentType(file.toPath());
-            } catch (IOException ex) {
-                LOG.log(Level.SEVERE, null, ex);
-            }
-            return null;
-        }
-
-        @Override
-        public int hashCode() {
-            return path.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof ClientManagedFileSource) {
-                ClientManagedFileSource other = (ClientManagedFileSource) obj;
-                return path.equals(other.path) && equalMime(other);
-            }
-            return false;
-        }
-
-        @Override
-        void reset() {
-            this.code = null;
-        }
-    }
-
-    private static final class URLSource extends Source implements Cloneable {
-
-        private static final Map<URL, WeakReference<URLSource>> urlToSource = new HashMap<>();
-
-        public static URLSource get(URL url, String name) throws IOException {
-            WeakReference<URLSource> sourceRef = urlToSource.get(url);
-            URLSource source = sourceRef == null ? null : sourceRef.get();
-            if (source == null) {
-                source = new URLSource(url, name);
-                urlToSource.put(url, new WeakReference<>(source));
-            }
-            return source;
-        }
-
-        private final URL url;
-        private final String name;
-        private String code;  // A cache of the source contents
-
-        URLSource(URL url, String name) throws IOException {
-            this.url = url;
-            this.name = name;
-            URLConnection c = url.openConnection();
-            if (super.mimeType == null) {
-                super.mimeType = c.getContentType();
-            }
-            code = read(new InputStreamReader(c.getInputStream()));
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getShortName() {
-            return name;
-        }
-
-        @Override
-        public String getPath() {
-            return url.getPath();
-        }
-
-        @Override
-        public URL getURL() {
-            return url;
-        }
-
-        @Override
-        public Reader getReader() {
-            return new StringReader(code);
-        }
-
-        @Override
-        public String getCode() {
-            return code;
-        }
-
-        @Override
-        void reset() {
-        }
-    }
-
-    private static final class SubSource extends Source implements Cloneable {
-        private final Source base;
-        private final int baseIndex;
-        private final int subLength;
-
-        private static SubSource create(Source base, int baseIndex, int length) {
-            if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
-                throw new IllegalArgumentException("text positions out of range");
-            }
-            return new SubSource(base, baseIndex, length);
-        }
-
-        private SubSource(Source base, int baseIndex, int length) {
-            this.base = base;
-            this.baseIndex = baseIndex;
-            this.subLength = length;
-        }
-
-        @Override
-        void reset() {
-            assert false;
-        }
-
-        @Override
-        public String getName() {
-            return base.getName();
-        }
-
-        @Override
-        public String getShortName() {
-            return base.getShortName();
-        }
-
-        @Override
-        public String getPath() {
-            return base.getPath();
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            assert false;
-            return null;
-        }
-
-        @Override
-        public String getCode() {
-            return base.getCode(baseIndex, subLength);
-        }
-    }
-
-    private static final class BytesSource extends Source implements Cloneable {
-
-        private final String name;
-        private final byte[] bytes;
-        private final int byteIndex;
-        private final int length;
-        private final CharsetDecoder decoder;
-
-        BytesSource(String name, byte[] bytes, int byteIndex, int length, Charset decoder) {
-            this.name = name;
-            this.bytes = bytes;
-            this.byteIndex = byteIndex;
-            this.length = length;
-            this.decoder = decoder.newDecoder();
-        }
-
-        @Override
-        void reset() {
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public String getShortName() {
-            return name;
-        }
-
-        @Override
-        public String getPath() {
-            return name;
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            return null;
-        }
-
-        @Override
-        public String getCode() {
-            ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex, length);
-            CharBuffer chb;
-            try {
-                chb = decoder.decode(bb);
-            } catch (CharacterCodingException ex) {
-                return "";
-            }
-            return chb.toString();
-        }
-
-        @Override
-        public String getCode(int byteOffset, int codeLength) {
-            ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex + byteOffset, codeLength);
-            CharBuffer chb;
-            try {
-                chb = decoder.decode(bb);
-            } catch (CharacterCodingException ex) {
-                return "";
-            }
-            return chb.toString();
-        }
-
-        @Override
-        void checkRange(int charIndex, int rangeLength) {
-            if (!(charIndex >= 0 && rangeLength >= 0 && charIndex + rangeLength <= length)) {
-                throw new IllegalArgumentException("text positions out of range");
-            }
-        }
-
-        @Override
-        TextMap createTextMap() {
-            return TextMap.fromString(getCode());
-        }
-    }
-
-    /**
-     * A utility for converting between coordinate systems in a string of text interspersed with
-     * newline characters. The coordinate systems are:
-     * <ul>
-     * <li>0-based character offset from the beginning of the text, where newline characters count
-     * as a single character and the first character in the text occupies position 0.</li>
-     * <li>1-based position in the 2D space of lines and columns, in which the first position in the
-     * text is at (1,1).</li>
-     * </ul>
-     * <p>
-     * This utility is based on positions occupied by characters, not text stream positions as in a
-     * text editor. The distinction shows up in editors where you can put the cursor just past the
-     * last character in a buffer; this is necessary, among other reasons, so that you can put the
-     * edit cursor in a new (empty) buffer. For the purposes of this utility, however, there are no
-     * character positions in an empty text string and there are no lines in an empty text string.
-     * <p>
-     * A newline character designates the end of a line and occupies a column position.
-     * <p>
-     * If the text ends with a character other than a newline, then the characters following the
-     * final newline character count as a line, even though not newline-terminated.
-     * <p>
-     * <strong>Limitations:</strong>
-     * <ul>
-     * <li>Does not handle multiple character encodings correctly.</li>
-     * <li>Treats tabs as occupying 1 column.</li>
-     * <li>Does not handle multiple-character line termination sequences correctly.</li>
-     * </ul>
-     */
-    private static final class TextMap {
-
-        // 0-based offsets of newline characters in the text, with sentinel
-        private final int[] nlOffsets;
-
-        // The number of characters in the text, including newlines (which count as 1).
-        private final int textLength;
-
-        // Is the final text character a newline?
-        final boolean finalNL;
-
-        TextMap(int[] nlOffsets, int textLength, boolean finalNL) {
-            this.nlOffsets = nlOffsets;
-            this.textLength = textLength;
-            this.finalNL = finalNL;
-        }
-
-        /**
-         * Constructs map permitting translation between 0-based character offsets and 1-based
-         * lines/columns.
-         */
-        public static TextMap fromString(String text) {
-            final int textLength = text.length();
-            final ArrayList<Integer> lines = new ArrayList<>();
-            lines.add(0);
-            int offset = 0;
-
-            while (offset < text.length()) {
-                final int nlIndex = text.indexOf('\n', offset);
-                if (nlIndex >= 0) {
-                    offset = nlIndex + 1;
-                    lines.add(offset);
-                } else {
-                    break;
-                }
-            }
-            lines.add(Integer.MAX_VALUE);
-
-            final int[] nlOffsets = new int[lines.size()];
-            for (int line = 0; line < lines.size(); line++) {
-                nlOffsets[line] = lines.get(line);
-            }
-
-            final boolean finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
-
-            return new TextMap(nlOffsets, textLength, finalNL);
-        }
-
-        /**
-         * Converts 0-based character offset to 1-based number of the line containing the character.
-         *
-         * @throws IllegalArgumentException if the offset is outside the string.
-         */
-        public int offsetToLine(int offset) throws IllegalArgumentException {
-            if (offset < 0 || offset >= textLength) {
-                if (offset == 0 && textLength == 0) {
-                    return 1;
-                }
-                throw new IllegalArgumentException("offset out of bounds");
-            }
-            int line = 1;
-            while (offset >= nlOffsets[line]) {
-                line++;
-            }
-            return line;
-        }
-
-        /**
-         * Converts 0-based character offset to 1-based number of the column occupied by the
-         * character.
-         * <p>
-         * Tabs are not expanded; they occupy 1 column.
-         *
-         * @throws IllegalArgumentException if the offset is outside the string.
-         */
-        public int offsetToCol(int offset) throws IllegalArgumentException {
-            return 1 + offset - nlOffsets[offsetToLine(offset) - 1];
-        }
-
-        /**
-         * The number of characters in the mapped text.
-         */
-        public int length() {
-            return textLength;
-        }
-
-        /**
-         * The number of lines in the text; if characters appear after the final newline, then they
-         * also count as a line, even though not newline-terminated.
-         */
-        public int lineCount() {
-            if (textLength == 0) {
-                return 0;
-            }
-            return finalNL ? nlOffsets.length - 2 : nlOffsets.length - 1;
-        }
-
-        /**
-         * Converts 1-based line number to the 0-based offset of the line's first character; this
-         * would be the offset of a newline if the line is empty.
-         *
-         * @throws IllegalArgumentException if there is no such line in the text.
-         */
-        public int lineStartOffset(int line) throws IllegalArgumentException {
-            if (textLength == 0) {
-                return 0;
-            }
-            if (lineOutOfRange(line)) {
-                throw new IllegalArgumentException("line out of bounds");
-            }
-            return nlOffsets[line - 1];
-        }
-
-        /**
-         * Gets the number of characters in a line, identified by 1-based line number;
-         * <em>does not</em> include the final newline, if any.
-         *
-         * @throws IllegalArgumentException if there is no such line in the text.
-         */
-        public int lineLength(int line) throws IllegalArgumentException {
-            if (textLength == 0) {
-                return 0;
-            }
-            if (lineOutOfRange(line)) {
-                throw new IllegalArgumentException("line out of bounds");
-            }
-            if (line == nlOffsets.length - 1 && !finalNL) {
-                return textLength - nlOffsets[line - 1];
-            }
-            return (nlOffsets[line] - nlOffsets[line - 1]) - 1;
-
-        }
-
-        /**
-         * Is the line number out of range.
-         */
-        private boolean lineOutOfRange(int line) {
-            return line <= 0 || line >= nlOffsets.length || (line == nlOffsets.length - 1 && finalNL);
-        }
-
-    }
-
 }
+
+// @formatter:off
+class SourceSnippets {
+    public static Source fromFile(File dir, String name) throws IOException {
+        // BEGIN: SourceSnippets#fromFile
+        File file = new File(dir, name);
+        assert name.endsWith(".java") : "Imagine 'c:\\sources\\Example.java' file";
+
+        Source source = Source.fromFileName(file.getPath());
+
+        assert file.getName().equals(source.getShortName());
+        assert file.getPath().equals(source.getPath());
+        assert file.getPath().equals(source.getName());
+        assert "text/x-java".equals(source.getMimeType());
+        // END: SourceSnippets#fromFile
+        return source;
+    }
+
+    public static Source fromURL() throws IOException {
+        // BEGIN: SourceSnippets#fromURL
+        URL resource = SourceSnippets.class.getResource("sample.js");
+        Source source = Source.fromURL(resource, "/your/pkg/sample.js");
+        assert "/your/pkg/sample.js".equals(source.getShortName());
+        assert resource.toExternalForm().equals(source.getPath());
+        assert "/your/pkg/sample.js".equals(source.getName());
+        assert "application/javascript".equals(source.getMimeType());
+        // END: SourceSnippets#fromURL
+        return source;
+    }
+
+    public static Source fromReader() throws IOException {
+        // BEGIN: SourceSnippets#fromReader
+        Reader stream = new InputStreamReader(
+            SourceSnippets.class.getResourceAsStream("sample.js")
+        );
+        Source source = Source.fromReader(stream, "/your/pkg/sample.js");
+        assert "/your/pkg/sample.js".equals(source.getShortName());
+        assert "/your/pkg/sample.js".equals(source.getPath());
+        assert "/your/pkg/sample.js".equals(source.getName());
+        assert null == source.getMimeType();
+        // END: SourceSnippets#fromReader
+        return source;
+    }
+
+    public static Source fromAString() throws Exception {
+        // BEGIN: SourceSnippets#fromAString
+        Source source = Source.fromText("function() {\n"
+            + "  return 'Hi';\n"
+            + "}\n", "/my/scripts/hi.js"
+        );
+        assert "/my/scripts/hi.js".equals(source.getShortName());
+        assert "/my/scripts/hi.js".equals(source.getPath());
+        assert "/my/scripts/hi.js".equals(source.getName());
+        assert null == source.getMimeType() : "No mime type associated";
+        // END: SourceSnippets#fromAString
+        return source;
+    }
+}
+// @formatter:on
