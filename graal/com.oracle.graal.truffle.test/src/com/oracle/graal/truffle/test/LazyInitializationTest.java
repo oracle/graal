@@ -31,6 +31,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -56,6 +59,8 @@ public class LazyInitializationTest {
     private final Class<?> hotSpotVMEventListener;
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
 
+    private static boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
     public LazyInitializationTest() {
         hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
         hotSpotGraalCompilerFactoryOptions = forNameOrNull("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory$Options");
@@ -77,6 +82,29 @@ public class LazyInitializationTest {
     private static final String VERBOSE_PROPERTY = "LazyInitializationTest.verbose";
     private static final boolean VERBOSE = Boolean.getBoolean(VERBOSE_PROPERTY);
 
+    private static final Pattern CLASS_INIT_LOG_PATTERN = Pattern.compile("\\[info\\]\\[class,init\\] \\d+ Initializing '([^']+)'");
+
+    /**
+     * Extracts the class name from a line of log output.
+     */
+    private static String extractClass(String line) {
+        if (Java8OrEarlier) {
+            String traceClassLoadingPrefix = "[Loaded ";
+            int index = line.indexOf(traceClassLoadingPrefix);
+            if (index != -1) {
+                int start = index + traceClassLoadingPrefix.length();
+                int end = line.indexOf(' ', start);
+                return line.substring(start, end);
+            }
+        } else {
+            Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
+            if (matcher.find()) {
+                return matcher.group(1).replace('/', '.');
+            }
+        }
+        return null;
+    }
+
     /**
      * Spawn a new VM, execute unit tests, and check which classes are loaded.
      */
@@ -94,11 +122,11 @@ public class LazyInitializationTest {
         boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
-        args.add("-XX:+TraceClassLoading");
+        args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         args.addAll(Arrays.asList(tests));
 
-        ArrayList<Class<?>> loadedGraalClasses = new ArrayList<>();
+        ArrayList<String> loadedGraalClassNames = new ArrayList<>();
 
         ProcessBuilder processBuilder = new ProcessBuilder(args);
         if (VERBOSE) {
@@ -118,17 +146,10 @@ public class LazyInitializationTest {
             if (VERBOSE) {
                 System.out.println(line);
             }
-            int index = line.indexOf("[Loaded ");
-            if (index != -1) {
-                int start = index + "[Loaded ".length();
-                int end = line.indexOf(' ', start);
-                String loadedClass = line.substring(start, end);
+            String loadedClass = extractClass(line);
+            if (loadedClass != null) {
                 if (isGraalClass(loadedClass)) {
-                    try {
-                        loadedGraalClasses.add(Class.forName(loadedClass));
-                    } catch (ClassNotFoundException e) {
-                        Assert.fail("loaded class " + loadedClass + " not found");
-                    }
+                    loadedGraalClassNames.add(loadedClass);
                 }
             } else if (line.startsWith("OK (")) {
                 Assert.assertTrue(testCount == 0);
@@ -145,7 +166,7 @@ public class LazyInitializationTest {
         Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
         Assert.assertNotEquals("test count" + suffix, 0, testCount);
 
-        checkAllowedGraalClasses(loadedGraalClasses, suffix);
+        checkAllowedGraalClasses(loadedGraalClassNames, suffix);
     }
 
     private static boolean isGraalClass(String className) {
@@ -157,9 +178,17 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<Class<?>> loadedGraalClasses, String errorMessageSuffix) {
+    private void checkAllowedGraalClasses(List<String> loadedGraalClassNames, String errorMessageSuffix) {
         HashSet<Class<?>> whitelist = new HashSet<>();
+        List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
+        for (String name : loadedGraalClassNames) {
+            try {
+                loadedGraalClasses.add(Class.forName(name));
+            } catch (ClassNotFoundException e) {
+                Assert.fail("loaded class " + name + " not found");
+            }
+        }
         /*
          * Look for all loaded OptionDescriptors classes, and whitelist the classes that declare the
          * options. They may be loaded by the option parsing code.
@@ -176,14 +205,18 @@ public class LazyInitializationTest {
             }
         }
 
+        List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
             if (whitelist.contains(cls)) {
                 continue;
             }
 
             if (!isGraalClassAllowed(cls)) {
-                Assert.fail("loaded class: " + cls.getName() + errorMessageSuffix);
+                forbiddenClasses.add(cls.getName());
             }
+        }
+        if (!forbiddenClasses.isEmpty()) {
+            Assert.fail("loaded forbidden classes:\n    " + forbiddenClasses.stream().collect(Collectors.joining("\n    ")) + "\n" + errorMessageSuffix);
         }
     }
 

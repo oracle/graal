@@ -25,6 +25,7 @@ package com.oracle.graal.test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -67,13 +68,18 @@ public final class SubprocessUtil {
         }
     }
 
+    public static final List<String> JVM_OPTIONS_WITH_ONE_ARG = System.getProperty("java.specification.version").compareTo("1.9") < 0 ? //
+                    Arrays.asList("-cp", "-classpath") : //
+                    Arrays.asList("-cp", "-classpath", "-mp", "-modulepath", "-upgrademodulepath", "-addmods", "-m", "-limitmods");
+
     private static int findMainClassIndex(List<String> commandLine) {
         int i = 1; // Skip the java executable
+
         while (i < commandLine.size()) {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
                 return i;
-            } else if (s.equals("-cp") || s.equals("-classpath")) {
+            } else if (JVM_OPTIONS_WITH_ONE_ARG.contains(s)) {
                 i += 2;
             } else {
                 i++;
