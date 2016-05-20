@@ -83,9 +83,15 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (SourceStackTrace t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            Assert.assertTrue(trace[0].toString().startsWith("com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode.execute(NeverPartOfCompilationTestNode.java:"));
-            Assert.assertTrue(trace[1].toString().startsWith("com.oracle.graal.truffle.test.nodes.RootTestNode.execute(RootTestNode.java:"));
+            assertStack(trace[0], "com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
+            assertStack(trace[1], "com.oracle.graal.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
         }
+    }
+
+    private static void assertStack(StackTraceElement stack, String className, String methodName, String fileName) {
+        Assert.assertEquals(className, stack.getClassName());
+        Assert.assertEquals(methodName, stack.getMethodName());
+        Assert.assertEquals(fileName, stack.getFileName());
     }
 
     @Test
