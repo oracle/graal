@@ -265,15 +265,14 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
     }
 
     public synchronized void dumpCSV(PrintStream p) {
-        String methodName = method.format("%H.%n(%p)%R").replace(",", "_");
+        String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
         if (compilationEntries != null) {
             for (int i = 0; i < compilationEntries.size(); i++) {
                 HashMap<String, Long> table = compilationEntries.get(i).counterMap;
                 if (table != null) {
                     Set<Map.Entry<String, Long>> entries = table.entrySet();
                     for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                        p.printf("%s,%d,%s,%d", methodName, i,
-                                        entry.getKey().replace(" ", "_").replace(",", "_"), entry.getValue());
+                        p.printf("%s,%d,%s,%d", methodName, i, "\"" + entry.getKey() + "\"", entry.getValue());
                         p.println();
                     }
                 }
