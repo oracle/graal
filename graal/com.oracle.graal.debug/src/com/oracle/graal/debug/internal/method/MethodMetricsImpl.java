@@ -281,7 +281,7 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
                 if (table != null) {
                     Set<Map.Entry<String, Long>> entries = table.entrySet();
                     for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                        p.printf("%s,%s,%d,%s,%d", methodName, methodIdentity, i, "\"" + entry.getKey() + "\"", entry.getValue());
+                        p.printf("%s,%s,%d,%d,%s,%d", methodName, methodIdentity, i, compilationEntries.get(i).id, "\"" + entry.getKey() + "\"", entry.getValue());
                         p.println();
                     }
                 }
