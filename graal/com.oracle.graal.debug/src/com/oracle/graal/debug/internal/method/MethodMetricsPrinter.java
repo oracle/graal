@@ -109,7 +109,7 @@ public interface MethodMetricsPrinter {
 
         public MethodMetricsCSVFilePrinter() {
             try {
-                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue() + ".csv"));
+                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue()));
             } catch (IOException e) {
                 TTY.println("Cannot create file %s for method metrics dumping:%s", Options.MethodMeterFile.getValue(), e);
                 throw new Error(e);
