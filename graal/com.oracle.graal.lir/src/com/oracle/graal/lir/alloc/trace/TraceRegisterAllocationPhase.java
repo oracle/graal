@@ -25,7 +25,6 @@ package com.oracle.graal.lir.alloc.trace;
 import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
@@ -115,12 +114,14 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
-                unnumberInstructions(trace.getBlocks(), lir);
             }
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+            unnumberInstructions(lir);
+            Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
+        }
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
@@ -168,8 +169,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
     }
 
-    private static void unnumberInstructions(Collection<? extends AbstractBlockBase<?>> trace, LIR lir) {
-        for (AbstractBlockBase<?> block : trace) {
+    private static void unnumberInstructions(LIR lir) {
+        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 op.setId(-1);
             }
