@@ -46,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tck.TruffleTCK;
 
 /**
@@ -57,7 +58,7 @@ public class SLTckTest extends TruffleTCK {
     @Test
     public void testVerifyPresence() {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        assertTrue("Our language is present", vm.getLanguages().containsKey("application/x-sl"));
+        assertTrue("Our language is present", vm.getLanguages().containsKey(SLLanguage.MIME_TYPE));
         vm.dispose();
     }
 
@@ -114,7 +115,7 @@ public class SLTckTest extends TruffleTCK {
                 "  return obj;\n" +
                 "}\n",
                 "SL TCK"
-            ).withMimeType("application/x-sl")
+            ).withMimeType(SLLanguage.MIME_TYPE)
         );
         // @formatter:on
         return vm;
@@ -122,7 +123,7 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     protected String mimeType() {
-        return "application/x-sl";
+        return SLLanguage.MIME_TYPE;
     }
 
     @Override
@@ -179,7 +180,7 @@ public class SLTckTest extends TruffleTCK {
     protected String multiplyCode(String firstName, String secondName) {
         // @formatter:off
         return
-            "function multiply(" + firstName + ", " + secondName + ") {\n" +
+            "function main(" + firstName + ", " + secondName + ") {\n" +
             "  return " + firstName + " * " + secondName + ";\n" +
             "}\n";
         // @formatter:on

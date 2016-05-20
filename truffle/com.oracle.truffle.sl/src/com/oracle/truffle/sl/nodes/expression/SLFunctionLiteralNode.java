@@ -78,7 +78,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
         if (context != cachedContext) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.cachedContext = context;
-            this.cachedFunction = context.getFunctionRegistry().lookup(value);
+            this.cachedFunction = context.getFunctionRegistry().lookup(value, true);
         }
         return cachedFunction;
     }

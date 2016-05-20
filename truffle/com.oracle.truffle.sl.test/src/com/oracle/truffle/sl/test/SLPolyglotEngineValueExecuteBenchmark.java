@@ -53,6 +53,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import org.openjdk.jmh.annotations.Fork;
 
@@ -69,7 +70,7 @@ public class SLPolyglotEngineValueExecuteBenchmark {
     @Setup
     public void prepare() throws IOException {
         vm = PolyglotEngine.newBuilder().build();
-        vm.eval(Source.fromText("function plus(x, y) { return x + y; }", "plus.sl").withMimeType("application/x-sl"));
+        vm.eval(Source.fromText("function plus(x, y) { return x + y; }", "plus.sl").withMimeType(SLLanguage.MIME_TYPE));
         plus = vm.findGlobalSymbol("plus");
         slFunction = plus.as(SLFunction.class);
     }

@@ -51,7 +51,7 @@ def build(args, vm=None):
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + ['-cp', mx.classpath(["TRUFFLE_API", "com.oracle.truffle.sl"]), "com.oracle.truffle.sl.SLLanguage"] + slArgs)
+    mx.run_java(vmArgs + ['-cp', mx.classpath(["TRUFFLE_API", "com.oracle.truffle.sl"]), "com.oracle.truffle.sl.SLMain"] + slArgs)
 
 def repl(args):
     """run a simple command line debugger for Truffle-implemented languages on the class path"""

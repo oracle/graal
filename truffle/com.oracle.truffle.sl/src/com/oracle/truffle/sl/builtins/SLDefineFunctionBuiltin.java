@@ -70,6 +70,6 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
     private static void doDefineFunction(SLContext context, String code) {
         Source source = Source.fromText(code, "[defineFunction]");
         /* The same parsing code as for parsing the initial source. */
-        Parser.parseSL(context, source);
+        context.getFunctionRegistry().register(Parser.parseSL(source));
     }
 }

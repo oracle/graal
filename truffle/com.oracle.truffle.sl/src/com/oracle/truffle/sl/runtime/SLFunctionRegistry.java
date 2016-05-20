@@ -61,9 +61,9 @@ public final class SLFunctionRegistry {
      * Returns the canonical {@link SLFunction} object for the given name. If it does not exist yet,
      * it is created.
      */
-    public SLFunction lookup(String name) {
+    public SLFunction lookup(String name, boolean createIfNotPresent) {
         SLFunction result = functions.get(name);
-        if (result == null) {
+        if (result == null && createIfNotPresent) {
             result = new SLFunction(name);
             functions.put(name, result);
         }
@@ -75,10 +75,17 @@ public final class SLFunctionRegistry {
      * node. If the function did not exist before, it defines the function. If the function existed
      * before, it redefines the function and the old implementation is discarded.
      */
-    public void register(String name, SLRootNode rootNode) {
-        SLFunction function = lookup(name);
+    public SLFunction register(String name, SLRootNode rootNode) {
+        SLFunction function = lookup(name, true);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
+        return function;
+    }
+
+    public void register(Map<String, SLRootNode> newFunctions) {
+        for (Map.Entry<String, SLRootNode> entry : newFunctions.entrySet()) {
+            register(entry.getKey(), entry.getValue());
+        }
     }
 
     /**

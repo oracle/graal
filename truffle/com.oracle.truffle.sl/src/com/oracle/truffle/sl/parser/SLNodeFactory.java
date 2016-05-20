@@ -87,7 +87,6 @@ import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
-import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * Helper class used by the SL {@link Parser} to create nodes. The code is factored out of the
@@ -114,8 +113,8 @@ public class SLNodeFactory {
     }
 
     /* State while parsing a source unit. */
-    private final SLContext context;
     private final Source source;
+    private final Map<String, SLRootNode> allFunctions;
 
     /* State while parsing a function. */
     private int functionStartPos;
@@ -128,9 +127,13 @@ public class SLNodeFactory {
     /* State while parsing a block. */
     private LexicalScope lexicalScope;
 
-    public SLNodeFactory(SLContext context, Source source) {
-        this.context = context;
+    public SLNodeFactory(Source source) {
         this.source = source;
+        this.allFunctions = new HashMap<>();
+    }
+
+    public Map<String, SLRootNode> getAllFunctions() {
+        return allFunctions;
     }
 
     public void startFunction(Token nameToken, int bodyStartPos) {
@@ -169,9 +172,8 @@ public class SLNodeFactory {
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(functionSrc, methodBlock);
-        final SLRootNode rootNode = new SLRootNode(this.context, frameDescriptor, functionBodyNode, functionSrc, functionName);
-
-        context.getFunctionRegistry().register(functionName, rootNode);
+        final SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionSrc, functionName);
+        allFunctions.put(functionName, rootNode);
 
         functionStartPos = 0;
         functionName = null;
