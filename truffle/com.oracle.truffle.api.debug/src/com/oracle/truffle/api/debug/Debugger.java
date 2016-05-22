@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
@@ -174,9 +175,12 @@ public final class Debugger {
 
         @TruffleBoundary
         public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
-            if (currentDebugContext != null) {
-                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
+            if (currentDebugContext == null) {
+                final SourceSection sourceSection = eventContext.getInstrumentedNode().getSourceSection();
+                assert sourceSection != null;
+                currentDebugContext = new DebugExecutionContext(sourceSection.getSource(), null, 0);
             }
+            currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
         }
     };
 
