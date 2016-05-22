@@ -28,8 +28,7 @@ install:
   - pip install astroid==1.1.0 --user `whoami`
   - pip install pylint==1.1.0 --user `whoami`
   - git clone https://github.com/graalvm/mx
-  - wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar
-  - mv ecj-4.5.1.jar mx/ecj.jar
+  - wget -O mx/ecj.jar 'http://www.eclipse.org/downloads/download.php?file=/eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar'
   - export JDT=`pwd`/mx/ecj.jar
   - wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
