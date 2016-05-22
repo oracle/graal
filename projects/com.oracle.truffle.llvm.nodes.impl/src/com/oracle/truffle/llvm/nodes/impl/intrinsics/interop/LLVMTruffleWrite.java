@@ -82,12 +82,12 @@ public final class LLVMTruffleWrite {
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, LLVMAddress v) {
+        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v) {
             doWrite(frame, foreignWrite, value, id, v);
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, LLVMAddress v) {
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
@@ -195,12 +195,12 @@ public final class LLVMTruffleWrite {
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, LLVMAddress v) {
+        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, Object v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, LLVMAddress v) {
+        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, Object v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
         }
     }
