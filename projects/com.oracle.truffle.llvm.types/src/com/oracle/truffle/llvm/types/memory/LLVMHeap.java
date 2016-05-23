@@ -86,15 +86,11 @@ public final class LLVMHeap extends LLVMMemory {
 
     private static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
         byte[] bytes = new byte[(int) length];
-        LLVMAddress currentSourceAddress = source;
         for (int i = 0; i < length; i++) {
-            bytes[i] = LLVMMemory.getI8(currentSourceAddress);
-            currentSourceAddress.increment(1);
+            bytes[i] = LLVMMemory.getI8(source.increment(i));
         }
-        LLVMAddress currentTargetAddress = dest;
         for (int i = 0; i < length; i++) {
-            LLVMMemory.putI8(currentTargetAddress, bytes[i]);
-            currentTargetAddress.increment(Byte.SIZE);
+            LLVMMemory.putI8(dest.increment(i), bytes[i]);
         }
     }
 
