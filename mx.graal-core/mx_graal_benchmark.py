@@ -351,7 +351,7 @@ _allSpecJVM2008Benchs = [
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """SpecJVM2008 benchmark suite implementation.
 
-    This benchmark can run multiple benchmarks as part of one VM run.
+    This benchmark suite can run multiple benchmarks as part of one VM run.
     """
     def name(self):
         return "specjvm2008"
@@ -386,7 +386,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
-            # No benchmark specified in the command line means .
+            # No benchmark specified in the command line, so run everything.
             benchmarks = self.benchmarks()
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
@@ -429,4 +429,98 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
+
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
+
+
+class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """SPECjbb2005 benchmark suite implementation.
+
+    This suite has only a single benchmark, and does not allow setting a specific
+    benchmark in the command line.
+    """
+    def name(self):
+        return "specjbb2005"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def specJbbClassPath(self):
+        specjbb2005 = mx.get_env("SPECJBB2005")
+        if specjbb2005 is None:
+            mx.abort("Please set the SPECJBB2005 environment variable to a " +
+                "SPECjbb2005 directory.")
+        jbbpath = join(specjbb2005, "jbb.jar")
+        if not exists(jbbpath):
+            mx.abort("The SPECJBB2005 environment variable points to a directory " +
+                "without the jbb.jar file.")
+        checkpath = join(specjbb2005, "check.jar")
+        if not exists(checkpath):
+            mx.abort("The SPECJBB2005 environment variable points to a directory " +
+                "without the check.jar file.")
+        return jbbpath + ":" + checkpath
+
+    def validateEnvironment(self):
+        if not self.specJbbClassPath():
+            raise RuntimeError(
+                "The SPECJBB2005 environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return mx.get_env("SPECJBB2005")
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is not None:
+            mx.abort("No benchmark should be specified for the selected suite.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        mainClass = "spec.jbb.JBBmain"
+        propArgs = ["-propfile", "SPECjbb.props"]
+        return (
+            vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
+            runArgs)
+
+    def benchmarks(self):
+        return ["default"]
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"^Valid run, Score is  [0-9]+$", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return [
+            re.compile(r"VALIDATION ERROR", re.MULTILINE)
+        ]
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+          mx_benchmark.StdOutRule(
+            r"^Valid run, Score is  (?P<score>[0-9]+)$", # pylint: disable=line-too-long
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "throughput",
+              "metric.value": ("<score>", float),
+              "metric.unit": "bops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+
+mx_benchmark.add_bm_suite(SpecJbb2005BenchmarkSuite())
