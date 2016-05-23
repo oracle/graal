@@ -202,7 +202,11 @@ public abstract class Accessor {
         try {
             Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
         }
     }
 
