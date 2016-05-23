@@ -267,12 +267,12 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
     public synchronized void dumpCSV(PrintStream p) {
         String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
         /*
-         * NOTE: the caching mechanism in MethodMetricsImpl.java works by caching compilation data
-         * based on the identity of the resolved java method object. The identity is based on the
-         * metaspace address of the resolved java method object. If the class was loaded by
-         * different class loaders or e.g. loaded - unloaded - loaded the identity will be
-         * different. Therefore we also need to include the identity in the reporting of the data as
-         * it is an additional dimension to <method,compilationId>.
+         * NOTE: the caching mechanism works by caching compilation data based on the identity of
+         * the resolved java method object. The identity is based on the metaspace address of the
+         * resolved java method object. If the class was loaded by different class loaders or e.g.
+         * loaded - unloaded - loaded the identity will be different. Therefore we also need to
+         * include the identity in the reporting of the data as it is an additional dimension to
+         * <method,compilationId>.
          */
         String methodIdentity = String.valueOf(System.identityHashCode(method));
         if (compilationEntries != null) {
