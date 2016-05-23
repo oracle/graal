@@ -67,6 +67,7 @@ public abstract class SLBuiltinNode extends SLExpressionNode {
 
     public SLBuiltinNode(SourceSection src) {
         super(src);
+        setRootTagged(true);
     }
 
     /**

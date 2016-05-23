@@ -69,6 +69,7 @@ import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.test.SLTestRunner;
 
@@ -237,7 +238,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<com.oracle.truffl
                 vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final String src = readAllLines(testCase.path);
-                vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
+                vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType(SLLanguage.MIME_TYPE));
 
                 PolyglotEngine.Value main = vm.findGlobalSymbol("main");
                 main.execute();

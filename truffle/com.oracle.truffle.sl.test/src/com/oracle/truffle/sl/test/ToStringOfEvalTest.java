@@ -42,6 +42,8 @@ package com.oracle.truffle.sl.test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
+
 import java.io.IOException;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -65,7 +67,7 @@ public class ToStringOfEvalTest {
 
     @Test
     public void checkToStringOnAFunction() throws IOException {
-        PolyglotEngine.Language sl = engine.getLanguages().get("application/x-sl");
+        PolyglotEngine.Language sl = engine.getLanguages().get(SLLanguage.MIME_TYPE);
         sl.eval(Source.fromText("function checkName() {}", "defineFn"));
         PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");
         PolyglotEngine.Value value2 = engine.findGlobalSymbol("checkName");

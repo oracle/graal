@@ -40,64 +40,60 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.util.Map;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
- * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
- * class {@link RootNode}. This class is used for both builtin and user-defined functions. For
- * builtin functions, the {@link #bodyNode} is a subclass of {@link SLBuiltinNode}. For user-defined
- * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
+ * In addition to {@link SLRootNode}, this class performs two additional tasks:
+ *
+ * <ul>
+ * <li>Lazily registration of functions on first execution. This fulfills the semantics of
+ * "evaluating" source code in SL.</li>
+ * <li>Conversion of arguments to types understood by SL. The SL source code can be evaluated from a
+ * different language, i.e., the caller can be a node from a different language that uses types not
+ * understood by SL.</li>
+ * </ul>
  */
-@NodeInfo(language = "Simple Language", description = "The root of all Simple Language execution trees")
-public class SLRootNode extends RootNode {
-    /** The function body that is executed, and specialized during execution. */
-    @Child private SLExpressionNode bodyNode;
+public final class SLEvalRootNode extends SLRootNode {
 
-    /** The name of the function, for printing purposes only. */
-    private final String name;
+    private final Map<String, SLRootNode> functions;
+    @CompilationFinal private SLContext context;
 
-    @CompilationFinal private boolean isCloningAllowed;
-
-    public SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
-        super(SLLanguage.class, sourceSection, frameDescriptor);
-        this.bodyNode = bodyNode;
-        this.name = name;
+    public SLEvalRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name, Map<String, SLRootNode> functions) {
+        super(frameDescriptor, bodyNode, sourceSection, name);
+        this.functions = functions;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert SLLanguage.INSTANCE.findContext0(SLLanguage.INSTANCE.createFindContextNode0()) != null;
-        return bodyNode.executeGeneric(frame);
-    }
+        /* Lazy registrations of functions on first execution. */
+        if (context == null) {
+            /* Function registration is a slow-path operation that must not be compiled. */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
 
-    public String getName() {
-        return name;
-    }
+            context = SLLanguage.INSTANCE.findContext0(SLLanguage.INSTANCE.createFindContextNode0());
+            context.getFunctionRegistry().register(functions);
+        }
 
-    public void setCloningAllowed(boolean isCloningAllowed) {
-        this.isCloningAllowed = isCloningAllowed;
-    }
+        if (getBodyNode() == null) {
+            /* The source code did not have a "main" function, so nothing to execute. */
+            return null;
+        }
 
-    @Override
-    public boolean isCloningAllowed() {
-        return isCloningAllowed;
-    }
+        /* Conversion of arguments to types understood by SL. */
+        Object[] arguments = frame.getArguments();
+        for (int i = 0; i < arguments.length; i++) {
+            arguments[i] = SLContext.fromForeignValue(arguments[i]);
+        }
 
-    @Override
-    public String toString() {
-        return "root " + name;
+        /* Now we can execute the body of the "main" function. */
+        return super.execute(frame);
     }
-
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
 }

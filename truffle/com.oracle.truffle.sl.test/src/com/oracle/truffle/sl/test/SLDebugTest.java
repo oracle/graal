@@ -116,7 +116,7 @@ public class SLDebugTest {
     }
 
     private static Source createFactorial() {
-        return Source.fromText("function main() {\n" +
+        return Source.fromText("function test() {\n" +
                         "  res = fac(2);\n" + "  println(res);\n" +
                         "  return res;\n" +
                         "}\n" +
@@ -127,12 +127,11 @@ public class SLDebugTest {
                         "  nMOFact = fac(nMinusOne);\n" +
                         "  res = n * nMOFact;\n" +
                         "  return res;\n" + "}\n",
-                        "factorial.sl").withMimeType(
-                                        "application/x-sl");
+                        "factorial.sl").withMimeType(SLLanguage.MIME_TYPE);
     }
 
     private static Source createFactorialWithDebugger() {
-        return Source.fromText("function main() {\n" +
+        return Source.fromText("function test() {\n" +
                         "  res = fac(2);\n" + "  println(res);\n" +
                         "  return res;\n" +
                         "}\n" +
@@ -144,12 +143,11 @@ public class SLDebugTest {
                         "  debugger;\n" +
                         "  res = n * nMOFact;\n" +
                         "  return res;\n" + "}\n",
-                        "factorial.sl").withMimeType(
-                                        "application/x-sl");
+                        "factorial.sl").withMimeType(SLLanguage.MIME_TYPE);
     }
 
     private static Source createInteropComputation() {
-        return Source.fromText("function main() {\n" +
+        return Source.fromText("function test() {\n" +
                         "}\n" +
                         "function interopFunction(notifyHandler) {\n" +
                         "  executing = true;\n" +
@@ -158,8 +156,7 @@ public class SLDebugTest {
                         "  }\n" +
                         "  return executing;\n" +
                         "}\n",
-                        "interopComputation.sl").withMimeType(
-                                        "application/x-sl");
+                        "interopComputation.sl").withMimeType(SLLanguage.MIME_TYPE);
     }
 
     protected final String getOut() {
@@ -208,7 +205,7 @@ public class SLDebugTest {
                         null, "res", null);
         continueExecution();
 
-        Value value = engine.findGlobalSymbol("main").execute();
+        Value value = engine.findGlobalSymbol("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
         Number n = value.as(Number.class);
@@ -243,7 +240,7 @@ public class SLDebugTest {
                         1L, "res", null);
         continueExecution();
 
-        Value value = engine.findGlobalSymbol("main").execute();
+        Value value = engine.findGlobalSymbol("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
         Number n = value.as(Number.class);
@@ -302,7 +299,7 @@ public class SLDebugTest {
         assertLocation(3, true, "println(res)", "res", 2L);
         stepOut();
 
-        Value value = engine.findGlobalSymbol("main").execute();
+        Value value = engine.findGlobalSymbol("test").execute();
         assertExecutedOK();
 
         Number n = value.as(Number.class);
