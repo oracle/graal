@@ -101,6 +101,7 @@ public abstract class AbstractDebugTest {
         try {
             err.flush();
         } catch (IOException e) {
+            throw new RuntimeException();
         }
         return new String(err.toByteArray());
     }

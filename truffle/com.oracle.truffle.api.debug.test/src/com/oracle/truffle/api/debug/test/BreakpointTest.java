@@ -41,8 +41,8 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testBreak() throws Throwable {
-        final Breakpoint[] breakpoints = new Breakpoint[12];
         final Source block = TestSource.createBlock12("testBreak");
+        final Breakpoint[] breakpoints = new Breakpoint[block.getLineCount() + 1];
         final Debugger debugger = getDebugger();
         breakpoints[4] = debugger.setLineBreakpoint(0, block.createLineLocation(4), false);
         expectExecutionEvent().resume();
@@ -55,8 +55,8 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testBreakOneShot() throws Throwable {
-        final Breakpoint[] breakpoints = new Breakpoint[12];
         final Source block = TestSource.createBlock12("testBreakOneShot");
+        final Breakpoint[] breakpoints = new Breakpoint[block.getLineCount() + 1];
         final Debugger debugger = getDebugger();
         breakpoints[4] = debugger.setLineBreakpoint(0, block.createLineLocation(4), true);
         expectExecutionEvent().resume();
@@ -80,8 +80,8 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testBreakDisableDispose() throws Throwable {
-        final Breakpoint[] breakpoints = new Breakpoint[12];
         final Source block = TestSource.createBlock12("testBreakDisableDispose");
+        final Breakpoint[] breakpoints = new Breakpoint[block.getLineCount() + 1];
         final Debugger debugger = getDebugger();
         breakpoints[4] = debugger.setLineBreakpoint(0, block.createLineLocation(4), false);
         breakpoints[6] = debugger.setLineBreakpoint(0, block.createLineLocation(6), false);
@@ -104,5 +104,4 @@ public class BreakpointTest extends AbstractDebugTest {
         assertFalse(breakpoints[8].isEnabled());
         assertEquals(breakpoints[8].getHitCount(), 0);
     }
-
 }

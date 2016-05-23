@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -61,6 +62,7 @@ public class StepTest extends AbstractDebugTest {
         getEngine().eval(block);
         try {
             assertExecutedOK();
+            fail("bad argument should cause exception");
         } catch (AssertionError e) {
             assertTrue(e.getCause() instanceof IllegalArgumentException);
         }
