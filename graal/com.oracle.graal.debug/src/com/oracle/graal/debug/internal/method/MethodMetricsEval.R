@@ -62,11 +62,18 @@ readData <- function(){
 }
 
 
-prepareData <- function(){
+prepareData <- function(combineNameWithIdentity=TRUE){
   # name raw data to make access easier
-  names(RAW_DATA) <- c("methodName","compilationIndex","metricName","metricValue")
+  names(RAW_DATA) <- c("methodName","methodIdentity","compilationIndex","globalGraphId","metricName","metricValue")
+  # drop the globalGraphIds (they are not necessary for now)
+  RAW_DATA <<- RAW_DATA %>% select(methodName,methodIdentity,compilationIndex,metricName,metricValue)
   # method metric data comes in long data format, we want it wide
-  WIDE_DATA <<- reshape2::dcast(RAW_DATA, methodName + compilationIndex ~ metricName,fill = 0)
+  WIDE_DATA <<- reshape2::dcast(RAW_DATA, 
+                                methodName + methodIdentity + compilationIndex ~ metricName,fill = 0,value.var = "metricValue")
+  if(combineNameWithIdentity){
+    WIDE_DATA <<- WIDE_DATA %>%
+    mutate(methodName=paste(methodName,as.character(methodIdentity)))
+  }
 }
 #### End General Functions ####
 
