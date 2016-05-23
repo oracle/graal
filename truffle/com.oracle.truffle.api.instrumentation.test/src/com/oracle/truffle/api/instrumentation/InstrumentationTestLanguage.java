@@ -84,7 +84,7 @@ import com.oracle.truffle.api.source.SourceSection;
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
 
-    public static final String MIME_TYPE = "truffle-instrumentation-test-language";
+    public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
     public static final InstrumentationTestLanguage INSTANCE = new InstrumentationTestLanguage();
 
