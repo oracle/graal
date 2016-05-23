@@ -250,7 +250,7 @@ public class Function implements ParserListener {
         int target = getIndex(args[i++]);
         int[] arguments = new int[args.length - i];
         int j = 0;
-        while (i < arguments.length) {
+        while (j < arguments.length) {
             arguments[j++] = getIndex(args[i++]);
         }
 
