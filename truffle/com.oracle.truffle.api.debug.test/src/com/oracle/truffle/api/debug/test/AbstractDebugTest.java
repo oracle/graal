@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -43,6 +45,7 @@ import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -55,7 +58,7 @@ public abstract class AbstractDebugTest {
     private SuspendedEvent suspendedEvent;
     private Throwable ex;
     private ExecutionEvent executionEvent;
-    protected PolyglotEngine engine;
+    private PolyglotEngine engine;
     private final ByteArrayOutputStream out = new ByteArrayOutputStream();
     private final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
@@ -89,6 +92,7 @@ public abstract class AbstractDebugTest {
     public void dispose() {
         if (engine != null) {
             engine.dispose();
+            engine = null;
         }
     }
 
@@ -102,6 +106,10 @@ public abstract class AbstractDebugTest {
         } catch (IOException e) {
         }
         return new String(err.toByteArray());
+    }
+
+    protected final PolyglotEngine getEngine() {
+        return engine;
     }
 
     protected final Debugger getDebugger() {
@@ -252,6 +260,17 @@ public abstract class AbstractDebugTest {
             workList.add(new Runnable() {
                 public void run() {
                     suspendedEvent.prepareStepOver(size);
+                }
+            });
+            complete();
+        }
+
+        /** Return from handling a {@link SuspendedEvent} by stepping. */
+        void stepOut() {
+            assert !isComplete : "responder has been completed";
+            workList.add(new Runnable() {
+                public void run() {
+                    suspendedEvent.prepareStepOut();
                 }
             });
             complete();

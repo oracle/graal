@@ -24,56 +24,41 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 
-public class StepDebugTest extends AbstractDebugTest {
-
-    private static Source createStatements(String sourceName) {
-        return Source.fromText("ROOT(\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT,\n" +
-                        "  STATEMENT\n" +
-                        ")\n",
-                        sourceName + FILENAME_EXTENSION).withMimeType(MIME_TYPE);
-    }
+public class StepTest extends AbstractDebugTest {
 
     @Test
-    public void testNoDebug() throws Throwable {
-        final Source statements = createStatements("testNoDebug");
+    public void testBlock() throws Throwable {
+        final Source block = TestSource.createBlock8("testBlock");
         expectExecutionEvent().resume();
-        engine.eval(statements);
+        getEngine().eval(block);
         assertExecutedOK();
     }
 
     @Test
-    public void testStepIntoOver() throws Throwable {
-        final Source statements = createStatements("testStepIntoOver");
+    public void testBlockStepIntoOver() throws Throwable {
+        final Source block = TestSource.createBlock8("testBlockStepIntoOver");
         expectExecutionEvent().stepInto();
         expectSuspendedEvent().checkState(2, true, "STATEMENT").stepInto(1);
         expectSuspendedEvent().checkState(3, true, "STATEMENT").stepInto(2);
         expectSuspendedEvent().checkState(5, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").stepOver(2);
-        expectSuspendedEvent().checkState(8, true, "STATEMENT\n").resume(); // FIXME
-        engine.eval(statements);
+        expectSuspendedEvent().checkState(6, true, "STATEMENT").stepOver(3);
+        expectSuspendedEvent().checkState(9, true, "STATEMENT\n").resume(); // FIXME-SourceSection
+        getEngine().eval(block);
         assertExecutedOK();
     }
 
     @Test
-    public void testStepIntoBadArg() throws Throwable {
-        final Source statements = createStatements("testStepIntoBadArg");
+    public void testBlockStepIntoBadArg() throws Throwable {
+        final Source block = TestSource.createBlock8("testBlockStepIntoBadArg");
         expectExecutionEvent().stepInto();
         expectSuspendedEvent().checkState(2, true, "STATEMENT").stepInto(0);
-        engine.eval(statements);
+        getEngine().eval(block);
         try {
             assertExecutedOK();
         } catch (AssertionError e) {
@@ -82,16 +67,46 @@ public class StepDebugTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testStepOverBadArg() throws Throwable {
-        final Source statements = createStatements("testStepOverBadArg");
+    public void testBlockStepOverBadArg() throws Throwable {
+        final Source block = TestSource.createBlock8("testBlockStepOverBadArg");
         expectExecutionEvent().stepInto();
         expectSuspendedEvent().checkState(2, true, "STATEMENT").stepOver(0);
-        engine.eval(statements);
+        getEngine().eval(block);
         try {
             assertExecutedOK();
         } catch (AssertionError e) {
             assertTrue(e.getCause() instanceof IllegalArgumentException);
         }
+    }
+
+    @Test
+    public void testCallLoop() throws Throwable {
+        final Source loop = TestSource.createCallLoop3("testCallLoop");
+        expectExecutionEvent().resume();
+        getEngine().eval(loop);
+        assertExecutedOK();
+    }
+
+    @Test
+    public void testCallLoopStepInto() throws Throwable {
+        final Source loop = TestSource.createCallLoop3("testCallLoopStepInto");
+        expectExecutionEvent().stepInto();                        // FIXME should stop at "CALL"?
+        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
+        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
+        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        getEngine().eval(loop);
+        assertExecutedOK();
+    }
+
+    @Test
+    public void testCallLoopStepOut() throws Throwable {
+        final Source loop = TestSource.createCallLoop3("testCallLoopStepInto");
+        expectExecutionEvent().stepInto();
+        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOut();
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        getEngine().eval(loop);
+        assertExecutedOK();
     }
 
 }
