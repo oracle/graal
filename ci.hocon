@@ -149,12 +149,12 @@ bench-specjbb2005: ${bench-common-8} {
   timelimit: "2:00:00"
 }
 
-bench-specjbb2005-x52: ${bench-specjbb2005} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2005-linux-x52"
+bench-specjbb2005-x4150: ${bench-specjbb2005} {
+  capabilities: [linux, x4150, bench, post-merge]
+  name: "bench-specjbb2005-linux-x4150"
   run: [
     ${bench-jvmci.mx-specjbb2005} [
-      "--machine-name", "x52", "--",
+      "--machine-name", "x4150", "--",
       "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
     ]
   ]
@@ -175,5 +175,5 @@ builds = [
   ${bench-dacapo-x52}
   ${bench-scala-dacapo-x52}
   ${bench-specjvm2008-x52}
-  ${bench-specjbb2005-x52}
+  ${bench-specjbb2005-x4150}
 ]
