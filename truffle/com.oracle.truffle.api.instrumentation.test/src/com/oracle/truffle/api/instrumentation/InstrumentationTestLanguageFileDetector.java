@@ -22,12 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug.test;
+package com.oracle.truffle.api.instrumentation;
 
-import org.junit.Test;
+import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
 
-public final class DebugInstrumentTest {
-    @Test
-    public void placeholder() {
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.spi.FileTypeDetector;
+
+public final class InstrumentationTestLanguageFileDetector extends FileTypeDetector {
+    @Override
+    public String probeContentType(Path path) throws IOException {
+        if (path.getFileName().toString().endsWith(FILENAME_EXTENSION)) {
+            return MIME_TYPE;
+        }
+        return null;
     }
 }

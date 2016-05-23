@@ -33,6 +33,7 @@ import static com.oracle.truffle.api.debug.Breakpoint.State.ENABLED_UNRESOLVED;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -251,7 +252,8 @@ final class BreakpointFactory {
      * Removes the associated instrumentation for all one-shot breakpoints only.
      */
     void disposeOneShots() {
-        for (BreakpointImpl breakpoint : breakpoints.values()) {
+        final Collection<BreakpointImpl> oneShots = new ArrayList<>(breakpoints.values());
+        for (BreakpointImpl breakpoint : oneShots) {
             if (breakpoint.isOneShot()) {
                 breakpoint.dispose();
             }
@@ -408,6 +410,7 @@ final class BreakpointFactory {
             if (getState() != DISPOSED) {
                 binding.dispose();
                 changeState(DISPOSED);
+                isEnabled = false;
                 BreakpointFactory.this.forget(this);
             }
         }

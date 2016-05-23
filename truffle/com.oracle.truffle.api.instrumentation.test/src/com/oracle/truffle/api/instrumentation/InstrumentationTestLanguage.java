@@ -38,11 +38,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BlockNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.DefineNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.ExpressionNode;
-
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -81,12 +79,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * )
  * </code>
  */
-@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "Test language for instrumentation", version = "1.0")
+@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "Test-language-for-instrumentation", version = "1.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
 
-    public static final String MIME_TYPE = "instrumentation-test-language";
+    public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
+    public static final String FILENAME_EXTENSION = ".titl";
     public static final InstrumentationTestLanguage INSTANCE = new InstrumentationTestLanguage();
 
     public static final Class<?> EXPRESSION = ExpressionNode.class;
