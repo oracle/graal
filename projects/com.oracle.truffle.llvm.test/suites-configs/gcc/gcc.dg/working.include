@@ -255,3 +255,9 @@ gcc.dg/pr40550.c
 gcc.dg/pr26427.c
 gcc.dg/sms-6.c
 gcc.dg/switch-warn-2.c
+gcc.dg/constructor-1.c
+gcc.dg/alias-5.c
+gcc.dg/alias-6.c
+gcc.dg/alias-7.c
+gcc.dg/cdce1.c
+gcc.dg/cdce2.c
