@@ -48,7 +48,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 /**
  * Creating and modifying breakpoints; no actual executions.
  */
-public final class DebugBreakpointTest {
+public final class BreakpointCreationTest {
 
     private Debugger db;
     protected PolyglotEngine engine;
