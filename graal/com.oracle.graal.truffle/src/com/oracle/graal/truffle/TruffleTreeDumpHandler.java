@@ -35,10 +35,23 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
+    /**
+     * The {@link OptimizedCallTarget} is dumped multiple times during Graal compilation, because it
+     * is also a subclass of InstalledCode. To disambiguate dumping, we wrap the call target into
+     * this class when we want to dump the truffle tree.
+     */
+    public static class TruffleTreeDump {
+        final RootCallTarget callTarget;
+
+        public TruffleTreeDump(RootCallTarget callTarget) {
+            this.callTarget = callTarget;
+        }
+    }
+
     @Override
     public void dump(Object object, final String message) {
-        if (object instanceof RootCallTarget && Options.PrintIdealGraph.getValue()) {
-            dumpRootCallTarget(message, (RootCallTarget) object);
+        if (object instanceof TruffleTreeDump && Options.PrintIdealGraph.getValue()) {
+            dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
         }
     }
 
