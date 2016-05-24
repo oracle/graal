@@ -102,7 +102,7 @@ public final class SLContext extends ExecutionContext {
         this.functionRegistry = new SLFunctionRegistry();
         installBuiltins();
 
-        this.emptyShape = LAYOUT.createShape(new SLObjectType());
+        this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
     }
 
     /**
@@ -187,24 +187,33 @@ public final class SLContext extends ExecutionContext {
         }
     }
 
+    /*
+     * Methods for object creation / object property access.
+     */
+
     /**
-     * Allocate an empty object.
+     * Allocate an empty object. All new objects initially have no properties. Properties are added
+     * when they are first stored, i.e., the store triggers a shape change of the object.
      */
     public DynamicObject createObject() {
         return emptyShape.newInstance();
     }
 
     public static boolean isSLObject(TruffleObject value) {
-        return value instanceof DynamicObject && isSLObject((DynamicObject) value);
+        /*
+         * LAYOUT.getType() returns a concrete implementation class, i.e., a class that is more
+         * precise than the base class DynamicObject. This makes the type check faster.
+         */
+        return LAYOUT.getType().isInstance(value) && LAYOUT.getType().cast(value).getShape().getObjectType() == SLObjectType.SINGLETON;
     }
 
-    public static boolean isSLObject(DynamicObject value) {
-        return value.getShape().getObjectType() instanceof SLObjectType;
-    }
-
-    public static DynamicObject castSLObject(Object value) {
+    public static DynamicObject castSLObject(TruffleObject value) {
         return LAYOUT.getType().cast(value);
     }
+
+    /*
+     * Methods for language interoperability.
+     */
 
     public static Object fromForeignValue(Object a) {
         if (a instanceof Long || a instanceof BigInteger || a instanceof String) {

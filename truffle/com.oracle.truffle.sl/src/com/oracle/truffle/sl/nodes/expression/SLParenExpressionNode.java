@@ -54,10 +54,10 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeInfo(description = "A parenthesized expression")
 public class SLParenExpressionNode extends SLExpressionNode {
 
-    private final SLExpressionNode expression;
+    @Child private SLExpressionNode expression;
 
     public SLParenExpressionNode(SLExpressionNode expression) {
-        this.expression = insert(expression);
+        this.expression = expression;
     }
 
     @Override
@@ -74,5 +74,4 @@ public class SLParenExpressionNode extends SLExpressionNode {
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
         return expression.executeBoolean(frame);
     }
-
 }
