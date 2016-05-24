@@ -315,6 +315,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.reflect",
+        "jdk.internal.org.objectweb.asm",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
