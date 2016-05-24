@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.sl.nodes.expression.demo;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
-import java.math.BigInteger;
 
 /**
  * This is an example how the add operation would be implemented without specializations and without
@@ -59,7 +60,6 @@ public class SLAddWithoutSpecializationNode extends SLExpressionNode {
     @Child private SLExpressionNode rightNode;
 
     public SLAddWithoutSpecializationNode(SLExpressionNode leftNode, SLExpressionNode rightNode) {
-        super(null);
         this.leftNode = leftNode;
         this.rightNode = rightNode;
     }

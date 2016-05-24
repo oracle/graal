@@ -61,23 +61,28 @@ public abstract class SLStatementNode extends Node {
     private static final int STATEMENT_BIT = 0;
     private static final int ROOT_BIT = 1;
 
-    private final SourceSection section;
+    private SourceSection sourceSection;
+
     /*
      * Bitmask 0bSR, S = node is tagged as statement, R = node is tagged as root
      */
     private byte tags;
 
-    public SLStatementNode(SourceSection src) {
-        section = src;
+    protected SLStatementNode() {
     }
 
     @Override
     public final SourceSection getSourceSection() {
-        return section;
+        return sourceSection;
+    }
+
+    public void setSourceSection(SourceSection section) {
+        assert this.sourceSection == null : "overwriting existing SourceSection";
+        this.sourceSection = section;
     }
 
     protected SLStatementNode(SLStatementNode delegate) {
-        this(delegate.getSourceSection());
+        sourceSection = delegate.sourceSection;
         tags = delegate.tags;
     }
 

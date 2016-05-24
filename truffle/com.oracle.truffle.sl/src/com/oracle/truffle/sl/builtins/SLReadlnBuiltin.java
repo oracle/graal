@@ -40,26 +40,20 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
-
-import java.io.BufferedReader;
-import java.io.IOException;
 
 /**
  * Builtin function that reads a String from the {@link SLContext#getInput() standard input}.
  */
 @NodeInfo(shortName = "readln")
 public abstract class SLReadlnBuiltin extends SLBuiltinNode {
-
-    public SLReadlnBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "readln"));
-    }
 
     @Specialization
     public String readln() {

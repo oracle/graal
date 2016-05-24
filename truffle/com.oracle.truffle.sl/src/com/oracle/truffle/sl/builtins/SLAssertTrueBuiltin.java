@@ -43,9 +43,7 @@ package com.oracle.truffle.sl.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLAssertionError;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
@@ -54,10 +52,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @NodeInfo(shortName = "assertTrue")
 public abstract class SLAssertTrueBuiltin extends SLBuiltinNode {
-
-    public SLAssertTrueBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "assertTrue"));
-    }
 
     @Specialization
     public boolean doAssert(boolean value, String message) {

@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLContext;
 
@@ -55,10 +53,6 @@ import com.oracle.truffle.sl.runtime.SLContext;
  */
 @NodeInfo(shortName = "defineFunction")
 public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
-
-    public SLDefineFunctionBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "defineFunction"));
-    }
 
     @Specialization
     public String defineFunction(String code) {

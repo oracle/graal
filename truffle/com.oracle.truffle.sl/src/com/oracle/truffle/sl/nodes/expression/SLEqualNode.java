@@ -40,16 +40,16 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
-import java.math.BigInteger;
 
 /**
  * The {@code ==} operator of SL is defined on all types. Therefore, we need a
@@ -63,10 +63,6 @@ import java.math.BigInteger;
  */
 @NodeInfo(shortName = "==")
 public abstract class SLEqualNode extends SLBinaryNode {
-
-    public SLEqualNode(SourceSection src) {
-        super(src);
-    }
 
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);

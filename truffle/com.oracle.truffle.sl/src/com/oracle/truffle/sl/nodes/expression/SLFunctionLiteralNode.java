@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -66,8 +65,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
     @CompilationFinal private SLFunction cachedFunction;
     @CompilationFinal private SLContext cachedContext;
 
-    public SLFunctionLiteralNode(SourceSection src, String value) {
-        super(src);
+    public SLFunctionLiteralNode(String value) {
         this.value = value;
         contextNode = SLLanguage.INSTANCE.createFindContextNode0();
     }

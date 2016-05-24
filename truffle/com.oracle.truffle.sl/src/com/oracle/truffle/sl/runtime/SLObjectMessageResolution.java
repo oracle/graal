@@ -80,7 +80,7 @@ public class SLObjectMessageResolution {
         }
 
         private abstract static class SLWriteNode extends Node {
-            @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(getSourceSection(), null);
+            @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(null);
 
             abstract Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value);
         }

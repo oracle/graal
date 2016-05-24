@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -48,9 +50,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
-import java.io.IOException;
 
 /**
  * Builtin function to evaluate source code in any supported language.
@@ -61,10 +60,6 @@ import java.io.IOException;
  */
 @NodeInfo(shortName = "eval")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
-
-    public SLEvalBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "eval"));
-    }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"stringsEqual(mimeType, cachedMimeType)", "stringsEqual(code, cachedCode)"})

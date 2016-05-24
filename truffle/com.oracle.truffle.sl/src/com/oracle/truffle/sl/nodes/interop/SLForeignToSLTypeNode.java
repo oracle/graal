@@ -49,7 +49,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLTargetableNode;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -60,10 +59,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @NodeChild(type = SLExpressionNode.class)
 public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
-
-    public SLForeignToSLTypeNode(SourceSection src) {
-        super(src);
-    }
 
     @Specialization
     public Object fromObject(Number value) {

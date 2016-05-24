@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import java.math.BigInteger;
 
 /**
  * Constant literal for a arbitrary-precision number that exceeds the range of
@@ -55,8 +55,7 @@ public final class SLBigIntegerLiteralNode extends SLExpressionNode {
 
     private final BigInteger value;
 
-    public SLBigIntegerLiteralNode(SourceSection src, BigInteger value) {
-        super(src);
+    public SLBigIntegerLiteralNode(BigInteger value) {
         this.value = value;
     }
 

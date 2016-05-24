@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -74,8 +73,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     @Child protected SLExpressionNode valueNode;
     @Child protected SLWritePropertyCacheNode cacheNode;
 
-    SLWritePropertyNode(SourceSection src, String propertyName) {
-        super(src);
+    SLWritePropertyNode(String propertyName) {
         this.propertyName = propertyName;
         this.cacheNode = SLWritePropertyCacheNodeGen.create(propertyName);
     }

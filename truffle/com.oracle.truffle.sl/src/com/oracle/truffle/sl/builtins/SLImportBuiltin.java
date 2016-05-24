@@ -42,8 +42,6 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Built-in function that goes through the other registered languages to find an exported global
@@ -51,10 +49,6 @@ import com.oracle.truffle.sl.SLLanguage;
  */
 @NodeInfo(shortName = "import")
 public abstract class SLImportBuiltin extends SLBuiltinNode {
-
-    public SLImportBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "import"));
-    }
 
     @Specialization
     public Object importSymbol(String name) {

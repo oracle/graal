@@ -41,12 +41,8 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class SLTargetableNode extends SLExpressionNode {
-    public SLTargetableNode(SourceSection src) {
-        super(src);
-    }
 
     public abstract Object executeWithTarget(VirtualFrame frame, Object target);
 }

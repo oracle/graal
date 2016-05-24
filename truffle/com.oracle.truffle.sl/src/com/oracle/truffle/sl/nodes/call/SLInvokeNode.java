@@ -56,7 +56,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
@@ -76,8 +75,7 @@ public abstract class SLInvokeNode extends SLExpressionNode {
     @Children private final SLExpressionNode[] argumentNodes;
     @Child private SLDispatchNode dispatchNode;
 
-    SLInvokeNode(SourceSection src, SLExpressionNode[] argumentNodes) {
-        super(src);
+    SLInvokeNode(SLExpressionNode[] argumentNodes) {
         this.argumentNodes = argumentNodes;
         this.dispatchNode = SLDispatchNodeGen.create();
     }
@@ -135,7 +133,7 @@ public abstract class SLInvokeNode extends SLExpressionNode {
             // SL maps a function invocation to an EXECUTE message.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
-            toSLType = insert(SLForeignToSLTypeNodeGen.create(getSourceSection(), null));
+            toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
         }
         try {
             // Perform the foreign function call.

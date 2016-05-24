@@ -67,8 +67,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public static final String MIME_TYPE = "application/x-sl";
 
-    public static final String builtinKind = "SL builtin";
-
     /**
      * The singleton instance of the language.
      */

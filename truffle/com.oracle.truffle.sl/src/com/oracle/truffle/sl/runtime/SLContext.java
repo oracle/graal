@@ -59,7 +59,6 @@ import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLAssertFalseBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLAssertTrueBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -163,14 +162,16 @@ public final class SLContext extends ExecutionContext {
          * from this array.
          */
         for (int i = 0; i < argumentCount; i++) {
-            argumentNodes[i] = new SLReadArgumentNode(null, i);
+            argumentNodes[i] = new SLReadArgumentNode(i);
         }
         /* Instantiate the builtin node. This node performs the actual functionality. */
         SLBuiltinNode builtinBodyNode = factory.createNode(argumentNodes, this);
+        builtinBodyNode.setRootTagged(true);
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
+        final SourceSection srcSection = SourceSection.createUnavailable("SL builtin", name);
+        builtinBodyNode.setSourceSection(srcSection);
 
-        final SourceSection srcSection = SourceSection.createUnavailable(SLLanguage.builtinKind, name);
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
         SLRootNode rootNode = new SLRootNode(new FrameDescriptor(), builtinBodyNode, srcSection, name);
 

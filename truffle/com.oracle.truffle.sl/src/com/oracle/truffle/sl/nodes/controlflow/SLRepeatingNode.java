@@ -51,7 +51,8 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
 public final class SLRepeatingNode extends Node implements RepeatingNode {
-    private final SourceSection section;
+    private SourceSection section;
+
     /**
      * The condition of the loop. This in a {@link SLExpressionNode} because we require a result
      * value. We do not have a node type that can only return a {@code boolean} value, so
@@ -70,8 +71,7 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
     private final BranchProfile continueTaken = BranchProfile.create();
     private final BranchProfile breakTaken = BranchProfile.create();
 
-    public SLRepeatingNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        this.section = src;
+    public SLRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         this.conditionNode = conditionNode;
         this.bodyNode = bodyNode;
     }
@@ -79,6 +79,11 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
     @Override
     public SourceSection getSourceSection() {
         return section;
+    }
+
+    public void setSourceSection(SourceSection section) {
+        assert this.section == null : "overwriting existing SourceSection";
+        this.section = section;
     }
 
     @Override
