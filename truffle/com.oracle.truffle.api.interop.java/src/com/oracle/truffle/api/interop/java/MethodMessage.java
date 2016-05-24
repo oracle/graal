@@ -64,6 +64,10 @@ import java.lang.annotation.Target;
  * </pre>
  * 
  * the value of the <em>x</em> field is going to be <em>10</em> then.
+ *
+ * <h5>Checking for Null</h5>
+ *
+ * {@link JavaInteropSnippets#isNullValue}
  * 
  * @since 0.9
  */
