@@ -32,10 +32,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @NodeInfo(shortName = "isCompilationConstant")
 public abstract class SLIsCompilationConstantBuiltin extends SLGraalRuntimeBuiltin {
 
-    SLIsCompilationConstantBuiltin() {
-        super(SLIsCompilationConstantBuiltin.class);
-    }
-
     @Specialization
     public boolean isCompilationConstant(Object value) {
         if (CompilerDirectives.inCompiledCode()) {

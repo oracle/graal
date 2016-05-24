@@ -36,25 +36,14 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 
 public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
 
-    protected SLGraalRuntimeBuiltin(SourceSection sourceSection) {
-        super(sourceSection);
+    protected SLGraalRuntimeBuiltin() {
         if (!(Truffle.getRuntime() instanceof GraalTruffleRuntime)) {
             throw new AssertionError("Graal runtime builtins can only be used inside of a Graal runtime.");
         }
-    }
-
-    protected SLGraalRuntimeBuiltin(Class<? extends SLGraalRuntimeBuiltin> clazz) {
-        this(sourceSectionFromClass(clazz));
-    }
-
-    protected static SourceSection sourceSectionFromClass(Class<? extends SLGraalRuntimeBuiltin> clazz) {
-        return SourceSection.createUnavailable("SL Builtin", SLContext.lookupNodeInfo(clazz).shortName());
     }
 
     /**

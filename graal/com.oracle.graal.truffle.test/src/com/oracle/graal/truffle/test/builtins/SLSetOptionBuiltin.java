@@ -36,10 +36,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @NodeInfo(shortName = "setOption")
 public abstract class SLSetOptionBuiltin extends SLGraalRuntimeBuiltin {
 
-    SLSetOptionBuiltin() {
-        super(SLSetOptionBuiltin.class);
-    }
-
     @Specialization
     @TruffleBoundary
     public Object setOption(String name, Object value) {
