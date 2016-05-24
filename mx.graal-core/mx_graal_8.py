@@ -31,7 +31,7 @@ import sanitycheck
 import re
 
 import mx
-from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, get_jvmci_mode, _JVMCI_JDK_TAG, VM, JVMCIMode, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_jvmci import run_vm as _jvmci_run_vm
 from mx_gate import Task
@@ -166,7 +166,7 @@ def ctw(args, extraVMarguments=None):
             vmargs += ['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld']
     else:
         if isJVMCIEnabled(vm):
-            if vm == 'jvmci':
+            if get_jvmci_mode() == 'jit':
                 vmargs += ['-XX:+BootstrapJVMCI']
             vmargs += ['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld']
         else:
@@ -198,7 +198,7 @@ class BootstrapTest:
         self.suppress = suppress
 
     def run(self, tasks, extraVMarguments=None):
-        with VM('jvmci', self.vmbuild):
+        with VM('server', self.vmbuild):
             with Task(self.name + ':' + self.vmbuild, tasks, tags=self.tags) as t:
                 if t:
                     if self.suppress:
@@ -228,51 +228,51 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('BuildHotSpotGraalHosted: product', tasks, tags=[GraalTags.test, GraalTags.fulltest]) as t:
         if t: buildvms(['--vms', 'server', '--builds', 'product'])
 
-    with VM('server', 'product'):
     # Run unit tests on server-hosted-jvmci
+    with JVMCIMode('hosted'):
         for r in unit_test_runs:
             r.run(suites, tasks, extraVMarguments)
 
     # Run microbench on server-hosted-jvmci (only for testing the JMH setup)
-    with VM('server', 'product'):
+    with JVMCIMode('hosted'):
         for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=[GraalTags.fulltest])]:
             r.run(tasks, extraVMarguments)
 
     # Run ctw against rt.jar on server-hosted-jvmci
-    with VM('server', 'product'):
+    with JVMCIMode('hosted'):
         with Task('CTW:hosted-product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=400m'], _noneAsEmptyList(extraVMarguments))
 
-    # Build the jvmci VMs so we can run the other tests
+    # Build the fastdebug VM so we can run the other tests
     with Task('BuildHotSpotGraalJVMCI: fastdebug', tasks, tags=[GraalTags.bootstrap, GraalTags.fulltest]) as t:
-        if t: buildvms(['--vms', 'jvmci', '--builds', 'fastdebug'])
-    with Task('BuildHotSpotGraalJVMCI: product', tasks, tags=[GraalTags.fulltest]) as t:
-        if t: buildvms(['--vms', 'jvmci', '--builds', 'product'])
+        if t: buildvms(['--vms', 'server', '--builds', 'fastdebug'])
 
     # bootstrap tests
-    for b in bootstrap_tests:
-        b.run(tasks, extraVMarguments)
+    with JVMCIMode('jit'):
+        for b in bootstrap_tests:
+            b.run(tasks, extraVMarguments)
 
     # run dacapo sanitychecks
     for vmbuild in ['fastdebug', 'product']:
         for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild, extraVmArguments=extraVMarguments) \
                 + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild, extraVmArguments=extraVMarguments):
             with Task(str(test) + ':' + vmbuild, tasks, tags=[GraalTags.fulltest]) as t:
-                if t and not test.test('jvmci'):
-                    t.abort(test.name + ' Failed')
+                with JVMCIMode('jit'):
+                    if t and not test.test('server'):
+                        t.abort(test.name + ' Failed')
 
     # ensure -Xbatch still works
-    with VM('jvmci', 'product'):
+    with JVMCIMode('jit'):
         with Task('DaCapo_pmd:BatchMode:product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-Xbatch', 'pmd'])
 
     # ensure benchmark counters still work
-    with VM('jvmci', 'product'):
+    with JVMCIMode('jit'):
         with Task('DaCapo_pmd:BenchmarkCounters:product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
 
     # ensure -Xcomp still works
-    with VM('jvmci', 'product'):
+    with JVMCIMode('jit'):
         with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
             if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
 
