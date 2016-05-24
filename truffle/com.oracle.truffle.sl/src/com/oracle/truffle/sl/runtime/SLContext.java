@@ -59,8 +59,6 @@ import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.builtins.SLAssertFalseBuiltinFactory;
-import com.oracle.truffle.sl.builtins.SLAssertTrueBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLEvalBuiltinFactory;
@@ -141,8 +139,6 @@ public final class SLContext extends ExecutionContext {
         installBuiltin(SLDefineFunctionBuiltinFactory.getInstance());
         installBuiltin(SLStackTraceBuiltinFactory.getInstance());
         installBuiltin(SLHelloEqualsWorldBuiltinFactory.getInstance());
-        installBuiltin(SLAssertTrueBuiltinFactory.getInstance());
-        installBuiltin(SLAssertFalseBuiltinFactory.getInstance());
         installBuiltin(SLNewObjectBuiltinFactory.getInstance());
         installBuiltin(SLEvalBuiltinFactory.getInstance());
         installBuiltin(SLImportBuiltinFactory.getInstance());
