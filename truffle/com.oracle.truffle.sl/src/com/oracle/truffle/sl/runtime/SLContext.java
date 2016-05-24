@@ -166,7 +166,7 @@ public final class SLContext extends ExecutionContext {
         }
         /* Instantiate the builtin node. This node performs the actual functionality. */
         SLBuiltinNode builtinBodyNode = factory.createNode(argumentNodes, this);
-        builtinBodyNode.setRootTagged(true);
+        builtinBodyNode.addRootTag();
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
         final SourceSection srcSection = SourceSection.createUnavailable("SL builtin", name);

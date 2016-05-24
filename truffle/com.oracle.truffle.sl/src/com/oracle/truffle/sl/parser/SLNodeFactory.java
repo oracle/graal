@@ -196,7 +196,7 @@ public class SLNodeFactory {
         for (SLStatementNode statement : flattenedNodes) {
             SourceSection sourceSection = statement.getSourceSection();
             if (sourceSection != null && !isHaltInCondition(statement)) {
-                statement.setStatementTagged(true);
+                statement.addStatementTag();
             }
         }
         SLBlockNode blockNode = new SLBlockNode(flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
@@ -263,7 +263,7 @@ public class SLNodeFactory {
      * @return A SLWhileNode built using the given parameters.
      */
     public SLStatementNode createWhile(Token whileToken, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        conditionNode.setStatementTagged(true);
+        conditionNode.addStatementTag();
         final int start = whileToken.charPos;
         final int end = bodyNode.getSourceSection().getCharEndIndex();
         final SLWhileNode whileNode = new SLWhileNode(conditionNode, bodyNode);
@@ -281,7 +281,7 @@ public class SLNodeFactory {
      * @return An SLIfNode for the given parameters.
      */
     public SLStatementNode createIf(Token ifToken, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
-        conditionNode.setStatementTagged(true);
+        conditionNode.addStatementTag();
         final int start = ifToken.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
         final SLIfNode ifNode = new SLIfNode(conditionNode, thenPartNode, elsePartNode);

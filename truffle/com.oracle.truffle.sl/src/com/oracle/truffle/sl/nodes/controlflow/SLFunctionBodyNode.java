@@ -71,7 +71,7 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
 
     public SLFunctionBodyNode(SLStatementNode bodyNode) {
         this.bodyNode = bodyNode;
-        setRootTagged(true);
+        addRootTag();
     }
 
     @Override
