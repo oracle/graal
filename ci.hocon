@@ -81,6 +81,7 @@ bench-jvmci : {
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
+  mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
@@ -160,6 +161,26 @@ bench-specjbb2005-x4150: ${bench-specjbb2005} {
   ]
 }
 
+# SPECjbb2013-related targets
+
+bench-specjbb2013: ${bench-common-8} {
+  downloads: {
+    SPECJBB2013: { name: specjbb2013, version: "1.00" }
+  }
+  timelimit: "3:00:00"
+}
+
+bench-specjbb2013-x52: ${bench-specjbb2013} {
+  capabilities: [linux, x52, bench, post-merge]
+  name: "bench-specjbb2013-linux-x52"
+  run: [
+    ${bench-jvmci.mx-specjbb2013} [
+      "--machine-name", "x52", "--",
+      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
+    ]
+  ]
+}
+
 # Build targets
 
 builds = [
@@ -177,4 +198,5 @@ builds = [
   ${bench-scala-dacapo-x52}
   ${bench-specjvm2008-x52}
   ${bench-specjbb2005-x4150}
+  ${bench-specjbb2013-x52}
 ]
