@@ -102,7 +102,6 @@ public class PropertyImpl extends Property {
 
     private static boolean verifyShapeParameter(DynamicObject store, Shape shape) {
         assert shape == null || store.getShape() == shape : "wrong shape";
-        assert shape == null || shape.isValid() : "invalid shape";
         return true;
     }
 
