@@ -167,7 +167,7 @@ bench-specjbb2013: ${bench-common-8} {
   downloads: {
     SPECJBB2013: { name: specjbb2013, version: "1.00" }
   }
-  timelimit: "2:00:00"
+  timelimit: "3:00:00"
 }
 
 bench-specjbb2013-x52: ${bench-specjbb2013} {
