@@ -39,8 +39,8 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
@@ -77,7 +77,6 @@ import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
-import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode;
@@ -241,7 +240,6 @@ public class PartialEvaluator {
                     lastDirectCallNode = null;
                     if (decision != null && decision.isInline()) {
                         inlining.push(decision);
-                        builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
                         return new InlineInfo(callInlinedMethod, false);
                     }
                 }

@@ -229,11 +229,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             if (speculationLog == null) {
                 speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
             }
-            OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()), speculationLog);
+            OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()));
+            osrTarget.setSpeculationLog(speculationLog);
             // to avoid a deopt on first call we provide some profiling information
-            osrTarget.profileReturnType(Boolean.TRUE);
-            osrTarget.profileReturnType(Boolean.FALSE);
-            osrTarget.profileArguments(new Object[]{frame});
+            AbstractCompilationProfile profile = osrTarget.getCompilationProfile();
+            profile.profileReturnValue(Boolean.TRUE);
+            profile.profileReturnValue(Boolean.FALSE);
+            profile.profileDirectCall(osrTarget, new Object[]{frame});
             // let the old parent re-adopt the children
             parent.adoptChildren();
             osrTarget.compile();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,49 +22,62 @@
  */
 package com.oracle.graal.truffle;
 
-public class TraceCompilationProfile extends DefaultCompilationProfile {
-
-    private int directCallCount;
-    private int indirectCallCount;
-    private int inlinedCallCount;
+public class VoidCompilationProfile extends AbstractCompilationProfile {
 
     @Override
     public void profileDirectCall(OptimizedCallTarget callTarget, Object[] args) {
-        directCallCount++;
-        super.profileDirectCall(callTarget, args);
+
     }
 
     @Override
     public void profileIndirectCall(OptimizedCallTarget callTarget) {
-        indirectCallCount++;
-        super.profileIndirectCall(callTarget);
+
     }
 
     @Override
     public void profileInlinedCall() {
-        super.profileInlinedCall();
-        inlinedCallCount++;
+
     }
 
-    public int getIndirectCallCount() {
-        return indirectCallCount;
+    @Override
+    public void profileReturnValue(Object result) {
     }
 
-    public int getDirectCallCount() {
-        return directCallCount;
+    @Override
+    public <E extends Throwable> E profileExceptionType(E ex) {
+        return ex;
     }
 
-    public int getInlinedCallCount() {
-        return inlinedCallCount;
+    @Override
+    public Object[] injectArgumentProfile(Object[] originalArguments) {
+        return originalArguments;
     }
 
-    public int getTotalCallCount() {
-        return directCallCount + indirectCallCount + inlinedCallCount;
+    @Override
+    public Object injectReturnValueProfile(Object result) {
+        return result;
     }
 
-    /* Lazy class loading factory method. */
     public static AbstractCompilationProfile create() {
-        return new TraceCompilationProfile();
+        return new VoidCompilationProfile();
+    }
+
+    @Override
+    public void reportCompilationFailure(Throwable t) {
+    }
+
+    @Override
+    void reportLoopCount(int count) {
+    }
+
+    @Override
+    void reportNodeReplaced() {
+
+    }
+
+    @Override
+    void reportInvalidated() {
+
     }
 
 }

@@ -373,7 +373,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return null;
     }
 
-    protected boolean acceptForCompilation(RootNode rootNode) {
+    boolean acceptForCompilation(RootNode rootNode) {
         if (TruffleCompileOnly.getValue() != null) {
             if (includes == null) {
                 parseCompileOnly();
@@ -414,7 +414,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public abstract SpeculationLog createSpeculationLog();
 
-    public abstract RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog);
+    @Override
+    public abstract RootCallTarget createCallTarget(RootNode root);
 
     public abstract RootCallTarget createClonedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode root);
 
