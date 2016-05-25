@@ -31,12 +31,14 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
+import mx_jvmci
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
-    def __init__(self, raw_name, raw_config_name, extra_args):
+    def __init__(self, raw_name, raw_config_name, extra_args, expected_mode):
         self.raw_name = raw_name
         self.raw_config_name = raw_config_name
         self.extra_args = extra_args
+        self.expected_mode = expected_mode
 
     def name(self):
         return self.raw_name
@@ -56,6 +58,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        assert mx_jvmci.get_jvmci_mode() == self.expected_mode
         if mx_graal_core.get_vm() != self.name():
             mx.abort("To use '{0}' VM, specify respective --vm flag.".format(
                 self.name()))
@@ -66,14 +69,13 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", []))
-mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", []))
-if mx_graal_core.JDK9:
-    mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"]))
-else:
-    mx_benchmark.add_java_vm(JvmciJdkVm("server-nojvmci", "default", []))
-    mx_benchmark.add_java_vm(JvmciJdkVm("client-nojvmci", "default", []))
-    mx_benchmark.add_java_vm(JvmciJdkVm("jvmci", "graal-core", ["-Djvmci.Compiler=graal"]))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", [], "disabled"))
+mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", [], "disabled"))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "hosted", [], "hosted"))
+mx_benchmark.add_java_vm(JvmciJdkVm("client", "hosted", [], "hosted"))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"],
+    "jit"))
+
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """Base benchmark suite for DaCapo-based benchmarks.
