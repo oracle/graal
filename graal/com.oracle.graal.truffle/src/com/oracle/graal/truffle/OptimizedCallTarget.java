@@ -310,11 +310,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return callSitesKnown;
     }
 
-    synchronized final void incrementKnownCallSites() {
+    final synchronized void incrementKnownCallSites() {
         callSitesKnown++;
     }
 
-    synchronized final void decrementKnownCallSites() {
+    final synchronized void decrementKnownCallSites() {
         callSitesKnown--;
     }
 
