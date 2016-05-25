@@ -307,10 +307,7 @@ def getCTW(vm, mode):
     if vm == 'jvmci':
         args += ['-XX:+BootstrapGraal']
     if mode >= CTWMode.NoInline:
-        if not mx_graal_core.isJVMCIEnabled(vm):
-            args.append('-XX:-Inline')
-        else:
-            args.append('-G:CompileTheWordConfig=-Inline')
+        args.append('-G:CompileTheWordConfig=-Inline')
 
     return Test("CompileTheWorld", args, successREs=[time], scoreMatchers=[scoreMatcher], benchmarkCompilationRate=False)
 

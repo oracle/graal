@@ -43,17 +43,19 @@ import mx_unittest
 import mx_microbench
 
 _suite = mx.suite('graal-core')
-
 _jdk = mx.get_jdk(tag='default')
-assert _jdk.javaCompliance >= "1.9"
+_isJDK8OrEarlier = _jdk.javaCompliance < '1.9'
 
-def isJVMCIEnabled(vm):
-    return True
-
+#: JVMCI modes of execution and the command line arguments they represent
 _jvmciModes = {
+    # JVMCI is only used as a hosted compiler
     'hosted' : ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'],
+
+    # JVMCI is used as the top-tier VM compiler (and is also available for hosted compilation)
     'jit' : ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler'],
-    'disabled' : []
+
+    # JVMCI is disabled altogether
+    'disabled' : ['-XX:-EnableJVMCI'],
 }
 
 def get_vm():
@@ -84,57 +86,125 @@ class JVMCIMode:
 
 _vm = JVMCIMode(jvmciMode='hosted')
 
-class GraalModuleDescriptor(object):
+if _isJDK8OrEarlier:
+    class JVMCIClasspathEntry(object):
+        """
+        Denotes a distribution that is put on the JVMCI class path.
+
+        :param str name: the name of the `JARDistribution` to be deployed
+        """
+        def __init__(self, name):
+            self._name = name
+
+        def dist(self):
+            """
+            Gets the `JARDistribution` deployed on the JVMCI class path.
+            """
+            return mx.distribution(self._name)
+
+        def get_path(self):
+            """
+            Gets the path to the distribution jar file.
+
+            :rtype: str
+            """
+            return self.dist().classpath_repr()
+
+    #: The deployed Graal distributions
+    _jvmci_classpath = [
+        JVMCIClasspathEntry('GRAAL_OPTIONS'),
+        JVMCIClasspathEntry('GRAAL_NODEINFO'),
+        JVMCIClasspathEntry('GRAAL_SERVICEPROVIDER'),
+        JVMCIClasspathEntry('GRAAL_API'),
+        JVMCIClasspathEntry('GRAAL_COMPILER'),
+        JVMCIClasspathEntry('GRAAL_RUNTIME'),
+        JVMCIClasspathEntry('GRAAL_HOTSPOT'),
+        JVMCIClasspathEntry('GRAAL_TRUFFLE'),
+        JVMCIClasspathEntry('GRAAL_TRUFFLE_HOTSPOT'),
+    ]
+
+    def add_jvmci_classpath_entry(entry):
+        """
+        Appends an entry to the JVMCI classpath.
+        """
+        _jvmci_classpath.append(entry)
+
+else:
+    class GraalModuleDescriptor(object):
+        """
+        Describes the module containing Graal.
+
+        :param str distName: name of the `JARDistribution` that creates the Graal module jar
+        """
+        def __init__(self, name):
+            self._name = name
+
+        def dist(self):
+            """
+            Gets the `JARDistribution` that creates the Graal module jar.
+
+            :rtype: `JARDistribution
+            """
+            return mx.distribution(self._name)
+
+        def get_module_jar(self):
+            """
+            Gets the path to the module jar file.
+
+            :rtype: str
+            """
+            return as_java_module(self.dist(), _jdk).jarpath
+
+    #: The `GraalModuleDescriptor` for the Graal module
+    _graal_module_descriptor = GraalModuleDescriptor('GRAAL')
+
+    def set_graal_module(descriptor):
+        """
+        Sets the deployed Graal module.
+        """
+        global _graal_module_descriptor
+        assert descriptor != None
+        _graal_module_descriptor = descriptor
+
+#: The selected JVMCI
+_jvmci_compiler = 'graal'
+
+def set_jvmci_compiler(compilerName):
     """
-    Describes the module containing Graal.
-
-    :param str distName: name of the `JARDistribution` that creates the Graal module jar
+    Sets the value for the ``jvmci.Compiler`` system property passed to the VM.
     """
-    def __init__(self, name):
-        self._name = name
+    _jvmci_compiler = compilerName
 
-    def dist(self):
-        """
-        Gets the `JARDistribution` that creates the Graal module jar.
+_bootclasspath_appends = []
 
-        :rtype: `JARDistribution
-        """
-        return mx.distribution(self._name)
+def add_bootclasspath_append(dep):
+    """
+    Adds a dependency that must be appended to the boot class path
+    """
+    assert isinstance(dep, mx.ClasspathDependency)
+    _bootclasspath_appends.append(dep)
 
-    def get_module_jar(self):
-        """
-        Gets the path to the module jar file.
-
-        :rtype: str
-        """
-        return as_java_module(self.dist(), _jdk).jarpath
-
-_compilers = ['graal-economy', 'graal']
-
-#: The `GraalModuleDescriptor` for the Graal module
-_graal_module_descriptor = GraalModuleDescriptor('GRAAL')
-
-def add_compiler(compilerName):
-    _compilers.append(compilerName)
-
-def set_graal_module(descriptor):
-    global _graal_module_descriptor
-    assert descriptor != None
-    _graal_module_descriptor = descriptor
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
-class JVMCI9MicrobenchExecutor(mx_microbench.MicrobenchExecutor):
+class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
+
+    def parseVmArgs(self, vmArgs):
+        if _isJDK8OrEarlier:
+            if _vm.jvmciMode != 'disabled' and '-XX:-UseJVMCIClassLoader' not in vmArgs:
+                vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
+        jvm = get_vm()
+        return ['-' + jvm] + _parseVmArgs(vmArgs)
 
     def parseForkedVmArgs(self, vmArgs):
         jvm = get_vm()
-        return ['-' + jvm] + _parseVmArgs(_jdk, vmArgs)
+        return ['-' + jvm] + _parseVmArgs(vmArgs)
 
     def run_java(self, args):
         run_vm(args)
 
-mx_microbench.set_microbenchmark_executor(JVMCI9MicrobenchExecutor())
+mx_microbench.set_microbenchmark_executor(JVMCIMicrobenchExecutor())
 
 
 def ctw(args, extraVMarguments=None):
@@ -145,7 +215,8 @@ def ctw(args, extraVMarguments=None):
     parser = ArgumentParser(prog='mx ctw')
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
-    parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
+    if not _isJDK8OrEarlier:
+        parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
 
@@ -153,14 +224,31 @@ def ctw(args, extraVMarguments=None):
         # Replace spaces  with '#' since -G: options cannot contain spaces
         vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
+    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
+    vmargs = ['-Djava.awt.headless=true'] + vmargs
+
     if args.cp:
         cp = os.path.abspath(args.cp)
-        if _vm.jvmciMode == 'disabled':
+        if not _isJDK8OrEarlier and _vm.jvmciMode == 'disabled':
             mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
-        # Compile all classes in the JRT image by default.
-        cp = join(_jdk.home, 'lib', 'modules')
-        vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+        if _isJDK8OrEarlier:
+            cp = join(_jdk.home, 'jre', 'lib', 'rt.jar')
+        else:
+            # Compile all classes in the JRT image by default.
+            cp = join(_jdk.home, 'lib', 'modules')
+
+    vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+
+    if _vm.jvmciMode == 'jit':
+        vmargs.append('-XX:+BootstrapJVMCI')
+
+    if _isJDK8OrEarlier:
+        if _vm.jvmciMode != 'disabled':
+            vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
+        else:
+            vmargs.extend(['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp])
+    else:
         if _vm.jvmciMode != 'disabled':
             # To be able to load all classes in the JRT with Class.forName,
             # all JDK modules need to be made root modules.
@@ -169,18 +257,11 @@ def ctw(args, extraVMarguments=None):
             if nonBootJDKModules:
                 vmargs.append('-addmods')
                 vmargs.append(','.join(nonBootJDKModules))
-
-    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
-    vmargs = ['-Djava.awt.headless=true'] + vmargs
-
-    if _vm.jvmciMode == 'disabled':
-        vmargs.append('-XX:+CompileTheWorld')
-    else:
-        if args.limitmods:
-            vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-        if _vm.jvmciMode == 'jit':
-            vmargs += ['-XX:+BootstrapJVMCI']
-        vmargs += ['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld']
+            if args.limitmods:
+                vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
+            vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld'])
+        else:
+            vmargs.append('-XX:+CompileTheWorld')
 
     run_vm(vmargs + _noneAsEmptyList(extraVMarguments))
 
@@ -305,69 +386,84 @@ def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    # Remove entries from class path that are in the Graal module(s)
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
-        assert _graal_module_descriptor is not None
-        module = as_java_module(_graal_module_descriptor.dist(), _jdk)
         cp = _uniqify(cp.split(os.pathsep))
+        if _isJDK8OrEarlier:
+            # Remove entries from class path that are in Graal
+            excluded = set()
+            for entry in _jvmci_classpath:
+                dist = entry.dist()
+                excluded.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
+                excluded.add(dist.path)
+            cp = os.pathsep.join([e for e in cp if e not in excluded])
+            vmArgs[cpIndex] = cp
+        else:
+            # Remove entries from class path that are in the Graal
+            assert _graal_module_descriptor is not None
+            module = as_java_module(_graal_module_descriptor.dist(), _jdk)
 
-        junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
-        excluded = frozenset([classpathEntry.classpath_repr() for classpathEntry in get_module_deps(module.dist)] + junitCp)
+            junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
+            excluded = frozenset([classpathEntry.classpath_repr() for classpathEntry in get_module_deps(module.dist)] + junitCp)
 
-        cp = [classpathEntry for classpathEntry in cp if classpathEntry not in excluded]
+            cp = [classpathEntry for classpathEntry in cp if classpathEntry not in excluded]
 
-        vmArgs[cpIndex] = os.pathsep.join(cp)
+            vmArgs[cpIndex] = os.pathsep.join(cp)
 
-        # Junit libraries are made into automatic modules so that they are visible to tests
-        # patched into Graal. These automatic modules must be declared to be read by
-        # Graal which means they must also be made root modules (i.e., ``-addmods``)
-        # since ``-XaddReads`` can only be applied to root modules.
-        junitModules = [_automatic_module_name(e) for e in junitCp]
-        vmArgs = ['-modulepath', os.pathsep.join(junitCp)] + vmArgs
-        vmArgs = ['-addmods', ','.join(junitModules)] + vmArgs
-        vmArgs = ['-XaddReads:' + module.name + '=' + ','.join(junitModules)] + vmArgs
+            # Junit libraries are made into automatic modules so that they are visible to tests
+            # patched into Graal. These automatic modules must be declared to be read by
+            # Graal which means they must also be made root modules (i.e., ``-addmods``)
+            # since ``-XaddReads`` can only be applied to root modules.
+            junitModules = [_automatic_module_name(e) for e in junitCp]
+            vmArgs.extend(['-modulepath', os.pathsep.join(junitCp)])
+            vmArgs.extend(['-addmods', ','.join(junitModules)])
+            vmArgs.extend(['-XaddReads:' + module.name + '=' + ','.join(junitModules)])
 
-        # Explicitly export JVMCI to Graal
-        addedExports = {}
-        for concealingModule, packages in module.concealedRequires.iteritems():
-            if concealingModule == 'jdk.vm.ci':
-                for package in packages:
-                    addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
+            # Explicitly export JVMCI to Graal
+            addedExports = {}
+            for concealingModule, packages in module.concealedRequires.iteritems():
+                if concealingModule == 'jdk.vm.ci':
+                    for package in packages:
+                        addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
 
-        patches = []
-        graalConcealedPackages = list(module.conceals)
-        pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
-        for classpathEntry in cp:
-            # Export concealed JDK packages used by the class path entry
-            _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, 'ALL-UNNAMED')
+            patches = []
+            graalConcealedPackages = list(module.conceals)
+            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+            for classpathEntry in cp:
+                # Export concealed JDK packages used by the class path entry
+                _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, 'ALL-UNNAMED')
 
-            # Patch the class path entry into Graal if it defines packages already defined by Graal.
-            # Packages definitions cannot be split between modules.
-            packages = frozenset(_defined_packages(classpathEntry))
-            if not packages.isdisjoint(module.packages):
-                patches.append(classpathEntry)
-                extraPackages = packages - module.packages
-                if extraPackages:
-                    # From http://openjdk.java.net/jeps/261:
-                    # If a package found in a module definition on a patch path is not already exported
-                    # by that module then it will, still, not be exported. It can be exported explicitly
-                    # via either the reflection API or the -XaddExports option.
-                    graalConcealedPackages.extend(extraPackages)
+                # Patch the class path entry into Graal if it defines packages already defined by Graal.
+                # Packages definitions cannot be split between modules.
+                packages = frozenset(_defined_packages(classpathEntry))
+                if not packages.isdisjoint(module.packages):
+                    patches.append(classpathEntry)
+                    extraPackages = packages - module.packages
+                    if extraPackages:
+                        # From http://openjdk.java.net/jeps/261:
+                        # If a package found in a module definition on a patch path is not already exported
+                        # by that module then it will, still, not be exported. It can be exported explicitly
+                        # via either the reflection API or the -XaddExports option.
+                        graalConcealedPackages.extend(extraPackages)
 
-        if patches:
-            vmArgs = ['-Xpatch:' + module.name + '=' + os.pathsep.join(patches)] + vmArgs
+            if patches:
+                vmArgs.append('-Xpatch:' + module.name + '=' + os.pathsep.join(patches))
 
-        # Export all Graal packages to make them available to test classes
-        for package in graalConcealedPackages:
-            addedExports.setdefault(module.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
+            # Export all Graal packages to make them available to test classes
+            for package in graalConcealedPackages:
+                addedExports.setdefault(module.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
 
-        vmArgs = ['-XaddExports:' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()] + vmArgs
+            vmArgs.extend(['-XaddExports:' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
+
+    if _isJDK8OrEarlier:
+        # Run the VM in a mode where application/test classes can
+        # access JVMCI loaded classes.
+        vmArgs.append('-XX:-UseJVMCIClassLoader')
 
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher)
+mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher, _jdk)
 
 def _uniqify(alist):
     """
@@ -471,7 +567,7 @@ def _index_of(haystack, needles):
             return i
     return -1
 
-def _parseVmArgs(jdk, args, addDefaultArgs=True):
+def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
 
     argsPrefix = []
@@ -504,66 +600,71 @@ def _parseVmArgs(jdk, args, addDefaultArgs=True):
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
 
-    assert _graal_module_descriptor is not None
-    module = as_java_module(_graal_module_descriptor.dist(), _jdk)
-
-    # Update added exports to include concealed JDK packages required by Graal
-    addedExports = {}
-    args = _extract_added_exports(args, addedExports)
-    for concealingModule, packages in module.concealedRequires.iteritems():
-        # No need to explicitly export JVMCI - it's exported via reflection
-        if concealingModule != 'jdk.vm.ci':
-            for package in packages:
-                addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
-    for export, targets in addedExports.iteritems():
-        argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
-
-    # Set or update module path to include Graal
-    mpIndex = _index_of(args, ['-modulepath', '-mp'])
-    if mpIndex != -1:
-        assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
-        args[mpIndex + 1] = args[mpIndex + 1] + os.pathsep + module.jarpath
+    if _isJDK8OrEarlier:
+        argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
+        argsPrefix.append('-Xbootclasspath/a:' + os.pathsep.join([dep.classpath_repr() for dep in _bootclasspath_appends]))
     else:
-        argsPrefix.append('-modulepath')
-        argsPrefix.append(module.jarpath)
+        assert _graal_module_descriptor is not None
+        module = as_java_module(_graal_module_descriptor.dist(), _jdk)
+
+        # Update added exports to include concealed JDK packages required by Graal
+        addedExports = {}
+        args = _extract_added_exports(args, addedExports)
+        for concealingModule, packages in module.concealedRequires.iteritems():
+            # No need to explicitly export JVMCI - it's exported via reflection
+            if concealingModule != 'jdk.vm.ci':
+                for package in packages:
+                    addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
+        for export, targets in addedExports.iteritems():
+            argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
+
+        # Set or update module path to include Graal
+        mpIndex = _index_of(args, ['-modulepath', '-mp'])
+        if mpIndex != -1:
+            assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
+            args[mpIndex + 1] = args[mpIndex + 1] + os.pathsep + module.jarpath
+        else:
+            argsPrefix.append('-modulepath')
+            argsPrefix.append(module.jarpath)
+
+        for export, targets in addedExports.iteritems():
+            argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
 
     # Set the default JVMCI compiler
-    jvmciCompiler = _compilers[-1]
-    argsPrefix.append('-Djvmci.Compiler=' + jvmciCompiler)
+    argsPrefix.append('-Djvmci.Compiler=' + _jvmci_compiler)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
         if  len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
-    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
+    return _jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
-def run_java(jdk, args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
-
-    args = _parseVmArgs(jdk, args, addDefaultArgs=addDefaultArgs)
-
-    jvmciModeArgs = _jvmciModes[_vm.jvmciMode]
-    if '-XX:+UseJVMCICompiler' not in jvmciModeArgs and '-XX:+BootstrapJVMCI' in args:
+def _check_bootstrap_config(args):
+    """
+    Issues a warning if `args` denote -XX:+BootstrapJVMCI but -XX:-UseJVMCICompiler.
+    """
+    bootstrap = False
+    useJVMCICompiler = False
+    for arg in args:
+        if arg == '-XX:+BootstrapJVMCI':
+            bootstrap = True
+        elif arg == '-XX:+UseJVMCICompiler':
+            useJVMCICompiler = True
+    if bootstrap and not useJVMCICompiler:
         mx.warn('-XX:+BootstrapJVMCI is ignored since -XX:+UseJVMCICompiler is not enabled')
-    cmd = [jdk.java] + ['-' + get_vm()] + jvmciModeArgs + args
+
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+    args = _jvmciModes[_vm.jvmciMode] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    _check_bootstrap_config(args)
+    cmd = [_jdk.java] + ['-' + get_vm()] + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 _JVMCI_JDK_TAG = 'jvmci'
 
-class GraalJVMCI9JDKConfig(mx.JDKConfig):
-    def __init__(self, original):
-        self._original = original
-        mx.JDKConfig.__init__(self, original.home, tag=_JVMCI_JDK_TAG)
-
-    def run_java(self, args, **kwArgs):
-        run_java(self._original, args, **kwArgs)
-
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
-        return GraalJVMCI9JDKConfig(_jdk)
-
-    def description(self):
-        return "JVMCI JDK with Graal"
+        return _jdk
 
 # This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
 # support for -G style Graal options.
@@ -572,7 +673,7 @@ mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 def run_vm(args, vm=None, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
 
-    return run_java(_jdk, args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
+    return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
     def __init__(self, dist):
@@ -615,3 +716,4 @@ def mx_post_parse_cmd_line(opts):
         _vm.update(opts.jvmci_mode)
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
+    add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))

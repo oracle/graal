@@ -24,22 +24,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx
-JDK9 = mx.get_jdk(tag='default').javaCompliance >= "1.9"
-
-if JDK9:
-    from mx_graal_9 import mx_post_parse_cmd_line, run_vm, get_vm, isJVMCIEnabled, _JVMCI_JDK_TAG # pylint: disable=unused-import
-
-else:
-    from mx_jvmci import JVMCI_VERSION, _JVMCI_JDK_TAG
-    if JVMCI_VERSION != 8:
-        # Since mx_jvmci.py in JVMCI-9 now requires being built on JDK9, it no longer
-        # supports the interface required by Graal when developing on JDK8.
-        import mx_jvmci
-        import os.path
-        mx.abort('Incompatible JVMCI version found in ' + os.path.dirname(mx_jvmci.__file__) + ': require 8, found ' + str(JVMCI_VERSION))
-
-    from mx_graal_8 import mx_post_parse_cmd_line, run_vm, get_vm, isJVMCIEnabled # pylint: disable=unused-import
+from mx_graal_9 import mx_post_parse_cmd_line, run_vm, get_vm, _JVMCI_JDK_TAG, _isJDK8OrEarlier # pylint: disable=unused-import
 
 import mx_graal_bench # pylint: disable=unused-import
 

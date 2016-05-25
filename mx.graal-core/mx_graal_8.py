@@ -31,7 +31,7 @@ import sanitycheck
 import re
 
 import mx
-from mx_jvmci import JVMCI_VERSION, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, get_jvmci_mode, _JVMCI_JDK_TAG, VM, JVMCIMode, relativeVmLibDirInJdk, isJVMCIEnabled
+from mx_jvmci import JVMCI_VERSION, JVMCIMode, JvmciJDKDeployedDist, JVMCIArchiveParticipant, jdkDeployedDists, add_bootclasspath_prepend, buildvms, get_jvmci_jdk, get_jvmci_mode, _JVMCI_JDK_TAG, VM, relativeVmLibDirInJdk, isJVMCIEnabled
 from mx_jvmci import get_vm as _jvmci_get_vm
 from mx_jvmci import run_vm as _jvmci_run_vm
 from mx_gate import Task
@@ -49,13 +49,7 @@ def get_vm():
     """
     Gets the name of the currently selected JVM variant.
     """
-    vm = _jvmci_get_vm()
-    if JVMCI_VERSION >= 9:
-        assert isinstance(vm, VM)
-        return vm.jvmVariant
-    else:
-        assert isinstance(vm, str)
-        return vm
+    return 'server'
 
 class GraalJDKDeployedDist(JvmciJDKDeployedDist):
     def __init__(self, name, compilers=False, updatesGraalProperties=False):

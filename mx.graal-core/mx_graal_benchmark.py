@@ -71,9 +71,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", [], "disabled"))
 mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", [], "disabled"))
 mx_benchmark.add_java_vm(JvmciJdkVm("server", "hosted", [], "hosted"))
 mx_benchmark.add_java_vm(JvmciJdkVm("client", "hosted", [], "hosted"))
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"],
-    "jit"))
-
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"], "jit"))
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'
