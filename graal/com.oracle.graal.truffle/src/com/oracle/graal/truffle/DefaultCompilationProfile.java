@@ -79,8 +79,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
     @ExplodeLoop
     void profileDirectCall(OptimizedCallTarget callTarget, Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
-        if (typesAssumption == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (CompilerDirectives.inInterpreter() && typesAssumption == null) {
             initializeProfiledArgumentTypes(args);
         } else {
             Class<?>[] types = profiledArgumentTypes;
@@ -129,9 +128,10 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
     @Override
     void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (returnTypeAssumption == null) {
+        if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
+            // we only profile return values in the interpreter as we don't want to deoptimize
+            // for immediate compiles.
             if (TruffleReturnTypeSpeculation.getValue()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = Truffle.getRuntime().createAssumption("Profiled Return Type");
             }
@@ -148,7 +148,10 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
     @Override
     <E extends Throwable> E profileExceptionType(E ex) {
         Class<?> cachedClass = exceptionType;
-        if (cachedClass != Object.class) {
+        // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
+        // This usually happens only if the call target was compiled using compile without ever
+        // calling it.
+        if (cachedClass != Object.class && (CompilerDirectives.inInterpreter() || cachedClass != null)) {
             if (cachedClass == ex.getClass()) {
                 return (E) cachedClass.cast(ex);
             }
