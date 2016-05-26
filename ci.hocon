@@ -75,8 +75,8 @@ gateStyle : ${common} ${java8Downloads} {
 }
 
 bench-jvmci : {
-  mx-settings : ["mx", "--vm=jvmci", "--vmbuild=product"]
-  mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
+  mx-settings : ["mx", "--vm=server", "--vmbuild=product"]
+  mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "-Mjit", "benchmark", "--results-file", "bench-results.json"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]

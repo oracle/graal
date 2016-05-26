@@ -120,13 +120,15 @@ public class OptionsVerifierTest {
                     assert e instanceof URLClassLoader;
                     URLClassLoader ucl = (URLClassLoader) e;
                     try (InputStream in = ucl.getResourceAsStream(classFilePath)) {
-                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                        int nRead;
-                        byte[] data = new byte[1024];
-                        while ((nRead = in.read(data, 0, data.length)) != -1) {
-                            buffer.write(data, 0, nRead);
+                        if (in != null) {
+                            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                            int nRead;
+                            byte[] data = new byte[1024];
+                            while ((nRead = in.read(data, 0, data.length)) != -1) {
+                                buffer.write(data, 0, nRead);
+                            }
+                            return buffer.toByteArray();
                         }
-                        return buffer.toByteArray();
                     }
                 }
             }
