@@ -48,18 +48,12 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * This builtin sets the variable named "hello" in the caller frame to the string "world".
  */
 @NodeInfo(shortName = "helloEqualsWorld")
 public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
-
-    public SLHelloEqualsWorldBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "helloEqualsWorld"));
-    }
 
     @Specialization
     @TruffleBoundary

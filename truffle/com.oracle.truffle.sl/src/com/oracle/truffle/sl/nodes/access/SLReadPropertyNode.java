@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
@@ -70,8 +69,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     @Child private SLReadPropertyCacheNode cacheNode;
     private final String propertyName;
 
-    public SLReadPropertyNode(SourceSection src, String propertyName) {
-        super(src);
+    public SLReadPropertyNode(String propertyName) {
         this.propertyName = propertyName;
         this.cacheNode = SLReadPropertyCacheNode.create(propertyName);
     }
@@ -102,7 +100,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // SL maps a property access to a READ message if the receiver is a foreign object.
             this.foreignRead = insert(Message.READ.createNode());
-            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(getSourceSection(), null));
+            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
         }
         try {
             // Perform the foreign object access.

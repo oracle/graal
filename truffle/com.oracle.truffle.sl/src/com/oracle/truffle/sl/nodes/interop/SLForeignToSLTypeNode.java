@@ -49,9 +49,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.SLTargetableNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -59,11 +57,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * The node for converting a foreign primitive or boxed primitive value to an SL value.
  */
 @NodeChild(type = SLExpressionNode.class)
-public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
-
-    public SLForeignToSLTypeNode(SourceSection src) {
-        super(src);
-    }
+public abstract class SLForeignToSLTypeNode extends SLExpressionNode {
 
     @Specialization
     public Object fromObject(Number value) {
@@ -98,6 +92,8 @@ public abstract class SLForeignToSLTypeNode extends SLTargetableNode {
     public Object fromTruffleObject(@SuppressWarnings("unused") VirtualFrame frame, TruffleObject value) {
         return value;
     }
+
+    public abstract Object executeWithTarget(VirtualFrame frame, Object target);
 
     @Child private Node isBoxed;
 

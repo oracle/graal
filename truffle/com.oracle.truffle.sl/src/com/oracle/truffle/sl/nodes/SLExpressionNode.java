@@ -46,7 +46,6 @@ import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
@@ -59,10 +58,6 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 @NodeInfo(description = "The abstract base node for all expressions")
 @Instrumentable(factory = SLExpressionNodeWrapper.class)
 public abstract class SLExpressionNode extends SLStatementNode {
-
-    public SLExpressionNode(SourceSection src) {
-        super(src);
-    }
 
     /**
      * The execute method when no specialization is possible. This is the most general case,

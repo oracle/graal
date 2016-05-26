@@ -74,8 +74,12 @@ public class SLRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert SLLanguage.INSTANCE.findContext0(SLLanguage.INSTANCE.createFindContextNode0()) != null;
+        assert SLLanguage.INSTANCE.findContext() != null;
         return bodyNode.executeGeneric(frame);
+    }
+
+    public SLExpressionNode getBodyNode() {
+        return bodyNode;
     }
 
     public String getName() {
@@ -95,9 +99,4 @@ public class SLRootNode extends RootNode {
     public String toString() {
         return "root " + name;
     }
-
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
 }

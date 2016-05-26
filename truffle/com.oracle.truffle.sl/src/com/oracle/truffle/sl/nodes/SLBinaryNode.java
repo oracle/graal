@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Utility base class for operations that take two arguments (per convention called "left" and
@@ -51,8 +50,4 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class SLBinaryNode extends SLExpressionNode {
-
-    public SLBinaryNode(SourceSection src) {
-        super(src);
-    }
 }

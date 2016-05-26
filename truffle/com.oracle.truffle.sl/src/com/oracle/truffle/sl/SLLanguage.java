@@ -47,6 +47,7 @@ import java.io.PrintWriter;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -66,8 +67,6 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public static final String MIME_TYPE = "application/x-sl";
-
-    public static final String builtinKind = "SL builtin";
 
     /**
      * The singleton instance of the language.
@@ -147,11 +146,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         throw new IllegalStateException("evalInContext not supported in SL");
     }
 
-    public Node createFindContextNode0() {
-        return createFindContextNode();
-    }
-
-    public SLContext findContext0(Node contextNode) {
-        return findContext(contextNode);
+    public SLContext findContext() {
+        CompilerAsserts.neverPartOfCompilation();
+        return super.findContext(super.createFindContextNode());
     }
 }
