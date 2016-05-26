@@ -29,26 +29,21 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 
-@NodeChildren({@NodeChild(type = LLVMI32Node.class)})
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleGetArg extends LLVMAddressIntrinsic {
 
-    @TruffleBoundary
     @Specialization
-    public Object executeIntrinsic(int index) {
+    public Object executeIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
-        FrameInstance parentFrame = Truffle.getRuntime().getCallerFrame();
-        Object[] arguments = parentFrame.getFrame(FrameAccess.READ_ONLY, true).getArguments();
+        Object[] arguments = frame.getArguments();
         return arguments[LLVMCallNode.ARG_START_INDEX + index];
     }
 
