@@ -127,6 +127,11 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
+    public LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes) {
+        return null;
+    }
+
+    @Override
     public LLVMNode createRetVoid() {
         return null;
     }

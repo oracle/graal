@@ -175,6 +175,11 @@ public abstract class LLVMWriteNode extends LLVMNode {
             frame.setObject(getSlot(), value);
         }
 
+        @Specialization
+        protected void writeLong(VirtualFrame frame, long value) {
+            frame.setObject(getSlot(), value);
+        }
+
     }
 
     @NodeChild(value = "valueNode", type = LLVMFunctionNode.class)

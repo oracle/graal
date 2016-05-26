@@ -53,6 +53,8 @@ void *truffle_import_cached(const char *name);
 
 void *truffle_address_to_function(void *address);
 
+void *truffle_get_arg(int i);
+
 // Predicates:
 bool truffle_is_executable(void *object);
 bool truffle_is_null(void *object);
