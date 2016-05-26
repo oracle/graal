@@ -70,7 +70,6 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleGetArgFactory;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
@@ -171,8 +170,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createTruffleGetArgIntrinsic(LLVMExpressionNode argNode) {
-        return LLVMTruffleGetArgFactory.create(argNode);
+    public LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes) {
+        return LLVMTruffleIntrinsicFactory.create(functionName, argNodes);
     }
 
     @Override
