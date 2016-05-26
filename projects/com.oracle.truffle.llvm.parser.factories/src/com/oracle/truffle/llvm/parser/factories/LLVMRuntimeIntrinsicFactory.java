@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleExecuteF
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleExecuteFactory.LLVMTruffleExecuteIFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleExecuteFactory.LLVMTruffleExecuteLFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleExecuteFactory.LLVMTruffleExecutePFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleGetArgFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleGetSizeFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleImportCachedFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleImportFactory;
@@ -118,6 +119,7 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@truffle_import", LLVMTruffleImportFactory.getInstance());
         intrinsics.put("@truffle_import_cached", LLVMTruffleImportCachedFactory.getInstance());
         intrinsics.put("@truffle_address_to_function", LLVMTruffleAddressToFunctionFactory.getInstance());
+        intrinsics.put("@truffle_get_arg", LLVMTruffleGetArgFactory.getInstance());
 
         intrinsics.put("@truffle_read", LLVMTruffleReadPFactory.getInstance());
         intrinsics.put("@truffle_read_i", LLVMTruffleReadIFactory.getInstance());

@@ -193,6 +193,11 @@ public abstract class LLVMCallUnboxNode {
         public int executePointee(int value) {
             return value;
         }
+
+        @Specialization
+        public long executePointee(long value) {
+            return value;
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
