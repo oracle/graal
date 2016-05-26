@@ -60,7 +60,7 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
 
         @Override
         public Class<?> loadClass(String name) throws ClassNotFoundException {
-            if (name.startsWith("com.oracle.truffle.")) {
+            if (name.startsWith("com.oracle.truffle.api.interop.java.")) {
                 return super.findClass(name);
             }
             return super.loadClass(name);
