@@ -82,6 +82,7 @@ bench-jvmci : {
   mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
+  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
@@ -181,6 +182,26 @@ bench-specjbb2013-x52: ${bench-specjbb2013} {
   ]
 }
 
+# SPECjbb2015-related targets
+
+bench-specjbb2015: ${bench-common-8} {
+  downloads: {
+    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+  }
+  timelimit: "3:00:00"
+}
+
+bench-specjbb2015-x52: ${bench-specjbb2015} {
+  capabilities: [linux, x52, bench, post-merge]
+  name: "bench-specjbb2015-linux-x52"
+  run: [
+    ${bench-jvmci.mx-specjbb2015} [
+      "--machine-name", "x52", "--",
+      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
+    ]
+  ]
+}
+
 # Build targets
 
 builds = [
@@ -199,4 +220,5 @@ builds = [
   ${bench-specjvm2008-x52}
   ${bench-specjbb2005-x4150}
   ${bench-specjbb2013-x52}
+  ${bench-specjbb2015-x52}
 ]
