@@ -113,11 +113,6 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
         });
     }
 
-    SLIsInlinedBuiltin() {
-        super(SLIsInlinedBuiltin.class);
-
-    }
-
     @Specialization
     @TruffleBoundary
     public Object isInlined(SLFunction rootFunction, SLFunction parentFunction, SLFunction inlinedFunction) {

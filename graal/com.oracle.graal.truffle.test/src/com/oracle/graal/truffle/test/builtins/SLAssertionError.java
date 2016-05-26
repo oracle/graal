@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,27 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.sl.SLException;
 
 /**
- * Forces a deoptimization as soon as the method runs in compiled code.
+ * An implementation of an {@link AssertionError} also containing the guest language stack trace.
  */
-@NodeInfo(shortName = "deoptimizeWhenCompiled")
-public abstract class SLDeoptimizeWhenCompiledBuiltin extends SLGraalRuntimeBuiltin {
+public class SLAssertionError extends AssertionError {
 
-    @Specialization
-    public SLNull deoptimzeWhenCompiled(boolean condition) {
-        if (CompilerDirectives.inCompiledCode()) {
-            if (condition) {
-                printMessage();
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-        }
-        return SLNull.SINGLETON;
+    private static final long serialVersionUID = -9138475336963945873L;
+
+    public SLAssertionError(String message) {
+        super(message);
+        CompilerAsserts.neverPartOfCompilation();
+        initCause(new AssertionError("Java stack trace"));
     }
 
-    @TruffleBoundary
-    private void printMessage() {
-        getContext().getOutput().println("[deoptimizeWhenCompiled]");
+    @Override
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
+        CompilerAsserts.neverPartOfCompilation();
+        return SLException.fillInSLStackTrace(this);
     }
+
 }

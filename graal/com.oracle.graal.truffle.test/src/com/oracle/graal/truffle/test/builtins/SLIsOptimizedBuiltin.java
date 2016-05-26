@@ -34,10 +34,6 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 @NodeInfo(shortName = "isOptimized")
 public abstract class SLIsOptimizedBuiltin extends SLGraalRuntimeBuiltin {
 
-    SLIsOptimizedBuiltin() {
-        super(SLIsOptimizedBuiltin.class);
-    }
-
     @Specialization
     @TruffleBoundary
     public boolean isOptimized(SLFunction function) {
