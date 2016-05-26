@@ -28,12 +28,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 
 // TODO (mlvdv) if we keep this, hoist a superclass in common with FileSource.
 
-final class ClientManagedFileSourceImpl extends Content {
+final class ClientManagedFileSourceImpl extends Content implements Content.CreateURI {
 
     private final File file;
     private final String name; // Name used originally to describe the source
@@ -78,6 +79,16 @@ final class ClientManagedFileSourceImpl extends Content {
     @Override
     public URL getURL() {
         return null;
+    }
+
+    @Override
+    URI getURI() {
+        return createURIOnce(this);
+    }
+
+    @Override
+    public URI createURI() {
+        return file.toURI();
     }
 
     @Override
