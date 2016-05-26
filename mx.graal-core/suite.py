@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "53d9235e99bae99a0e83072604a938b6c5a53de8",
+        "version" : "b2ca0db145463b6332c0096eaa68fa03e80ee5e8",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -315,6 +315,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.reflect",
+        "jdk.internal.org.objectweb.asm",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
