@@ -36,6 +36,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
@@ -123,6 +124,64 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
         @CompilationFinal private final ConditionProfile[] profiles;
 
         public LLVMI8ProfilingSwitchNode(LLVMI8Node cond, LLVMI8Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(cond, cases, successors, defaultLabel, phiWriteNodes);
+            profiles = createProfiles(cases.length);
+        }
+
+        @Override
+        boolean profile(int i, boolean value) {
+            return profiles[i].profile(value);
+        }
+
+    }
+
+    public abstract static class LLVMI16SwitchBaseNode extends LLVMSwitchNode {
+
+        @Child private LLVMI16Node cond;
+        @Children private final LLVMI16Node[] cases;
+
+        public LLVMI16SwitchBaseNode(LLVMI16Node cond, LLVMI16Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(defaultLabel, successors, phiWriteNodes);
+            this.cond = cond;
+            this.cases = cases;
+        }
+
+        @Override
+        @ExplodeLoop
+        public int executeGetSuccessorIndex(VirtualFrame frame) {
+            short val = cond.executeI16(frame);
+            executePhiWrites(frame);
+            for (short i = 0; i < cases.length; i++) {
+                short caseValue = cases[i].executeI16(frame);
+                if (profile(i, val == caseValue)) {
+                    return i + CASE_LABEL_START_INDEX;
+                }
+            }
+            return DEFAULT_LABEL_INDEX;
+        }
+
+        abstract boolean profile(int i, boolean value);
+
+    }
+
+    public static class LLVMI16SwitchNode extends LLVMI16SwitchBaseNode {
+
+        public LLVMI16SwitchNode(LLVMI16Node cond, LLVMI16Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
+            super(cond, cases, successors, defaultLabel, phiWriteNodes);
+        }
+
+        @Override
+        boolean profile(int i, boolean value) {
+            return value;
+        }
+
+    }
+
+    public static class LLVMI16ProfilingSwitchNode extends LLVMI16SwitchBaseNode {
+
+        @CompilationFinal private final ConditionProfile[] profiles;
+
+        public LLVMI16ProfilingSwitchNode(LLVMI16Node cond, LLVMI16Node[] cases, int[] successors, int defaultLabel, LLVMNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);
             profiles = createProfiles(cases.length);
         }
