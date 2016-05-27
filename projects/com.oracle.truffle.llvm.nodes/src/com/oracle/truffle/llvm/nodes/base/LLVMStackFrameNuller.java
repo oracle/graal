@@ -46,7 +46,7 @@ public abstract class LLVMStackFrameNuller {
 
     abstract void nullify(VirtualFrame frame, FrameSlot slot);
 
-    public static class LLVMBooleanNuller extends LLVMStackFrameNuller {
+    public static final class LLVMBooleanNuller extends LLVMStackFrameNuller {
 
         public LLVMBooleanNuller(FrameSlot slot) {
             super(slot);
@@ -59,7 +59,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMByteNuller extends LLVMStackFrameNuller {
+    public static final class LLVMByteNuller extends LLVMStackFrameNuller {
 
         public LLVMByteNuller(FrameSlot slot) {
             super(slot);
@@ -72,7 +72,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMIntNuller extends LLVMStackFrameNuller {
+    public static final class LLVMIntNuller extends LLVMStackFrameNuller {
 
         public LLVMIntNuller(FrameSlot slot) {
             super(slot);
@@ -85,7 +85,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMLongNuller extends LLVMStackFrameNuller {
+    public static final class LLVMLongNuller extends LLVMStackFrameNuller {
 
         public LLVMLongNuller(FrameSlot slot) {
             super(slot);
@@ -98,7 +98,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMFloatNuller extends LLVMStackFrameNuller {
+    public static final class LLVMFloatNuller extends LLVMStackFrameNuller {
 
         public LLVMFloatNuller(FrameSlot slot) {
             super(slot);
@@ -111,7 +111,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMDoubleNull extends LLVMStackFrameNuller {
+    public static final class LLVMDoubleNull extends LLVMStackFrameNuller {
 
         public LLVMDoubleNull(FrameSlot slot) {
             super(slot);
@@ -124,7 +124,7 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static class LLVMObjectNuller extends LLVMStackFrameNuller {
+    public static final class LLVMObjectNuller extends LLVMStackFrameNuller {
 
         public LLVMObjectNuller(FrameSlot slot) {
             super(slot);
