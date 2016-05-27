@@ -40,86 +40,137 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.LongLocation;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-public abstract class SLReadPropertyCacheNode extends Node {
+@SuppressWarnings("unused")
+public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
 
-    protected static final int CACHE_LIMIT = 3;
+    public abstract Object executeRead(VirtualFrame frame, Object receiver, Object name);
 
-    protected final String propertyName;
-
-    public SLReadPropertyCacheNode(String propertyName) {
-        this.propertyName = propertyName;
-    }
-
-    public static SLReadPropertyCacheNode create(String propertyName) {
-        return SLReadPropertyCacheNodeGen.create(propertyName);
-    }
-
-    public abstract Object executeObject(DynamicObject receiver);
-
-    public abstract long executeLong(DynamicObject receiver) throws UnexpectedResultException;
-
-    /*
-     * We use a separate long specialization to avoid boxing for long.
+    /**
+     * Polymorphic inline cache for a limited number of distinct property names and shapes.
      */
-    @Specialization(limit = "CACHE_LIMIT", guards = {"longLocation != null", "shape.check(receiver)"}, assumptions = "shape.getValidAssumption()")
-    protected long doCachedLong(DynamicObject receiver,   //
-                    @Cached("receiver.getShape()") Shape shape,   //
-                    @Cached("getLongLocation(shape)") LongLocation longLocation) {
-        return longLocation.getLong(receiver, shape);
+    @Specialization(limit = "CACHE_LIMIT", //
+                    guards = {
+                                    "cachedName.equals(name)",
+                                    "shape != null",
+                                    "shape.check(receiver)"
+                    }, //
+                    assumptions = {
+                                    "shape.getValidAssumption()"
+                    })
+    protected Object readCached(DynamicObject receiver, Object name,
+                    @Cached("name") Object cachedName,
+                    @Cached("lookupShape(receiver)") Shape shape,
+                    @Cached("lookupLocation(shape, name)") Location location) {
+
+        return location.get(receiver, shape);
     }
 
-    protected LongLocation getLongLocation(Shape shape) {
-        Property property = shape.getProperty(propertyName);
-        if (property != null && property.getLocation() instanceof LongLocation) {
-            return (LongLocation) property.getLocation();
-        }
-        return null;
-    }
+    protected static Location lookupLocation(Shape shape, Object name) {
+        /* Initialization of cached values always happens in a slow path. */
+        CompilerAsserts.neverPartOfCompilation();
 
-    /*
-     * As soon as we have seen an object read, we cannot avoid boxing long anymore therefore we can
-     * contain all long cache entries.
-     */
-    @Specialization(limit = "CACHE_LIMIT", contains = "doCachedLong", guards = "shape.check(receiver)", assumptions = "shape.getValidAssumption()")
-    protected static Object doCachedObject(DynamicObject receiver,   //
-                    @Cached("receiver.getShape()") Shape shape,   //
-                    @Cached("shape.getProperty(propertyName)") Property property) {
+        Property property = shape.getProperty(name);
         if (property == null) {
-            return SLNull.SINGLETON;
-        } else {
-            return property.get(receiver, shape);
+            /* Property does not exist. */
+            throw new SLUndefinedNameException("property", name);
         }
+
+        return property.getLocation();
     }
 
-    @Specialization(guards = "updateShape(receiver)")
-    public Object updateShapeAndRead(DynamicObject receiver) {
-        return executeObject(receiver);
+    /**
+     * The generic case is used if the number of shapes accessed overflows the limit of the
+     * polymorphic inline cache.
+     */
+    @TruffleBoundary
+    @Specialization(contains = {"readCached"}, guards = {"isValidSimpleLanguageObject(receiver)"})
+    protected Object readUncached(DynamicObject receiver, Object name) {
+
+        Object result = receiver.get(name);
+        if (result == null) {
+            /* Property does not exist. */
+            throw new SLUndefinedNameException("property", name);
+        }
+        return result;
+    }
+
+    /**
+     * When no specialization fits, the receiver is either not an object (which is a type error), or
+     * the object has a shape that has been invalidated.
+     */
+    @Fallback
+    protected Object updateShape(Object r, Object name) {
+        /*
+         * Slow path that we do not handle in compiled code. But no need to invalidate compiled
+         * code.
+         */
+        CompilerDirectives.transferToInterpreter();
+
+        if (!(r instanceof DynamicObject)) {
+            /* Non-object types do not have properties. */
+            throw new SLUndefinedNameException("property", name);
+        }
+        DynamicObject receiver = (DynamicObject) r;
+        receiver.updateShape();
+        return readUncached(receiver, name);
+
     }
 
     /*
-     * The generic case is used if the number of shapes accessed overflows the limit.
+     * All code below is only needed for language interoperability.
      */
-    @Specialization(contains = {"doCachedObject", "updateShapeAndRead"})
-    @TruffleBoundary
-    protected Object doGeneric(DynamicObject receiver) {
-        return receiver.get(receiver, SLNull.SINGLETON);
-    }
 
-    protected static boolean updateShape(DynamicObject object) {
-        CompilerDirectives.transferToInterpreter();
-        return object.updateShape();
-    }
+    /** The child node to access the foreign object. */
+    @Child private Node foreignRead;
 
+    /** The child node to convert the result of the foreign object access to an SL value. */
+    @Child private SLForeignToSLTypeNode toSLType;
+
+    /**
+     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
+     * data.
+     */
+    @Specialization(guards = "isForeignObject(receiver)")
+    protected Object readForeign(VirtualFrame frame, TruffleObject receiver, Object name) {
+        // Lazily insert the foreign object access nodes upon the first execution.
+        if (foreignRead == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // SL maps a property access to a READ message if the receiver is a foreign object.
+            this.foreignRead = insert(Message.READ.createNode());
+            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
+        }
+        try {
+            // Perform the foreign object access.
+            Object result = ForeignAccess.sendRead(foreignRead, frame, receiver, name);
+            // Convert the result to an SL value.
+            Object slValue = toSLType.executeWithTarget(frame, result);
+            return slValue;
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            // In case the foreign access is not successful, we return null.
+            return SLNull.SINGLETON;
+        }
+    }
 }

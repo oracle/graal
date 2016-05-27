@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,35 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.sl.runtime.SLContext;
 
-/**
- * The node for reading a property of an object. When executed, this node:
- * <ol>
- * <li>evaluates the object expression on the left hand side of the object access operator</li>
- * <li>evaluated the property name</li>
- * <li>reads the named property</li>
- * </ol>
- */
-@NodeInfo(shortName = ".")
-@NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode")})
-public abstract class SLReadPropertyNode extends SLExpressionNode {
+public abstract class SLPropertyCacheNode extends Node {
+    protected static final int CACHE_LIMIT = 3;
 
-    /**
-     * The polymorphic cache node that performs the actual read. This is a separate node so that it
-     * can be re-used in cases where the receiver and name are not nodes but already evaluated
-     * values.
-     */
-    @Child private SLReadPropertyCacheNode readNode = SLReadPropertyCacheNodeGen.create();
+    protected Shape lookupShape(DynamicObject receiver) {
+        CompilerAsserts.neverPartOfCompilation();
 
-    @Specialization
-    protected Object read(VirtualFrame frame, Object receiver, Object name) {
-        return readNode.executeRead(frame, receiver, name);
+        if (!SLContext.isSLObject(receiver)) {
+            /* The specialization doForeignObject handles this case. */
+            return null;
+        }
+        return receiver.getShape();
+    }
+
+    protected boolean isValidSimpleLanguageObject(DynamicObject receiver) {
+        if (!SLContext.isSLObject(receiver)) {
+            /* The specialization doForeignObject handles this case. */
+            return false;
+        }
+        return receiver.getShape().isValid();
+    }
+
+    protected boolean isForeignObject(TruffleObject receiver) {
+        return !SLContext.isSLObject(receiver);
     }
 }

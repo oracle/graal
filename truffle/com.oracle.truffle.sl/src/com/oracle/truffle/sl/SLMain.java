@@ -62,7 +62,6 @@ import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
-import com.oracle.truffle.sl.nodes.call.SLUndefinedFunctionException;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -91,6 +90,7 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -200,8 +200,8 @@ public final class SLMain {
 
         } catch (UnsupportedSpecializationException ex) {
             out.println(formatTypeError(ex));
-        } catch (SLUndefinedFunctionException ex) {
-            out.println(String.format("Undefined function: %s", ex.getFunctionName()));
+        } catch (SLUndefinedNameException ex) {
+            out.println(ex.getMessage());
         }
 
         engine.dispose();

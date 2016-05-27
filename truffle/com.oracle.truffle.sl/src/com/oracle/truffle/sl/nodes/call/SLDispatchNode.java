@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 public abstract class SLDispatchNode extends Node {
 
@@ -57,7 +58,7 @@ public abstract class SLDispatchNode extends Node {
 
     @Specialization(guards = "function.getCallTarget() == null")
     protected Object doUndefinedFunction(SLFunction function, @SuppressWarnings("unused") Object[] arguments) {
-        throw new SLUndefinedFunctionException(function.getName());
+        throw new SLUndefinedNameException("function", function.getName());
     }
 
     /**

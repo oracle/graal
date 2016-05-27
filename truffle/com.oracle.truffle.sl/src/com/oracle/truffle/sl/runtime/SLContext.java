@@ -207,10 +207,6 @@ public final class SLContext extends ExecutionContext {
         return LAYOUT.getType().isInstance(value) && LAYOUT.getType().cast(value).getShape().getObjectType() == SLObjectType.SINGLETON;
     }
 
-    public static DynamicObject castSLObject(TruffleObject value) {
-        return LAYOUT.getType().cast(value);
-    }
-
     /*
      * Methods for language interoperability.
      */

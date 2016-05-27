@@ -40,10 +40,20 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
@@ -51,79 +61,154 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-public abstract class SLWritePropertyCacheNode extends Node {
-    protected static final int CACHE_LIMIT = 3;
+@SuppressWarnings("unused")
+public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
-    protected final String propertyName;
+    public abstract void executeWrite(VirtualFrame frame, Object receiver, Object name, Object value);
 
-    public SLWritePropertyCacheNode(String propertyName) {
-        this.propertyName = propertyName;
-    }
-
-    public abstract void executeObject(DynamicObject receiver, Object value);
-
-    @Specialization(guards = {"location != null", "shape.check(receiver)", "canSet(location, receiver, value)"}, assumptions = "shape.getValidAssumption()", limit = "CACHE_LIMIT")
-    public void writeExistingPropertyCached(DynamicObject receiver, Object value, //
-                    @Cached("lookupLocation(receiver, value)") Location location, //
-                    @Cached("receiver.getShape()") Shape shape) {
+    /**
+     * Polymorphic inline cache for writing a property that already exists (no shape change is
+     * necessary).
+     */
+    @Specialization(limit = "CACHE_LIMIT", //
+                    guards = {
+                                    "cachedName.equals(name)",
+                                    "shape != null",
+                                    "shape.check(receiver)",
+                                    "location != null",
+                                    "canSet(location, receiver, value)"
+                    }, //
+                    assumptions = {
+                                    "shape.getValidAssumption()"
+                    })
+    protected void writeExistingPropertyCached(DynamicObject receiver, Object name, Object value,
+                    @Cached("name") Object cachedName,
+                    @Cached("lookupShape(receiver)") Shape shape,
+                    @Cached("lookupLocation(shape, name, value)") Location location) {
         try {
             location.set(receiver, value, shape);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
-            throw new IllegalStateException(e);
+
+        } catch (IncompatibleLocationException | FinalLocationException ex) {
+            /* Our guards ensure that the value can be stored, so this cannot happen. */
+            throw new IllegalStateException(ex);
         }
     }
 
-    @Specialization(guards = {"existingLocation == null", "oldShape.check(receiver)", "canSet(newLocation, receiver, value)"}, assumptions = {"oldShape.getValidAssumption()",
-                    "newShape.getValidAssumption()"}, limit = "CACHE_LIMIT")
-    public void writeNewPropertyCached(DynamicObject receiver, Object value, //
-                    @Cached("lookupLocation(receiver, value)") @SuppressWarnings("unused") Location existingLocation, //
-                    @Cached("receiver.getShape()") Shape oldShape, //
-                    @Cached("defineProperty(oldShape, value)") Shape newShape, //
-                    @Cached("getLocation(newShape)") Location newLocation) {
+    /**
+     * Polymorphic inline cache for writing a property that does not exist yet (shape change is
+     * necessary).
+     */
+    @Specialization(limit = "CACHE_LIMIT", //
+                    guards = {
+                                    "cachedName.equals(name)",
+                                    "oldShape != null",
+                                    "oldShape.check(receiver)",
+                                    "oldLocation == null",
+                                    "canSet(newLocation, receiver, value)"
+                    }, //
+                    assumptions = {
+                                    "oldShape.getValidAssumption()",
+                                    "newShape.getValidAssumption()"
+                    })
+    protected void writeNewPropertyCached(DynamicObject receiver, Object name, Object value,
+                    @Cached("name") Object cachedName,
+                    @Cached("lookupShape(receiver)") Shape oldShape,
+                    @Cached("lookupLocation(oldShape, name, value)") Location oldLocation,
+                    @Cached("defineProperty(oldShape, name, value)") Shape newShape,
+                    @Cached("lookupLocation(newShape, name, value)") Location newLocation) {
         try {
             newLocation.set(receiver, value, oldShape, newShape);
-        } catch (IncompatibleLocationException e) {
-            throw new IllegalStateException(e);
+
+        } catch (IncompatibleLocationException ex) {
+            /* Our guards ensure that the value can be stored, so this cannot happen. */
+            throw new IllegalStateException(ex);
         }
     }
 
-    @Specialization(guards = "updateShape(receiver)")
-    public void updateShapeAndWrite(DynamicObject receiver, Object value) {
-        executeObject(receiver, value);
-    }
+    protected static Location lookupLocation(Shape shape, Object name, Object value) {
+        CompilerAsserts.neverPartOfCompilation();
 
-    @TruffleBoundary
-    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached", "updateShapeAndWrite"})
-    public void writeUncached(DynamicObject receiver, Object value) {
-        receiver.define(propertyName, value);
-    }
-
-    protected final Location lookupLocation(DynamicObject object, Object value) {
-        final Property property = object.getShape().getProperty(propertyName);
-
-        if (property != null && property.getLocation().canSet(object, value)) {
-            return property.getLocation();
-        } else {
+        Property property = shape.getProperty(name);
+        if (property == null) {
+            /* Property does not exist yet, so a shape change is necessary. */
             return null;
         }
+
+        Location location = property.getLocation();
+        if (!location.canSet(value)) {
+            /* Existing property has an incompatible type, so a shape change is necessary. */
+            return null;
+        }
+
+        return location;
     }
 
-    protected final Shape defineProperty(Shape oldShape, Object value) {
-        return oldShape.defineProperty(propertyName, value, 0);
-    }
-
-    protected final Location getLocation(Shape newShape) {
-        return newShape.getProperty(propertyName).getLocation();
+    protected static Shape defineProperty(Shape oldShape, Object name, Object value) {
+        return oldShape.defineProperty(name, value, 0);
     }
 
     protected static boolean canSet(Location location, DynamicObject receiver, Object value) {
         return location.canSet(receiver, value);
     }
 
-    protected static boolean updateShape(DynamicObject object) {
-        CompilerDirectives.transferToInterpreter();
-        return object.updateShape();
+    /**
+     * The generic case is used if the number of shapes accessed overflows the limit of the
+     * polymorphic inline cache.
+     */
+    @TruffleBoundary
+    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSimpleLanguageObject(receiver)"})
+    protected void writeUncached(DynamicObject receiver, Object name, Object value) {
+        receiver.define(name, value);
     }
 
+    /**
+     * When no specialization fits, the receiver is either not an object (which is a type error), or
+     * the object has a shape that has been invalidated.
+     */
+    @Fallback
+    protected void updateShape(Object r, Object name, Object value) {
+        /*
+         * Slow path that we do not handle in compiled code. But no need to invalidate compiled
+         * code.
+         */
+        CompilerDirectives.transferToInterpreter();
+
+        if (!(r instanceof DynamicObject)) {
+            /* Non-object types do not have properties. */
+            throw new SLUndefinedNameException("property", name);
+        }
+        DynamicObject receiver = (DynamicObject) r;
+        receiver.updateShape();
+        writeUncached(receiver, name, value);
+    }
+
+    /*
+     * All code below is only needed for language interoperability.
+     */
+
+    /** The child node to access the foreign object. */
+    @Child private Node foreignWrite;
+
+    /**
+     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
+     * data.
+     */
+    @Specialization(guards = "isForeignObject(receiver)")
+    protected void writeForeign(VirtualFrame frame, TruffleObject receiver, Object name, Object value) {
+        // Lazily insert the foreign object access nodes upon the first execution.
+        if (foreignWrite == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // SL maps a property write access to a WRITE message if the receiver is a foreign
+            // object.
+            this.foreignWrite = insert(Message.WRITE.createNode());
+        }
+        try {
+            // Perform the foreign object access.
+            ForeignAccess.sendWrite(foreignWrite, frame, receiver, name, value);
+        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            // Foreign access was not successful.
+        }
+    }
 }
