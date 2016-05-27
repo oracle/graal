@@ -99,7 +99,7 @@ public final class TypeReference {
             return null;
         }
         ResolvedJavaType exactType = type.isLeaf() ? type : null;
-        if (exactType == null && assumptions != null) {
+        if (exactType == null) {
             Assumptions.AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
             if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
                 leafConcreteSubtype.recordTo(assumptions);
