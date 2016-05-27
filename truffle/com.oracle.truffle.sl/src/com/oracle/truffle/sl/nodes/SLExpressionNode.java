@@ -45,7 +45,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
  * Base class for all SL nodes that produce a value and therefore benefit from type specialization.
@@ -80,10 +79,6 @@ public abstract class SLExpressionNode extends SLStatementNode {
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.expectLong(executeGeneric(frame));
-    }
-
-    public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectSLFunction(executeGeneric(frame));
     }
 
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {

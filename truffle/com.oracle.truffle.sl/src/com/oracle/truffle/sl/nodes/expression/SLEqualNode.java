@@ -45,7 +45,6 @@ import java.math.BigInteger;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -63,9 +62,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @NodeInfo(shortName = "==")
 public abstract class SLEqualNode extends SLBinaryNode {
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     @Specialization
     protected boolean equal(long left, long right) {

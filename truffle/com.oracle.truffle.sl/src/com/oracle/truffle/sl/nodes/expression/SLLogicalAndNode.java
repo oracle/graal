@@ -59,9 +59,6 @@ import com.oracle.truffle.sl.nodes.SLBinaryNode;
 @SuppressWarnings("unused")
 public abstract class SLLogicalAndNode extends SLBinaryNode {
 
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
-
     /**
      * This method is called after the left child was evaluated, but before the right child is
      * evaluated. The right child is only evaluated when the return value is {code true}.
