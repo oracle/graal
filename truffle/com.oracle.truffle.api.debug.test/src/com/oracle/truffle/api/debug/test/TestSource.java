@@ -67,6 +67,17 @@ final class TestSource {
                         sourceName + FILENAME_EXTENSION).withMimeType(MIME_TYPE);
     }
 
+    static Source createCall(String sourceName) {
+        return Source.fromText("ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    STATEMENT\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo)\n" +
+                        ")\n",
+                        sourceName + FILENAME_EXTENSION).withMimeType(MIME_TYPE);
+    }
+
     static Source createCallLoop3(String sourceName) {
         return Source.fromText("ROOT(\n" +
                         "  DEFINE(foo,\n" +

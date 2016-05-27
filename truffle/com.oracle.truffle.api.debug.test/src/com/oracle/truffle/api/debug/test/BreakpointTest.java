@@ -65,6 +65,27 @@ public class BreakpointTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testBreak2() throws Throwable {
+        final Source test2 = TestSource.createCall("testBreak");
+        final Breakpoint[] breakpoints = new Breakpoint[test2.getLineCount() + 1];
+        final Debugger debugger = getDebugger();
+        expectExecutionEvent().stepInto();
+        expectSuspendedEvent().checkState(5, true, "STATEMENT").run(new Runnable() {
+
+            public void run() {
+                try {
+                    breakpoints[3] = debugger.setLineBreakpoint(0, test2.createLineLocation(3), false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).resume();
+        expectSuspendedEvent().checkState(3, true, "STATEMENT\n  ").resume();   // FIXME-SourceSection
+        getEngine().eval(test2);
+        assertExecutedOK();
+    }
+
+    @Test
     public void testBreakOneShot() throws Throwable {
         testBreakOneShot(false);
         testBreakOneShot(true);
