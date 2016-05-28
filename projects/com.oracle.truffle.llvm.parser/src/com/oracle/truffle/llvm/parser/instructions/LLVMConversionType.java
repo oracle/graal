@@ -33,15 +33,17 @@ public enum LLVMConversionType {
     SIGN_EXTENSION,
     ZERO_EXTENSION,
     TRUNC,
-    BITCAST;
+    BITCAST,
+    FLOAT_TO_UINT;
 
     public static LLVMConversionType fromString(String opcode) {
         switch (opcode) {
             case "zext":
             case "inttoptr":
             case "uitofp":
-            case "fptoui":
                 return LLVMConversionType.ZERO_EXTENSION;
+            case "fptoui":
+                return LLVMConversionType.FLOAT_TO_UINT;
             case "sext":
             case "fptosi":
             case "sitofp":

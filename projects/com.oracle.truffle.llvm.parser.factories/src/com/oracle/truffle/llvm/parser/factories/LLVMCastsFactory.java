@@ -91,6 +91,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI1NodeFactory.LLVMI8ToI1Nod
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVM80BitFloatToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMAddressToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMDoubleToI32NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMDoubleToUnsignedI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFloatToI32BitNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFloatToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory.LLVMFunctionToI32NodeGen;
@@ -327,7 +328,7 @@ public final class LLVMCastsFactory {
         if (targetType == LLVMBaseType.FLOAT) {
             return fromNode;
         }
-        if (hasJavaCastSemantics() || conv == LLVMConversionType.ZERO_EXTENSION) {
+        if (hasJavaCastSemantics() || conv == LLVMConversionType.ZERO_EXTENSION || conv == LLVMConversionType.FLOAT_TO_UINT) {
             switch (targetType) {
                 case I8:
                     return LLVMFloatToI8NodeGen.create(fromNode);
@@ -551,6 +552,21 @@ public final class LLVMCastsFactory {
                     return LLVMDoubleToI64BitCastNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
+            }
+        } else if (conv == LLVMConversionType.FLOAT_TO_UINT) {
+            switch (targetType) {
+                case I8:
+                    return LLVMDoubleToI8NodeGen.create(fromNode);
+                case I16:
+                    return LLVMDoubleToI16NodeGen.create(fromNode);
+                case I32:
+                    return LLVMDoubleToUnsignedI32NodeGen.create(fromNode);
+                case I64:
+                    return LLVMDoubleToI64NodeGen.create(fromNode);
+                case X86_FP80: // TODO fix the unsigned case, see the I32 case
+                    return LLVMDoubleToLLVM80BitFloatNodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType);
             }
         }
         throw new AssertionError(targetType + " " + conv);
