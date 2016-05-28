@@ -46,17 +46,26 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 public abstract class SLDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 2;
 
-    public abstract Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments);
+    public abstract Object executeDispatch(VirtualFrame frame, TruffleObject function, Object[] arguments);
 
     /**
      * Inline cached specialization of the dispatch.
@@ -96,10 +105,13 @@ public abstract class SLDispatchNode extends Node {
      * @param callNode the {@link DirectCallNode} specifically created for the {@link CallTarget} in
      *            cachedFunction.
      */
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function == cachedFunction", assumptions = "cachedFunction.getCallTargetStable()")
-    protected static Object doDirect(VirtualFrame frame, SLFunction function, Object[] arguments,   //
-                    @Cached("function") SLFunction cachedFunction,   //
+    @Specialization(limit = "INLINE_CACHE_SIZE", //
+                    guards = "function == cachedFunction", //
+                    assumptions = "cachedFunction.getCallTargetStable()")
+    protected static Object doDirect(VirtualFrame frame, SLFunction function, Object[] arguments,
+                    @Cached("function") SLFunction cachedFunction,
                     @Cached("create(cachedFunction.getCallTarget())") DirectCallNode callNode) {
+
         /* Inline cache hit, we are safe to execute the cached call target. */
         return callNode.call(frame, arguments);
     }
@@ -110,7 +122,7 @@ public abstract class SLDispatchNode extends Node {
      * no method inlining is performed.
      */
     @Specialization(contains = "doDirect")
-    protected static Object doIndirect(VirtualFrame frame, SLFunction function, Object[] arguments,   //
+    protected static Object doIndirect(VirtualFrame frame, SLFunction function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode) {
         /*
          * SL has a quite simple call lookup: just ask the function for the current call target, and
@@ -129,4 +141,42 @@ public abstract class SLDispatchNode extends Node {
         return callNode.call(frame, callTarget, arguments);
     }
 
+    /*
+     * All code below is only needed for language interoperability.
+     */
+
+    /** The child node to call the foreign function. */
+    @Child private Node crossLanguageCall;
+
+    /** The child node to convert the result of the foreign function call to an SL value. */
+    @Child private SLForeignToSLTypeNode toSLType;
+
+    /**
+     * If the function is a foreign value, i.e., not a SLFunction, we use Truffle's interop API to
+     * execute the foreign function.
+     */
+    @Specialization(guards = "isForeignFunction(function)")
+    protected Object doForeign(VirtualFrame frame, TruffleObject function, Object[] arguments) {
+        // Lazily insert the foreign object access nodes upon the first execution.
+        if (crossLanguageCall == null) {
+            // SL maps a function invocation to an EXECUTE message.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            crossLanguageCall = insert(Message.createExecute(arguments.length).createNode());
+            toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
+        }
+        try {
+            // Perform the foreign function call.
+            Object res = ForeignAccess.sendExecute(crossLanguageCall, frame, function, arguments);
+            // Convert the result to an SL value.
+            Object slValue = toSLType.executeWithTarget(frame, res);
+            return slValue;
+        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            // In case the foreign function call is not successful, we return null.
+            return SLNull.SINGLETON;
+        }
+    }
+
+    protected boolean isForeignFunction(TruffleObject function) {
+        return !(function instanceof SLFunction);
+    }
 }
