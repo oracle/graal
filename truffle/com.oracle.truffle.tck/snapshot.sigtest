@@ -11,6 +11,7 @@ meth protected abstract java.lang.String mimeType()
 meth protected abstract java.lang.String returnsNull()
 meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM() throws java.lang.Exception
 meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM(com.oracle.truffle.api.vm.PolyglotEngine$Builder) throws java.lang.Exception
+meth protected java.lang.String addToArray()
 meth protected java.lang.String complexAdd()
 meth protected java.lang.String complexAddWithMethod()
 meth protected java.lang.String complexCopy()
@@ -25,6 +26,7 @@ meth protected java.lang.String plusInt()
 meth protected java.lang.String valuesObject()
 meth protected void assertDouble(java.lang.String,double,double)
 meth public final static void disposePreviousVM()
+meth public void addOneToAnArrayElement() throws java.lang.Exception
 meth public void multiplyTwoVariables() throws java.lang.Exception
 meth public void readWriteBooleanValue() throws java.lang.Exception
 meth public void readWriteByteValue() throws java.lang.Exception
