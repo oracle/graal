@@ -74,8 +74,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
     @Specialization(limit = "CACHE_LIMIT", //
                     guards = {
                                     "cachedName.equals(name)",
-                                    "shape != null",
-                                    "shape.check(receiver)"
+                                    "shapeCheck(shape, receiver)"
                     }, //
                     assumptions = {
                                     "shape.getValidAssumption()"

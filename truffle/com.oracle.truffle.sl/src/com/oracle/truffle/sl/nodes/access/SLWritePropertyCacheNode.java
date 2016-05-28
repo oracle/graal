@@ -75,8 +75,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
     @Specialization(limit = "CACHE_LIMIT", //
                     guards = {
                                     "cachedName.equals(name)",
-                                    "shape != null",
-                                    "shape.check(receiver)",
+                                    "shapeCheck(shape, receiver)",
                                     "location != null",
                                     "canSet(location, receiver, value)"
                     }, //
@@ -103,8 +102,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
     @Specialization(limit = "CACHE_LIMIT", //
                     guards = {
                                     "cachedName.equals(name)",
-                                    "oldShape != null",
-                                    "oldShape.check(receiver)",
+                                    "shapeCheck(oldShape, receiver)",
                                     "oldLocation == null",
                                     "canSet(newLocation, receiver, value)"
                     }, //

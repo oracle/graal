@@ -50,6 +50,10 @@ import com.oracle.truffle.sl.runtime.SLContext;
 public abstract class SLPropertyCacheNode extends Node {
     protected static final int CACHE_LIMIT = 3;
 
+    protected boolean shapeCheck(Shape shape, DynamicObject receiver) {
+        return shape != null && shape.check(receiver);
+    }
+
     protected Shape lookupShape(DynamicObject receiver) {
         CompilerAsserts.neverPartOfCompilation();
 
