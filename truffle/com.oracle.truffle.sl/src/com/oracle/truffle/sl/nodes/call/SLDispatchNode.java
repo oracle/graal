@@ -41,6 +41,8 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,11 +57,6 @@ public abstract class SLDispatchNode extends Node {
     protected static final int INLINE_CACHE_SIZE = 2;
 
     public abstract Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments);
-
-    @Specialization(guards = "function.getCallTarget() == null")
-    protected Object doUndefinedFunction(SLFunction function, @SuppressWarnings("unused") Object[] arguments) {
-        throw new SLUndefinedNameException("function", function.getName());
-    }
 
     /**
      * Inline cached specialization of the dispatch.
@@ -87,7 +84,8 @@ public abstract class SLDispatchNode extends Node {
      * object is change. To avoid a check for that, we use an Assumption that is invalidated by the
      * SLFunction when the change is performed. Since checking an assumption is a no-op in compiled
      * code, the assumption check performed by the DSL does not add any overhead during optimized
-     * execution.
+     * execution. The assumption check also covers the check for undefined functions: As long as a
+     * function is undefined, it has an always invalid assumption.
      * </p>
      *
      * @see Cached
@@ -118,7 +116,17 @@ public abstract class SLDispatchNode extends Node {
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return callNode.call(frame, function.getCallTarget(), arguments);
+        RootCallTarget callTarget = function.getCallTarget();
+        if (callTarget == null) {
+            /*
+             * Undefined function. This is a slow-path code (since we are actually aborting
+             * execution), no need to compile it.
+             */
+            CompilerDirectives.transferToInterpreter();
+            throw new SLUndefinedNameException("function", function.getName());
+        }
+
+        return callNode.call(frame, callTarget, arguments);
     }
 
 }

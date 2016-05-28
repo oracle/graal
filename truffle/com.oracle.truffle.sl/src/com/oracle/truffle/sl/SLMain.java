@@ -183,7 +183,7 @@ public final class SLMain {
         executeSource(source, System.in, System.out);
     }
 
-    private static void executeSource(Source source, InputStream in, PrintStream out) throws IOException {
+    private static void executeSource(Source source, InputStream in, PrintStream out) {
         out.println("== running on " + Truffle.getRuntime().getName());
 
         PolyglotEngine engine = PolyglotEngine.newBuilder().setIn(in).setOut(out).build();
@@ -198,10 +198,20 @@ public final class SLMain {
                 out.println(result.get());
             }
 
-        } catch (UnsupportedSpecializationException ex) {
-            out.println(formatTypeError(ex));
-        } catch (SLUndefinedNameException ex) {
-            out.println(ex.getMessage());
+        } catch (Throwable ex) {
+            /*
+             * PolyglotEngine.eval wraps the actual exception in an IOException, so we have to
+             * unwrap here.
+             */
+            Throwable cause = ex.getCause();
+            if (cause instanceof UnsupportedSpecializationException) {
+                out.println(formatTypeError((UnsupportedSpecializationException) cause));
+            } else if (cause instanceof SLUndefinedNameException) {
+                out.println(cause.getMessage());
+            } else {
+                /* Unexpected error, just print out the full stack trace for debugging purposes. */
+                ex.printStackTrace(out);
+            }
         }
 
         engine.dispose();
