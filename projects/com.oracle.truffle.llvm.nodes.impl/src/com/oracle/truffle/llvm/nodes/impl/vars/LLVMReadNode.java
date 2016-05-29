@@ -158,7 +158,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         protected abstract FrameSlot getSlot();
 
         @Specialization
-        protected Object readI32(VirtualFrame frame) {
+        protected Object readObject(VirtualFrame frame) {
             return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
