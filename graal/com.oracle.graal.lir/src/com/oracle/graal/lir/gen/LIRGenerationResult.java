@@ -28,12 +28,34 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 
 import jdk.vm.ci.code.CallingConvention;
 
-public interface LIRGenerationResult {
+public abstract class LIRGenerationResult {
+
+    private final LIR lir;
+    private final FrameMapBuilder frameMapBuilder;
+    private FrameMap frameMap;
+    private final CallingConvention callingConvention;
+    /**
+     * Records whether the code being generated makes at least one foreign call.
+     */
+    private boolean hasForeignCall;
+    /**
+     * Human readable name of this compilation unit.
+     */
+    private final String compilationUnitName;
+
+    public LIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
+        this.lir = lir;
+        this.frameMapBuilder = frameMapBuilder;
+        this.compilationUnitName = compilationUnitName;
+        this.callingConvention = callingConvention;
+    }
 
     /**
      * Returns the incoming calling convention for the parameters of the method that is compiled.
      */
-    CallingConvention getCallingConvention();
+    public CallingConvention getCallingConvention() {
+        return callingConvention;
+    }
 
     /**
      * Returns the {@link FrameMapBuilder} for collecting the information to build a
@@ -41,7 +63,10 @@ public interface LIRGenerationResult {
      *
      * This method can only be used prior calling {@link #buildFrameMap}.
      */
-    FrameMapBuilder getFrameMapBuilder();
+    public final FrameMapBuilder getFrameMapBuilder() {
+        assert frameMap == null : "getFrameMapBuilder() can only be used before calling buildFrameMap()!";
+        return frameMapBuilder;
+    }
 
     /**
      * Creates a {@link FrameMap} out of the {@link FrameMapBuilder}. This method should only be
@@ -49,20 +74,37 @@ public interface LIRGenerationResult {
      *
      * @see FrameMapBuilder#buildFrameMap
      */
-    void buildFrameMap();
+    public void buildFrameMap() {
+        assert frameMap == null : "buildFrameMap() can only be called once!";
+        frameMap = frameMapBuilder.buildFrameMap(this);
+    }
 
     /**
      * Returns the {@link FrameMap} associated with this {@link LIRGenerationResult}.
      *
      * This method can only be called after {@link #buildFrameMap}.
      */
-    FrameMap getFrameMap();
+    public FrameMap getFrameMap() {
+        assert frameMap != null : "getFrameMap() can only be used after calling buildFrameMap()!";
+        return frameMap;
+    }
 
-    LIR getLIR();
+    public LIR getLIR() {
+        return lir;
+    }
 
-    boolean hasForeignCall();
+    /**
+     * Determines whether the code being generated makes at least one foreign call.
+     */
+    public boolean hasForeignCall() {
+        return hasForeignCall;
+    }
 
-    void setForeignCall(boolean b);
+    public final void setForeignCall(boolean hasForeignCall) {
+        this.hasForeignCall = hasForeignCall;
+    }
 
-    String getCompilationUnitName();
+    public String getCompilationUnitName() {
+        return compilationUnitName;
+    }
 }
