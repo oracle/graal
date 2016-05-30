@@ -32,7 +32,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     private final ConstantFieldProvider graalConstantFieldProvider;
@@ -46,44 +45,57 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         JavaConstant receiver = tool.getReceiver();
-        if (!field.isStatic() && receiver.isNonNull()) {
-            JavaType fieldType = field.getType();
-            if (field.isFinal() || field.getAnnotation(CompilationFinal.class) != null ||
-                            (fieldType.getJavaKind() == JavaKind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
-                final JavaConstant constant = tool.readValue();
-                assert verifyFieldValue(field, constant);
-                if (fieldType.getJavaKind() == JavaKind.Object && fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray() &&
-                                (field.getAnnotation(CompilationFinal.class) != null || field.getAnnotation(Children.class) != null)) {
-                    return tool.foldStableArray(constant, getArrayDimension(fieldType), true);
-                } else {
-                    return tool.foldConstant(constant);
+        if (field.isStatic() || receiver.isNonNull()) {
+            if (field.getType().getJavaKind() == JavaKind.Object) {
+                CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
+                if (compilationFinal != null) {
+                    int stableDimensions = actualStableDimensions(field, compilationFinal.dimensions());
+                    return tool.foldStableArray(tool.readValue(), stableDimensions, true);
+                } else if (!field.isStatic() && field.getAnnotation(Children.class) != null) {
+                    int stableDimensions = field.getType().isArray() ? 1 : 0;
+                    return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
+                } else if (!field.isStatic() && (field.isFinal() || field.getAnnotation(Child.class) != null)) {
+                    return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
                 }
-            }
-        } else if (field.isStatic()) {
-            if (field.getAnnotation(CompilationFinal.class) != null) {
-                JavaConstant constant = tool.readValue();
-                return tool.foldStableArray(constant, getArrayDimension(field.getType()), true);
+            } else if (field.isFinal() || (field.getAnnotation(CompilationFinal.class)) != null) {
+                return tool.foldConstant(tool.readValue());
             }
         }
 
         return graalConstantFieldProvider.readConstantField(field, tool);
     }
 
-    private static int getArrayDimension(JavaType type) {
+    private static int actualStableDimensions(ResolvedJavaField field, int dimensions) {
+        if (dimensions == 0) {
+            return 0;
+        }
+        int arrayDim = getArrayDimensions(field.getType());
+        if (dimensions < 0) {
+            if (dimensions != -1) {
+                throw new IllegalArgumentException("Negative @CompilationFinal dimensions");
+            }
+            return arrayDim;
+        }
+        if (dimensions > arrayDim) {
+            throw new IllegalArgumentException(String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field));
+        }
+        return dimensions;
+    }
+
+    private static int getArrayDimensions(JavaType type) {
         int dimensions = 0;
-        JavaType componentType = type;
-        while ((componentType = componentType.getComponentType()) != null) {
+        for (JavaType componentType = type; componentType.isArray(); componentType = componentType.getComponentType()) {
             dimensions++;
         }
         return dimensions;
     }
 
-    private boolean verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
+    private JavaConstant verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
         assert field.getAnnotation(Child.class) == null || constant.isNull() ||
-                        metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : "@Child field value must be a Node: " + field +
-                                        ", but was: " + constant;
-        assert field.getAnnotation(Children.class) == null || constant.isNull() || metaAccess.lookupJavaType(constant).isArray() : "@Children field value must be an array: " + field + ", but was: " +
-                        constant;
-        return true;
+                        metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : String.format(
+                                        "@Child field value must be a Node: %s, but was: %s", field, constant);
+        assert field.getAnnotation(Children.class) == null || constant.isNull() ||
+                        metaAccess.lookupJavaType(constant).isArray() : String.format("@Children field value must be an array: %s, but was: %s", field, constant);
+        return constant;
     }
 }

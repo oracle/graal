@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLAssertionError;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -49,10 +48,6 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
 
     private static final int MAX_CALLS = 10000;
     private static final Object[] EMPTY_ARGS = new Object[0];
-
-    SLCallUntilOptimizedBuiltin() {
-        super(SLCallUntilOptimizedBuiltin.class);
-    }
 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 

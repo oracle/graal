@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +23,30 @@
 package com.oracle.graal.truffle.test.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * Forces a deoptimization as soon as the method runs in compiled code.
+ * Asserts a given value to be <code>false</code> and throws an {@link AssertionError} if the value
+ * was <code>true</code>.
  */
-@NodeInfo(shortName = "deoptimizeWhenCompiled")
-public abstract class SLDeoptimizeWhenCompiledBuiltin extends SLGraalRuntimeBuiltin {
+@NodeInfo(shortName = "assertFalse")
+public abstract class SLAssertFalseBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public SLNull deoptimzeWhenCompiled(boolean condition) {
-        if (CompilerDirectives.inCompiledCode()) {
-            if (condition) {
-                printMessage();
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
+    public boolean doAssert(boolean value, String message) {
+        if (value) {
+            CompilerDirectives.transferToInterpreter();
+            throw new SLAssertionError(message == null ? "" : message);
         }
-        return SLNull.SINGLETON;
+        return value;
     }
 
-    @TruffleBoundary
-    private void printMessage() {
-        getContext().getOutput().println("[deoptimizeWhenCompiled]");
+    @Specialization
+    public boolean doAssertNull(boolean value, @SuppressWarnings("unused") SLNull message) {
+        return doAssert(value, null);
     }
+
 }

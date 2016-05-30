@@ -218,7 +218,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
-        ReadNode memoryRead = graph.add(new ReadNode(address, new FieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
+        ReadNode memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, field.getJavaKind(), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -241,7 +241,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null;
 
-        WriteNode memoryWrite = graph.add(new WriteNode(address, new FieldLocationIdentity(field), value, fieldStoreBarrierType(storeField.field())));
+        WriteNode memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, fieldStoreBarrierType(storeField.field())));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
         memoryWrite.setGuard(createNullCheck(object, memoryWrite, tool));
@@ -678,6 +678,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);
+
+    public FieldLocationIdentity fieldLocationIdentity(ResolvedJavaField field) {
+        return new FieldLocationIdentity(field);
+    }
 
     public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
 

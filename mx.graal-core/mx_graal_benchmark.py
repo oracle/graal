@@ -31,12 +31,14 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
+import mx_jvmci
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
-    def __init__(self, raw_name, raw_config_name, extra_args):
+    def __init__(self, raw_name, raw_config_name, extra_args, expected_mode):
         self.raw_name = raw_name
         self.raw_config_name = raw_config_name
         self.extra_args = extra_args
+        self.expected_mode = expected_mode
 
     def name(self):
         return self.raw_name
@@ -56,6 +58,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        assert mx_jvmci.get_jvmci_mode() == self.expected_mode
         if mx_graal_core.get_vm() != self.name():
             mx.abort("To use '{0}' VM, specify respective --vm flag.".format(
                 self.name()))
@@ -66,14 +69,13 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", []))
-mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", []))
-if mx_graal_core.JDK9:
-    mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"]))
-else:
-    mx_benchmark.add_java_vm(JvmciJdkVm("server-nojvmci", "default", []))
-    mx_benchmark.add_java_vm(JvmciJdkVm("client-nojvmci", "default", []))
-    mx_benchmark.add_java_vm(JvmciJdkVm("jvmci", "graal-core", ["-Djvmci.Compiler=graal"]))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", [], "disabled"))
+mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", [], "disabled"))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "hosted", [], "hosted"))
+mx_benchmark.add_java_vm(JvmciJdkVm("client", "hosted", [], "hosted"))
+mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"],
+    "jit"))
+
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """Base benchmark suite for DaCapo-based benchmarks.
@@ -351,7 +353,7 @@ _allSpecJVM2008Benchs = [
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """SpecJVM2008 benchmark suite implementation.
 
-    This benchmark can run multiple benchmarks as part of one VM run.
+    This benchmark suite can run multiple benchmarks as part of one VM run.
     """
     def name(self):
         return "specjvm2008"
@@ -386,7 +388,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
-            # No benchmark specified in the command line means .
+            # No benchmark specified in the command line, so run everything.
             benchmarks = self.benchmarks()
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
@@ -429,4 +431,296 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
+
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
+
+
+class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """SPECjbb2005 benchmark suite implementation.
+
+    This suite has only a single benchmark, and does not allow setting a specific
+    benchmark in the command line.
+    """
+    def name(self):
+        return "specjbb2005"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def specJbbClassPath(self):
+        specjbb2005 = mx.get_env("SPECJBB2005")
+        if specjbb2005 is None:
+            mx.abort("Please set the SPECJBB2005 environment variable to a " +
+                "SPECjbb2005 directory.")
+        jbbpath = join(specjbb2005, "jbb.jar")
+        if not exists(jbbpath):
+            mx.abort("The SPECJBB2005 environment variable points to a directory " +
+                "without the jbb.jar file.")
+        checkpath = join(specjbb2005, "check.jar")
+        if not exists(checkpath):
+            mx.abort("The SPECJBB2005 environment variable points to a directory " +
+                "without the check.jar file.")
+        return jbbpath + ":" + checkpath
+
+    def validateEnvironment(self):
+        if not self.specJbbClassPath():
+            raise RuntimeError(
+                "The SPECJBB2005 environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return mx.get_env("SPECJBB2005")
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is not None:
+            mx.abort("No benchmark should be specified for the selected suite.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        mainClass = "spec.jbb.JBBmain"
+        propArgs = ["-propfile", "SPECjbb.props"]
+        return (
+            vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
+            runArgs)
+
+    def benchmarks(self):
+        return ["default"]
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"^Valid run, Score is  [0-9]+$", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return [
+            re.compile(r"VALIDATION ERROR", re.MULTILINE)
+        ]
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+          mx_benchmark.StdOutRule(
+            r"^Valid run, Score is  (?P<score>[0-9]+)$", # pylint: disable=line-too-long
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "throughput",
+              "metric.value": ("<score>", float),
+              "metric.unit": "bops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+
+mx_benchmark.add_bm_suite(SpecJbb2005BenchmarkSuite())
+
+
+class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """SPECjbb2013 benchmark suite implementation.
+
+    This suite has only a single benchmark, and does not allow setting a specific
+    benchmark in the command line.
+    """
+    def name(self):
+        return "specjbb2013"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def specJbbClassPath(self):
+        specjbb2013 = mx.get_env("SPECJBB2013")
+        if specjbb2013 is None:
+            mx.abort("Please set the SPECJBB2013 environment variable to a " +
+                "SPECjbb2013 directory.")
+        jbbpath = join(specjbb2013, "specjbb2013.jar")
+        if not exists(jbbpath):
+            mx.abort("The SPECJBB2013 environment variable points to a directory " +
+                "without the specjbb2013.jar file.")
+        return jbbpath
+
+    def validateEnvironment(self):
+        if not self.specJbbClassPath():
+            raise RuntimeError(
+                "The SPECJBB2013 environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return mx.get_env("SPECJBB2013")
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is not None:
+            mx.abort("No benchmark should be specified for the selected suite.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
+
+    def benchmarks(self):
+        return ["default"]
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"org.spec.jbb.controller: Run finished", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return []
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        result_pattern = r"^RUN RESULT: hbIR \(max attempted\) = [0-9]+, hbIR \(settled\) = [0-9]+, max-jOPS = (?P<max>[0-9]+), critical-jOPS = (?P<critical>[0-9]+)$" # pylint: disable=line-too-long
+        return [
+          mx_benchmark.StdOutRule(
+            result_pattern,
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "max",
+              "metric.value": ("<max>", float),
+              "metric.unit": "jops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            result_pattern,
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "critical",
+              "metric.value": ("<critical>", float),
+              "metric.unit": "jops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+
+mx_benchmark.add_bm_suite(SpecJbb2013BenchmarkSuite())
+
+
+class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """SPECjbb2015 benchmark suite implementation.
+
+    This suite has only a single benchmark, and does not allow setting a specific
+    benchmark in the command line.
+    """
+    def name(self):
+        return "specjbb2015"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def specJbbClassPath(self):
+        specjbb2015 = mx.get_env("SPECJBB2015")
+        if specjbb2015 is None:
+            mx.abort("Please set the SPECJBB2015 environment variable to a " +
+                "SPECjbb2015 directory.")
+        jbbpath = join(specjbb2015, "specjbb2015.jar")
+        if not exists(jbbpath):
+            mx.abort("The SPECJBB2015 environment variable points to a directory " +
+                "without the specjbb2015.jar file.")
+        return jbbpath
+
+    def validateEnvironment(self):
+        if not self.specJbbClassPath():
+            raise RuntimeError(
+                "The SPECJBB2015 environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return mx.get_env("SPECJBB2015")
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is not None:
+            mx.abort("No benchmark should be specified for the selected suite.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
+
+    def benchmarks(self):
+        return ["default"]
+
+    def successPatterns(self):
+        return [
+            re.compile(
+                r"org.spec.jbb.controller: Run finished", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def failurePatterns(self):
+        return []
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        result_pattern = r"^RUN RESULT: hbIR \(max attempted\) = [0-9]+, hbIR \(settled\) = [0-9]+, max-jOPS = (?P<max>[0-9]+), critical-jOPS = (?P<critical>[0-9]+)$" # pylint: disable=line-too-long
+        return [
+          mx_benchmark.StdOutRule(
+            result_pattern,
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "max",
+              "metric.value": ("<max>", float),
+              "metric.unit": "jops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            result_pattern,
+            {
+              "benchmark": "default",
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "critical",
+              "metric.value": ("<critical>", float),
+              "metric.unit": "jops",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+
+mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())

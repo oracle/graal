@@ -203,4 +203,17 @@ public class DebugValuesPrinter {
         }
         TTY.print("|-> ");
     }
+
+    public void clearDebugValues() {
+        List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
+        List<DebugValue> debugValues = KeyRegistry.getDebugValues();
+        if (debugValues.size() > 0) {
+            for (DebugValueMap map : topLevelMaps) {
+                map.reset();
+            }
+        }
+        if (mmPrinter != null) {
+            MethodMetricsImpl.clearMM();
+        }
+    }
 }

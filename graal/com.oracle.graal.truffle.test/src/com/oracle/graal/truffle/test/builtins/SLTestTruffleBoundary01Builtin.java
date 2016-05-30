@@ -38,10 +38,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "testTruffleBoundary01")
 public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuiltin {
 
-    SLTestTruffleBoundary01Builtin() {
-        super(SLTestTruffleBoundary01Builtin.class);
-    }
-
     private static Object nonConstantValue = new Object();
 
     @Specialization

@@ -265,15 +265,23 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
     }
 
     public synchronized void dumpCSV(PrintStream p) {
-        String methodName = method.format("%H.%n(%p)%R").replace(",", "_");
+        String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
+        /*
+         * NOTE: the caching mechanism works by caching compilation data based on the identity of
+         * the resolved java method object. The identity is based on the metaspace address of the
+         * resolved java method object. If the class was loaded by different class loaders or e.g.
+         * loaded - unloaded - loaded the identity will be different. Therefore we also need to
+         * include the identity in the reporting of the data as it is an additional dimension to
+         * <method,compilationId>.
+         */
+        String methodIdentity = String.valueOf(System.identityHashCode(method));
         if (compilationEntries != null) {
             for (int i = 0; i < compilationEntries.size(); i++) {
                 HashMap<String, Long> table = compilationEntries.get(i).counterMap;
                 if (table != null) {
                     Set<Map.Entry<String, Long>> entries = table.entrySet();
                     for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                        p.printf("%s,%d,%s,%d", methodName, i,
-                                        entry.getKey().replace(" ", "_").replace(",", "_"), entry.getValue());
+                        p.printf("%s,%s,%d,%d,%s,%d", methodName, methodIdentity, i, compilationEntries.get(i).id, "\"" + entry.getKey() + "\"", entry.getValue());
                         p.println();
                     }
                 }

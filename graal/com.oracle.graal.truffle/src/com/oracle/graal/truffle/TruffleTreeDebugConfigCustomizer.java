@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.builtins;
+package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.graal.debug.DebugConfig;
+import com.oracle.graal.debug.DebugConfigCustomizer;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
-/**
- * Checks whether or not a function is optimized by the Graal runtime.
- */
-@NodeInfo(shortName = "isCompilationConstant")
-public abstract class SLIsCompilationConstantBuiltin extends SLGraalRuntimeBuiltin {
+@ServiceProvider(DebugConfigCustomizer.class)
+public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
 
-    @Specialization
-    public boolean isCompilationConstant(Object value) {
-        if (CompilerDirectives.inCompiledCode()) {
-            return CompilerDirectives.isCompilationConstant(value);
-        } else {
-            return true;
-        }
+    @Override
+    public void customize(DebugConfig config) {
+        config.dumpHandlers().add(new TruffleTreeDumpHandler());
     }
 }

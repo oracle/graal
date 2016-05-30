@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "9ed5b586018bebb295d8e3254da4343459d7b231",
+        "version" : "b2ca0db145463b6332c0096eaa68fa03e80ee5e8",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -16,7 +16,7 @@ suite = {
       },
       {
         "name" : "truffle",
-        "version" : "85de7457d98c7862cc1165a54b61e8c928caa7b0",
+        "version" : "f3b5ef80a7cb8250069c10d0f15d377955dafe67",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -315,6 +315,7 @@ suite = {
       ],
       "imports" : [
         "jdk.internal.reflect",
+        "jdk.internal.org.objectweb.asm",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",

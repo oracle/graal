@@ -266,4 +266,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         SnippetCounter.printGroups(TTY.out().out());
         BenchmarkCounters.shutdown(runtime(), runtimeStartTime);
     }
+
+    void clearMeters() {
+        if (debugValuesPrinter != null) {
+            debugValuesPrinter.clearDebugValues();
+        }
+    }
 }
