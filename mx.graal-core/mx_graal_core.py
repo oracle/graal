@@ -46,8 +46,60 @@ import mx_graal_bench # pylint: disable=unused-import
 import mx_graal_benchmark # pylint: disable=unused-import
 
 _suite = mx.suite('graal-core')
-_jdk = mx.get_jdk(tag='default')
-_isJDK8OrEarlier = _jdk.javaCompliance < '1.9'
+
+#: The JDK used to build and run Graal.
+jdk = mx.get_jdk(tag='default')
+
+if jdk.javaCompliance < '1.8':
+    mx.abort('Graal requires JDK8 or later, got ' + str(jdk))
+
+#: Specifies if Graal is being built/run against JDK8. If false, then
+#: JDK9 or later is being used since we abort if a JDK earlier than 8 is used.
+isJDK8 = jdk.javaCompliance < '1.9'
+
+def _version_check(condition, error_message):
+    """
+    Tests a given condition related to a version check. If the condition is false, some action
+    is taken based on the value of the ``JVMCI_VERSION_CHECK`` environment variable:
+        'warn' - print `error_message` and continue
+        'ignore' - continue
+        <any other value including None> - abort with message `error_message`
+
+    :param bool condition: the condition to test
+    :param str error_message: description of failure if not `condition`
+    :return: `condition`
+    """
+    if not condition:
+        directive = mx.get_env('JVMCI_VERSION_CHECK', None)
+        if directive == 'warn':
+            mx.warn(error_message)
+            return False
+        elif directive == 'ignore':
+            return False
+        else:
+            if directive is not None:
+                error_message = 'Unknown JVMCI_VERSION_CHECK value: ' + directive + '\n' + error_message
+            mx.abort(error_message)
+    return True
+
+#: Check the JDK supports Graal
+if isJDK8:
+    MIN_JVMCI_VERSION = mx.VersionSpec('0.10')
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-version'], err=out)
+    match = re.search(r'-jvmci-(\d+.\d+)', out.data)
+    if _version_check(match is not None, '{} does not support JVMCI'.format(jdk.home)):
+        jvmciVersion = mx.VersionSpec(match.group(1))
+        _version_check(jvmciVersion >= MIN_JVMCI_VERSION, 'Incompatible JVMCI version supported by {}: {} < {}'.format(jdk.home, jvmciVersion, MIN_JVMCI_VERSION))
+else:
+    MIN_EARLY_ACCESS_BUILD = 120
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-fullversion'], err=out)
+    # http://openjdk.java.net/jeps/223
+    match = re.search(r'java full version "9-ea\+(\d+)"', out.data)
+    if _version_check(match is not None, '{} does not support JVMCI'.format(jdk.home)):
+        eaBuild = float(match.group(1))
+        _version_check(eaBuild >= MIN_EARLY_ACCESS_BUILD, 'Incompatible EA build in {}: {} < {}'.format(jdk.home, eaBuild, MIN_EARLY_ACCESS_BUILD))
 
 #: JVMCI modes of execution and the command line arguments they represent
 _jvmciModes = {
@@ -89,7 +141,7 @@ class JVMCIMode:
 
 _vm = JVMCIMode(jvmciMode='hosted')
 
-if _isJDK8OrEarlier:
+if isJDK8:
     class JVMCIClasspathEntry(object):
         """
         Denotes a distribution that is put on the JVMCI class path.
@@ -156,7 +208,7 @@ else:
 
             :rtype: str
             """
-            return as_java_module(self.dist(), _jdk).jarpath
+            return as_java_module(self.dist(), jdk).jarpath
 
     #: The `GraalModuleDescriptor` for the Graal module
     _graal_module_descriptor = GraalModuleDescriptor('GRAAL')
@@ -176,6 +228,7 @@ def set_jvmci_compiler(compilerName):
     """
     Sets the value for the ``jvmci.Compiler`` system property passed to the VM.
     """
+    global _jvmci_compiler
     _jvmci_compiler = compilerName
 
 _bootclasspath_appends = []
@@ -194,7 +247,7 @@ mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
 
     def parseVmArgs(self, vmArgs):
-        if _isJDK8OrEarlier:
+        if isJDK8:
             if _vm.jvmciMode != 'disabled' and '-XX:-UseJVMCIClassLoader' not in vmArgs:
                 vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
         jvm = get_vm()
@@ -218,7 +271,7 @@ def ctw(args, extraVMarguments=None):
     parser = ArgumentParser(prog='mx ctw')
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
-    if not _isJDK8OrEarlier:
+    if not isJDK8:
         parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
@@ -232,21 +285,21 @@ def ctw(args, extraVMarguments=None):
 
     if args.cp:
         cp = os.path.abspath(args.cp)
-        if not _isJDK8OrEarlier and _vm.jvmciMode == 'disabled':
+        if not isJDK8 and _vm.jvmciMode == 'disabled':
             mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
-        if _isJDK8OrEarlier:
-            cp = join(_jdk.home, 'jre', 'lib', 'rt.jar')
+        if isJDK8:
+            cp = join(jdk.home, 'jre', 'lib', 'rt.jar')
         else:
             # Compile all classes in the JRT image by default.
-            cp = join(_jdk.home, 'lib', 'modules')
+            cp = join(jdk.home, 'lib', 'modules')
 
     vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     if _vm.jvmciMode == 'jit':
         vmargs.append('-XX:+BootstrapJVMCI')
 
-    if _isJDK8OrEarlier:
+    if isJDK8:
         if _vm.jvmciMode != 'disabled':
             vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
         else:
@@ -256,7 +309,7 @@ def ctw(args, extraVMarguments=None):
             # To be able to load all classes in the JRT with Class.forName,
             # all JDK modules need to be made root modules.
             limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-            nonBootJDKModules = [m.name for m in _jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+            nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
             if nonBootJDKModules:
                 vmargs.append('-addmods')
                 vmargs.append(','.join(nonBootJDKModules))
@@ -392,7 +445,7 @@ def _unittest_config_participant(config):
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
         cp = _uniqify(cp.split(os.pathsep))
-        if _isJDK8OrEarlier:
+        if isJDK8:
             # Remove entries from class path that are in Graal
             excluded = set()
             for entry in _jvmci_classpath:
@@ -404,7 +457,7 @@ def _unittest_config_participant(config):
         else:
             # Remove entries from class path that are in the Graal
             assert _graal_module_descriptor is not None
-            module = as_java_module(_graal_module_descriptor.dist(), _jdk)
+            module = as_java_module(_graal_module_descriptor.dist(), jdk)
 
             junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
             excluded = frozenset([classpathEntry.classpath_repr() for classpathEntry in get_module_deps(module.dist)] + junitCp)
@@ -458,7 +511,7 @@ def _unittest_config_participant(config):
 
             vmArgs.extend(['-XaddExports:' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
 
-    if _isJDK8OrEarlier:
+    if isJDK8:
         # Run the VM in a mode where application/test classes can
         # access JVMCI loaded classes.
         vmArgs.append('-XX:-UseJVMCIClassLoader')
@@ -466,7 +519,7 @@ def _unittest_config_participant(config):
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher, _jdk)
+mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher, jdk)
 
 def _uniqify(alist):
     """
@@ -603,12 +656,12 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if '-G:+PrintFlags' in args and '-Xcomp' not in args:
         mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
 
-    if _isJDK8OrEarlier:
+    if isJDK8:
         argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
         argsPrefix.append('-Xbootclasspath/a:' + os.pathsep.join([dep.classpath_repr() for dep in _bootclasspath_appends]))
     else:
         assert _graal_module_descriptor is not None
-        module = as_java_module(_graal_module_descriptor.dist(), _jdk)
+        module = as_java_module(_graal_module_descriptor.dist(), jdk)
 
         # Update added exports to include concealed JDK packages required by Graal
         addedExports = {}
@@ -641,7 +694,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
         if  len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
-    return _jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
+    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
 def _check_bootstrap_config(args):
     """
@@ -660,14 +713,14 @@ def _check_bootstrap_config(args):
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     args = _jvmciModes[_vm.jvmciMode] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     _check_bootstrap_config(args)
-    cmd = [_jdk.java] + ['-' + get_vm()] + args
+    cmd = [jdk.java] + ['-' + get_vm()] + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 _JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
-        return _jdk
+        return jdk
 
 # This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
 # support for -G style Graal options.
