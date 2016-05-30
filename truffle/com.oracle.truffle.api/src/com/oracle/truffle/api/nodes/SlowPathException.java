@@ -29,7 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 /**
  * An exception thrown to enter a slow path. The Truffle optimizer has special knowledge of this
  * exception class and will never compile a catch block that catches this exception type.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class SlowPathException extends Exception {
@@ -38,46 +38,46 @@ public class SlowPathException extends Exception {
 
     /**
      * Creates an exception thrown to enter a slow path.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public SlowPathException() {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     /**
      * Creates an exception thrown to enter a slow path.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public SlowPathException(String message, Throwable cause) {
         super(message, cause);
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     /**
      * Creates an exception thrown to enter a slow path.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public SlowPathException(String message) {
         super(message);
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     /**
      * Creates an exception thrown to enter a slow path.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public SlowPathException(Throwable cause) {
         super(cause);
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     /**
      * For performance reasons, this exception does not record any stack trace information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @SuppressWarnings("sync-override")
