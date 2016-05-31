@@ -35,24 +35,12 @@ import java.util.TreeMap;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
- * {@link OptionDescriptors}. The {@link OptionDescriptors} are loaded from Graal jars, either
- * {@linkplain GraalJarsOptionDescriptorsProvider directly} or via a {@link ServiceLoader}.
+ * {@link OptionDescriptors}. The {@link OptionDescriptors} are loaded via a {@link ServiceLoader}.
  */
 public class OptionsParser {
 
     private static final OptionValue<Boolean> PrintFlags = new OptionValue<>(false);
     private static final OptionValue<Boolean> ShowFlags = new OptionValue<>(false);
-
-    /**
-     * A service for looking up {@link OptionDescriptor}s.
-     */
-    public interface OptionDescriptorsProvider {
-        /**
-         * Gets the {@link OptionDescriptor} matching a given option {@linkplain Option#name() name}
-         * or null if no option of that name is provided by this object.
-         */
-        OptionDescriptor get(String name);
-    }
 
     public interface OptionConsumer {
         void set(OptionDescriptor desc, Object value);
@@ -63,19 +51,18 @@ public class OptionsParser {
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
      * @param setter the object to notify of the parsed option and value
-     * @param odp if non-null, the service to use for looking up {@link OptionDescriptor}s
-     * @param options the options database to use if {@code odp == null}. If
-     *            {@code options == null && odp == null}, {@link OptionsLoader#options} is used.
+     * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
+     *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(Map<String, String> optionSettings, OptionConsumer setter, OptionDescriptorsProvider odp, Map<String, OptionDescriptor> options) {
+    public static void parseOptions(Map<String, String> optionSettings, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
         if (optionSettings != null && !optionSettings.isEmpty()) {
 
             for (Map.Entry<String, String> e : optionSettings.entrySet()) {
-                parseOption(e.getKey(), e.getValue(), setter, odp, options);
+                parseOption(e.getKey(), e.getValue(), setter, loader);
             }
             if (PrintFlags.getValue() || ShowFlags.getValue()) {
-                printFlags(resolveOptions(options), "Graal", System.out, optionSettings.keySet());
+                printFlags(loader, "Graal", System.out, optionSettings.keySet());
                 if (PrintFlags.getValue()) {
                     System.exit(0);
                 }
@@ -97,11 +84,21 @@ public class OptionsParser {
     }
 
     /**
-     * Resolves {@code options} to a non-null value. This ensures {@link OptionsLoader#options} is
-     * only loaded if necessary.
+     * Looks up an {@link OptionDescriptor} based on a given name.
+     *
+     * @param loader provides the available {@link OptionDescriptor}s
+     * @param name the name of the option to look up
+     * @return the {@link OptionDescriptor} whose name equals {@code name} or null if not such
+     *         descriptor is available
      */
-    private static Map<String, OptionDescriptor> resolveOptions(Map<String, OptionDescriptor> options) {
-        return options != null ? options : OptionsLoader.options;
+    private static OptionDescriptor lookup(ServiceLoader<OptionDescriptors> loader, String name) {
+        for (OptionDescriptors optionDescriptors : loader) {
+            OptionDescriptor desc = optionDescriptors.get(name);
+            if (desc != null) {
+                return desc;
+            }
+        }
+        return null;
     }
 
     /**
@@ -110,14 +107,13 @@ public class OptionsParser {
      * @param name the option name
      * @param valueString the option value as a string
      * @param setter the object to notify of the parsed option and value
-     * @param odp if non-null, the service to use for looking up {@link OptionDescriptor}s
-     * @param options the options database to use if {@code odp == null}. If
-     *            {@code options == null && odp == null}, {@link OptionsLoader#options} is used.
+     * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
+     *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    private static void parseOption(String name, String valueString, OptionConsumer setter, OptionDescriptorsProvider odp, Map<String, OptionDescriptor> options) {
+    private static void parseOption(String name, String valueString, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
 
-        OptionDescriptor desc = odp != null ? odp.get(name) : resolveOptions(options).get(name);
+        OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
             if (name.equals("PrintFlags")) {
                 desc = OptionDescriptor.create("PrintFlags", Boolean.class, "Prints all Graal flags and exits", OptionsParser.class, "PrintFlags", PrintFlags);
@@ -126,7 +122,7 @@ public class OptionsParser {
             }
         }
         if (desc == null) {
-            List<OptionDescriptor> matches = fuzzyMatch(resolveOptions(options), name);
+            List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
             msg.format("Could not find option %s", name);
             if (!matches.isEmpty()) {
@@ -231,12 +227,14 @@ public class OptionsParser {
         return lines;
     }
 
-    private static void printFlags(Map<String, OptionDescriptor> options, String prefix, PrintStream out, Set<String> explicitlyAssigned) {
-        SortedMap<String, OptionDescriptor> sortedOptions;
-        if (options instanceof SortedMap) {
-            sortedOptions = (SortedMap<String, OptionDescriptor>) options;
-        } else {
-            sortedOptions = new TreeMap<>(options);
+    private static void printFlags(ServiceLoader<OptionDescriptors> loader, String prefix, PrintStream out, Set<String> explicitlyAssigned) {
+        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
+        for (OptionDescriptors opts : loader) {
+            for (OptionDescriptor desc : opts) {
+                String name = desc.getName();
+                OptionDescriptor existing = sortedOptions.put(name, desc);
+                assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
+            }
         }
         out.println("[List of " + prefix + " options]");
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
@@ -275,12 +273,14 @@ public class OptionsParser {
     /**
      * Returns the set of options that fuzzy match a given option name.
      */
-    private static List<OptionDescriptor> fuzzyMatch(Map<String, OptionDescriptor> options, String optionName) {
+    private static List<OptionDescriptor> fuzzyMatch(ServiceLoader<OptionDescriptors> loader, String optionName) {
         List<OptionDescriptor> matches = new ArrayList<>();
-        for (Map.Entry<String, OptionDescriptor> e : options.entrySet()) {
-            float score = stringSimiliarity(e.getKey(), optionName);
-            if (score >= FUZZY_MATCH_THRESHOLD) {
-                matches.add(e.getValue());
+        for (OptionDescriptors options : loader) {
+            for (OptionDescriptor option : options) {
+                float score = stringSimiliarity(option.getName(), optionName);
+                if (score >= FUZZY_MATCH_THRESHOLD) {
+                    matches.add(option);
+                }
             }
         }
         return matches;

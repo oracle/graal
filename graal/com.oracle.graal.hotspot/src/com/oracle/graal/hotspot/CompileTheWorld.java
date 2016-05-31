@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -83,6 +84,7 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.options.OptionsParser;
@@ -147,7 +149,7 @@ public final class CompileTheWorld {
                         OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                     }
                 }
-                OptionsParser.parseOptions(optionSettings, this, null, null);
+                OptionsParser.parseOptions(optionSettings, this, ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader()));
             }
         }
 
