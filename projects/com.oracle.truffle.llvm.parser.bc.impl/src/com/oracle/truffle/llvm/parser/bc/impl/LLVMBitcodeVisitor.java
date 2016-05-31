@@ -68,6 +68,7 @@ import uk.ac.man.cs.llvm.ir.LLVMParser;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
+import uk.ac.man.cs.llvm.ir.model.GlobalAlias;
 import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
@@ -128,6 +129,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     private final LLVMPhiManager phis;
 
     private final List<LLVMNode> deallocations = new ArrayList<>();
+
+    private final Map<GlobalAlias, GlobalValueSymbol> aliases = new HashMap<>();
 
     private final Map<LLVMFunctionDescriptor, RootCallTarget> functions = new HashMap<>();
 
@@ -235,13 +238,20 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     }
 
     public LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
-        LLVMAddressNode address = variables.get(global);
-        if (address == null) {
-            Type type = ((PointerType) global.getType()).getPointeeType();
+        GlobalValueSymbol g = global;
 
-            address = new LLVMAddressLiteralNode(LLVMHeap.allocateMemory(LLVMBitcodeHelper.getSize(type, global.getAlign())));
+        while (g instanceof GlobalAlias) {
+            g = aliases.get((GlobalAlias) g);
+        }
+
+        LLVMAddressNode address = variables.get(g);
+
+        if (address == null) {
+            Type type = ((PointerType) g.getType()).getPointeeType();
+
+            address = new LLVMAddressLiteralNode(LLVMHeap.allocateMemory(LLVMBitcodeHelper.getSize(type, g.getAlign())));
             deallocations.add(LLVMFreeFactory.create(address));
-            variables.put(global, address);
+            variables.put(g, address);
         }
         return address;
     }
@@ -259,6 +269,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             }
         }
         return globals;
+    }
+
+    @Override
+    public void visit(GlobalAlias alias) {
+        aliases.put(alias, (GlobalValueSymbol) alias.getValue());
     }
 
     @Override

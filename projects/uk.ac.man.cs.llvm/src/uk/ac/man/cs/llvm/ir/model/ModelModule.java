@@ -89,6 +89,14 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
+    public void createAlias(Type type, int aliasedValue) {
+        GlobalAlias alias = new GlobalAlias(type, aliasedValue);
+
+        symbols.addSymbol(alias);
+        variables.add(alias);
+    }
+
+    @Override
     public void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs) {
         boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
 

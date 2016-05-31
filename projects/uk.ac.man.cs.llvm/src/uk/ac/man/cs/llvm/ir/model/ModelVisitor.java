@@ -33,6 +33,8 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public interface ModelVisitor {
 
+    void visit(GlobalAlias alias);
+
     void visit(GlobalConstant constant);
 
     void visit(GlobalVariable variable);

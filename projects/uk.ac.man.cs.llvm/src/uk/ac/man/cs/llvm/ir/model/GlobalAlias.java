@@ -31,62 +31,25 @@ package uk.ac.man.cs.llvm.ir.model;
 
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public abstract class GlobalValueSymbol implements ValueSymbol {
+public final class GlobalAlias extends GlobalValueSymbol {
 
-    private final Type type;
-
-    private final int initialiser;
-
-    private final int align;
-
-    private String name = ValueSymbol.UNKNOWN;
-
-    private Symbol value = null;
-
-    protected GlobalValueSymbol(Type type, int initialiser, int align) {
-        this.type = type;
-        this.initialiser = initialiser;
-        this.align = align;
+    public GlobalAlias(Type type, int aliasedValue) {
+        super(type, aliasedValue, 0);
     }
 
-    protected abstract void accept(ModelVisitor visitor);
+    @Override
+    protected void accept(ModelVisitor visitor) {
+        visitor.visit(this);
+    }
 
     @Override
     public int getAlign() {
-        return align;
+        return getValue() instanceof GlobalValueSymbol ? ((GlobalValueSymbol) getValue()).getAlign() : getAlign();
     }
 
+    @Override
     public int getInitialiser() {
-        return initialiser;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    public Symbol getValue() {
-        return value;
-    }
-
-    public void initialise(Symbols symbols) {
-        if (getInitialiser() > 0) {
-            value = symbols.getSymbol(getInitialiser() - 1);
-        }
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = "@" + name;
-    }
-
-    @Override
-    public String toString() {
-        return getName();
+        // aliases always have a value so compensate for zero test is super class
+        return super.getInitialiser() + 1;
     }
 }

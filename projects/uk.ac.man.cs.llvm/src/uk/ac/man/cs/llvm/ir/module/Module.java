@@ -130,9 +130,21 @@ public class Module implements ParserListener {
                 createFunction(args);
                 break;
 
+            case ALIAS_OLD:
+                createAliasOld(args);
+                break;
+
             default:
                 break;
         }
+    }
+
+    protected void createAliasOld(long[] args) {
+        Type type = types.get(args[0]);
+        int value = (int) args[1];
+
+        generator.createAlias(type, value);
+        symbols.add(type);
     }
 
     protected void createFunction(long[] args) {

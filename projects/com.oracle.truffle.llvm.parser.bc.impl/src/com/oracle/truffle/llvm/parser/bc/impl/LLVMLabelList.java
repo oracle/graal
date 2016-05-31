@@ -36,6 +36,7 @@ import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
+import uk.ac.man.cs.llvm.ir.model.GlobalAlias;
 import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
 import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.Model;
@@ -71,6 +72,10 @@ public final class LLVMLabelList {
 
         private Map<String, Map<String, Integer>> labels() {
             return labels;
+        }
+
+        @Override
+        public void visit(GlobalAlias alias) {
         }
 
         @Override
