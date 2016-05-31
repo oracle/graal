@@ -29,12 +29,14 @@
  */
 package uk.ac.man.cs.llvm.ir.module;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
 import uk.ac.man.cs.llvm.bc.records.Records;
 import uk.ac.man.cs.llvm.ir.ConstantGenerator;
 import uk.ac.man.cs.llvm.ir.module.records.ConstantsRecord;
+import uk.ac.man.cs.llvm.ir.types.BigIntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -80,6 +82,17 @@ public class Constants implements ParserListener {
                 long value = Records.toSignedValue(args[0]);
                 generator.createInteger(type, value);
                 symbols.add(new IntegerConstantType((IntegerType) type, value));
+                return;
+            }
+            case WIDE_INTEGER: {
+                BigInteger value = BigInteger.ZERO;
+                for (int i = 0; i < args.length; i++) {
+                    BigInteger temp = BigInteger.valueOf(Records.toSignedValue(args[i]));
+                    temp = temp.shiftLeft(i * Long.SIZE);
+                    value = value.add(temp);
+                }
+                generator.createInteger(type, value);
+                symbols.add(new BigIntegerConstantType((IntegerType) type, value));
                 return;
             }
             case FLOAT:

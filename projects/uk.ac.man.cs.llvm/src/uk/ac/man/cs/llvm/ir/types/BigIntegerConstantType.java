@@ -27,36 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir;
+package uk.ac.man.cs.llvm.ir.types;
 
 import java.math.BigInteger;
-import uk.ac.man.cs.llvm.ir.types.Type;
 
-public interface ConstantGenerator {
+public final class BigIntegerConstantType implements Type {
 
-    void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs);
+    public final IntegerType type;
 
-    void createBlockAddress(Type type, int method, int block);
+    private final BigInteger value;
 
-    void createCastExpression(Type type, int opcodee, int value);
+    public BigIntegerConstantType(IntegerType type, BigInteger value) {
+        this.type = type;
+        this.value = value;
+    }
 
-    void createCompareExpression(Type type, int opcode, int lhs, int rhs);
+    @Override
+    public IntegerType getType() {
+        return type;
+    }
 
-    void createFloatingPoint(Type type, long value);
+    public BigInteger getValue() {
+        return value;
+    }
 
-    void createFromData(Type type, long[] data);
+    @Override
+    public int sizeof() {
+        return type.sizeof();
+    }
 
-    void creatFromString(Type type, String string, boolean isCString);
-
-    void createFromValues(Type type, int[] values);
-
-    void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds);
-
-    void createInteger(Type type, long value);
-
-    void createInteger(Type type, BigInteger value);
-
-    void createNull(Type type);
-
-    void createUndefined(Type type);
+    @Override
+    public String toString() {
+        if (getType().getBitCount() == 1) {
+            return value.equals(BigInteger.ZERO) ? "i1 false" : "i1 true";
+        }
+        return String.format("%s %s", type, value);
+    }
 }
