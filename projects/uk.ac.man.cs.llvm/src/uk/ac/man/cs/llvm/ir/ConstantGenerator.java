@@ -36,7 +36,7 @@ public interface ConstantGenerator {
 
     void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs);
 
-    void createBlockAddress(Type type, int method, int block);
+    void createBlockAddress(Type type, int function, int block);
 
     void createCastExpression(Type type, int opcodee, int value);
 

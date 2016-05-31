@@ -179,10 +179,10 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
-    public void createBlockAddress(Type type, int method, int block) {
+    public void createBlockAddress(Type type, int function, int block) {
         symbols.addSymbol(new BlockAddressConstant(
                         type,
-                        symbols.getSymbol(method),
+                        symbols.getSymbol(function),
                         getBlock(block)));
     }
 

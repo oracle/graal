@@ -34,13 +34,13 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class BlockAddressConstant extends AbstractConstant {
 
-    private final Symbol method;
+    private final Symbol function;
 
     private final Symbol block;
 
-    public BlockAddressConstant(Type type, Symbol method, Symbol block) {
+    public BlockAddressConstant(Type type, Symbol function, Symbol block) {
         super(type);
-        this.method = method;
+        this.function = function;
         this.block = block;
     }
 
@@ -48,7 +48,7 @@ public class BlockAddressConstant extends AbstractConstant {
         return block;
     }
 
-    public Symbol getMethod() {
-        return method;
+    public Symbol getFunction() {
+        return function;
     }
 }
