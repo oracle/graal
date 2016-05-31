@@ -63,7 +63,7 @@ public final class SLBlockNode extends SLStatementNode {
      */
     @Children private final SLStatementNode[] bodyNodes;
 
-    public SLBlockNode(SLStatementNode... bodyNodes) {
+    public SLBlockNode(SLStatementNode[] bodyNodes) {
         this.bodyNodes = bodyNodes;
     }
 
