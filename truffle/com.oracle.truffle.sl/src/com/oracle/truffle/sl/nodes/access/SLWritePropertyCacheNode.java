@@ -104,7 +104,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
                                     "cachedName.equals(name)",
                                     "shapeCheck(oldShape, receiver)",
                                     "oldLocation == null",
-                                    "canSet(newLocation, receiver, value)"
+                                    "canStore(newLocation, value)"
                     }, //
                     assumptions = {
                                     "oldShape.getValidAssumption()",
@@ -115,7 +115,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
                     @Cached("lookupShape(receiver)") Shape oldShape,
                     @Cached("lookupLocation(oldShape, name, value)") Location oldLocation,
                     @Cached("defineProperty(oldShape, name, value)") Shape newShape,
-                    @Cached("lookupLocation(newShape, name, value)") Location newLocation) {
+                    @Cached("lookupLocation(newShape, name)") Location newLocation) {
         try {
             newLocation.set(receiver, value, oldShape, newShape);
 
@@ -125,7 +125,8 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
         }
     }
 
-    protected static Location lookupLocation(Shape shape, Object name, Object value) {
+    /** Try to find the given property in the shape. */
+    protected static Location lookupLocation(Shape shape, Object name) {
         CompilerAsserts.neverPartOfCompilation();
 
         Property property = shape.getProperty(name);
@@ -134,8 +135,16 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
             return null;
         }
 
-        Location location = property.getLocation();
-        if (!location.canSet(value)) {
+        return property.getLocation();
+    }
+
+    /**
+     * Try to find the given property in the shape. Also returns null when the value cannot be store
+     * into the location.
+     */
+    protected static Location lookupLocation(Shape shape, Object name, Object value) {
+        Location location = lookupLocation(shape, name);
+        if (location == null || !location.canSet(value)) {
             /* Existing property has an incompatible type, so a shape change is necessary. */
             return null;
         }
@@ -147,8 +156,21 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
         return oldShape.defineProperty(name, value, 0);
     }
 
+    /**
+     * There is a subtle difference between {@link Location#canSet} and {@link Location#canStore}.
+     * We need {@link Location#canSet} for the guard of {@link #writeExistingPropertyCached} because
+     * there we call {@link Location#set}. We use the more relaxed {@link Location#canStore} for the
+     * guard of {@link SLWritePropertyCacheNode#writeNewPropertyCached} because there we perform a
+     * shape transition, i.e., we are not actually setting the value of the new location - we only
+     * transition to this location as part of the shape change.
+     */
     protected static boolean canSet(Location location, DynamicObject receiver, Object value) {
         return location.canSet(receiver, value);
+    }
+
+    /** See {@link #canSet} for the difference between the two methods. */
+    protected static boolean canStore(Location location, Object value) {
+        return location.canStore(value);
     }
 
     /**
