@@ -170,6 +170,11 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
+    public LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes) {
+        return LLVMTruffleIntrinsicFactory.create(functionName, argNodes);
+    }
+
+    @Override
     public LLVMTerminatorNode createRetVoid() {
         return LLVMFunctionFactory.createRetVoid(runtime);
     }

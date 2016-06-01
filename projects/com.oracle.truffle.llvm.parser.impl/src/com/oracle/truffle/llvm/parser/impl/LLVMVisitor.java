@@ -672,7 +672,13 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             String functionName = functionHeader.getName();
             if (functionName.startsWith("@llvm.")) {
                 return factoryFacade.createLLVMIntrinsic(functionName, finalArgs, containingFunctionDef);
+            } else if (functionName.startsWith("@truffle_")) {
+                LLVMNode truffleIntrinsic = factoryFacade.createTruffleIntrinsic(functionName, finalArgs);
+                if (truffleIntrinsic != null) {
+                    return truffleIntrinsic;
+                }
             }
+
         } else if (callee instanceof InlineAssembler) {
             String asmSnippet = ((InlineAssembler) callee).getAssembler();
             String asmFlags = ((InlineAssembler) callee).getFlags();
