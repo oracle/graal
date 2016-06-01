@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -101,7 +100,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      */
     @Specialization(limit = "CACHE_LIMIT", //
                     guards = {
-                                    "cachedName.equals(name)",
+                                    "namesEqual(cachedName, name)",
                                     "shapeCheck(oldShape, receiver)",
                                     "oldLocation == null",
                                     "canStore(newLocation, value)"
