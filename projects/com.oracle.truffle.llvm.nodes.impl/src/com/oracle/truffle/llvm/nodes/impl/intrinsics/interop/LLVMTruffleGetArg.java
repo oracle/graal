@@ -27,36 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.instructions;
+package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
-public enum LLVMConversionType {
-    SIGN_EXTENSION,
-    ZERO_EXTENSION,
-    TRUNC,
-    BITCAST,
-    FLOAT_TO_UINT;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 
-    public static LLVMConversionType fromString(String opcode) {
-        switch (opcode) {
-            case "zext":
-            case "inttoptr":
-            case "uitofp":
-                return LLVMConversionType.ZERO_EXTENSION;
-            case "fptoui":
-                return LLVMConversionType.FLOAT_TO_UINT;
-            case "sext":
-            case "fptosi":
-            case "sitofp":
-            case "fpext":
-                return LLVMConversionType.SIGN_EXTENSION;
-            case "trunc":
-            case "ptrtoint":
-            case "fptrunc":
-                return LLVMConversionType.TRUNC;
-            case "bitcast":
-                return LLVMConversionType.BITCAST;
-            default:
-                throw new AssertionError(opcode);
-        }
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleGetArg extends LLVMAddressIntrinsic {
+
+    @Specialization
+    public Object executeIntrinsic(VirtualFrame frame, int index) {
+        assert index >= 0;
+        Object[] arguments = frame.getArguments();
+        return arguments[LLVMCallNode.ARG_START_INDEX + index];
     }
+
 }

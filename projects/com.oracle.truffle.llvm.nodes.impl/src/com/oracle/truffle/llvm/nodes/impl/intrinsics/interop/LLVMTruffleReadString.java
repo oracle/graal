@@ -39,6 +39,11 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 public abstract class LLVMTruffleReadString extends LLVMAddressIntrinsic {
 
     @Specialization
+    public Object executeIntrinsic(String value) {
+        return value;
+    }
+
+    @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
         return LLVMTruffleIntrinsicUtil.readString(value);
     }

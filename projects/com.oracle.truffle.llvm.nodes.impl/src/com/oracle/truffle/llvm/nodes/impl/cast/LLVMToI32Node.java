@@ -166,6 +166,18 @@ public abstract class LLVMToI32Node extends LLVMI32Node {
         }
     }
 
+    @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
+    public abstract static class LLVMDoubleToUnsignedI32Node extends LLVMToI32Node {
+
+        @Specialization
+        public int executeI32(double from) {
+            if (from > Integer.MAX_VALUE) {
+                return (int) (from + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+            }
+            return (int) from;
+        }
+    }
+
     @NodeChild(value = "fromNode", type = LLVM80BitFloatNode.class)
     public abstract static class LLVM80BitFloatToI32Node extends LLVMToI32Node {
 

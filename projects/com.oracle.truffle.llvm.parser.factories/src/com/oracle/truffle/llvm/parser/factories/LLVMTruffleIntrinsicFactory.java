@@ -27,36 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.instructions;
+package com.oracle.truffle.llvm.parser.factories;
 
-public enum LLVMConversionType {
-    SIGN_EXTENSION,
-    ZERO_EXTENSION,
-    TRUNC,
-    BITCAST,
-    FLOAT_TO_UINT;
+import java.util.HashMap;
+import java.util.Map;
 
-    public static LLVMConversionType fromString(String opcode) {
-        switch (opcode) {
-            case "zext":
-            case "inttoptr":
-            case "uitofp":
-                return LLVMConversionType.ZERO_EXTENSION;
-            case "fptoui":
-                return LLVMConversionType.FLOAT_TO_UINT;
-            case "sext":
-            case "fptosi":
-            case "sitofp":
-            case "fpext":
-                return LLVMConversionType.SIGN_EXTENSION;
-            case "trunc":
-            case "ptrtoint":
-            case "fptrunc":
-                return LLVMConversionType.TRUNC;
-            case "bitcast":
-                return LLVMConversionType.BITCAST;
-            default:
-                throw new AssertionError(opcode);
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleGetArgFactory;
+
+public final class LLVMTruffleIntrinsicFactory {
+
+    private static final Map<String, NodeFactory<? extends LLVMNode>> factories = new HashMap<>();
+
+    static {
+        factories.put("@truffle_get_arg", LLVMTruffleGetArgFactory.getInstance());
+    }
+
+    private LLVMTruffleIntrinsicFactory() {
+    }
+
+    public static LLVMNode create(String functionName, LLVMExpressionNode[] argNodes) {
+        NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
+        if (factory == null) {
+            return null;
         }
+        Object[] realArgNodes = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
+        System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgNodes, 0, realArgNodes.length);
+        return factory.createNode(realArgNodes);
     }
 }
