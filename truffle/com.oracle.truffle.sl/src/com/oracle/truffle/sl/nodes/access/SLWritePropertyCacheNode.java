@@ -196,7 +196,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
         if (!(r instanceof DynamicObject)) {
             /* Non-object types do not have properties. */
-            throw new SLUndefinedNameException("property", name);
+            throw SLUndefinedNameException.undefinedProperty(name);
         }
         DynamicObject receiver = (DynamicObject) r;
         receiver.updateShape();
@@ -218,7 +218,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw new SLUndefinedNameException("property", name);
+            throw SLUndefinedNameException.undefinedProperty(name);
         }
     }
 

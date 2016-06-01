@@ -40,13 +40,24 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.sl.SLException;
 
-public class SLUndefinedNameException extends SLException {
+public final class SLUndefinedNameException extends SLException {
 
     private static final long serialVersionUID = 1L;
 
-    public SLUndefinedNameException(String element, Object name) {
-        super("Undefined " + element + ": " + name);
+    @TruffleBoundary
+    public static SLUndefinedNameException undefinedFunction(Object name) {
+        throw new SLUndefinedNameException("Undefined function: " + name);
+    }
+
+    @TruffleBoundary
+    public static SLUndefinedNameException undefinedProperty(Object name) {
+        throw new SLUndefinedNameException("Undefined property: " + name);
+    }
+
+    private SLUndefinedNameException(String message) {
+        super(message);
     }
 }

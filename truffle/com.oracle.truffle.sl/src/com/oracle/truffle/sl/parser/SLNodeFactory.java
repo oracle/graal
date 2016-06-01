@@ -58,7 +58,6 @@ import com.oracle.truffle.sl.nodes.access.SLReadPropertyNodeGen;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyNodeGen;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
-import com.oracle.truffle.sl.nodes.call.SLInvokeNodeGen;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -372,7 +371,7 @@ public class SLNodeFactory {
      * @return An SLInvokeNode for the given parameters.
      */
     public SLExpressionNode createCall(SLExpressionNode functionNode, List<SLExpressionNode> parameterNodes, Token finalToken) {
-        final SLExpressionNode result = SLInvokeNodeGen.create(parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]), functionNode);
+        final SLExpressionNode result = new SLInvokeNode(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
 
         final int startPos = functionNode.getSourceSection().getCharIndex();
         final int endPos = finalToken.charPos + finalToken.val.length();
