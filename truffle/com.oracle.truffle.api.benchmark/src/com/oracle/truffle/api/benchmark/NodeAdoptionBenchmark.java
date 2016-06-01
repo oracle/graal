@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.benchmarks;
+package com.oracle.truffle.api.benchmark;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;

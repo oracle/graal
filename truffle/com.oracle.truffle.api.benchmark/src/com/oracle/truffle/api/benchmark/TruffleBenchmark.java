@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.benchmarks;
+package com.oracle.truffle.api.benchmark;
 
-import static com.oracle.truffle.api.benchmarks.TruffleBenchmark.Defaults.FORKS;
-import static com.oracle.truffle.api.benchmarks.TruffleBenchmark.Defaults.MEASUREMENT_ITERATIONS;
-import static com.oracle.truffle.api.benchmarks.TruffleBenchmark.Defaults.WARMUP_ITERATIONS;
+import static com.oracle.truffle.api.benchmark.TruffleBenchmark.Defaults.FORKS;
+import static com.oracle.truffle.api.benchmark.TruffleBenchmark.Defaults.MEASUREMENT_ITERATIONS;
+import static com.oracle.truffle.api.benchmark.TruffleBenchmark.Defaults.WARMUP_ITERATIONS;
 
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
