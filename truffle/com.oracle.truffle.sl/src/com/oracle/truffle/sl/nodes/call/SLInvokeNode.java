@@ -41,26 +41,12 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The node for function invocation in SL. Since SL has first class functions, the {@link SLFunction
@@ -70,19 +56,22 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * inline cache.
  */
 @NodeInfo(shortName = "invoke")
-@NodeChildren({@NodeChild(value = "functionNode", type = SLExpressionNode.class)})
-public abstract class SLInvokeNode extends SLExpressionNode {
+public class SLInvokeNode extends SLExpressionNode {
+    @Child private SLExpressionNode functionNode;
     @Children private final SLExpressionNode[] argumentNodes;
     @Child private SLDispatchNode dispatchNode;
 
-    SLInvokeNode(SLExpressionNode[] argumentNodes) {
+    public SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
+        this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = SLDispatchNodeGen.create();
     }
 
-    @Specialization
     @ExplodeLoop
-    public Object executeGeneric(VirtualFrame frame, SLFunction function) {
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        Object function = functionNode.executeGeneric(frame);
+
         /*
          * The number of arguments is constant for one invoke node. During compilation, the loop is
          * unrolled and the execute methods of all arguments are inlined. This is triggered by the
@@ -98,55 +87,6 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         return dispatchNode.executeDispatch(frame, function, argumentValues);
     }
 
-    /*
-     * The child node to call the foreign function.
-     */
-    @Child private Node crossLanguageCall;
-
-    /*
-     * The child node to convert the result of the foreign function call to an SL value.
-     */
-    @Child private SLForeignToSLTypeNode toSLType;
-
-    /*
-     * If the receiver object (i.e., the function object) is a foreign value we use Truffle's
-     * interop API to execute the foreign function.
-     */
-    @Specialization
-    @ExplodeLoop
-    protected Object executeGeneric(VirtualFrame frame, TruffleObject function) {
-        /*
-         * The number of arguments is constant for one invoke node. During compilation, the loop is
-         * unrolled and the execute methods of all arguments are inlined. This is triggered by the
-         * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
-         * array length is really constant.
-         */
-        CompilerAsserts.compilationConstant(argumentNodes.length);
-
-        Object[] argumentValues = new Object[argumentNodes.length];
-        for (int i = 0; i < argumentNodes.length; i++) {
-            argumentValues[i] = argumentNodes[i].executeGeneric(frame);
-        }
-
-        // Lazily insert the foreign object access nodes upon the first execution.
-        if (crossLanguageCall == null) {
-            // SL maps a function invocation to an EXECUTE message.
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
-            toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
-        }
-        try {
-            // Perform the foreign function call.
-            Object res = ForeignAccess.sendExecute(crossLanguageCall, frame, function, argumentValues);
-            // Convert the result to an SL value.
-            Object slValue = toSLType.executeWithTarget(frame, res);
-            return slValue;
-        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-            // In case the foreign function call is not successful, we return null.
-            return SLNull.SINGLETON;
-        }
-    }
-
     @Override
     protected boolean isTaggedWith(Class<?> tag) {
         if (tag == StandardTags.CallTag.class) {
@@ -154,5 +94,4 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         }
         return super.isTaggedWith(tag);
     }
-
 }

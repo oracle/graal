@@ -44,7 +44,6 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 
@@ -54,9 +53,6 @@ import com.oracle.truffle.sl.nodes.SLBinaryNode;
  */
 @NodeInfo(shortName = "<")
 public abstract class SLLessThanNode extends SLBinaryNode {
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     @Specialization
     protected boolean lessThan(long left, long right) {

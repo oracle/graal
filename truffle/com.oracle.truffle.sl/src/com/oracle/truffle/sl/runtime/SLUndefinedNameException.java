@@ -38,20 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.call;
+package com.oracle.truffle.sl.runtime;
 
-public class SLUndefinedFunctionException extends RuntimeException {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.sl.SLException;
+
+public final class SLUndefinedNameException extends SLException {
 
     private static final long serialVersionUID = 1L;
 
-    private final String functionName;
-
-    public SLUndefinedFunctionException(String functionName) {
-        this.functionName = functionName;
+    @TruffleBoundary
+    public static SLUndefinedNameException undefinedFunction(Object name) {
+        throw new SLUndefinedNameException("Undefined function: " + name);
     }
 
-    public String getFunctionName() {
-        return functionName;
+    @TruffleBoundary
+    public static SLUndefinedNameException undefinedProperty(Object name) {
+        throw new SLUndefinedNameException("Undefined property: " + name);
     }
 
+    private SLUndefinedNameException(String message) {
+        super(message);
+    }
 }

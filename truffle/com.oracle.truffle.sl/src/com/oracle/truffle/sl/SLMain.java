@@ -62,7 +62,6 @@ import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
-import com.oracle.truffle.sl.nodes.call.SLUndefinedFunctionException;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -91,6 +90,7 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -183,7 +183,7 @@ public final class SLMain {
         executeSource(source, System.in, System.out);
     }
 
-    private static void executeSource(Source source, InputStream in, PrintStream out) throws IOException {
+    private static void executeSource(Source source, InputStream in, PrintStream out) {
         out.println("== running on " + Truffle.getRuntime().getName());
 
         PolyglotEngine engine = PolyglotEngine.newBuilder().setIn(in).setOut(out).build();
@@ -198,10 +198,20 @@ public final class SLMain {
                 out.println(result.get());
             }
 
-        } catch (UnsupportedSpecializationException ex) {
-            out.println(formatTypeError(ex));
-        } catch (SLUndefinedFunctionException ex) {
-            out.println(String.format("Undefined function: %s", ex.getFunctionName()));
+        } catch (Throwable ex) {
+            /*
+             * PolyglotEngine.eval wraps the actual exception in an IOException, so we have to
+             * unwrap here.
+             */
+            Throwable cause = ex.getCause();
+            if (cause instanceof UnsupportedSpecializationException) {
+                out.println(formatTypeError((UnsupportedSpecializationException) cause));
+            } else if (cause instanceof SLUndefinedNameException) {
+                out.println(cause.getMessage());
+            } else {
+                /* Unexpected error, just print out the full stack trace for debugging purposes. */
+                ex.printStackTrace(out);
+            }
         }
 
         engine.dispose();

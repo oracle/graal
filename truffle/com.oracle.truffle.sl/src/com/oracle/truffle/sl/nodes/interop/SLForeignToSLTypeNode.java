@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -49,33 +48,33 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The node for converting a foreign primitive or boxed primitive value to an SL value.
  */
-@NodeChild(type = SLExpressionNode.class)
-public abstract class SLForeignToSLTypeNode extends SLExpressionNode {
+public abstract class SLForeignToSLTypeNode extends Node {
+
+    public abstract Object executeConvert(VirtualFrame frame, Object value);
 
     @Specialization
-    public Object fromObject(Number value) {
+    protected static Object fromObject(Number value) {
         return SLContext.fromForeignValue(value);
     }
 
     @Specialization
-    public Object fromString(String value) {
+    protected static Object fromString(String value) {
         return value;
     }
 
     @Specialization
-    public Object fromBoolean(boolean value) {
+    protected static Object fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public Object fromChar(char value) {
+    protected static Object fromChar(char value) {
         return String.valueOf(value);
     }
 
@@ -93,8 +92,6 @@ public abstract class SLForeignToSLTypeNode extends SLExpressionNode {
         return value;
     }
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object target);
-
     @Child private Node isBoxed;
 
     protected final boolean isBoxedPrimitive(VirtualFrame frame, TruffleObject object) {
@@ -105,22 +102,17 @@ public abstract class SLForeignToSLTypeNode extends SLExpressionNode {
         return ForeignAccess.sendIsBoxed(isBoxed, frame, object);
     }
 
+    @Child private Node unbox;
+
     protected final Object doUnbox(VirtualFrame frame, TruffleObject value) {
-        initializeUnbox();
+        if (unbox == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unbox = insert(Message.UNBOX.createNode());
+        }
         try {
             return ForeignAccess.sendUnbox(unbox, frame, value);
         } catch (UnsupportedMessageException e) {
             return SLNull.SINGLETON;
         }
     }
-
-    @Child private Node unbox;
-
-    private void initializeUnbox() {
-        if (unbox == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            unbox = insert(Message.UNBOX.createNode());
-        }
-    }
-
 }
