@@ -718,12 +718,23 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
 
 _JVMCI_JDK_TAG = 'jvmci'
 
+class GraalJVMCI9JDKConfig(mx.JDKConfig):
+    """
+    A JDKConfig that configures Graal as the JVMCI compiler and also adds support for the ``-G:`` options.
+    """
+    def __init__(self):
+        mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
+
+    def run_java(self, args, **kwArgs):
+        run_java(args, **kwArgs)
+
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
-        return jdk
+        return GraalJVMCI9JDKConfig()
 
-# This will override the 'generic' JVMCI JDK with a Graal JVMCI JDK that has
-# support for -G style Graal options.
+    def description(self):
+        return "JVMCI JDK with Graal"
+
 mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 
 def run_vm(args, vm=None, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
