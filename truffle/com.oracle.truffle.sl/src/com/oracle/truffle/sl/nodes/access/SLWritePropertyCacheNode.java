@@ -76,7 +76,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
                                     "cachedName.equals(name)",
                                     "shapeCheck(shape, receiver)",
                                     "location != null",
-                                    "canSet(location, receiver, value)"
+                                    "canSet(location, value)"
                     }, //
                     assumptions = {
                                     "shape.getValidAssumption()"
@@ -163,8 +163,8 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      * shape transition, i.e., we are not actually setting the value of the new location - we only
      * transition to this location as part of the shape change.
      */
-    protected static boolean canSet(Location location, DynamicObject receiver, Object value) {
-        return location.canSet(receiver, value);
+    protected static boolean canSet(Location location, Object value) {
+        return location.canSet(value);
     }
 
     /** See {@link #canSet} for the difference between the two methods. */
