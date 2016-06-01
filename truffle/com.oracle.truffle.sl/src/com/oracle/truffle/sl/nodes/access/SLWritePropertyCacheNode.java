@@ -81,7 +81,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
                     assumptions = {
                                     "shape.getValidAssumption()"
                     })
-    protected void writeExistingPropertyCached(DynamicObject receiver, Object name, Object value,
+    protected static void writeExistingPropertyCached(DynamicObject receiver, Object name, Object value,
                     @Cached("name") Object cachedName,
                     @Cached("lookupShape(receiver)") Shape shape,
                     @Cached("lookupLocation(shape, name, value)") Location location) {
@@ -109,7 +109,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
                                     "oldShape.getValidAssumption()",
                                     "newShape.getValidAssumption()"
                     })
-    protected void writeNewPropertyCached(DynamicObject receiver, Object name, Object value,
+    protected static void writeNewPropertyCached(DynamicObject receiver, Object name, Object value,
                     @Cached("name") Object cachedName,
                     @Cached("lookupShape(receiver)") Shape oldShape,
                     @Cached("lookupLocation(oldShape, name, value)") Location oldLocation,
@@ -203,31 +203,26 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
         writeUncached(receiver, name, value);
     }
 
-    /*
-     * All code below is only needed for language interoperability.
-     */
-
-    /** The child node to access the foreign object. */
-    @Child private Node foreignWrite;
-
     /**
-     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
-     * data.
+     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
      */
     @Specialization(guards = "isForeignObject(receiver)")
-    protected void writeForeign(VirtualFrame frame, TruffleObject receiver, Object name, Object value) {
-        // Lazily insert the foreign object access nodes upon the first execution.
-        if (foreignWrite == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // SL maps a property write access to a WRITE message if the receiver is a foreign
-            // object.
-            this.foreignWrite = insert(Message.WRITE.createNode());
-        }
+    protected static void writeForeign(VirtualFrame frame, TruffleObject receiver, Object name, Object value,
+                    // The child node to access the foreign object
+                    @Cached("createForeignWriteNode()") Node foreignWriteNode) {
+
         try {
-            // Perform the foreign object access.
-            ForeignAccess.sendWrite(foreignWrite, frame, receiver, name, value);
+            /* Perform the foreign object access. */
+            ForeignAccess.sendWrite(foreignWriteNode, frame, receiver, name, value);
+
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-            // Foreign access was not successful.
+            /* Foreign access was not successful. */
+            throw new SLUndefinedNameException("property", name);
         }
+    }
+
+    protected static Node createForeignWriteNode() {
+        return Message.WRITE.createNode();
     }
 }

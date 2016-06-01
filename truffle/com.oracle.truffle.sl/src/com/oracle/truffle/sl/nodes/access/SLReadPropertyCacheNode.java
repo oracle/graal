@@ -78,7 +78,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
                     assumptions = {
                                     "shape.getValidAssumption()"
                     })
-    protected Object readCached(DynamicObject receiver, Object name,
+    protected static Object readCached(DynamicObject receiver, Object name,
                     @Cached("name") Object cachedName,
                     @Cached("lookupShape(receiver)") Shape shape,
                     @Cached("lookupLocation(shape, name)") Location location) {
@@ -105,7 +105,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      */
     @TruffleBoundary
     @Specialization(contains = {"readCached"}, guards = {"isValidSimpleLanguageObject(receiver)"})
-    protected Object readUncached(DynamicObject receiver, Object name) {
+    protected static Object readUncached(DynamicObject receiver, Object name) {
 
         Object result = receiver.get(name);
         if (result == null) {
@@ -120,7 +120,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      * the object has a shape that has been invalidated.
      */
     @Fallback
-    protected Object updateShape(Object r, Object name) {
+    protected static Object updateShape(Object r, Object name) {
         /*
          * Slow path that we do not handle in compiled code. But no need to invalidate compiled
          * code.
@@ -137,38 +137,34 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
 
     }
 
-    /*
-     * All code below is only needed for language interoperability.
-     */
-
-    /** The child node to access the foreign object. */
-    @Child private Node foreignRead;
-
-    /** The child node to convert the result of the foreign object access to an SL value. */
-    @Child private SLForeignToSLTypeNode toSLType;
-
     /**
-     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
-     * data.
+     * Language interoperability: if the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
      */
     @Specialization(guards = "isForeignObject(receiver)")
-    protected Object readForeign(VirtualFrame frame, TruffleObject receiver, Object name) {
-        // Lazily insert the foreign object access nodes upon the first execution.
-        if (foreignRead == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // SL maps a property access to a READ message if the receiver is a foreign object.
-            this.foreignRead = insert(Message.READ.createNode());
-            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
-        }
+    protected static Object readForeign(VirtualFrame frame, TruffleObject receiver, Object name,
+                    // The child node to access the foreign object
+                    @Cached("createForeignReadNode()") Node foreignReadNode,
+                    // The child node to convert the result of the foreign read to a SL value
+                    @Cached("createToSLTypeNode()") SLForeignToSLTypeNode toSLTypeNode) {
+
         try {
-            // Perform the foreign object access.
-            Object result = ForeignAccess.sendRead(foreignRead, frame, receiver, name);
-            // Convert the result to an SL value.
-            Object slValue = toSLType.executeWithTarget(frame, result);
-            return slValue;
+            /* Perform the foreign object access. */
+            Object result = ForeignAccess.sendRead(foreignReadNode, frame, receiver, name);
+            /* Convert the result to a SL value. */
+            return toSLTypeNode.executeConvert(frame, result);
+
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            // In case the foreign access is not successful, we return null.
-            return SLNull.SINGLETON;
+            /* Foreign access was not successful. */
+            throw new SLUndefinedNameException("property", name);
         }
+    }
+
+    protected static Node createForeignReadNode() {
+        return Message.READ.createNode();
+    }
+
+    protected static SLForeignToSLTypeNode createToSLTypeNode() {
+        return SLForeignToSLTypeNodeGen.create();
     }
 }

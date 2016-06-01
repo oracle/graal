@@ -68,12 +68,12 @@ public class SLObjectMessageResolution {
     public abstract static class SLForeignWriteNode extends Node {
 
         @Child private SLWritePropertyCacheNode write = SLWritePropertyCacheNodeGen.create();
-        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create(null);
-        @Child private SLForeignToSLTypeNode valueToSLType = SLForeignToSLTypeNodeGen.create(null);
+        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
+        @Child private SLForeignToSLTypeNode valueToSLType = SLForeignToSLTypeNodeGen.create();
 
         public Object access(VirtualFrame frame, DynamicObject receiver, Object name, Object value) {
-            Object convertedName = nameToSLType.executeWithTarget(frame, name);
-            Object convertedValue = valueToSLType.executeWithTarget(frame, value);
+            Object convertedName = nameToSLType.executeConvert(frame, name);
+            Object convertedValue = valueToSLType.executeConvert(frame, value);
             write.executeWrite(frame, receiver, convertedName, convertedValue);
             return convertedValue;
         }
@@ -86,10 +86,10 @@ public class SLObjectMessageResolution {
     public abstract static class SLForeignReadNode extends Node {
 
         @Child private SLReadPropertyCacheNode read = SLReadPropertyCacheNodeGen.create();
-        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create(null);
+        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
 
         public Object access(VirtualFrame frame, DynamicObject receiver, Object name) {
-            Object convertedName = nameToSLType.executeWithTarget(frame, name);
+            Object convertedName = nameToSLType.executeConvert(frame, name);
             return read.executeRead(frame, receiver, convertedName);
         }
     }
