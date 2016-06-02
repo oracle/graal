@@ -31,7 +31,6 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
-import mx_jvmci
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args, expected_mode):
@@ -58,7 +57,6 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        assert mx_jvmci.get_jvmci_mode() == self.expected_mode
         if mx_graal_core.get_vm() != self.name():
             mx.abort("To use '{0}' VM, specify respective --vm flag.".format(
                 self.name()))
