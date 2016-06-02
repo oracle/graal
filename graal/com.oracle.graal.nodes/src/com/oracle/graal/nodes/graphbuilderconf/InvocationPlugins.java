@@ -319,7 +319,42 @@ public class InvocationPlugins {
     }
 
     /**
-     * Key for a method.
+     * Key for a {@linkplain ClassPlugins#entries resolved} plugin registration. Due to the
+     * possibility of class redefinition, we cannot directly use {@link ResolvedJavaMethod}s as
+     * keys. A {@link ResolvedJavaMethod} implementation might implement {@code equals()} and
+     * {@code hashCode()} based on internal representation subject to change by class redefinition.
+     */
+    static final class ResolvedJavaMethodKey {
+        private final ResolvedJavaMethod method;
+
+        ResolvedJavaMethodKey(ResolvedJavaMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof ResolvedJavaMethodKey) {
+                ResolvedJavaMethodKey that = (ResolvedJavaMethodKey) obj;
+                if (this.method.getDeclaringClass().equals(that.method.getDeclaringClass())) {
+                    if (this.method.getName().equals(that.method.getName())) {
+                        if (this.method.getSignature().equals(that.method.getSignature())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return this.method.getName().hashCode();
+        }
+    }
+
+    /**
+     * Key for {@linkplain ClassPlugins#registrations registering} an {@link InvocationPlugin} for a
+     * specific method.
      */
     static class MethodKey {
         final boolean isStatic;
@@ -461,7 +496,7 @@ public class InvocationPlugins {
          *
          * Note: this must be volatile as threads may race to initialize it.
          */
-        private volatile Map<ResolvedJavaMethod, InvocationPlugin> entries;
+        private volatile Map<ResolvedJavaMethodKey, InvocationPlugin> entries;
 
         void initializeMap() {
             if (entries == null) {
@@ -473,13 +508,15 @@ public class InvocationPlugins {
                         // An optional type that could not be resolved
                         entries = Collections.emptyMap();
                     } else {
-                        Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
+                        Map<ResolvedJavaMethodKey, InvocationPlugin> newEntries = new HashMap<>();
                         for (MethodKey methodKey : registrations) {
                             ResolvedJavaMethod m = methodKey.resolve(declaringClass);
-                            newEntries.put(m, methodKey.value);
-                            if (entries != null) {
-                                // Another thread finished initializing entries first
-                                return;
+                            if (m != null) {
+                                newEntries.put(new ResolvedJavaMethodKey(m), methodKey.value);
+                                if (entries != null) {
+                                    // Another thread finished initializing entries first
+                                    return;
+                                }
                             }
                         }
                         entries = newEntries;
@@ -492,7 +529,7 @@ public class InvocationPlugins {
             if (entries == null) {
                 initializeMap();
             }
-            return entries.get(method);
+            return entries.get(new ResolvedJavaMethodKey(method));
         }
 
         public void register(MethodKey methodKey, boolean allowOverwrite) {
@@ -624,7 +661,7 @@ public class InvocationPlugins {
                 classPlugins.entries = new HashMap<>();
             }
 
-            classPlugins.entries.put(method, plugin);
+            classPlugins.entries.put(new ResolvedJavaMethodKey(method), plugin);
         }
     }
 
