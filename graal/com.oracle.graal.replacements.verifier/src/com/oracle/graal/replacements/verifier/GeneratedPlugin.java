@@ -36,8 +36,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.replacements.verifier.InjectedDependencies.Dependency;
 import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
 
@@ -172,26 +170,26 @@ public abstract class GeneratedPlugin {
         }
     }
 
-    protected static JavaKind getReturnKind(ExecutableElement method) {
+    protected static String getReturnKind(ExecutableElement method) {
         switch (method.getReturnType().getKind()) {
             case BOOLEAN:
             case BYTE:
             case SHORT:
             case CHAR:
             case INT:
-                return JavaKind.Int;
+                return "Int";
             case LONG:
-                return JavaKind.Long;
+                return "Long";
             case FLOAT:
-                return JavaKind.Float;
+                return "Float";
             case DOUBLE:
-                return JavaKind.Double;
+                return "Double";
             case VOID:
-                return JavaKind.Void;
+                return "Void";
             case ARRAY:
             case TYPEVAR:
             case DECLARED:
-                return JavaKind.Object;
+                return "Object";
             default:
                 throw new IllegalArgumentException(method.getReturnType().toString());
         }
