@@ -166,7 +166,7 @@ class Buffer {
 			// thus we have to read the stream manually till
 			// the wanted position is in sight.
 			while (value >= fileLen && ReadNextStreamChunk() > 0) {
-			    //do nothing
+			    // do nothing
 			}
 		}
 
@@ -289,8 +289,8 @@ class StartStates {
 public class Scanner {
 	static final char EOL = '\n';
 	static final int  eofSym = 0;
-	static final int maxT = 28;
-	static final int noSym = 28;
+	static final int maxT = 24;
+	static final int noSym = 24;
 
 
 	public Buffer buffer; // scanner buffer
@@ -322,21 +322,17 @@ public class Scanner {
 		start.set(34, 7);
 		start.set(44, 8);
 		start.set(59, 9);
-		start.set(37, 21);
+		start.set(37, 22);
 		start.set(36, 20);
 		start.set(Buffer.EOF, -1);
-		literals.put("addb", new Integer(7));
-		literals.put("adds", new Integer(8));
-		literals.put("addw", new Integer(9));
-		literals.put("addl", new Integer(10));
-		literals.put("addq", new Integer(11));
-		literals.put("addt", new Integer(12));
-		literals.put("subb", new Integer(13));
-		literals.put("subs", new Integer(14));
-		literals.put("subw", new Integer(15));
-		literals.put("subl", new Integer(16));
-		literals.put("subq", new Integer(17));
-		literals.put("subt", new Integer(18));
+		literals.put("addl", new Integer(7));
+		literals.put("subl", new Integer(8));
+		literals.put("incl", new Integer(9));
+		literals.put("decl", new Integer(10));
+		literals.put("notl", new Integer(11));
+		literals.put("andl", new Integer(12));
+		literals.put("orl", new Integer(13));
+		literals.put("xorl", new Integer(14));
 
 	}
 
@@ -460,45 +456,48 @@ public class Scanner {
 					if (ch == 'x') {AddCh(); state = 11; break;}
 					else {state = 0; break;}
 				case 11:
-					{t.kind = 19; break loop;}
+					{t.kind = 15; break loop;}
 				case 12:
-					{t.kind = 20; break loop;}
+					{t.kind = 16; break loop;}
 				case 13:
 					if (ch == 'x') {AddCh(); state = 14; break;}
 					else {state = 0; break;}
 				case 14:
-					{t.kind = 21; break loop;}
+					{t.kind = 17; break loop;}
 				case 15:
-					{t.kind = 22; break loop;}
+					{t.kind = 18; break loop;}
 				case 16:
-					{t.kind = 23; break loop;}
+					{t.kind = 19; break loop;}
 				case 17:
-					{t.kind = 24; break loop;}
+					{t.kind = 20; break loop;}
 				case 18:
-					{t.kind = 25; break loop;}
+					{t.kind = 21; break loop;}
 				case 19:
-					{t.kind = 26; break loop;}
+					{t.kind = 22; break loop;}
 				case 20:
-					{t.kind = 27; break loop;}
-				case 21:
-					if (ch == 'e') {AddCh(); state = 22; break;}
+					if (ch == '$') {AddCh(); state = 21; break;}
 					else {state = 0; break;}
+				case 21:
+					{t.kind = 23; break loop;}
 				case 22:
-					if (ch == 'a') {AddCh(); state = 10; break;}
-					else if (ch == 'b') {AddCh(); state = 23; break;}
-					else if (ch == 'c') {AddCh(); state = 13; break;}
-					else if (ch == 'd') {AddCh(); state = 24; break;}
-					else if (ch == 's') {AddCh(); state = 25; break;}
+					if (ch == 'e') {AddCh(); state = 23; break;}
 					else {state = 0; break;}
 				case 23:
+					if (ch == 'a') {AddCh(); state = 10; break;}
+					else if (ch == 'b') {AddCh(); state = 24; break;}
+					else if (ch == 'c') {AddCh(); state = 13; break;}
+					else if (ch == 'd') {AddCh(); state = 25; break;}
+					else if (ch == 's') {AddCh(); state = 26; break;}
+					else {state = 0; break;}
+				case 24:
 					if (ch == 'x') {AddCh(); state = 12; break;}
 					else if (ch == 'p') {AddCh(); state = 17; break;}
 					else {state = 0; break;}
-				case 24:
+				case 25:
 					if (ch == 'x') {AddCh(); state = 15; break;}
 					else if (ch == 'i') {AddCh(); state = 19; break;}
 					else {state = 0; break;}
-				case 25:
+				case 26:
 					if (ch == 'p') {AddCh(); state = 16; break;}
 					else if (ch == 'i') {AddCh(); state = 18; break;}
 					else {state = 0; break;}
