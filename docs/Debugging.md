@@ -203,7 +203,7 @@ This option however comes with a small but constant overhead for the lookup of t
 
 Assuming you are interested in the phase times during the compilation of a certain method consider the following example that will intercept global timers during the compilation of the method `Long.bitCount`:
 ```
-mx --vm jvmci dacapo
+mx --vm-compiler jvmci dacapo
   -G:MethodMeter=FrontEnd
   -G:Time=FrontEnd
   -G:GlobalMetricsInterceptedByMethodMetrics=Timers
@@ -268,7 +268,7 @@ Various other VM options are of interest to see activity related to compilation:
 
 To see the compiler data structures used while compiling `Node.updateUsages`, use the following command:
 ```
-mx vm -XX:+BootstrapJVMCI -XX:-TieredCompilation -G:Dump= -G:MethodFilter=Node.updateUsages -version
+mx --vm-compiler jvmci vm -XX:+BootstrapJVMCI -XX:-TieredCompilation -G:Dump= -G:MethodFilter=Node.updateUsages -version
 Bootstrapping JVMCI....Connected to the IGV on 127.0.0.1:4445
 CFGPrinter: Output to file /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
 CFGPrinter: Dumping method HotSpotMethod<Node.updateUsages(Node, Node)> to /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
@@ -288,6 +288,6 @@ You'll notice that no output is sent to the IGV by this command.
 Alternatively, you can see the machine code using [HotSpot's PrintAssembly support](https://wiki.openjdk.java.net/display/HotSpot/PrintAssembly):
 ```
 mx hsdis
-mx vm -XX:+BootstrapJVMCI -XX:-TieredCompilation -XX:CompileCommand='print,*Node.updateUsages' -version
+mx --vm-compiler jvmci vm -XX:+BootstrapJVMCI -XX:-TieredCompilation -XX:CompileCommand='print,*Node.updateUsages' -version
 ```
 The first step above installs the [hsdis](https://kenai.com/projects/base-hsdis) disassembler and only needs to be performed once.
