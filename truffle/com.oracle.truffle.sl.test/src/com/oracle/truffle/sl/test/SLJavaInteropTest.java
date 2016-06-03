@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.test;
 
+import com.oracle.truffle.api.CallTarget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import static org.junit.Assert.fail;
 
 public class SLJavaInteropTest {
 
@@ -107,5 +109,47 @@ public class SLJavaInteropTest {
 
     interface PassInValues {
         void call(Object a, Object b);
+    }
+
+    @Test
+    public void asFunctionWithArr() throws Exception {
+        String scriptText = "function values(a, b) {\n" + //
+                        "  println(\"Called with \" + a + \" and \" + b);\n" + //
+                        "}\n"; //
+        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+        final Object value = fn.get();
+        assertTrue("It's truffle object", value instanceof TruffleObject);
+        PassInArray valuesIn = JavaInterop.asJavaFunction(PassInArray.class, (TruffleObject) value);
+
+        try {
+            valuesIn.call("OK", "Fine");
+            assertEquals("Called with OK and null\n", os.toString("UTF-8"));
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("not a Truffle value"));
+            return;
+        }
+        fail("The call with array argument cannot succeed");
+    }
+
+    @Test
+    public void asFunctionWithCallTarget() throws Exception {
+        String scriptText = "function values(a, b) {\n" + //
+                        "  println(\"Called with \" + a + \" and \" + b);\n" + //
+                        "}\n"; //
+        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+        final Object value = fn.get();
+        assertTrue("It's truffle object", value instanceof TruffleObject);
+        CallTarget valuesIn = JavaInterop.asJavaFunction(CallTarget.class, (TruffleObject) value);
+
+        valuesIn.call("OK", "Fine");
+        assertEquals("Called with OK and Fine\n", os.toString("UTF-8"));
+    }
+
+    interface PassInArray {
+        void call(Object... arr);
     }
 }

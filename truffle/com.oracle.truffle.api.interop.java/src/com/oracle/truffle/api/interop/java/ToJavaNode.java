@@ -125,11 +125,15 @@ final class ToJavaNode extends Node {
 
     @TruffleBoundary
     private static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, new SingleHandler(function));
+        final SingleHandler handler = new SingleHandler(function);
+        if (functionalType == CallTarget.class) {
+            return functionalType.cast(handler);
+        }
+        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    private static final class SingleHandler implements InvocationHandler {
+    private static final class SingleHandler implements InvocationHandler, CallTarget {
         private final TruffleObject symbol;
         private CallTarget target;
 
@@ -139,6 +143,12 @@ final class ToJavaNode extends Node {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+            Object ret = call(arguments);
+            return toJava(ret, method);
+        }
+
+        @Override
+        public Object call(Object... arguments) {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
@@ -146,8 +156,7 @@ final class ToJavaNode extends Node {
                 RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
                 target = Truffle.getRuntime().createCallTarget(symbolNode);
             }
-            Object ret = target.call(args);
-            return toJava(ret, method);
+            return target.call(args);
         }
     }
 
