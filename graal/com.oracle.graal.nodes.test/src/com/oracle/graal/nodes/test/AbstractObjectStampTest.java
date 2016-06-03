@@ -81,6 +81,22 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 
     }
 
+    protected interface I1 {
+
+    }
+
+    protected interface I2 {
+
+    }
+
+    protected interface ImplOrder1 extends I1, I2 {
+
+    }
+
+    protected interface ImplOrder2 extends I2, I1 {
+
+    }
+
     /**
      * Joins the two stamps and also asserts that the meet operation is commutative.
      */

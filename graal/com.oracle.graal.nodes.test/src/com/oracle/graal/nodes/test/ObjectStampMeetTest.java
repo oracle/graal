@@ -100,6 +100,13 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
     }
 
     @Test
+    public void testMeet9() {
+        Stamp ord1 = StampFactory.object(getType(ImplOrder1.class));
+        Stamp ord2 = StampFactory.object(getType(ImplOrder2.class));
+        meet(ord1, ord2);
+    }
+
+    @Test
     public void testMeetInterface0() {
         check(C.class, I.class, I.class);
     }
