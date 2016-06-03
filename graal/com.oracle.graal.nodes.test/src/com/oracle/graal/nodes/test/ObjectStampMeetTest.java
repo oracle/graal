@@ -101,9 +101,18 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
 
     @Test
     public void testMeet9() {
+        Stamp base1 = StampFactory.object(getType(Base1.class));
         Stamp ord1 = StampFactory.object(getType(ImplOrder1.class));
         Stamp ord2 = StampFactory.object(getType(ImplOrder2.class));
-        meet(ord1, ord2);
+        Assert.assertEquals(base1, meet(ord1, ord2));
+    }
+
+    @Test
+    public void testMeet10() {
+        Stamp base1 = StampFactory.object(getType(Object.class));
+        Stamp ord1 = StampFactory.object(getType(Deep1.class));
+        Stamp ord2 = StampFactory.object(getType(Deep2.class));
+        Assert.assertEquals(base1, meet(ord1, ord2));
     }
 
     @Test

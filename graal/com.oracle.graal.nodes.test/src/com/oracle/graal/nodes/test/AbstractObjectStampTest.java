@@ -81,19 +81,149 @@ public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 
     }
 
-    protected interface I1 {
+    protected interface Base1 {
 
     }
 
-    protected interface I2 {
+    protected interface Base2 {
 
     }
 
-    protected interface ImplOrder1 extends I1, I2 {
+    protected interface ImplOrder1 extends Base1, Base2 {
 
     }
 
-    protected interface ImplOrder2 extends I2, I1 {
+    protected interface ImplOrder2 extends Base2, Base1 {
+
+    }
+
+    /* Example of a deep interface hierarchy. */
+
+    protected interface I45 {
+
+    }
+
+    protected interface I46 {
+
+    }
+
+    protected interface I41 extends I45 {
+
+    }
+
+    protected interface I42 extends I45 {
+
+    }
+
+    protected interface I43 extends I46 {
+
+    }
+
+    protected interface I44 extends I46 {
+
+    }
+
+    protected interface I35 extends I41, I42 {
+
+    }
+
+    protected interface I36 extends I43, I44 {
+
+    }
+
+    protected interface I31 extends I35 {
+
+    }
+
+    protected interface I32 extends I35 {
+
+    }
+
+    protected interface I33 extends I36 {
+
+    }
+
+    protected interface I34 extends I36 {
+
+    }
+
+    protected interface I25 extends I31, I32 {
+
+    }
+
+    protected interface I26 extends I33, I34 {
+
+    }
+
+    protected interface I21 extends I25 {
+
+    }
+
+    protected interface I22 extends I25 {
+
+    }
+
+    protected interface I23 extends I26 {
+
+    }
+
+    protected interface I24 extends I26 {
+
+    }
+
+    protected interface I15 extends I21, I22 {
+
+    }
+
+    protected interface I16 extends I23, I24 {
+
+    }
+
+    protected interface I11 extends I15 {
+
+    }
+
+    protected interface I12 extends I15 {
+
+    }
+
+    protected interface I13 extends I16 {
+
+    }
+
+    protected interface I14 extends I16 {
+
+    }
+
+    protected interface I5 extends I11, I12 {
+
+    }
+
+    protected interface I6 extends I13, I14 {
+
+    }
+
+    protected interface I1 extends I5 {
+
+    }
+
+    protected interface I2 extends I5 {
+
+    }
+
+    protected interface I3 extends I6 {
+
+    }
+
+    protected interface I4 extends I6 {
+
+    }
+
+    protected interface Deep1 extends I1, I2 {
+
+    }
+
+    protected interface Deep2 extends I3, I4 {
 
     }
 
