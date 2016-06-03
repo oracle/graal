@@ -88,4 +88,24 @@ public class SLJavaInteropTest {
 
         assertEquals("Called!\n", os.toString("UTF-8"));
     }
+
+    @Test
+    public void asFunctionWithArg() throws Exception {
+        String scriptText = "function values(a, b) {\n" + //
+                        "  println(\"Called with \" + a + \" and \" + b);\n" + //
+                        "}\n"; //
+        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+        final Object value = fn.get();
+        assertTrue("It's truffle object", value instanceof TruffleObject);
+        PassInValues valuesIn = JavaInterop.asJavaFunction(PassInValues.class, (TruffleObject) value);
+        valuesIn.call("OK", "Fine");
+
+        assertEquals("Called with OK and Fine\n", os.toString("UTF-8"));
+    }
+
+    interface PassInValues {
+        void call(Object a, Object b);
+    }
 }
