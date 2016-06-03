@@ -29,13 +29,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugMemUseTracker;
@@ -43,8 +41,6 @@ import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.DebugValueFactory;
 import com.oracle.graal.debug.DebugVerifyHandler;
-import com.oracle.graal.debug.DelegatingDebugConfig;
-import com.oracle.graal.debug.DelegatingDebugConfig.Feature;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
@@ -174,38 +170,7 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
     @Override
     @SuppressWarnings("try")
     void assertValues() throws Throwable {
-        try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().enable(Feature.METHOD_METRICS))) {
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m01",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m02",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m03",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m04",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m05",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m06",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m07",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m08",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m09",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-            Assert.assertEquals(50,
-                            ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m10",
-                                            testSignature)))).getMetricValueFromCompilationIndex(0, "GlobalTimer4_WithoutInlineEnhancement"));
-        }
+        assertValues("GlobalTimer4_WithoutInlineEnhancement", new long[]{50, 50, 50, 50, 50, 50, 50, 50, 50, 50});
     }
 
 }

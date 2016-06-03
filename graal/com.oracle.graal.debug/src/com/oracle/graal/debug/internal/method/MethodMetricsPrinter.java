@@ -74,7 +74,8 @@ public interface MethodMetricsPrinter {
         public void printMethodMetrics(Collection<DebugMethodMetrics> metrics) {
             PrintStream p = new PrintStream(out);
             for (DebugMethodMetrics m : metrics) {
-                p.println(m.toString());
+                ((MethodMetricsImpl) m).dumpASCII(p);
+                p.println();
             }
         }
 

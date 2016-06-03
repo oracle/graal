@@ -25,74 +25,101 @@ package com.oracle.graal.debug.internal.method;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugMethodMetrics;
+import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MethodMetricsImpl implements DebugMethodMetrics {
 
-    private static final DebugCounter CompilationEntries = Debug.counter("MethodMetricCompilationEntries");
+    /**
+     * A list capturing all method metrics data of all the compiler threads. Every thread registers
+     * a reference to its thread local map of compilation metrics in this list. During metrics
+     * dumping this list is globally locked and all method entries across all threads are merged to
+     * a result.
+     */
+    private static final List<Map<ResolvedJavaMethod, CompilationData>> threadMaps = new ArrayList<>();
+    /**
+     * Every compiler thread carries its own map of metric data for each method and compilation it
+     * compiles. This data is stored in {@link ThreadLocal} maps for each compiler thread that are
+     * merged before metrics are reported. Storing compilation data thread locally reduces the
+     * locking on access of a method metric object to one point for each thread, the first access
+     * where the thread local is initialized.
+     */
+    private static final ThreadLocal<Map<ResolvedJavaMethod, CompilationData>> threadEntries = new ThreadLocal<>();
+    /**
+     * The lowest debug scope id that should be used during metric dumping. When a bootstrap is run
+     * all compilations during bootstrap are also collected if the associated debug filters match.
+     * Data collected during bootstrap should normally not be included in metrics for application
+     * compilation, thus every compilation lower than this index is ignored during metric dumping.
+     */
+    private static long lowestCompilationDebugScopeId;
 
-    private final ResolvedJavaMethod method;
-    private ArrayList<CompilationData> compilationEntries;
+    public static class CompilationData {
+        /**
+         * A mapping of graph ids (unique ids used for the caching) to compilations.
+         */
+        private final Map<Long, Map<String, Long>> compilations;
+        /**
+         * A pointer to a {@code MethodMetricsImpl} object. This reference is created once for every
+         * compilation of a method (and once for each thread, i.e. if method a is compiled by 8
+         * compiler threads there will be 8 metrics objects for the given method, one local to every
+         * thread, this avoids synchronizing on the metrics object on every access) accessing method
+         * metrics for a given method.
+         */
+        private final MethodMetricsImpl metrics;
 
-    private static class CompilationData {
-        private final long id;
-        private final HashMap<String, Long> counterMap;
+        CompilationData(ResolvedJavaMethod method) {
+            compilations = new HashMap<>(8);
+            metrics = new MethodMetricsImpl(method);
+        }
 
-        CompilationData(long id, HashMap<String, Long> metrics) {
-            this.id = id;
-            this.counterMap = metrics;
+        public Map<Long, Map<String, Long>> getCompilations() {
+            return compilations;
         }
     }
+
+    private static void addThreadCompilationData(Map<ResolvedJavaMethod, CompilationData> threadMap) {
+        synchronized (threadMaps) {
+            threadMaps.add(threadMap);
+        }
+    }
+
+    /**
+     * A reference to the {@link ResolvedJavaMethod} method object. This object's identity is used
+     * to store metrics for each compilation.
+     */
+    private final ResolvedJavaMethod method;
+    /**
+     * A list of all recorded compilations. This is generated during metric dumping when all thread
+     * local metrics are merged into one final method metrics object that is than reported
+     */
+    private List<Map<Long, Map<String, Long>>> collected;
+    /**
+     * A pointer to the current compilation data for the {@link MethodMetricsImpl#method} method
+     * which allows to avoid synchronizing over the compilation data. This reference changes for
+     * each compilation of the given method. It is set on the first access of this
+     * {@link MethodMetricsImpl} object during the call to
+     * {@link MethodMetricsImpl#getMethodMetrics(ResolvedJavaMethod)}.
+     */
+    private Map<String, Long> currentCompilation;
 
     MethodMetricsImpl(ResolvedJavaMethod method) {
         this.method = method;
     }
 
-    private synchronized int getIndex(long compilationID) {
-        if (compilationEntries == null) {
-            compilationEntries = new ArrayList<>();
-        }
-        for (int i = 0; i < compilationEntries.size(); i++) {
-            if (compilationEntries.get(i).id == compilationID) {
-                return i;
-            }
-        }
-        compilationEntries.add(new CompilationData(compilationID, new HashMap<>()));
-        CompilationEntries.increment();
-        return compilationEntries.size() - 1;
-    }
-
-    private synchronized long getCounterInternal(int ci, String metricName) {
-        assert ci >= 0;
-        assert compilationEntries != null;
-        assert ci < compilationEntries.size();
-        if (!compilationEntries.get(ci).counterMap.containsKey(metricName)) {
-            return 0;
-        }
-        return compilationEntries.get(ci).counterMap.get(metricName);
-    }
-
-    private synchronized void putCounterInternal(int ci, String metricName, long val) {
-        assert compilationEntries != null;
-        assert ci < compilationEntries.size();
-        compilationEntries.get(ci).counterMap.put(metricName, val);
-    }
-
-    private static long compilationId() {
-        return DebugScope.getInstance().scopeId();
+    private static void clearData() {
+        lowestCompilationDebugScopeId = DebugScope.getCurrentGlobalScopeId();
     }
 
     @Override
@@ -101,21 +128,15 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
             return;
         }
         assert metricName != null;
-        long compilationId = compilationId();
-        assert compilationId >= 0;
-        putCounterInternal(getIndex(compilationId), metricName, getCounterInternal(getIndex(compilationId), metricName) + value);
+        Long valueStored = currentCompilation.get(metricName);
+        currentCompilation.put(metricName, valueStored == null ? value : value + valueStored);
     }
 
     @Override
     public long getCurrentMetricValue(String metricName) {
         assert metricName != null;
-        long compilationId = compilationId();
-        assert compilationId >= 0;
-        int index = getIndex(compilationId);
-        if (compilationEntries == null) {
-            return 0;
-        }
-        return getCounterInternal(index, metricName);
+        Long valueStored = currentCompilation.get(metricName);
+        return valueStored == null ? 0 : valueStored;
     }
 
     @Override
@@ -168,225 +189,217 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
         return getCurrentMetricValue(String.format(format, arg1, arg2, arg3));
     }
 
-    public long getMetricValueFromCompilationIndex(int compilationIndex, String metricName) {
-        if (compilationEntries == null || compilationIndex >= compilationEntries.size()) {
-            return 0;
-        }
-        return getCounterInternal(compilationIndex, metricName);
-    }
-
-    public long getCompilationIndexForId(long compilationId) {
-        if (compilationEntries == null) {
-            return 0;
-        }
-        return getIndex(compilationId);
-    }
-
     @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
 
-    public static DebugMethodMetrics getMetricIfDefined(ResolvedJavaMethod method) {
-        assert method != null;
-        return MethodMetricsCache.getMethodMetrics(method);
-    }
-
     public static DebugMethodMetrics getMethodMetrics(ResolvedJavaMethod method) {
         assert method != null;
-        DebugMethodMetrics metric = MethodMetricsCache.getMethodMetrics(method);
-        if (metric == null) {
-            MethodMetricsCache.defineMethodMetrics(method);
-            metric = MethodMetricsCache.getMethodMetrics(method);
+        Map<ResolvedJavaMethod, CompilationData> threadCache = threadEntries.get();
+        if (threadCache == null) {
+            // this branch will only be executed once for each compiler thread on the first request
+            // of a method metric
+            threadCache = new HashMap<>(GraalDebugConfig.Options.MethodFilter.getValue() == null ? 128 : 16);
+            threadEntries.set(threadCache);
+            addThreadCompilationData(threadCache);
         }
-        return metric;
+
+        CompilationData recorded = threadCache.get(method);
+        if (recorded == null) {
+            recorded = new CompilationData(method);
+            threadCache.put(method, recorded);
+        }
+        // pre-generate the current compilation map to avoid doing it later every time we add to a
+        // metric or read a current metric's value
+        long compilationId = DebugScope.getInstance().scopeId();
+        Map<String, Long> currentCompilation = recorded.compilations.get(compilationId);
+        if (currentCompilation == null) {
+            // this map is generated for every distinct compilation of a unique method
+            currentCompilation = new HashMap<>(32);
+            recorded.compilations.put(compilationId, currentCompilation);
+            // we remember a reference to the current compilation to avoid the expensive lookup
+            recorded.metrics.currentCompilation = currentCompilation;
+        }
+
+        return recorded.metrics;
     }
 
-    private static final boolean DUMP_SCOPE_ID = false;
-
-    @Override
-    public synchronized String toString() {
-        StringBuilder sb = new StringBuilder();
-        final String lineSep = System.lineSeparator();
-        String methodName = method.toString();
-        int maxLen = methodName.length();
-        // determine longest key value pair
-        if (compilationEntries != null) {
-            for (int i = 0; i < compilationEntries.size(); i++) {
-                HashMap<String, Long> table = compilationEntries.get(i).counterMap;
-                if (table != null) {
-                    Optional<String> sl = table.keySet().stream().max((x, y) -> Integer.valueOf(x.length()).compareTo(y.length()));
-                    if (sl.isPresent()) {
-                        maxLen = Math.max(maxLen, sl.get().length() + 23/* formatting */);
+    public void dumpASCII(PrintStream p) {
+        // we need to lock the threadmap as a concurrent call to #collectedMetrics can change the
+        // content of this#collected
+        synchronized (threadMaps) {
+            String methodName = method.toString();
+            int maxLen = methodName.length();
+            int entrySum = 0;
+            // get the longest entry
+            for (Map<Long, Map<String, Long>> compilationThreadTable : collected) {
+                for (Map.Entry<Long, Map<String, Long>> compilationEntry : compilationThreadTable.entrySet()) {
+                    Map<String, Long> table = compilationEntry.getValue();
+                    if (table != null) {
+                        for (Map.Entry<String, Long> entry : table.entrySet()) {
+                            maxLen = Math.max(maxLen, entry.getKey().length());
+                            entrySum += entry.getValue();
+                        }
                     }
                 }
             }
-        }
-        for (int i = 0; i < maxLen; i++) {
-            sb.append("=");
-        }
-        sb.append(lineSep);
-        sb.append(methodName).append(lineSep);
-        for (int i = 0; i < maxLen; i++) {
-            sb.append("_");
-        }
-        sb.append(lineSep);
-        if (compilationEntries != null) {
-            for (int i = 0; i < compilationEntries.size(); i++) {
-                HashMap<String, Long> table = compilationEntries.get(i).counterMap;
-                if (table != null) {
-                    if (DUMP_SCOPE_ID) {
-                        sb.append("Compilation Debug Scope ID  -> ").append(compilationEntries.get(i).id).append(lineSep);
-                    }
-                    Set<Map.Entry<String, Long>> entries = table.entrySet();
-                    for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                        long value = entry.getValue();
-                        // report timers in ms and memory in
-                        if ((entry.getKey().endsWith("Accm") || entry.getKey().endsWith("Flat")) && !entry.getKey().toLowerCase().contains("mem")) {
-                            value = value / 1000000;
-                        }
-                        if (value == 0) {
+            if (entrySum == 0) {
+                // nothing to report
+                return;
+            }
+            maxLen += 23;
+            for (int j = 0; j < maxLen; j++) {
+                p.print("#");
+            }
+            p.println();
+            p.println(methodName);
+            for (int j = 0; j < maxLen; j++) {
+                p.print("~");
+            }
+            p.println();
+            for (Map<Long, Map<String, Long>> compilationThreadTable : collected) {
+                for (Map.Entry<Long, Map<String, Long>> compilationEntry : compilationThreadTable.entrySet()) {
+                    Map<String, Long> table = compilationEntry.getValue();
+                    if (table != null) {
+                        if (table.values().stream().filter(x -> x > 0).count() == 0) {
                             continue;
                         }
-                        sb.append(String.format("%-" + String.valueOf(maxLen - 23) + "s = %20d", entry.getKey(), value)).append(lineSep);
-                    }
-                    for (int j = 0; j < maxLen; j++) {
-                        sb.append("~");
-                    }
-                    sb.append(lineSep);
-                }
-            }
-        }
-        for (int i = 0; i < maxLen; i++) {
-            sb.append("=");
-        }
-        sb.append(lineSep);
-        return sb.toString();
-    }
-
-    public synchronized void dumpCSV(PrintStream p) {
-        String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
-        /*
-         * NOTE: the caching mechanism works by caching compilation data based on the identity of
-         * the resolved java method object. The identity is based on the metaspace address of the
-         * resolved java method object. If the class was loaded by different class loaders or e.g.
-         * loaded - unloaded - loaded the identity will be different. Therefore we also need to
-         * include the identity in the reporting of the data as it is an additional dimension to
-         * <method,compilationId>.
-         */
-        String methodIdentity = String.valueOf(System.identityHashCode(method));
-        if (compilationEntries != null) {
-            for (int i = 0; i < compilationEntries.size(); i++) {
-                HashMap<String, Long> table = compilationEntries.get(i).counterMap;
-                if (table != null) {
-                    Set<Map.Entry<String, Long>> entries = table.entrySet();
-                    for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                        p.printf("%s,%s,%d,%d,%s,%d", methodName, methodIdentity, i, compilationEntries.get(i).id, "\"" + entry.getKey() + "\"", entry.getValue());
+                        Set<Map.Entry<String, Long>> entries = table.entrySet();
+                        for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
+                            long value = entry.getValue();
+                            // report timers in ms and memory in mb
+                            if ((entry.getKey().endsWith("Accm") || entry.getKey().endsWith("Flat")) &&
+                                            !entry.getKey().toLowerCase().contains("mem")) {
+                                value = value / 1000000;
+                            }
+                            if (value == 0) {
+                                continue;
+                            }
+                            p.print(String.format("%-" + String.valueOf(maxLen - 23) + "s = %20d", entry.getKey(), value));
+                            p.println();
+                        }
+                        for (int j = 0; j < maxLen; j++) {
+                            p.print("~");
+                        }
                         p.println();
                     }
                 }
             }
+            for (int j = 0; j < maxLen; j++) {
+                p.print("#");
+            }
+            p.println();
         }
     }
 
-    private static class MethodMetricsCache {
-        private static final DebugCounter CacheSize = Debug.counter("MethodMetricCacheSize");
-
-        private static ConcurrentHashMap<ResolvedJavaMethod, DebugMethodMetrics> cache;
-
-        private static void initizalize() {
-            cache = new ConcurrentHashMap<>();
-        }
-
-        private static synchronized void ensureInitialized() {
-            if (cache == null) {
-                initizalize();
+    public void dumpCSV(PrintStream p) {
+        // we need to lock the threadmap as a concurrent call to #collectedMetrics can change
+        // the content of this#collected
+        synchronized (threadMaps) {
+            String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
+            /*
+             * NOTE: the caching mechanism works by caching compilation data based on the identity
+             * of the resolved java method object. The identity is based on the metaspace address of
+             * the resolved java method object. If the class was loaded by different class loaders
+             * or e.g. loaded - unloaded - loaded the identity will be different. Therefore we also
+             * need to include the identity in the reporting of the data as it is an additional
+             * dimension to <method,compilationId>.
+             */
+            String methodIdentity = String.valueOf(System.identityHashCode(method));
+            int nrOfCompilations = 0;
+            for (Map<Long, Map<String, Long>> compilationThreadTable : collected) {
+                for (Map.Entry<Long, Map<String, Long>> compilationEntry : compilationThreadTable.entrySet()) {
+                    Map<String, Long> table = compilationEntry.getValue();
+                    if (table != null) {
+                        Set<Map.Entry<String, Long>> entries = table.entrySet();
+                        for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
+                            p.printf("%s,%s,%d,%d,%s,%d", methodName, methodIdentity, nrOfCompilations, compilationEntry.getKey(), "\"" + entry.getKey() + "\"", entry.getValue());
+                            p.println();
+                        }
+                        nrOfCompilations++;
+                    }
+                }
             }
-        }
-
-        private static boolean isDefined(ResolvedJavaMethod m) {
-            return cache != null && cache.containsKey(m);
-        }
-
-        private static void defineMethodMetrics(ResolvedJavaMethod method) {
-            assert method != null;
-            ensureInitialized();
-            synchronized (MethodMetricsCache.class) {
-                cache.put(method, new MethodMetricsImpl(method));
-            }
-            CacheSize.increment();
-        }
-
-        private static DebugMethodMetrics getMethodMetrics(ResolvedJavaMethod method) {
-            assert method != null;
-            ensureInitialized();
-            return cache.get(method);
         }
     }
 
     public static Collection<DebugMethodMetrics> collectedMetrics() {
-        /*
-         * we want to avoid a concurrent modification when collecting metrics therefore we lock the
-         * cache class and make a copy of the metrics currently defined (this will be a snapshot)
-         */
-        synchronized (MethodMetricsCache.class) {
-            if (MethodMetricsCache.cache == null) {
-                return Collections.emptyList();
-            }
-            ArrayList<DebugMethodMetrics> mm = new ArrayList<>();
-            MethodMetricsCache.cache.values().forEach(x -> {
-                MethodMetricsImpl impl = (MethodMetricsImpl) x;
-                /*
-                 * it might happen that there e.g. is already one compilation defined for impl and
-                 * during the collection (should only happen during shutdown as it is costly) we
-                 * check if it is worth reporting this method metric there is concurrently a
-                 * compilation of the same method defining another compilation entry thus we lock
-                 * also the current metric to avoid a concurrent modification of the compilation
-                 * entries data structure
-                 */
-                synchronized (impl) {
-                    if (impl.compilationEntries != null) {
-                        // check if there will be one metric in one compilation of all the
-                        // compilations that is (after rounding) !=0
-                        if (impl.compilationEntries.stream().filter(
-                                        compEntry -> compEntry.counterMap.entrySet().stream().anyMatch(metric -> reportMetric(metric.getKey(), metric.getValue()))).count() > 0) {
-                            mm.add(x);
+        synchronized (threadMaps) {
+            // imprecise excluding all compilations that follow, we simply do not report them
+            final long lastId = DebugScope.getCurrentGlobalScopeId();
+            List<DebugMethodMetrics> finalMetrics = new ArrayList<>();
+            Set<ResolvedJavaMethod> methods = new HashSet<>();
+
+            // gather all methods we found
+            threadMaps.stream().forEach(x -> {
+                // snapshot the current compilations to only capture all methods compiled until now
+                HashMap<ResolvedJavaMethod, CompilationData> snapShot = new HashMap<>(x);
+                snapShot.keySet().forEach(y -> methods.add(y));
+            });
+
+            // for each method gather all metrics we want to report
+            for (ResolvedJavaMethod method : methods) {
+                MethodMetricsImpl impl = new MethodMetricsImpl(method);
+                impl.collected = new ArrayList<>();
+                for (Map<ResolvedJavaMethod, CompilationData> threadMap : threadMaps) {
+                    CompilationData threadMethodData = threadMap.get(method);
+
+                    // not every method is necessarily compiled by all threads
+                    if (threadMethodData != null) {
+                        Map<Long, Map<String, Long>> snapshot = new HashMap<>(threadMethodData.compilations);
+                        for (Map.Entry<Long, Map<String, Long>> entry : snapshot.entrySet()) {
+                            if (entry.getKey() < lowestCompilationDebugScopeId || entry.getKey() > lastId) {
+                                entry.setValue(null);
+                            }
                         }
+                        impl.collected.add(snapshot);
                     }
                 }
-            });
-            // sort the metrics according to the types they are defined for
-            mm.sort((x, y) -> x.getMethod().getDeclaringClass().getName().compareTo(y.getMethod().getDeclaringClass().getName()));
-            return mm;
-        }
-    }
+                finalMetrics.add(impl);
+            }
 
-    private static boolean reportMetric(String name, long value) {
-        if ((name.endsWith("Accm") || name.endsWith("Flat")) && !name.toLowerCase().contains("mem")) {
-            return (value / 1000000) > 0;
+            return finalMetrics;
         }
-        return value != 0;
     }
 
     public static void clearMM() {
-        MethodMetricsCache.cache = null;
+        clearData();
     }
 
     private static final String INLINEE_PREFIX = "INLINING_SCOPE_";
-
     private static final boolean TRACK_INLINED_SCOPES = false;
 
     public static void recordInlinee(ResolvedJavaMethod root, ResolvedJavaMethod caller, ResolvedJavaMethod inlinee) {
         if (TRACK_INLINED_SCOPES) {
-            // format is costly
-            Debug.methodMetrics(root).addToMetric(1, "INLINED_METHOD_root: caller:%s inlinee:%s",
-                            caller, inlinee);
+            Debug.methodMetrics(root).addToMetric(1, "INLINED_METHOD_root: caller:%s inlinee:%s", caller, inlinee);
         }
     }
 
-    public static void addToCurrentScopeMethodMetrics(String metricName, long value) {
-        DebugScope.ExtraInfo metaInfo = DebugScope.getInstance().getExtraInfo();
+    private static final boolean COUNT_CACHE = false;
+    private static final String HIT_MSG = "InterceptionCache_Hit";
+    private static final String MISS_MSG = "InterceptionCache_Miss";
+    private static final DebugCounter cacheHit = Debug.counter(HIT_MSG);
+    private static final DebugCounter cacheMiss = Debug.counter(MISS_MSG);
+    /**
+     * To avoid the lookup of a method metrics through the
+     * {@link MethodMetricsImpl#getMethodMetrics(ResolvedJavaMethod)} method on every global metric
+     * interception we thread-locally cache the last (through metric interception)
+     * {@link MethodMetricsImpl} object. This avoids additional map lookups and replaces them with a
+     * {@link DebugScope#scopeId()} call and a numerical comparison in a cache hit case.
+     */
+    private static final ThreadLocal<Long> interceptionCache = new ThreadLocal<>();
+    private static final ThreadLocal<MethodMetricsImpl> interceptionMetrics = new ThreadLocal<>();
 
+    public static void addToCurrentScopeMethodMetrics(String metricName, long value) {
+        if (COUNT_CACHE) {
+            if (metricName.equals(HIT_MSG) || metricName.equals(MISS_MSG)) {
+                return;
+            }
+        }
+        final DebugScope currScope = DebugScope.getInstance();
+        final DebugScope.ExtraInfo metaInfo = currScope.getExtraInfo();
+        final long currScopeId = currScope.scopeId();
         if (metaInfo instanceof MethodMetricsRootScopeInfo) {
             ResolvedJavaMethod rootMethod = ((MethodMetricsRootScopeInfo) metaInfo).getRootMethod();
             if (metaInfo instanceof MethodMetricsInlineeScopeInfo) {
@@ -399,13 +412,29 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
                  * safely recorded.
                  */
                 if (TRACK_INLINED_SCOPES) {
-                    if (MethodMetricsCache.isDefined(rootMethod)) {
+                    if (threadEntries.get().get(rootMethod) != null) {
                         Debug.methodMetrics(rootMethod).addToMetric(value, "%s%s", INLINEE_PREFIX, metricName);
                     }
                 }
             } else {
-                // avoid the lookup over Debug.methodMetrics
-                getMethodMetrics(rootMethod).addToMetric(value, metricName);
+                // when unboxing the thread local on access it must not be null
+                Long cachedId = interceptionCache.get();
+                if (cachedId != null && cachedId == currScopeId) {
+                    interceptionMetrics.get().addToMetric(value, metricName);
+                    if (COUNT_CACHE) {
+                        cacheHit.increment();
+                    }
+                } else {
+                    // avoid the lookup over Debug.methodMetrics
+                    final MethodMetricsImpl impl = (MethodMetricsImpl) getMethodMetrics(rootMethod);
+                    impl.addToMetric(value, metricName);
+                    // cache for next access
+                    interceptionCache.set(currScopeId);
+                    interceptionMetrics.set(impl);
+                    if (COUNT_CACHE) {
+                        cacheMiss.increment();
+                    }
+                }
             }
         }
     }
