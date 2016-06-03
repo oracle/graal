@@ -34,8 +34,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -91,7 +89,6 @@ public class LLVM {
                     mainFunction = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
-                    final List<CallTarget> mainFunctions = new ArrayList<>();
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
 
                     try {
@@ -105,17 +102,15 @@ public class LLVM {
                                 throw new UncheckedIOException(e);
                             }
                             handleParserResult(context, parserResult);
-                            mainFunctions.add(parserResult.getMainFunction());
+                            if (parserResult.getMainFunction() != null) {
+                                throw new IllegalArgumentException("main function in library");
+                            }
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
                     }
 
-                    if (mainFunctions.size() != 1) {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    mainFunction = mainFunctions.get(0);
+                    mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null));
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
