@@ -67,6 +67,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToDoubleNodeFactory.LLVMI8ToD
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVM80BitFloatToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMDoubleToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI16ToFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI16ToFloatZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatBitNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToFloatNodeFactory.LLVMI32ToFloatUnsignedNodeGen;
@@ -389,7 +390,7 @@ public final class LLVMCastsFactory {
                 case I64:
                     return LLVMI16ToI64ZeroExtNodeGen.create(fromNode);
                 case FLOAT:
-                    return LLVMI16ToFloatNodeGen.create(fromNode);
+                    return LLVMI16ToFloatZeroExtNodeGen.create(fromNode);
                 case DOUBLE:
                     return LLVMI16ToDoubleZeroExtNodeGen.create(fromNode);
                 default:
