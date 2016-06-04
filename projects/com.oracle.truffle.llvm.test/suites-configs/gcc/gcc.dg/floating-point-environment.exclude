@@ -1,0 +1,4 @@
+gcc.dg/c99-math-double-1.c
+gcc.dg/c99-math-float-1.c
+gcc.dg/c99-math-long-double-1.c
+
