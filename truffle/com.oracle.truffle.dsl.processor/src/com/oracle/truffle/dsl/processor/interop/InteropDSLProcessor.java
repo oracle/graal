@@ -128,6 +128,11 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return;
         }
 
+        if (receiverChecks.size() == 0 && isInstanceHasWrongSignature(receiverTypeFullClassName)) {
+            emitError("Method isInstance in class " + receiverTypeFullClassName + " has an invalid signature: expected signature (object: TruffleObject).", e);
+            return;
+        }
+
         if (receiverChecks.size() > 1) {
             emitError("Only one @LanguageCheck element allowed", e);
             return;
@@ -290,6 +295,18 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     }
 
     private boolean isInstanceMissing(String receiverTypeFullClassName) {
+        for (Element elem : this.processingEnv.getElementUtils().getTypeElement(receiverTypeFullClassName).getEnclosedElements()) {
+            if (elem.getKind().equals(ElementKind.METHOD)) {
+                ExecutableElement method = (ExecutableElement) elem;
+                if (method.getSimpleName().toString().equals("isInstance")) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean isInstanceHasWrongSignature(String receiverTypeFullClassName) {
         for (Element elem : this.processingEnv.getElementUtils().getTypeElement(receiverTypeFullClassName).getEnclosedElements()) {
             if (elem.getKind().equals(ElementKind.METHOD)) {
                 ExecutableElement method = (ExecutableElement) elem;
