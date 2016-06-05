@@ -128,6 +128,7 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryCanHandle(Writer w) throws IOException {
+        w.append("  @Override").append("\n");
         w.append("  public boolean canHandle(TruffleObject obj) {").append("\n");
         if (hasLanguageCheckNode()) {
             w.append("    return (boolean) Truffle.getRuntime().createCallTarget(").append(languageCheckFactoryInvokation).append(").call(obj);\n");
@@ -139,24 +140,28 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessIsNull(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsNull() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_NULL);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsBoxed(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsBoxed() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_BOXED);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessHasSize(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessHasSize() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE);
         w.append("    }").append("\n");
@@ -171,42 +176,49 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessGetSize(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessGetSize() {").append("\n");
         appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessUnbox(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessUnbox() {").append("\n");
         appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessRead(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessRead() {").append("\n");
         appendOptionalHandlerBody(w, Message.READ, "Message.READ");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessWrite(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessWrite() {").append("\n");
         appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessExecute(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessInvoke(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessNew(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
         w.append("    }").append("\n");
@@ -221,6 +233,7 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessMessage(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessMessage(Message unknown) {").append("\n");
         for (Object m : messageHandlers.keySet()) {
             if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {
