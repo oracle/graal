@@ -130,7 +130,13 @@ public final class ExecuteGenerator extends MessageGenerator {
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 
         if (params.size() != expectedNumberOfArguments) {
-            return "Wrong number of arguments.";
+            if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {
+                return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, arguments: Object[])";
+            } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName)) {
+                return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, arguments: Object[])";
+            } else {
+                throw new IllegalStateException();
+            }
         }
 
         if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {

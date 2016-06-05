@@ -42,7 +42,7 @@ public class ValidTruffleObject1MR {
     @Resolve(message = "READ")
     public abstract static class ReadNode5 extends Node {
 
-        @ExpectError({"Wrong number of arguments."})
+        @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String)"})
         protected int access(String string, Object receiver, Object name) {
             return 0;
         }
