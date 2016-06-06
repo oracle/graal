@@ -63,15 +63,6 @@ public abstract class SLStatementNode extends Node {
     private boolean hasStatementTag;
     private boolean hasRootTag;
 
-    protected SLStatementNode() {
-    }
-
-    protected SLStatementNode(SLStatementNode delegate) {
-        sourceSection = delegate.sourceSection;
-        hasStatementTag = delegate.hasStatementTag;
-        hasRootTag = delegate.hasRootTag;
-    }
-
     @Override
     public final SourceSection getSourceSection() {
         return sourceSection;
