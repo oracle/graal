@@ -31,8 +31,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.internal.DSLMetadata;
-import com.oracle.truffle.api.dsl.internal.DSLNode;
-import com.oracle.truffle.api.dsl.internal.DSLShare;
 import com.oracle.truffle.api.dsl.internal.NodeFactoryBase;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -78,8 +76,6 @@ public final class TruffleTypes {
     private final DeclaredType truffleOptions;
     private final DeclaredType compilationFinal;
     private final DeclaredType nodeUtil;
-    private final DeclaredType dslNode;
-    private final DeclaredType dslShare;
     private final DeclaredType nodeFactory;
     private final DeclaredType nodeFactoryBase;
     private final DeclaredType dslMetadata;
@@ -106,8 +102,6 @@ public final class TruffleTypes {
         truffleOptions = getRequired(context, TruffleOptions.class);
         compilationFinal = getRequired(context, CompilationFinal.class);
         nodeUtil = getRequired(context, NodeUtil.class);
-        dslNode = getRequired(context, DSLNode.class);
-        dslShare = getRequired(context, DSLShare.class);
         nodeFactory = getRequired(context, NodeFactory.class);
         nodeFactoryBase = getRequired(context, NodeFactoryBase.class);
         dslMetadata = getRequired(context, DSLMetadata.class);
@@ -129,14 +123,6 @@ public final class TruffleTypes {
 
     public DeclaredType getNodeFactoryBase() {
         return nodeFactoryBase;
-    }
-
-    public DeclaredType getDslNode() {
-        return dslNode;
-    }
-
-    public DeclaredType getDslShare() {
-        return dslShare;
     }
 
     public DeclaredType getCompilationFinal() {
