@@ -44,3 +44,5 @@ else:
 import mx_graal_bench # pylint: disable=unused-import
 
 import mx_graal_benchmark # pylint: disable=unused-import
+
+import mx_graal_tools #pylint: disable=unused-import
