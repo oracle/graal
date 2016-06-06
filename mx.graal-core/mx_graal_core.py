@@ -101,56 +101,6 @@ else:
         eaBuild = float(match.group(1))
         _version_check(eaBuild >= MIN_EARLY_ACCESS_BUILD, 'Incompatible EA build in {}: {} < {}'.format(jdk.home, eaBuild, MIN_EARLY_ACCESS_BUILD))
 
-#: VM compiler choices and the VM options for selecting them
-_vm_compiler_configs = {
-    # C2 is the top tier VM compiler
-    'server' : ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'],
-
-    # Graal is the top tier VM compiler
-    'jvmci' : ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler'],
-}
-
-#: The VM compiler configuration that will be used by `run_java`.
-_vm_compiler = None
-
-def _get_vm_compiler():
-    """
-    Gets the name of the VM compiler configuration that will be used by `run_java`.
-    """
-    global _vm_compiler
-    if _vm_compiler:
-        return _vm_compiler
-    compiler = mx.get_env('VM_COMPILER')
-    if compiler:
-        if compiler not in _vm_compiler_configs:
-            mx.abort('Unknown value for VM_COMPILER: ' + compiler)
-    else:
-        names = _vm_compiler_configs.keys()
-        if not mx.is_interactive():
-            mx.abort('Need to specify default compiler with --vm-compiler option or VM_COMPILER environment variable')
-        mx.log('Please select the top tier compiler used by the VM from the following: ')
-        compiler = mx.select_items(names, allowMultiple=False)
-        mx.ask_persist_env('VM_COMPILER', compiler)
-    _vm_compiler = compiler
-    return compiler
-
-class SelectVMCompiler:
-    """
-    A context manager for scoped overriding of `_vm_compiler`.
-    """
-    def __init__(self, name=None):
-        assert name in _vm_compiler_configs, name
-        self.name = name
-
-    def __enter__(self):
-        global _vm_compiler
-        self.saved = _vm_compiler
-        _vm_compiler = self.name
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        global _vm_compiler
-        _vm_compiler = self.saved
-
 if isJDK8:
     class JVMCIClasspathEntry(object):
         """
@@ -258,7 +208,7 @@ class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
 
     def parseVmArgs(self, vmArgs):
         if isJDK8:
-            if not _is_jvmci_disabled(vmArgs) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
+            if _is_jvmci_enabled(vmArgs) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
                 vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
         return ['-server'] + _parseVmArgs(vmArgs)
 
@@ -270,16 +220,31 @@ class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
 
 mx_microbench.set_microbenchmark_executor(JVMCIMicrobenchExecutor())
 
-def _is_jvmci_disabled(vmargs):
+def _get_XX_option_value(vmargs, name, default):
+    """
+    Gets the value of an ``-XX:`` style HotSpot VM option.
+
+    :param list vmargs: VM arguments to inspect
+    :param str name: the name of the option
+    :param default: the default value of the option if it's not present in `vmargs`
+    :return: the value of the option as specified in `vmargs` or `default`
+    """
+    for arg in reversed(vmargs):
+        if arg == '-XX:-' + name:
+            return False
+        if arg == '-XX:+' + name:
+            return True
+        if arg.startswith('-XX:' + name + '='):
+            return arg[len('-XX:' + name + '='):]
+    return default
+
+def _is_jvmci_enabled(vmargs):
     """
     Determines if JVMCI is enabled according to the given VM arguments and whether JDK > 8.
 
     :param list vmargs: VM arguments to inspect
     """
-    for arg in reversed(vmargs):
-        if arg == '-XX:-EnableJVMCI':
-            return True
-    return not isJDK8
+    return _get_XX_option_value(vmargs, 'EnableJVMCI', isJDK8)
 
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
@@ -303,7 +268,7 @@ def ctw(args, extraVMarguments=None):
 
     if args.cp:
         cp = os.path.abspath(args.cp)
-        if not isJDK8 and _is_jvmci_disabled(vmargs):
+        if not isJDK8 and not _is_jvmci_enabled(vmargs):
             mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
         if isJDK8:
@@ -314,16 +279,16 @@ def ctw(args, extraVMarguments=None):
 
     vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
-    if _get_vm_compiler() == 'jvmci':
+    if _get_XX_option_value(vmargs + _noneAsEmptyList(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')
 
     if isJDK8:
-        if _is_jvmci_disabled(vmargs):
+        if not _is_jvmci_enabled(vmargs):
             vmargs.extend(['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp])
         else:
             vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
     else:
-        if not _is_jvmci_disabled(vmargs):
+        if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
             # all JDK modules need to be made root modules.
             limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
@@ -362,14 +327,13 @@ class BootstrapTest:
         self.tags = tags
 
     def run(self, tasks, extraVMarguments=None):
-        with SelectVMCompiler('jvmci'):
-            with Task(self.name, tasks, tags=self.tags) as t:
-                if t:
-                    if self.suppress:
-                        out = mx.DuplicateSuppressingStream(self.suppress).write
-                    else:
-                        out = None
-                    run_vm(self.args + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
+        with Task(self.name, tasks, tags=self.tags) as t:
+            if t:
+                if self.suppress:
+                    out = mx.DuplicateSuppressingStream(self.suppress).write
+                else:
+                    out = None
+                run_vm(self.args + ['-XX:+UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 class MicrobenchRun:
     def __init__(self, name, args, tags):
@@ -389,19 +353,16 @@ class GraalTags:
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
     # Run unit tests in hosted mode
-    with SelectVMCompiler('server'):
-        for r in unit_test_runs:
-            r.run(suites, tasks, extraVMarguments)
+    for r in unit_test_runs:
+        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
 
     # Run microbench in hosted mode (only for testing the JMH setup)
-    with SelectVMCompiler('server'):
-        for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=[GraalTags.fulltest])]:
-            r.run(tasks, extraVMarguments)
+    for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=[GraalTags.fulltest])]:
+        r.run(tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
 
-    # Run ctw against rt.jar on server-hosted-jvmci
-    with SelectVMCompiler('server'):
-        with Task('CTW:hosted', tasks, tags=[GraalTags.fulltest]) as t:
-            if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
+    # Run ctw against rt.jar on hosted
+    with Task('CTW:hosted', tasks, tags=[GraalTags.fulltest]) as t:
+        if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-XX:-UseJVMCICompiler', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -415,19 +376,16 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
                 t.abort(test.name + ' Failed')
 
     # ensure -Xbatch still works
-    with SelectVMCompiler('jvmci'):
-        with Task('DaCapo_pmd:BatchMode', tasks, tags=[GraalTags.fulltest]) as t:
-            if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-Xbatch', 'pmd'])
+    with Task('DaCapo_pmd:BatchMode', tasks, tags=[GraalTags.fulltest]) as t:
+        if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch', 'pmd'])
 
     # ensure benchmark counters still work
-    with SelectVMCompiler('jvmci'):
-        with Task('DaCapo_pmd:BenchmarkCounters:product', tasks, tags=[GraalTags.fulltest]) as t:
-            if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
+    with Task('DaCapo_pmd:BenchmarkCounters:product', tasks, tags=[GraalTags.fulltest]) as t:
+        if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
 
     # ensure -Xcomp still works
-    with SelectVMCompiler('jvmci'):
-        with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
-            if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-Xcomp', '-version'])
+    with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
+        if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
 
 graal_unit_test_runs = [
@@ -729,7 +687,7 @@ def _check_bootstrap_config(args):
         mx.warn('-XX:+BootstrapJVMCI is ignored since -XX:+UseJVMCICompiler is not enabled')
 
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
-    args = _vm_compiler_configs[_get_vm_compiler()] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     _check_bootstrap_config(args)
     cmd = [jdk.java] + ['-server'] + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
@@ -794,12 +752,7 @@ mx.update_commands(_suite, {
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
 })
 
-mx.add_argument('--vm-compiler', action='store', dest='vm_compiler', choices=_vm_compiler_configs.keys(), help='the top tier VM compiler to use')
-
 def mx_post_parse_cmd_line(opts):
-    if opts.vm_compiler is not None:
-        global _vm_compiler
-        _vm_compiler = opts.compiler
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist))
     add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))
