@@ -398,10 +398,10 @@ public class CachedTest {
 
     @Test
     public void testCachesOrder() {
-        CallTarget root = createCallTarget(TestCachesOrder2Factory.getInstance());
+        CallTarget root = createCallTarget(TestCachesOrderFactory.getInstance());
         assertEquals(42, root.call(21));
-        assertEquals(44, root.call(22));
-        assertEquals(46, root.call(23));
+        assertEquals(42, root.call(22));
+        assertEquals(42, root.call(23));
     }
 
     @NodeChild
@@ -430,8 +430,8 @@ public class CachedTest {
     public void testCachesOrder2() {
         CallTarget root = createCallTarget(TestCachesOrder2Factory.getInstance());
         assertEquals(42, root.call(21));
-        assertEquals(42, root.call(22));
-        assertEquals(42, root.call(23));
+        assertEquals(44, root.call(22));
+        assertEquals(46, root.call(23));
     }
 
     @NodeChild
