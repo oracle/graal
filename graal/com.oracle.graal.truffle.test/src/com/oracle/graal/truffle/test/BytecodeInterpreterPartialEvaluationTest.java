@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationTest {
@@ -131,7 +132,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         @Override
-        @ExplodeLoop(merge = true)
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
         public Object execute(VirtualFrame frame) {
             trace("Start program");
             int topOfStack = -1;
@@ -551,7 +552,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         @Override
-        @ExplodeLoop(merge = true)
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
         public Object execute(VirtualFrame frame) {
             int ip = 0;
             while (ip != -1) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,52 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import java.util.function.IntSupplier;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
 @NodeInfo
-public class TwoMergesExplodedLoopTestNode extends AbstractTestNode {
-
-    static class Flag {
-        boolean flag = true;
+public class ExplodeLoopUntilReturnNode extends AbstractTestNode {
+    static class One implements IntSupplier {
+        @Override
+        public int getAsInt() {
+            return 42;
+        }
     }
 
-    private final int count;
-
-    public TwoMergesExplodedLoopTestNode(int count) {
-        this.count = count;
+    static class Two implements IntSupplier {
+        @Override
+        public int getAsInt() {
+            return 42;
+        }
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE)
+    static class Three implements IntSupplier {
+        @Override
+        public int getAsInt() {
+            return 42;
+        }
+    }
+
+    @CompilationFinal(dimensions = 1) IntSupplier[] array = new IntSupplier[]{new One(), new Two(), new Three()};
+    int search = 2;
+
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     @Override
     public int execute(VirtualFrame frame) {
-        Flag flag = new Flag();
-        int result = 0;
-        int i = 0;
-        while (i < count) {
-            i++;
-
-            CompilerAsserts.partialEvaluationConstant(result);
-
-            if (flag.flag) {
-                result++;
-                continue;
-            } else {
-                result--;
-                continue;
+        for (int i = 0; i < array.length; i++) {
+            if (i == search) {
+                /*
+                 * The test only passes when loop explosion also explodes this block with the return
+                 * value, i.e., inlines through the calls of getAsInt().
+                 */
+                return array[i].getAsInt();
             }
         }
-        return result;
+        return 42;
     }
 }
