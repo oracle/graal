@@ -461,7 +461,7 @@ public class FlatNodeGenFactory {
 
         for (SpecializationData implemented : specializations) {
             if (implemented.getMaximumNumberOfInstances() > 1) {
-                method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(ExplodeLoop.class)));
+                method.getAnnotationMirrors().add(createExplodeLoop());
                 break;
             }
         }
@@ -473,6 +473,20 @@ public class FlatNodeGenFactory {
         builder.returnTrue();
 
         return method;
+    }
+
+    private CodeAnnotationMirror createExplodeLoop() {
+        DeclaredType explodeLoopType = context.getDeclaredType(ExplodeLoop.class);
+        CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(explodeLoopType);
+
+        DeclaredType loopExplosionKind = context.getDeclaredType(ExplodeLoop.LoopExplosionKind.class);
+        if (loopExplosionKind != null) {
+            VariableElement kindValue = ElementUtils.findVariableElement(loopExplosionKind, "FULL_EXPLODE_UNTIL_RETURN");
+            if (kindValue != null) {
+                explodeLoop.setElementValue(ElementUtils.findExecutableElement(explodeLoopType, "kind"), new CodeAnnotationValue(kindValue));
+            }
+        }
+        return explodeLoop;
     }
 
     private List<SpecializationData> filterCompatibleSpecializations(ExecutableTypeData executable, List<SpecializationData> specializations) {
@@ -577,7 +591,7 @@ public class FlatNodeGenFactory {
 
             for (SpecializationData implemented : implementedSpecializations) {
                 if (implemented.getMaximumNumberOfInstances() > 1) {
-                    method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(ExplodeLoop.class)));
+                    method.getAnnotationMirrors().add(createExplodeLoop());
                     break;
                 }
             }
@@ -1980,7 +1994,7 @@ public class FlatNodeGenFactory {
         return assumptionGuard;
     }
 
-    private static final CodeTree combineTrees(String sep, CodeTree... trees) {
+    private static CodeTree combineTrees(String sep, CodeTree... trees) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
         int numTrees = 0;
@@ -2545,7 +2559,7 @@ public class FlatNodeGenFactory {
         CodeTree code;
         final boolean throwsUnexpectedResult;
 
-        public ChildExecutionResult(CodeTree code, boolean throwsUnexpectedResult) {
+        ChildExecutionResult(CodeTree code, boolean throwsUnexpectedResult) {
             this.code = code;
             this.throwsUnexpectedResult = throwsUnexpectedResult;
         }
@@ -2557,14 +2571,14 @@ public class FlatNodeGenFactory {
         public final CodeTree tree;
         public final boolean hasFallthrough;
 
-        public ExecuteDelegationResult(CodeTree tree, boolean hasFallthrough) {
+        ExecuteDelegationResult(CodeTree tree, boolean hasFallthrough) {
             this.tree = tree;
             this.hasFallthrough = hasFallthrough;
         }
 
     }
 
-    private static abstract class BitSet {
+    private abstract static class BitSet {
 
         private final int capacity;
         private final String name;
@@ -2574,7 +2588,7 @@ public class FlatNodeGenFactory {
 
         private final TypeMirror bitSetType;
 
-        public BitSet(String name, List<? extends Object> specializations) {
+        BitSet(String name, List<? extends Object> specializations) {
             this.name = name;
             this.allElements = specializations;
             this.capacity = computeStateLength();
@@ -2742,15 +2756,15 @@ public class FlatNodeGenFactory {
             return builder.build();
         }
 
-        private final long createMask(Object e) {
+        private long createMask(Object e) {
             return createMask(new Object[]{e});
         }
 
-        private final long createMask(Object[] e) {
+        private long createMask(Object[] e) {
             return createMask(0, -1, e);
         }
 
-        private final long createMask(int offset, int length, Object[] e) {
+        private long createMask(int offset, int length, Object[] e) {
             long mask = 0;
             for (Object element : e) {
                 if (!offsets.containsKey(element)) {
@@ -2780,7 +2794,7 @@ public class FlatNodeGenFactory {
 
     private class StateBitSet extends BitSet {
 
-        public StateBitSet(List<Object> objects) {
+        StateBitSet(List<Object> objects) {
             super("state", objects);
         }
 
@@ -2811,7 +2825,7 @@ public class FlatNodeGenFactory {
 
     private static class ExcludeBitSet extends BitSet {
 
-        public ExcludeBitSet(List<SpecializationData> specializations) {
+        ExcludeBitSet(List<SpecializationData> specializations) {
             super("exclude", specializations);
         }
 

@@ -350,14 +350,13 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private List<? extends Element> importPublicStaticMembers(TypeElement importGuardClass, boolean includeConstructors) {
+    @SuppressWarnings("unchecked")
+    private List<Element> importPublicStaticMembers(TypeElement importGuardClass, boolean includeConstructors) {
         // hack to reload type is necessary for incremental compiling in eclipse.
         // otherwise methods inside of import guard types are just not found.
         TypeElement typeElement = ElementUtils.fromTypeMirror(context.reloadType(importGuardClass.asType()));
 
         List<Element> members = new ArrayList<>();
-
-        @SuppressWarnings("unchecked")
         List<Element> typeElementMembers = (List<Element>) processingEnv.getElementUtils().getAllMembers(typeElement);
 
         // add default constructor

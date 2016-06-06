@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test.examples;
 
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.*;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createDummyTarget;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;

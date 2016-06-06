@@ -115,6 +115,16 @@ public class ElementUtils {
         return null;
     }
 
+    public static VariableElement findVariableElement(DeclaredType type, String name) {
+        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
+        for (VariableElement variableElement : elements) {
+            if (variableElement.getSimpleName().toString().equals(name)) {
+                return variableElement;
+            }
+        }
+        return null;
+    }
+
     public static boolean needsCastTo(TypeMirror sourceType, TypeMirror targetType) {
         if (typeEquals(sourceType, targetType)) {
             return false;

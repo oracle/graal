@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface DSLOptions {
 
-    public enum DSLGenerator {
+    enum DSLGenerator {
         DEFAULT,
         FLAT
     }
