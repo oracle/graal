@@ -191,7 +191,7 @@ public class FlatNodeGenFactory {
 
     /* Whether a new class should be generated for specialization instance fields. */
     private static boolean useSpecializationClass(SpecializationData specialization) {
-        return specialization.hasMultipleInstances() && specialization.getMaximumNumberOfInstances() > 1;
+        return specialization.hasMultipleInstances() && (specialization.getCaches().size() > 3 || specialization.getMaximumNumberOfInstances() > 1);
     }
 
     private static boolean needsFrame(List<SpecializationData> specializations) {
@@ -886,21 +886,23 @@ public class FlatNodeGenFactory {
 
         CodeTreeBuilder builder = constructor.appendBuilder();
         List<String> childValues = new ArrayList<>(node.getChildren().size());
-        for (NodeChildData child : node.getChildren()) {
-            String name = child.getName();
-            if (child.getCardinality().isMany()) {
-                CreateCastData createCast = node.findCast(child.getName());
-                if (createCast != null) {
-                    CodeTree nameTree = CodeTreeBuilder.singleString(name);
-                    CodeTreeBuilder callBuilder = builder.create();
-                    callBuilder.string(name).string(" != null ? ");
-                    callBuilder.tree(callMethod(null, createCast.getMethod(), nameTree));
-                    callBuilder.string(" : null");
-                    name += "_";
-                    builder.declaration(child.getNodeType(), name, callBuilder.build());
+        if (!node.getChildExecutions().isEmpty()) {
+            for (NodeChildData child : node.getChildren()) {
+                String name = child.getName();
+                if (child.getCardinality().isMany()) {
+                    CreateCastData createCast = node.findCast(child.getName());
+                    if (createCast != null) {
+                        CodeTree nameTree = CodeTreeBuilder.singleString(name);
+                        CodeTreeBuilder callBuilder = builder.create();
+                        callBuilder.string(name).string(" != null ? ");
+                        callBuilder.tree(callMethod(null, createCast.getMethod(), nameTree));
+                        callBuilder.string(" : null");
+                        name += "_";
+                        builder.declaration(child.getNodeType(), name, callBuilder.build());
+                    }
                 }
+                childValues.add(name);
             }
-            childValues.add(name);
         }
 
         for (NodeExecutionData execution : node.getChildExecutions()) {
@@ -1521,7 +1523,13 @@ public class FlatNodeGenFactory {
             if (useSpecializationClass) {
                 String name = createSpecializationLocalName(specialization);
                 builder.declaration(createSpecializationTypeName(specialization), name, CodeTreeBuilder.singleString(createSpecializationFieldName(specialization)));
-                builder.startWhile();
+
+                if (specialization.getMaximumNumberOfInstances() > 1) {
+                    builder.startWhile();
+                } else {
+                    builder.startIf();
+                }
+
                 builder.string(name, " != null");
                 builder.end();
                 builder.startBlock();
@@ -1556,7 +1564,7 @@ public class FlatNodeGenFactory {
                 builder.end();
             }
 
-            if (useSpecializationClass) {
+            if (useSpecializationClass && specialization.getMaximumNumberOfInstances() > 1) {
                 String name = createSpecializationLocalName(specialization);
                 builder.startStatement().string(name, " = ", name, ".next_").end();
             }
@@ -1619,6 +1627,7 @@ public class FlatNodeGenFactory {
 
                 List<AssumptionExpression> assumptions = specialization.getAssumptionExpressions();
                 String countName = specialization != null ? "count" + specialization.getIndex() + "_" : null;
+
                 boolean needsDuplicationCheck = specialization.hasMultipleInstances();
                 String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
@@ -1640,10 +1649,16 @@ public class FlatNodeGenFactory {
 
                     String name = createSpecializationLocalName(specialization);
                     if (useSpecializationClass) {
-                        builder.declaration("int", countName, CodeTreeBuilder.singleString("0"));
+                        if (specialization.getMaximumNumberOfInstances() > 1) {
+                            builder.declaration("int", countName, CodeTreeBuilder.singleString("0"));
+                        }
                         builder.declaration(createSpecializationTypeName(specialization), name, CodeTreeBuilder.singleString(createSpecializationFieldName(specialization)));
                         builder.startIf().tree(stateCheck).end().startBlock();
-                        builder.startWhile();
+                        if (specialization.getMaximumNumberOfInstances() > 1) {
+                            builder.startWhile();
+                        } else {
+                            builder.startIf();
+                        }
                         builder.string(name, " != null");
                         builder.end();
                         builder.startBlock();
@@ -1655,15 +1670,22 @@ public class FlatNodeGenFactory {
                     builder.startIf().tree(duplicationGuard).end();
                     builder.startBlock();
                     if (useSpecializationClass) {
-                        builder.statement("break");
+                        if (specialization.getMaximumNumberOfInstances() > 1) {
+                            builder.statement("break");
+                        }
                     } else {
                         builder.startStatement().string(duplicateFoundName, " = true").end();
                     }
                     builder.end();
 
                     if (useSpecializationClass) {
-                        builder.startStatement().string(name, " = ", name, ".next_").end();
-                        builder.statement(countName + "++");
+                        if (specialization.getMaximumNumberOfInstances() > 1) {
+                            builder.startStatement().string(name, " = ", name, ".next_").end();
+                            builder.statement(countName + "++");
+                        } else {
+                            builder.statement(name + " = null");
+                        }
+
                         builder.end();
                         builder.end();
                     }
@@ -1718,7 +1740,7 @@ public class FlatNodeGenFactory {
                     guards = combineTrees(" && ", assumptionGuardExpressions);
                 }
 
-                if (useSpecializationClass) {
+                if (useSpecializationClass && specialization.getMaximumNumberOfInstances() > 1) {
                     DSLExpression limit = specialization.getLimitExpression();
                     CodeTree limitExpression = DSLExpressionGenerator.write(limit, null, castBoundTypes(bindExpressionValues(limit, specialization, frameState)));
                     CodeTree limitCondition = CodeTreeBuilder.createBuilder().string(countName).string(" < ").tree(limitExpression).build();
@@ -1823,7 +1845,7 @@ public class FlatNodeGenFactory {
                     builder.tree(exclude.createSet(frameState, excludesArray, true, true));
 
                     for (SpecializationData excludes : excludesArray) {
-                        if (useSpecializationClass(specialization)) {
+                        if (useSpecializationClass(excludes)) {
                             builder.statement("this." + createSpecializationFieldName(excludes) + " = null");
                         }
                     }
@@ -2336,7 +2358,7 @@ public class FlatNodeGenFactory {
     }
 
     private static CodeTree accessInSpecializationClass(SpecializationData s, String cacheFieldName) {
-        if (s.getMaximumNumberOfInstances() <= 1) {
+        if (!useSpecializationClass(s)) {
             return CodeTreeBuilder.singleString(cacheFieldName);
         } else {
             return CodeTreeBuilder.createBuilder().string(createSpecializationLocalName(s), ".", cacheFieldName).build();
@@ -2448,7 +2470,7 @@ public class FlatNodeGenFactory {
     }
 
     private ExecutableTypeData createExecuteAndSpecializeType() {
-        SpecializationData polymorphicSpecialization = node.getGenericSpecialization();
+        SpecializationData polymorphicSpecialization = node.getPolymorphicSpecialization();
         TypeMirror polymorphicType = polymorphicSpecialization.getReturnType().getType();
 
         List<TypeMirror> parameters = new ArrayList<>();
