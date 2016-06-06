@@ -60,8 +60,8 @@ public class HotSpotWordTypes extends WordTypes {
     }
 
     @Override
-    public boolean isWord(ResolvedJavaType type) {
-        if (type != null && metaspacePointerType.isAssignableFrom(type)) {
+    public boolean isWord(JavaType type) {
+        if (type instanceof ResolvedJavaType && metaspacePointerType.isAssignableFrom((ResolvedJavaType) type)) {
             return true;
         }
         return super.isWord(type);
