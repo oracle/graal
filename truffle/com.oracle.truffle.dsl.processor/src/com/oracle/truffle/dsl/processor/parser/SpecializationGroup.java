@@ -234,7 +234,7 @@ public final class SpecializationGroup {
 
         return group;
     }
-    
+
     public static SpecializationGroup createFlat(List<SpecializationData> specializations) {
         SpecializationGroup group = createDefault(specializations);
 
