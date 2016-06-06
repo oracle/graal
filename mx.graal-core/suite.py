@@ -54,11 +54,6 @@ suite = {
   "libraries" : {
 
     # ------------- Libraries -------------
-    #"JVMCIAPI" : {
-    #  "path" : "${JAVA_HOME}/jre/lib/jvmci/jvmci-api.jar",
-    #  "sha1" : "2b8bb8742288452042299a519cf0b03c5753ffa5",
-    #  "javaCompliance" : "1.8",
-    #},
 
     "DACAPO" : {
       "urls" : [
