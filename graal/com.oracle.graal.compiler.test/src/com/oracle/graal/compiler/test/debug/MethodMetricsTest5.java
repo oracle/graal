@@ -49,4 +49,5 @@ public class MethodMetricsTest5 extends MethodMetricsTest {
     public void test() throws Throwable {
         super.test();
     }
+
 }

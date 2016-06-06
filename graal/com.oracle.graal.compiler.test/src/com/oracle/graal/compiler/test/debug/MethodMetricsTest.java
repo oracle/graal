@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.debug;
 
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
@@ -52,6 +54,7 @@ import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl.CompilationData;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.calc.BinaryNode;
@@ -287,6 +290,11 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         }
     }
 
+    @Before
+    public void rememberScopeId() {
+        scopeIdBeforeAccess = DebugScope.getCurrentGlobalScopeId();
+    }
+
     @After
     public void clearMMCache() {
         MethodMetricsImpl.clearMM();
@@ -300,31 +308,70 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
 
     abstract void assertValues() throws Throwable;
 
+    @SuppressWarnings("unchecked")
+    private static Map<ResolvedJavaMethod, CompilationData> readMethodMetricsImplData() {
+        Map<ResolvedJavaMethod, CompilationData> threadLocalMap = null;
+        for (Field f : MethodMetricsImpl.class.getDeclaredFields()) {
+            if (f.getName().equals("threadEntries")) {
+                f.setAccessible(true);
+                Object map;
+                try {
+                    map = ((ThreadLocal<?>) f.get(null)).get();
+                } catch (Throwable t) {
+                    throw new RuntimeException(t);
+                }
+                threadLocalMap = (Map<ResolvedJavaMethod, CompilationData>) map;
+                break;
+            }
+        }
+        return threadLocalMap;
+    }
+
+    private long scopeIdBeforeAccess;
+    private long scopeIdAfterAccess;
+
+    protected long readValFromCurrThread(ResolvedJavaMethod method, String metricName) {
+
+        Map<ResolvedJavaMethod, CompilationData> threadLocalMap = readMethodMetricsImplData();
+        assert threadLocalMap != null;
+        CompilationData compilationData = threadLocalMap.get(method);
+        assert compilationData != null;
+        Map<Long, Map<String, Long>> compilations = compilationData.getCompilations();
+        List<Map<String, Long>> compilationEntries = new ArrayList<>();
+        compilations.forEach((x, y) -> {
+            if (x >= scopeIdBeforeAccess && x <= scopeIdAfterAccess) {
+                compilationEntries.add(y);
+            }
+        });
+        List<Map<String, Long>> listView = compilationEntries.stream().filter(x -> x.size() > 0).collect(Collectors.toList());
+        assert listView.size() <= 1 : "There must be at most one none empty compilation data point present:" + listView.size();
+        /*
+         * NOTE: Using the pre-generation of compilation entries for a method has the disadvantage
+         * that during testing we have different points in time when we request the metric. First,
+         * properly, when we use it and then when we want to know the result, but when we check the
+         * result the debug context no longer holds a correct scope with the unique id, so we return
+         * the first compilation entry that is not empty.
+         */
+        Map<String, Long> entries = listView.size() > 0 ? listView.get(0) : null;
+        Long res = entries != null ? entries.get(metricName) : null;
+        return res != null ? res : 0;
+    }
+
     @SuppressWarnings("try")
     void assertValues(String metricName, long[] vals) {
+        scopeIdAfterAccess = DebugScope.getCurrentGlobalScopeId();
         try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().enable(Feature.METHOD_METRICS))) {
-            Assert.assertEquals(vals[0], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m01",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[1], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m02",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[2], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m03",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[3], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m04",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[4], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m05",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[5], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m06",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[6], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m07",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[7], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m08",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[8], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m09",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
-            Assert.assertEquals(vals[9], ((MethodMetricsImpl) Debug.methodMetrics(asResolvedJavaMethod(TestApplication.class.getMethod("m10",
-                            testSignature)))).getMetricValueFromCompilationIndex(0, metricName));
+            Assert.assertEquals(vals[0], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m01", testSignature)), metricName));
+            Assert.assertEquals(vals[1], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m02", testSignature)), metricName));
+            Assert.assertEquals(vals[2], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m03", testSignature)), metricName));
+            Assert.assertEquals(vals[3], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m04", testSignature)), metricName));
+            Assert.assertEquals(vals[4], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m05", testSignature)), metricName));
+            Assert.assertEquals(vals[5], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m06", testSignature)), metricName));
+            Assert.assertEquals(vals[6], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m07", testSignature)), metricName));
+            Assert.assertEquals(vals[7], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m08", testSignature)), metricName));
+            Assert.assertEquals(vals[8], readValFromCurrThread(asResolvedJavaMethod(TestApplication.class.getMethod("m09", testSignature)), metricName));
         } catch (Throwable t) {
-            Assert.fail(t.getMessage());
+            throw new RuntimeException(t);
         }
     }
 

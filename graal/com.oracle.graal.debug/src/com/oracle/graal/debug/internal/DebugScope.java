@@ -132,6 +132,10 @@ public final class DebugScope implements Debug.Scope {
 
     private PrintStream output;
 
+    public static long getCurrentGlobalScopeId() {
+        return uniqueScopeId.get();
+    }
+
     public static DebugScope getInstance() {
         DebugScope result = instanceTL.get();
         if (result == null) {

@@ -20,10 +20,19 @@
 # questions.
 #
 
+# 
+# R Script to Plot Graal Compiler related Data
+#
+# This script contains some simple plotting functions
+# for graphical evaluation of the DebugMethodMetrics as
+# described in docs/Debugging.md.
+#
+########################################################
 
+#
 #####  Globals  #####
 #
-# Determine a static csv file containing csv dump of graal method metrics
+# A static csv file containing csv dump of graal method metrics
 DATA_PATH <- ""
 #
 # Raw data read from the dump file, must not be modified after read
@@ -31,6 +40,9 @@ RAW_DATA <- c()
 #
 # clear env
 DATA_WIDE <- c()
+#
+# names of dacapo benchmarks
+dacapos <- c("avrora","batik","fop","h2","jython","luindex","lusearch","pmd","sunflow","tomcat","tradebeans","tradesoap","xalan")
 #### End Globals ####
 
 
@@ -51,16 +63,34 @@ prepareEnv  <- function(){
   ensurePackage("plyr")
   ensurePackage("dplyr")
   ensurePackage("reshape2")
+  ensurePackage("grid")
+  ensurePackage("gridExtra")
   # interative plots are not default
-  #ensurePackage("plotly")
+  # ensurePackage("plotly")
+}
+
+
+
+readDataRaw <- function(path){
+  print(paste("Reading raw data from file ",path,"..."))
+  data <- read.csv(path,sep = ",",fill = TRUE,header = FALSE)
+  # register an id column for dcast
+  data$id <- seq.int(nrow(data))
+  return(data)
 }
 
 readData <- function(){
-  RAW_DATA <<- read.csv(DATA_PATH,sep = ",",fill = TRUE,header = FALSE)
-  # register an id column for dcast
-  RAW_DATA$id <- seq.int(nrow(RAW_DATA))
+  RAW_DATA <<- readDataRaw(DATA_PATH)
 }
 
+plotRegisterAllocation <- function(){
+  ggplot(WIDE_DATA, aes(x = GeneratedLIRInstructions, y = LIRPhaseTime_AllocationStage_Accm/1000000,label=methodName)) + 
+    geom_point(alpha=0.2)+
+    geom_smooth(method = "lm")+
+    geom_smooth()
+   # lims(x = c(0,1000),y=c(0,30)) + 
+   # ggplotly()
+}
 
 prepareData <- function(combineNameWithIdentity=TRUE){
   # name raw data to make access easier
@@ -77,10 +107,48 @@ prepareData <- function(combineNameWithIdentity=TRUE){
 }
 #### End General Functions ####
 
-prepareEnv()
-readData()
-prepareData()
+tryCatch(expr = {
+  # main
+  prepareEnv()
+  readData()
+  prepareData()
+},
+error = function(e) {
+  print(e)
+}
+)
 
+plotDacaposRegisterAllocationTime <-function(basepath){
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(13, 1)))
+  vplayout <- function(x, y){
+    print(paste("Using args for viewport ",as.character(x),as.character(y)))
+    return(viewport(layout.pos.row = x, layout.pos.col = y))
+  } 
+  i <- 0
+  for (benchname in dacapos) {
+    i <- i + 1
+    tryCatch(expr = {
+      # reuse global data path
+      DATA_PATH <<- paste(basepath,benchname,sep = "")
+      print(paste("Prossing file ",DATA_PATH,"..."))
+      # read the data
+      readData()
+      prepareData()
+      py <- ggplot(WIDE_DATA, aes(x = GeneratedLIRInstructions, y = LIRPhaseTime_AllocationStage_Accm/1000000,label=methodName)) + 
+        geom_point(alpha=0.2)+
+        geom_smooth(method = "lm")+
+        lims(x = c(0,5000),y=c(0,100)) + 
+        geom_smooth()
+      print(py, vp = vplayout(i,1)) 
+      #ggplotly()
+    },
+    error = function(e) {
+      print(e)
+    }
+    )
+  }
+}
 
 phasesSum <- function(phaseName){
   phases <- WIDE_DATA %>% 

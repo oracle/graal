@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.CallTargetNode;
@@ -379,7 +380,7 @@ public class InliningData {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
-            try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
+            try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
                 Set<Node> canonicalizedNodes = Node.newSet();
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
