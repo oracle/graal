@@ -276,7 +276,6 @@ public class SourceBuilderTest {
     }
 
     /* Test currently fails on Sparc. */
-    @Ignore
     @Test
     public void fileSample() throws Exception {
         File sample = File.createTempFile("sample", ".java");

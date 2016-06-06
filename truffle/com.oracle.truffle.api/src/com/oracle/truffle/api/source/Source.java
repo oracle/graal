@@ -1037,8 +1037,8 @@ class SourceSnippets {
         Source source = Source.newFromFile(file).build();
 
         assert file.getName().equals(source.getShortName());
+        assert file.getName().equals(source.getName());
         assert file.getPath().equals(source.getPath());
-        assert file.getPath().equals(source.getName());
         assert file.toURI().equals(source.getURI());
         assert "text/x-java".equals(source.getMimeType());
         // END: SourceSnippets#fromFile
