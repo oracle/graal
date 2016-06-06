@@ -151,7 +151,22 @@ public abstract class Source {
         return SourceImpl.findSource(name);
     }
 
-    public static Builder<Source> newFromFile(File file) throws IOException {
+    /**
+     * Creates new {@link Source} builder for specified <code>file</code>. One the source is built
+     * the {@link Source#getName() name} will become {@link File#getName()} and the
+     * {@link Source#getCode()} will be loaded from the file, unless {@link Builder#content
+     * redefined} on the builder. Sample usage:
+     * <p>
+     * {@link SourceSnippets#fromFile}
+     * <p>
+     * The system tries to deduce appropriate {@link Source#getMimeType()} by consulting registered
+     * {@link FileTypeDetector file type detectors}.
+     * 
+     * @param file the location of the file to load source from
+     * @return new instance of builder
+     * @since 0.15
+     */
+    public static Builder<Source> newFromFile(File file) {
         return EMPTY.new Builder<Source>(file);
     }
 
@@ -379,7 +394,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
-     * @deprecated 
+     * @deprecated
      */
     @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
@@ -465,8 +480,9 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content) {
+    Source(Content content, String mimeType) {
         this.content = content;
+        this.mimeType = mimeType;
     }
 
     Content content() {
@@ -516,10 +532,10 @@ public abstract class Source {
         return path == null ? content().getPath() : path;
     }
 
-    /** Check to recognize internal sources from the user provided ones.
-     * The internal sources are provided by the infrastructure, language,
-     * system library and should be avoided by default from being presented
-     * to user. For example when stepping into a function call in a debugger,
+    /**
+     * Check to recognize internal sources from the user provided ones. The internal sources are
+     * provided by the infrastructure, language, system library and should be avoided by default
+     * from being presented to user. For example when stepping into a function call in a debugger,
      * internal sources are supposed to be skipped.
      *
      * One can specify a source is internal when {@link Builder#internal building it}.
@@ -954,6 +970,7 @@ public abstract class Source {
     public final class Builder<R> {
         private final Object source;
         private String name;
+        private String path;
         private String mimeType;
         private String content;
         private boolean internal;
@@ -964,6 +981,11 @@ public abstract class Source {
 
         public Builder<R> name(String name) {
             this.name = name;
+            return this;
+        }
+
+        Builder<R> path(String path) {
+            this.path = path;
             return this;
         }
 
@@ -990,10 +1012,17 @@ public abstract class Source {
         }
 
         public R build() throws IOException {
-            if (mimeType == null) {
+            final File file = (File) source;
+            File absoluteFile = file.getCanonicalFile();
+            FileSourceImpl fileSource = new FileSourceImpl(
+                            absoluteFile,
+                            name == null ? file.getName() : name,
+                            path == null ? absoluteFile.getPath() : path);
+            String mime = mimeType == null ? fileSource.findMimeType() : mimeType;
+            if (mime == null) {
                 throw new IOException("Unknown mime type for " + source);
             }
-            return null;
+            return (R) new SourceImpl(fileSource, mime);
         }
     }
 }

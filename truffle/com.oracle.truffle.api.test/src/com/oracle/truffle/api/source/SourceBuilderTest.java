@@ -45,7 +45,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(SeparateClassloaderTestRunner.class)
-public class SourceTest {
+public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentity() {
         Source s1 = Source.fromText("// a comment\n", "Empty comment");
@@ -117,20 +117,22 @@ public class SourceTest {
         // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
 
         String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
-        assertTrue("Exists, as it is the same file", new File(nonCannonical).exists());
+        final File nonCannonicalFile = new File(nonCannonical);
+        assertTrue("Exists, as it is the same file", nonCannonicalFile.exists());
+        final Source.Builder<Source> builder = Source.newFromFile(new File(nonCannonical));
 
-        Source s1 = Source.fromFileName(nonCannonical).withMimeType("text/x-java");
+        Source s1 = builder.build();
         assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
         assertEquals("Just the name of the file", file.getName(), s1.getShortName());
-        assertEquals("Name of the source is original path", nonCannonical, s1.getName());
+        assertEquals("Name is short", file.getName(), s1.getName());
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
-        Source s2 = s1.withMimeType("text/x-c");
+        Source s2 = builder.mimeType("text/x-c").build();
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
-        assertEquals("File URI", new File(nonCannonical).toURI(), s1.getURI());
-        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
+        assertEquals("File URI is used from cannonicalized form", file.toURI(), s1.getURI());
+        assertEquals("Sources with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
     @Test
