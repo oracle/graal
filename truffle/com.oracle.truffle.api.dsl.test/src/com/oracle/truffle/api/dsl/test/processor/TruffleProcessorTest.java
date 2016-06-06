@@ -22,77 +22,13 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
-import java.util.Locale;
-import java.util.ServiceLoader;
-
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.JavaFileObject;
-
-import org.junit.Test;
-
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.dsl.processor.verify.VerifyTruffleProcessor;
 
 /**
  * Verify errors emitted by the processor.
  */
 public class TruffleProcessorTest {
-    //
-    // AnnotationProcessor test using the NetBeans style
-    //
-
-    @Test
-    public void childCannotBeFinal() throws Exception {
-        // @formatter:off
-        String code = "package x.y.z;\n" +
-            "import com.oracle.truffle.api.nodes.Node;\n" +
-            "abstract class MyNode extends Node {\n" +
-            "  @Child final MyNode first;\n" +
-            "  MyNode(MyNode n) {\n" +
-            "    this.first = n;\n" +
-            "  };\n" +
-            "}\n";
-        // @formatter:on
-
-        Compile c = Compile.create(VerifyTruffleProcessor.class, code);
-        c.assertErrors();
-        boolean ok = false;
-        StringBuilder msgs = new StringBuilder();
-        for (Diagnostic<? extends JavaFileObject> e : c.getErrors()) {
-            String msg = e.getMessage(Locale.ENGLISH);
-            if (msg.contains("cannot be final")) {
-                ok = true;
-            }
-            msgs.append("\n").append(msg);
-        }
-        if (!ok) {
-            fail("Should contain warning about final:" + msgs);
-        }
-    }
-
-    @Test
-    public void workAroundCannonicalDependency() throws Exception {
-        Class<?> myProc = VerifyTruffleProcessor.class;
-        assertNotNull(myProc);
-        StringBuilder sb = new StringBuilder();
-        sb.append("Cannot find ").append(myProc);
-        for (Processor load : ServiceLoader.load(Processor.class)) {
-            sb.append("Found ").append(load);
-            if (myProc.isInstance(load)) {
-                return;
-            }
-        }
-        fail(sb.toString());
-    }
-
-    //
-    // and now the Truffle traditional way
-    //
 
     abstract class MyNode extends Node {
         @ExpectError("@Child field cannot be final") @Child final MyNode first;

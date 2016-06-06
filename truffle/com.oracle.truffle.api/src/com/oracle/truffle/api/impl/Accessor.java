@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,6 +62,8 @@ public abstract class Accessor {
         public abstract void executionStarted(Object vm, int currentDepth, Object[] debuggerHolder, Source s);
 
         public abstract void executionEnded(Object vm, Object[] debuggerHolder);
+
+        public abstract void executionSourceSection(SourceSection ss);
     }
 
     public abstract static class EngineSupport {
@@ -199,10 +202,19 @@ public abstract class Accessor {
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
+        conditionallyInitDebugger();
+    }
+
+    @SuppressWarnings("all")
+    private static void conditionallyInitDebugger() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
         }
     }
 

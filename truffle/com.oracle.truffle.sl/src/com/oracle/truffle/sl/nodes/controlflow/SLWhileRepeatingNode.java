@@ -45,13 +45,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
-public final class SLRepeatingNode extends Node implements RepeatingNode {
-    private final SourceSection section;
+public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
+
     /**
      * The condition of the loop. This in a {@link SLExpressionNode} because we require a result
      * value. We do not have a node type that can only return a {@code boolean} value, so
@@ -70,35 +70,50 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
     private final BranchProfile continueTaken = BranchProfile.create();
     private final BranchProfile breakTaken = BranchProfile.create();
 
-    public SLRepeatingNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        this.section = src;
+    /**
+     * This node does not extend {@link SLStatementNode}, so we need to maintain source information
+     * manually.
+     */
+    private SourceSection sourceSection;
+
+    public SLWhileRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         this.conditionNode = conditionNode;
         this.bodyNode = bodyNode;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return section;
+        return sourceSection;
+    }
+
+    public void setSourceSection(SourceSection section) {
+        assert this.sourceSection == null : "overwriting existing SourceSection";
+        this.sourceSection = section;
     }
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        if (evaluateCondition(frame)) {
-            try {
-                /* Execute the loop body. */
-                bodyNode.executeVoid(frame);
-            } catch (SLContinueException ex) {
-                /* In the interpreter, record profiling information that the loop uses continue. */
-                continueTaken.enter();
-                /* Fall through to next loop iteration. */
-            } catch (SLBreakException ex) {
-                /* In the interpreter, record profiling information that the loop uses break. */
-                breakTaken.enter();
-                /* Done executing this loop, exit method to execute statement following the loop. */
-                return false;
-            }
+        if (!evaluateCondition(frame)) {
+            /* Normal exit of the loop when loop condition is false. */
+            return false;
+        }
+
+        try {
+            /* Execute the loop body. */
+            bodyNode.executeVoid(frame);
+            /* Continue with next loop iteration. */
             return true;
-        } else {
+
+        } catch (SLContinueException ex) {
+            /* In the interpreter, record profiling information that the loop uses continue. */
+            continueTaken.enter();
+            /* Continue with next loop iteration. */
+            return true;
+
+        } catch (SLBreakException ex) {
+            /* In the interpreter, record profiling information that the loop uses break. */
+            breakTaken.enter();
+            /* Break out of the loop. */
             return false;
         }
     }
@@ -109,7 +124,7 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
              * The condition must evaluate to a boolean value, so we call the boolean-specialized
              * execute method.
              */
-            return (conditionNode.executeBoolean(frame));
+            return conditionNode.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {
             /*
              * The condition evaluated to a non-boolean result. This is a type error in the SL

@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNodeGen;
@@ -58,108 +56,49 @@ import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 
+/**
+ * The class containing all message resolution implementations of an SL object.
+ */
 @MessageResolution(receiverType = SLObjectType.class, language = SLLanguage.class)
 public class SLObjectMessageResolution {
+    /*
+     * An SL object resolves the WRITE message and maps it to an object property write access.
+     */
     @Resolve(message = "WRITE")
     public abstract static class SLForeignWriteNode extends Node {
 
-        @Child private SLMonomorphicNameWriteNode write;
+        @Child private SLWritePropertyCacheNode write = SLWritePropertyCacheNodeGen.create();
+        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
+        @Child private SLForeignToSLTypeNode valueToSLType = SLForeignToSLTypeNodeGen.create();
 
-        public Object access(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
-            if (write == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                write = insert(new SLMonomorphicNameWriteNode(name));
-            }
-            return write.execute(frame, receiver, name, value);
-        }
-
-        private abstract static class SLWriteNode extends Node {
-            @Child protected SLForeignToSLTypeNode toSLType = SLForeignToSLTypeNodeGen.create(getSourceSection(), null);
-
-            abstract Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value);
-        }
-
-        private static final class SLMonomorphicNameWriteNode extends SLWriteNode {
-
-            private final String cachedName;
-            @Child private SLWritePropertyCacheNode writePropertyCacheNode;
-
-            SLMonomorphicNameWriteNode(String name) {
-                this.cachedName = name;
-                this.writePropertyCacheNode = SLWritePropertyCacheNodeGen.create(name);
-            }
-
-            @Override
-            Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
-                if (this.cachedName.equals(name)) {
-                    Object convertedValue = toSLType.executeWithTarget(frame, value);
-                    writePropertyCacheNode.executeObject(receiver, convertedValue);
-                    return receiver;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return this.replace(new SLPolymorphicNameWriteNode()).execute(frame, receiver, name, value);
-                }
-            }
-        }
-
-        private static final class SLPolymorphicNameWriteNode extends SLWriteNode {
-
-            @Override
-            Object execute(VirtualFrame frame, DynamicObject receiver, String name, Object value) {
-                Object convertedValue = toSLType.executeWithTarget(frame, value);
-                Property property = receiver.getShape().getProperty(name);
-                return receiver.set(property.getKey(), convertedValue);
-            }
+        public Object access(VirtualFrame frame, DynamicObject receiver, Object name, Object value) {
+            Object convertedName = nameToSLType.executeConvert(frame, name);
+            Object convertedValue = valueToSLType.executeConvert(frame, value);
+            write.executeWrite(frame, receiver, convertedName, convertedValue);
+            return convertedValue;
         }
     }
 
+    /*
+     * An SL object resolves the READ message and maps it to an object property read access.
+     */
     @Resolve(message = "READ")
     public abstract static class SLForeignReadNode extends Node {
 
-        @Child private SLMonomorphicNameReadNode read;
+        @Child private SLReadPropertyCacheNode read = SLReadPropertyCacheNodeGen.create();
+        @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
 
-        public Object access(DynamicObject receiver, String name) {
-            if (read == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = insert(new SLMonomorphicNameReadNode(name));
-            }
-            return read.execute(receiver, name);
-        }
-
-        private abstract static class SLReadNode extends Node {
-            abstract Object execute(DynamicObject receiver, String name);
-        }
-
-        private static final class SLMonomorphicNameReadNode extends SLReadNode {
-
-            private final String name;
-            @Child private SLReadPropertyCacheNode readPropertyCacheNode;
-
-            SLMonomorphicNameReadNode(String name) {
-                this.name = name;
-                this.readPropertyCacheNode = SLReadPropertyCacheNodeGen.create(name);
-            }
-
-            @Override
-            Object execute(DynamicObject receiver, String n) {
-                if (this.name.equals(n)) {
-                    return readPropertyCacheNode.executeObject(receiver);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return this.replace(new SLPolymorphicNameReadNode()).execute(receiver, n);
-                }
-            }
-        }
-
-        private static final class SLPolymorphicNameReadNode extends SLReadNode {
-            @Override
-            Object execute(DynamicObject obj, String name) {
-                Property property = obj.getShape().getProperty(name);
-                return obj.get(property.getKey());
-            }
+        public Object access(VirtualFrame frame, DynamicObject receiver, Object name) {
+            Object convertedName = nameToSLType.executeConvert(frame, name);
+            return read.executeRead(frame, receiver, convertedName);
         }
     }
 
+    /*
+     * An SL object resolves the INVOKE message and maps it to an object property read access
+     * followed by an function invocation. The object property must be an SL function object, which
+     * is executed eventually.
+     */
     @Resolve(message = "INVOKE")
     public abstract static class SLForeignInvokeNode extends Node {
 
@@ -170,6 +109,9 @@ public class SLObjectMessageResolution {
             if (property instanceof SLFunction) {
                 SLFunction function = (SLFunction) property;
                 Object[] arr = new Object[arguments.length];
+                // Before the arguments can be used by the SLFunction, they need to be converted to
+                // SL
+                // values.
                 for (int i = 0; i < arguments.length; i++) {
                     arr[i] = SLContext.fromForeignValue(arguments[i]);
                 }

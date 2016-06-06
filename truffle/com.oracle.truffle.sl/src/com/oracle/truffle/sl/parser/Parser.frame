@@ -28,13 +28,15 @@ Coco/R itself) does not fall under the GNU General Public License.
 -->begin
 package com.oracle.truffle.sl.parser;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
-import com.oracle.truffle.sl.runtime.SLContext;
-import java.util.ArrayList;
-import java.util.List;
 
 // Checkstyle: stop
 // @formatter:off
@@ -52,9 +54,9 @@ public class Parser {
     public final Errors errors;
     private final SLNodeFactory factory;
     -->declarations
-    public Parser(SLContext context, Source source) {
+    public Parser(Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(context, source);
+        this.factory = new SLNodeFactory(source);
         errors = new Errors();
     }
 
@@ -135,8 +137,8 @@ public class Parser {
 -->initialization
     };
 
-    public static void parseSL(SLContext context, Source source) {
-        Parser parser = new Parser(context, source);
+    public static Map<String, SLRootNode> parseSL(Source source) {
+        Parser parser = new Parser(source);
         parser.Parse();
         if (parser.errors.errors.size() > 0) {
             StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");
@@ -145,6 +147,7 @@ public class Parser {
             }
             throw new SLException(msg.toString());
         }
+        return parser.factory.getAllFunctions();
     }
 } // end Parser
 

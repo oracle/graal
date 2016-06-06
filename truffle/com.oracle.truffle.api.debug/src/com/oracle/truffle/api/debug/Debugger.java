@@ -53,7 +53,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.net.URI;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -88,6 +92,8 @@ public final class Debugger {
     private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
     private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
     private static final Assumption NO_DEBUGGER = Truffle.getRuntime().createAssumption("No debugger assumption");
+
+    private static final Set<Debugger> EXISTING_DEBUGGERS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<Debugger, Boolean>()));
 
     /** Counter for externally requested step actions. */
     private static int nextActionID = 0;
@@ -152,6 +158,7 @@ public final class Debugger {
         this.instrumenter = instrumenter;
         this.breakpoints = new BreakpointFactory(instrumenter, breakpointCallback, warningLog);
         NO_DEBUGGER.invalidate();
+        EXISTING_DEBUGGERS.add(this);
     }
 
     interface BreakpointCallback {
@@ -174,9 +181,12 @@ public final class Debugger {
 
         @TruffleBoundary
         public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
-            if (currentDebugContext != null) {
-                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
+            if (currentDebugContext == null) {
+                final SourceSection sourceSection = eventContext.getInstrumentedNode().getSourceSection();
+                assert sourceSection != null;
+                currentDebugContext = new DebugExecutionContext(sourceSection.getSource(), null, 0);
             }
+            currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
         }
     };
 
@@ -210,6 +220,26 @@ public final class Debugger {
     @TruffleBoundary
     public Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
         return breakpoints.create(ignoreCount, lineLocation, oneShot);
+    }
+
+    /**
+     * Sets a breakpoint to halt at a source line.
+     * <p>
+     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
+     * assumed to be in the same language as the code location where attached.
+     *
+     *
+     * @param ignoreCount number of hits to ignore before halting
+     * @param sourceUri URI of the source to set the breakpoint into
+     * @param line line number of the breakpoint
+     * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
+     * @return a new breakpoint, initially enabled
+     * @throws IOException if the breakpoint can not be set.
+     * @since 0.14
+     */
+    @TruffleBoundary
+    public Breakpoint setLineBreakpoint(int ignoreCount, URI sourceUri, int line, boolean oneShot) throws IOException {
+        return breakpoints.create(ignoreCount, sourceUri, line, -1, oneShot);
     }
 
     /**
@@ -532,6 +562,10 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+            if (beforeHaltBinding == null || afterCallBinding == null) {
+                // Instrumentation/language failure
+                return;
+            }
             traceAction("CLEAR ACTION", startStackDepth, unfinishedStepCount);
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
@@ -604,6 +638,10 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+            if (afterCallBinding == null) {
+                // Instrumentation/language failure
+                return;
+            }
             afterCallBinding.dispose();
         }
     }
@@ -685,6 +723,10 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+            if (beforeHaltBinding == null || afterCallBinding == null) {
+                // Instrumentation/language failure
+                return;
+            }
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
@@ -742,6 +784,10 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+            if (beforeHaltBinding == null) {
+                // Instrumentation/language failure
+                return;
+            }
             beforeHaltBinding.dispose();
         }
     }
@@ -1041,6 +1087,7 @@ public final class Debugger {
         }
         // Push a new execution context onto stack
         currentDebugContext = new DebugExecutionContext(execSource, currentDebugContext, depth);
+        breakpoints.notifySourceLoaded(source);
         prepareContinue(depth);
         currentDebugContext.trace("BEGIN EXECUTION");
     }
@@ -1108,6 +1155,14 @@ public final class Debugger {
             public void executionEnded(Object vm, Object[] debugger) {
                 if (debugger[0] != null) {
                     ((Debugger) debugger[0]).executionEnded();
+                }
+            }
+
+            @Override
+            public void executionSourceSection(SourceSection ss) {
+                Source source = ss.getSource();
+                for (Debugger debugger : EXISTING_DEBUGGERS) {
+                    debugger.breakpoints.notifySourceLoaded(source);
                 }
             }
 

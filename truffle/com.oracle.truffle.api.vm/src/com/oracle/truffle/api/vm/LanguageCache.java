@@ -69,8 +69,7 @@ final class LanguageCache {
      * @return A map of initialized languages.
      */
     private static Map<String, LanguageCache> initializeLanguages(ClassLoader loader) {
-        Map<String, LanguageCache> map;
-        map = createLanguages(loader);
+        Map<String, LanguageCache> map = createLanguages(loader);
         for (LanguageCache info : map.values()) {
             info.createLanguage(loader);
         }

@@ -108,7 +108,7 @@ public final class ExecuteGenerator extends MessageGenerator {
 
         }
         w.append("            } catch (UnsupportedSpecializationException e) {\n");
-        w.append("                throw UnsupportedTypeException.raise(e.getSuppliedValues());\n");
+        w.append("                throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
         w.append("            }\n");
         w.append("        }\n");
         w.append("\n");
@@ -130,7 +130,13 @@ public final class ExecuteGenerator extends MessageGenerator {
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 
         if (params.size() != expectedNumberOfArguments) {
-            return "Wrong number of arguments.";
+            if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {
+                return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, arguments: Object[])";
+            } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName)) {
+                return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, arguments: Object[])";
+            } else {
+                throw new IllegalStateException();
+            }
         }
 
         if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {

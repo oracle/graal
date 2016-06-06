@@ -118,7 +118,7 @@ public final class FrameSlot implements Cloneable {
      */
     public void setKind(final FrameSlotKind kind) {
         if (this.kind != kind) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             this.kind = kind;
             this.descriptor.updateVersion();
         }

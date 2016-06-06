@@ -28,6 +28,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -65,6 +66,13 @@ public abstract class TVMCI {
         final Accessor.InstrumentSupport accessor = Accessor.instrumentAccess();
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
+        }
+        Accessor.DebugSupport debugAccessor = Accessor.debugAccess();
+        if (debugAccessor != null) {
+            final SourceSection section = rootNode.getSourceSection();
+            if (section != null) {
+                debugAccessor.executionSourceSection(section);
+            }
         }
     }
 

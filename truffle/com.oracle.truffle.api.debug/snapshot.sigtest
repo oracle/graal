@@ -35,14 +35,24 @@ fld public final static java.lang.String CALL_TAG = "debug-CALL"
  anno 0 java.lang.Deprecated()
 fld public final static java.lang.String HALT_TAG = "debug-HALT"
  anno 0 java.lang.Deprecated()
+meth public boolean pause()
 meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,com.oracle.truffle.api.source.LineLocation,boolean) throws java.io.IOException
+meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,java.net.URI,int,boolean) throws java.io.IOException
 meth public com.oracle.truffle.api.debug.Breakpoint setTagBreakpoint(int,com.oracle.truffle.api.instrument.SyntaxTag,boolean) throws java.io.IOException
  anno 0 java.lang.Deprecated()
 meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
 supr java.lang.Object
-hfds ACCESSOR,CALL_FILTER,FACTORY,HALT_FILTER,NO_DEBUGGER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
-hcls AccessorDebug,BreakpointCallback,Continue,DebugExecutionContext,HaltPosition,StepInto,StepOut,StepOver,StepOverNested,StepStrategy,WarningLog
+hfds ACCESSOR,CALL_FILTER,EXISTING_DEBUGGERS,FACTORY,HALT_FILTER,NO_DEBUGGER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
+hcls AccessorDebug,BreakpointCallback,Continue,DebugExecutionContext,HaltPosition,PauseHandler,StepInto,StepOut,StepOver,StepOverNested,StepStrategy,WarningLog
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerTags
+innr public final AlwaysHalt
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerTags$AlwaysHalt
+ outer com.oracle.truffle.api.debug.DebuggerTags
+supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.debug.ExecutionEvent
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
@@ -52,6 +62,7 @@ supr java.lang.Object
 hfds currentDepth,debugger,engine,source
 
 CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
+meth public boolean isHaltedBefore()
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getNode()
@@ -64,7 +75,7 @@ meth public void prepareStepInto(int)
 meth public void prepareStepOut()
 meth public void prepareStepOver(int)
 supr java.lang.Object
-hfds OUT,TRACE,TRACE_PREFIX,debugger,haltedFrame,haltedNode,kill,stack,warnings
+hfds OUT,TRACE,TRACE_PREFIX,debugger,haltedFrame,haltedNode,haltedPosition,kill,stack,warnings
 
 CLSS public abstract interface java.io.Serializable
 

@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.concurrent.Executor;
 
+import com.oracle.truffle.api.interop.InteropException;
+
 abstract class ComputeInExecutor<R> implements Runnable {
     private final Executor executor;
     private R result;
@@ -65,6 +67,9 @@ abstract class ComputeInExecutor<R> implements Runnable {
     private void exceptionCheck() throws IOException, RuntimeException {
         if (exception instanceof IOException) {
             throw (IOException) exception;
+        }
+        if (exception instanceof InteropException) {
+            throw ((InteropException) exception).raise();
         }
         if (exception instanceof RuntimeException) {
             throw (RuntimeException) exception;

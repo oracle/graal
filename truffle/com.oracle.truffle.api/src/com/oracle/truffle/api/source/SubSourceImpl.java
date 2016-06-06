@@ -26,6 +26,7 @@ package com.oracle.truffle.api.source;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.net.URI;
 import java.net.URL;
 
 final class SubSourceImpl extends Content {
@@ -65,6 +66,11 @@ final class SubSourceImpl extends Content {
     @Override
     public URL getURL() {
         return null;
+    }
+
+    @Override
+    URI getURI() {
+        return base.getURI();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.instrument;
+package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.SLLanguage;
 
-@Deprecated
-@SuppressWarnings("deprecation")
-@NodeInfo(cost = NodeCost.NONE)
-public final class SLStatementWrapperNode extends SLStatementNode implements com.oracle.truffle.api.instrument.WrapperNode {
+/**
+ * The class containing all message resolution implementations of {@link SLNull}.
+ */
+@MessageResolution(receiverType = SLNull.class, language = SLLanguage.class)
+public class SLNullMessageResolution {
+    /*
+     * An SL function resolves the IS_NULL message.
+     */
+    @Resolve(message = "IS_NULL")
+    public abstract static class SLForeignIsNullNode extends Node {
 
-    @Child private SLStatementNode child;
-    @Child private com.oracle.truffle.api.instrument.EventHandlerNode eventHandlerNode;
-
-    public SLStatementWrapperNode(SLStatementNode child) {
-        super(child.getSourceSection());
-        assert !(child instanceof SLStatementWrapperNode);
-        this.child = child;
-    }
-
-    public String instrumentationInfo() {
-        return "Wrapper node for SL Statements";
-    }
-
-    @Override
-    public SLStatementNode getNonWrapperNode() {
-        return child;
-    }
-
-    @Override
-    public void insertEventHandlerNode(com.oracle.truffle.api.instrument.EventHandlerNode eventHandler) {
-        this.eventHandlerNode = eventHandler;
-    }
-
-    public com.oracle.truffle.api.instrument.Probe getProbe() {
-        return eventHandlerNode.getProbe();
-    }
-
-    @Override
-    public Node getChild() {
-        return child;
-    }
-
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        eventHandlerNode.enter(child, frame);
-
-        try {
-            child.executeVoid(frame);
-            eventHandlerNode.returnVoid(child, frame);
-        } catch (Exception e) {
-            eventHandlerNode.returnExceptional(child, frame, e);
-            throw (e);
+        public Object access(Object receiver) {
+            return SLNull.SINGLETON == receiver;
         }
     }
 
+    @CanResolve
+    public abstract static class CheckNull extends Node {
+
+        protected static boolean test(TruffleObject receiver) {
+            return receiver instanceof SLNull;
+        }
+    }
 }

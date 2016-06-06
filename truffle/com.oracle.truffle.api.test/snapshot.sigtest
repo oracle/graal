@@ -78,6 +78,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Compile
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int dimensions()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$TruffleBoundary
  outer com.oracle.truffle.api.CompilerDirectives

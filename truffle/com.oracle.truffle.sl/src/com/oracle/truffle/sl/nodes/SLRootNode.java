@@ -43,14 +43,12 @@ package com.oracle.truffle.sl.nodes;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -59,7 +57,7 @@ import com.oracle.truffle.sl.runtime.SLContext;
  * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
  */
 @NodeInfo(language = "Simple Language", description = "The root of all Simple Language execution trees")
-public final class SLRootNode extends RootNode {
+public class SLRootNode extends RootNode {
     /** The function body that is executed, and specialized during execution. */
     @Child private SLExpressionNode bodyNode;
 
@@ -68,18 +66,20 @@ public final class SLRootNode extends RootNode {
 
     @CompilationFinal private boolean isCloningAllowed;
 
-    @SuppressWarnings("unused")
-    public SLRootNode(SLContext ignore, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
+    public SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
         super(SLLanguage.class, sourceSection, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
-        this.bodyNode.setRootTagged(true);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert SLLanguage.INSTANCE.findContext0(SLLanguage.INSTANCE.createFindContextNode0()) != null;
+        assert SLLanguage.INSTANCE.findContext() != null;
         return bodyNode.executeGeneric(frame);
+    }
+
+    public SLExpressionNode getBodyNode() {
+        return bodyNode;
     }
 
     public String getName() {
@@ -99,9 +99,4 @@ public final class SLRootNode extends RootNode {
     public String toString() {
         return "root " + name;
     }
-
-    public Node getBodyNode() {
-        return bodyNode;
-    }
-
 }

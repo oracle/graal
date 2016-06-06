@@ -2,6 +2,28 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.14
+2-Jun-2016
+* [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) has been
+rewritten to be more immutable. Once (part of) content of a source is loaded, it cannot be
+changed.
+* Methods `fromNamedAppendableText`, `fromNamedText` and `setFileCaching` of
+`Source` has been deprecated as useless or not well defined
+* New method `Source`.[getURI()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html#getURI--)
+has been introduced and should be used as a persistent identification of `Source` rather than
+existing `getName()` & co. methods. Debugger is using the `URI` to
+[attach breakpoints](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html#setLineBreakpoint-int-java.net.URI-int-boolean-)
+to not yet loaded sources
+* Debugger introduces new [halt tag](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebuggerTags.AlwaysHalt.html) to
+make it easier to simulate concepts like JavaScript's `debugger` statement
+* Debugger can be paused via the Debugger.[pause](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html#pause--)
+method
+* [@CompilationFinal](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/CompilerDirectives.CompilationFinal.html)
+annotation can now specify whether the finality applies to array elements as well
+* [TruffleTCK](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/tck/TruffleTCK.html) has been
+enhanced to test behavior of languages with respect to foreign array objects
+
+
 ## Version 0.13
 22-Apr-2016
 * `AcceptMessage` has been deprecated, replaced by

@@ -75,9 +75,18 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.parser.Parser;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
@@ -285,13 +294,13 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PolyglotEngine vm = null;
+        PolyglotEngine engine = null;
         try {
-            vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
+            engine = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(repeat(testCase.testInput, repeats).getBytes("UTF-8"))).setOut(out).build();
             String script = readAllLines(testCase.path);
 
             PrintWriter printer = new PrintWriter(out);
-            SLLanguage.run(vm, testCase.path, null, printer, repeats, builtins);
+            run(engine, testCase.path, printer);
             printer.flush();
 
             String actualOutput = new String(out.toByteArray());
@@ -299,10 +308,42 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, new IllegalStateException("Cannot run " + testCase.sourceName, ex)));
         } finally {
-            if (vm != null) {
-                vm.dispose();
+            if (engine != null) {
+                engine.dispose();
             }
             notifier.fireTestFinished(testCase.name);
+        }
+    }
+
+    private static void run(PolyglotEngine engine, Path path, PrintWriter out) throws IOException {
+        SLContext context = (SLContext) engine.getLanguages().get(SLLanguage.MIME_TYPE).getGlobalObject().get();
+
+        for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
+            context.installBuiltin(builtin);
+        }
+
+        /* Parse the SL source file. */
+        Source source = Source.fromFileName(path.toString());
+        context.getFunctionRegistry().register(Parser.parseSL(source));
+
+        /* Lookup our main entry point, which is per definition always named "main". */
+        SLFunction mainFunction = context.getFunctionRegistry().lookup("main", false);
+        if (mainFunction == null) {
+            throw new SLException("No function main() defined in SL source file.");
+        }
+
+        for (int i = 0; i < repeats; i++) {
+            /* Call the main entry point, without any arguments. */
+            try {
+                Object result = mainFunction.getCallTarget().call();
+                if (result != SLNull.SINGLETON) {
+                    out.println(result);
+                }
+            } catch (UnsupportedSpecializationException ex) {
+                out.println(SLMain.formatTypeError(ex));
+            } catch (SLUndefinedNameException ex) {
+                out.println(ex.getMessage());
+            }
         }
     }
 

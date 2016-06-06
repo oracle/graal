@@ -33,14 +33,14 @@ import java.io.Reader;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.spi.FileTypeDetector;
-import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import java.io.InputStreamReader;
 import java.util.Objects;
-import java.util.logging.Level;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -125,8 +125,6 @@ import java.util.logging.Level;
  * @since 0.8 or earlier
  */
 public abstract class Source {
-    static final Logger LOG = Logger.getLogger(Source.class.getName());
-
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
     // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
@@ -396,9 +394,8 @@ public abstract class Source {
     }
 
     /**
-     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
-     * is not compatible with Java strings, or if your parser returns byte indices instead of
-     * character indices. The returned source is then indexed by byte, not by character.
+     * Creates a source from raw bytes. This can be used if your parser returns byte indices instead
+     * of character indices. The returned source is however still indexed by character.
      *
      * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
      * are set to value of <code>name</code>
@@ -414,17 +411,16 @@ public abstract class Source {
     }
 
     /**
-     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
-     * is not compatible with Java strings, or if your parser returns byte indices instead of
-     * character indices. The returned source is then indexed by byte, not by character. Offsets are
-     * relative to byteIndex.
+     * Creates a source from raw bytes. This can be used if your parser returns byte indices instead
+     * of character indices. The returned source is however still indexed by character. Offsets are
+     * starting at byteIndex.
      *
      * The {@link #getName() name}, {@link #getShortName() short name} and {@link #getPath() path}
      * are set to value of <code>name</code>
      *
      * @param bytes the raw bytes of the source
      * @param byteIndex where the string starts in the byte array
-     * @param length the length of the string in the byte array
+     * @param length the length of bytes to use from the byte array
      * @param name name of the created source
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
@@ -546,6 +542,25 @@ public abstract class Source {
     }
 
     /**
+     * Get URI of the source. Every source has an associated {@link URI}, which can be used as a
+     * persistent identification of the source. For example one can
+     * {@link com.oracle.truffle.api.debug.Debugger#setLineBreakpoint(int, java.net.URI, int, boolean)
+     * register a breakpoint using a URI} to a source that isn't loaded yet and it will be activated
+     * when the source is
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
+     * evaluated}. The {@link URI} returned by this method should be as unique as possible, yet it
+     * can happen that different {@link Source sources} return the same {@link #getURI} - for
+     * example when content of a {@link Source#fromFileName file on a disk} changes and is
+     * re-loaded.
+     *
+     * @return a URI, it's never <code>null</code>
+     * @since 0.14
+     */
+    public URI getURI() {
+        return content().getURI();
+    }
+
+    /**
      * Access to the source contents.
      *
      * @since 0.8 or earlier
@@ -592,10 +607,6 @@ public abstract class Source {
      */
     public String getCode() {
         return content().getCode();
-    }
-
-    final int getCodeLength() {
-        return content().getCodeLength();
     }
 
     /**
@@ -783,7 +794,7 @@ public abstract class Source {
     }
 
     void checkRange(int charIndex, int length) {
-        if (!(charIndex >= 0 && length >= 0 && charIndex + length <= getCodeLength())) {
+        if (!(charIndex >= 0 && length >= 0 && charIndex + length <= getCode().length())) {
             throw new IllegalArgumentException("text positions out of range");
         }
     }
@@ -927,7 +938,7 @@ public abstract class Source {
             try {
                 mimeType = content().findMimeType();
             } catch (IOException ex) {
-                LOG.log(Level.INFO, null, ex);
+                // swallow and return null
             }
         }
         return mimeType;
@@ -999,12 +1010,13 @@ class SourceSnippets {
         assert file.getName().equals(source.getShortName());
         assert file.getPath().equals(source.getPath());
         assert file.getPath().equals(source.getName());
+        assert file.toURI().equals(source.getURI());
         assert "text/x-java".equals(source.getMimeType());
         // END: SourceSnippets#fromFile
         return source;
     }
 
-    public static Source fromURL() throws IOException {
+    public static Source fromURL() throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
         Source source = Source.newFromURL(resource)
@@ -1014,6 +1026,7 @@ class SourceSnippets {
         assert resource.toExternalForm().equals(source.getPath());
         assert "/your/pkg/sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
+        assert resource.toURI().equals(source.getURI());
         // END: SourceSnippets#fromURL
         return source;
     }

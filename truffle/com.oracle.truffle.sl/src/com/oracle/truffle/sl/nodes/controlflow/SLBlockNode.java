@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
 /**
@@ -64,8 +63,7 @@ public final class SLBlockNode extends SLStatementNode {
      */
     @Children private final SLStatementNode[] bodyNodes;
 
-    public SLBlockNode(SourceSection src, SLStatementNode... bodyNodes) {
-        super(src);
+    public SLBlockNode(SLStatementNode[] bodyNodes) {
         this.bodyNodes = bodyNodes;
     }
 
