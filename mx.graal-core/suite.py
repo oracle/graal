@@ -52,6 +52,31 @@ suite = {
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
       "bootClassPathAgent" : "true",
     },
+
+    "HCFDIS" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/hcfdis-3.jar"],
+      "sha1" : "a71247c6ddb90aad4abf7c77e501acc60674ef57",
+    },
+
+    "C1VISUALIZER_DIST" : {
+      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2015-07-22.zip"],
+      "sha1" : "7ead6b2f7ed4643ef4d3343a5562e3d3f39564ac",
+    },
+
+    "IDEALGRAPHVISUALIZER_DIST" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer_2016-05-18.zip"],
+      "sha1" : "eeeb93fb332b8043a78601959c87344fcf3f8963",
+    },
+
+    "JOL_INTERNALS" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/truffle/jol/jol-internals.jar"],
+      "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
+    },
+
+    "BATIK" : {
+      "sha1" : "122b87ca88e41a415cf8b523fd3d03b4325134a3",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
+    },
   },
 
   "projects" : {
