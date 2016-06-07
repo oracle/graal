@@ -61,12 +61,21 @@ def _run_netbeans_download(app_name, env=None):
 
     mx.run([executable], env=env)
 
+def _igvJdk():
+    v8u20 = mx.VersionSpec("1.8.0_20")
+    v8u40 = mx.VersionSpec("1.8.0_40")
+    v8 = mx.VersionSpec("1.8")
+    def _igvJdkVersionCheck(version):
+        return version >= v8 and (version < v8u20 or version >= v8u40)
+    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='>= 1.8 and < 1.8.0u20 or >= 1.8.0u40', purpose="running IGV").home
+
 def igv(args):
     """run the Ideal Graph Visualizer"""
     env = dict(os.environ)
     # make the jar for Batik 1.7 available.
     env['IGV_BATIK_JAR'] = mx.library('BATIK').get_path(True)
-    _run_netbeans_download('IdealGraphVisualizer', env)
+    env['jdkhome'] = _igvJdk()
+    _run_netbeans_download('IdealGraphVisualizer', env=env)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
