@@ -29,22 +29,10 @@
  */
 package com.oracle.truffle.llvm.types;
 
-import java.lang.reflect.Method;
-import java.util.List;
-
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<LLVMFunctionDescriptor> {
 
@@ -148,128 +136,23 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         }
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(LLVMFunctionDescriptor.class, new Factory10() {
-
-            @Override
-            public CallTarget accessIsNull() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessIsExecutable() {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-            }
-
-            @Override
-            public CallTarget accessIsBoxed() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessHasSize() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessGetSize() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessUnbox() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessRead() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessWrite() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessExecute(int argumentsLength) {
-                return Truffle.getRuntime().createCallTarget(new ForeignCallNode());
-            }
-
-            @Override
-            public CallTarget accessInvoke(int argumentsLength) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessNew(int argumentsLength) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CallTarget accessMessage(Message unknown) {
-                throw new UnsupportedOperationException();
-            }
-
-        });
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMFunctionDescriptor;
     }
 
-    private static class ForeignCallNode extends RootNode {
+    @CompilationFinal private static ForeignAccess ACCESS;
 
-        private final LLVMStack stack;
-
-        @Child private IndirectCallNode callNode;
-
-        protected ForeignCallNode() {
-            super(getLLVMLanguage(), null, new FrameDescriptor());
-            stack = getLLVMStack();
-            callNode = Truffle.getRuntime().createIndirectCallNode();
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) ForeignAccess.getReceiver(frame);
-            assert function.getReturnType() != LLVMRuntimeType.STRUCT;
-            final CallTarget callTarget = getCallTarget(function);
-            final List<Object> arguments = ForeignAccess.getArguments(frame);
-            final Object[] packedArguments = new Object[1 + arguments.size()];
-            packedArguments[0] = stack.getUpperBounds();
-            System.arraycopy(arguments.toArray(), 0, packedArguments, 1, arguments.size());
-            return callNode.call(frame, callTarget, packedArguments);
-        }
-
-        // TODO No static access to these classes at the moment
-
-        @SuppressWarnings("unchecked")
-        private static Class<? extends TruffleLanguage<?>> getLLVMLanguage() {
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
             try {
-                return (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage");
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private static LLVMStack getLLVMStack() {
-            try {
-                final Class<?> contextClass = Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMContext");
-                final Method getStaticStackMethod = contextClass.getMethod("getStaticStack");
-                return (LLVMStack) getStaticStackMethod.invoke(null);
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new AssertionError(e);
             }
         }
-
-        private static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-            try {
-                final Class<?> contextClass = Class.forName("com.oracle.truffle.llvm.nodes.impl.base.LLVMContext");
-                final Method getCallTargetMethod = contextClass.getMethod("getCallTarget", LLVMFunctionDescriptor.class);
-                return (CallTarget) getCallTargetMethod.invoke(null, function);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
+        return ACCESS;
     }
 
 }
