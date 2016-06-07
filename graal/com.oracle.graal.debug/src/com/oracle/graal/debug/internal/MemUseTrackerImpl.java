@@ -49,6 +49,16 @@ public class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMem
             public String toString(long value) {
                 return valueToString(value);
             }
+
+            @Override
+            public String rawUnit() {
+                return "B";
+            }
+
+            @Override
+            public String toRawString(long value) {
+                return Long.toString(value);
+            }
         });
         this.intercepting = intercepting;
     }
@@ -121,5 +131,15 @@ public class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMem
                 MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.flat.getName(), difference);
             }
         }
+    }
+
+    @Override
+    public String rawUnit() {
+        return "B";
+    }
+
+    @Override
+    public String toRawString(long value) {
+        return Long.toString(value);
     }
 }

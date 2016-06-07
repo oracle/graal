@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.debug.internal;
 
+import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueHumanReadable;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.SuppressZeroDebugValues;
@@ -43,6 +44,9 @@ import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
  * {@link DebugValueMap#getTopLevelMaps() threads}.
  */
 public class DebugValuesPrinter {
+    private static final char SEPARATOR = ';';
+    private static final String COMPUTER_READABLE_FMT = "%s" + SEPARATOR + "%s" + SEPARATOR + "%s" + SEPARATOR + "%s";
+    private static final char SCOPE_DELIMITER = '.';
     private final MethodMetricsPrinter mmPrinter;
 
     public DebugValuesPrinter() {
@@ -179,9 +183,42 @@ public class DebugValuesPrinter {
                 TTY.println("%s", map.getName());
             }
         }
+
+        public String toRawString() {
+            return toRaw(new StringBuilder()).toString();
+        }
+
+        private StringBuilder toRaw(StringBuilder stringBuilder) {
+            final StringBuilder sb = (parent == null) ? stringBuilder : parent.toRaw(stringBuilder).append(SCOPE_DELIMITER);
+            return sb.append(map.getName());
+        }
+
     }
 
     private void printMap(DebugValueScope scope, List<DebugValue> debugValues) {
+        if (DebugValueHumanReadable.getValue()) {
+            printMapHumanReadable(scope, debugValues);
+        } else {
+            printMapComputerReadable(scope, debugValues);
+        }
+    }
+
+    private void printMapComputerReadable(DebugValueScope scope, List<DebugValue> debugValues) {
+
+        for (DebugValue value : debugValues) {
+            long l = scope.map.getCurrentValue(value.getIndex());
+            if (l != 0 || !SuppressZeroDebugValues.getValue()) {
+                String unit = value.rawUnit();
+                TTY.println(COMPUTER_READABLE_FMT, scope.toRawString(), value.getName(), value.toRawString(l), unit != null ? unit : "");
+            }
+        }
+
+        for (DebugValueMap child : scope.map.getChildren()) {
+            printMapComputerReadable(new DebugValueScope(scope, child), debugValues);
+        }
+    }
+
+    private void printMapHumanReadable(DebugValueScope scope, List<DebugValue> debugValues) {
 
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
