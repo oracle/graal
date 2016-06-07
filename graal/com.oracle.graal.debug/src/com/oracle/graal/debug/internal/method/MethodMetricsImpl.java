@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugMethodMetrics;
@@ -293,11 +294,13 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
         }
     }
 
+    private static final String FMT = CSVUtil.buildFormatString("%s", "%s", "%d", "%d", "%s", "%d");
+
     public void dumpCSV(PrintStream p) {
         // we need to lock the threadmap as a concurrent call to #collectedMetrics can change
         // the content of this#collected
         synchronized (threadMaps) {
-            String methodName = "\"" + method.format("%H.%n(%p)%R") + "\"";
+            String methodName = method.format("%H.%n(%p)%R");
             /*
              * NOTE: the caching mechanism works by caching compilation data based on the identity
              * of the resolved java method object. The identity is based on the metaspace address of
@@ -314,8 +317,7 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
                     if (table != null) {
                         Set<Map.Entry<String, Long>> entries = table.entrySet();
                         for (Map.Entry<String, Long> entry : entries.stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).collect(Collectors.toList())) {
-                            p.printf("%s,%s,%d,%d,%s,%d", methodName, methodIdentity, nrOfCompilations, compilationEntry.getKey(), "\"" + entry.getKey() + "\"", entry.getValue());
-                            p.println();
+                            CSVUtil.Escape.println(p, FMT, methodName, methodIdentity, nrOfCompilations, compilationEntry.getKey(), entry.getKey(), entry.getValue());
                         }
                         nrOfCompilations++;
                     }

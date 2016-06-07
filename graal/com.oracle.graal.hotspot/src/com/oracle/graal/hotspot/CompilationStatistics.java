@@ -35,11 +35,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Deque;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
@@ -52,8 +54,10 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 public final class CompilationStatistics {
 
     public static class Options {
-        @Option(help = "Enables CompilationStatistics.")//
+        // @formatter:off
+        @Option(help = "Enables CompilationStatistics.")
         public static final OptionValue<Boolean> UseCompilationStatistics = new OptionValue<>(false);
+        // @formatter:on
     }
 
     private static final long RESOLUTION = 100000000;
@@ -188,11 +192,13 @@ public final class CompilationStatistics {
                 }
                 String timelineName = System.getProperty("stats.timeline.name");
                 if (timelineName != null && !timelineName.isEmpty()) {
-                    out.print(timelineName + "\t");
+                    out.printf("%s%c", CSVUtil.Escape.escape(timelineName), CSVUtil.SEPARATOR);
                 }
-                for (int i = 0; i <= maxTick; i++) {
-                    out.print((timeSpent[i] * 100 / RESOLUTION) + "\t");
+                for (int i = 0; i < maxTick; i++) {
+                    out.printf("%d%c", normalize(timeSpent[i]), CSVUtil.SEPARATOR);
                 }
+                // print last column
+                out.printf("%d", normalize(timeSpent[maxTick]));
                 out.println();
             }
         } catch (Exception e) {
@@ -200,8 +206,13 @@ public final class CompilationStatistics {
         }
     }
 
+    private static long normalize(long time) {
+        return time * 100 / RESOLUTION;
+    }
+
     protected static void dumpCompilations(ConcurrentLinkedDeque<CompilationStatistics> snapshot, String dumpName, String dateString) throws IllegalAccessException, FileNotFoundException {
         String fileName = "compilations_" + dateString + "_" + dumpName + ".csv";
+        char separator = '\t';
         try (PrintStream out = new PrintStream(fileName)) {
             // output the list of all compilations
 
@@ -212,20 +223,20 @@ public final class CompilationStatistics {
                     fields.add(field);
                 }
             }
-            for (Field field : fields) {
-                out.print(field.getName() + "\t");
-            }
-            out.println();
+            String format = CSVUtil.buildFormatString("%s", separator, fields.size());
+            CSVUtil.Escape.println(out, separator, CSVUtil.QUOTE, CSVUtil.ESCAPE, format, fields.toArray());
             for (CompilationStatistics stats : snapshot) {
-                for (Field field : fields) {
+                Object[] values = new Object[fields.size()];
+                for (int i = 0; i < fields.size(); i++) {
+                    Field field = fields.get(i);
                     if (field.isAnnotationPresent(TimeValue.class)) {
                         double value = field.getLong(stats) / 1000000d;
-                        out.print(String.format(Locale.ENGLISH, "%.3f", value) + "\t");
+                        values[i] = String.format(Locale.ENGLISH, "%.3f", value);
                     } else {
-                        out.print(field.get(stats) + "\t");
+                        values[i] = field.get(stats);
                     }
                 }
-                out.println();
+                CSVUtil.Escape.println(out, separator, CSVUtil.QUOTE, CSVUtil.ESCAPE, format, values);
             }
         }
     }
