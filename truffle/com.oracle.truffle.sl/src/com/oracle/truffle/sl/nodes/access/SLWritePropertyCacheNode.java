@@ -177,8 +177,8 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSimpleLanguageObject(receiver)"})
-    protected void writeUncached(DynamicObject receiver, Object name, Object value) {
+    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSLObject(receiver)"})
+    protected static void writeUncached(DynamicObject receiver, Object name, Object value) {
         receiver.define(name, value);
     }
 
@@ -187,7 +187,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      * the object has a shape that has been invalidated.
      */
     @Fallback
-    protected void updateShape(Object r, Object name, Object value) {
+    protected static void updateShape(Object r, Object name, Object value) {
         /*
          * Slow path that we do not handle in compiled code. But no need to invalidate compiled
          * code.

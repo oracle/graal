@@ -54,7 +54,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * statements, i.e., without returning a value. The {@link VirtualFrame} provides access to the
  * local variables.
  */
-@NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
+@NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @Instrumentable(factory = SLStatementNodeWrapper.class)
 public abstract class SLStatementNode extends Node {
 

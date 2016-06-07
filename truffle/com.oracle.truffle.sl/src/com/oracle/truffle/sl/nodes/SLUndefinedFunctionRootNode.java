@@ -46,7 +46,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
- * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., whey
+ * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., when
  * they are still undefined. Executing it throws an
  * {@link SLUndefinedNameException#undefinedFunction exception}.
  */

@@ -62,7 +62,8 @@ import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
  * <p>
  * The {@link #callTarget} can be {@code null}. To ensure that only one {@link SLFunction} instance
  * per name exists, the {@link SLFunctionRegistry} creates an instance also when performing name
- * lookup. A function that has been looked up, i.e., used, but not defined, has no call target.
+ * lookup. A function that has been looked up, i.e., used, but not defined, has a call target that
+ * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 public final class SLFunction implements TruffleObject {
 
