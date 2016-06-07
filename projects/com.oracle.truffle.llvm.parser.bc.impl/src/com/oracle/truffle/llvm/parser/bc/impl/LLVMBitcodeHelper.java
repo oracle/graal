@@ -698,7 +698,7 @@ public final class LLVMBitcodeHelper {
         if (value instanceof PointerType) {
             PointerType pointer = (PointerType) value;
             if (pointer.getPointeeType() instanceof FunctionType) {
-                LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createZeroFunctionDescriptor();
                 return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
             } else {
                 return new LLVMAddressLiteralNode(LLVMAddress.fromLong(0));
