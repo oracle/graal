@@ -32,12 +32,39 @@ import mx
 import mx_benchmark
 import mx_graal_core
 
+# Short-hand commands used to quickly run common benchmarks.
+mx.update_commands(mx.suite('graal-core'), {
+    'dacapo': [
+      lambda args: mx_benchmark.benchmark(["dacapo:" + args[0]] + args[1:]),
+      '<benchmarks>|* [-- [VM options] [-- [DaCapo options]]]'
+    ],
+    'scaladacapo': [
+      lambda args: mx_benchmark.benchmark(["scaladacapo:" + args[1]] + args[1:]),
+      '<benchmarks>|* [-- [VM options] [-- [Scala DaCapo options]]]'
+    ],
+    'specjvm2008': [
+      lambda args: mx_benchmark.benchmark(["specjvm2008:" + args[1]] + args[1:]),
+      '<benchmarks>|* [-- [VM options] [-- [SPECjvm2008 options]]]'
+    ],
+    'specjbb2005': [
+      lambda args: mx_benchmark.benchmark(["specjbb2005"] + args[1:]),
+      '[-- [VM options] [-- [SPECjbb2005 options]]]'
+    ],
+    'specjbb2013': [
+      lambda args: mx_benchmark.benchmark(["specjbb2013"] + args[1:]),
+      '[-- [VM options] [-- [SPECjbb2013 options]]]'
+    ],
+    'specjbb2015': [
+      lambda args: mx_benchmark.benchmark(["specjbb2015"] + args[1:]),
+      '[-- [VM options] [-- [SPECjbb2015 options]]]'
+    ],
+})
+
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
-    def __init__(self, raw_name, raw_config_name, extra_args, expected_mode):
+    def __init__(self, raw_name, raw_config_name, extra_args):
         self.raw_name = raw_name
         self.raw_config_name = raw_config_name
         self.extra_args = extra_args
-        self.expected_mode = expected_mode
 
     def name(self):
         return self.raw_name
@@ -57,21 +84,15 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        if mx_graal_core.get_vm() != self.name():
-            mx.abort("To use '{0}' VM, specify respective --vm flag.".format(
-                self.name()))
-        if mx.get_jdk_option().tag != mx_graal_core._JVMCI_JDK_TAG:
-            mx.abort("To use '{0}' VM, specify '--jdk={1}'".format(
-                self.name(), mx_graal_core._JVMCI_JDK_TAG))
-        mx.get_jdk().run_java(
+        mx_graal_core.run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "default", [], "disabled"))
-mx_benchmark.add_java_vm(JvmciJdkVm("client", "default", [], "disabled"))
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "hosted", [], "hosted"))
-mx_benchmark.add_java_vm(JvmciJdkVm("client", "hosted", [], "hosted"))
-mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=graal"], "jit"))
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']))
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-client', '-XX:-EnableJVMCI']))
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']))
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-client', '-XX:+EnableJVMCI']))
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler']))
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'

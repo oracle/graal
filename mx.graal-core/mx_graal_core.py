@@ -27,22 +27,19 @@
 import os
 from os.path import join, exists, getmtime
 from argparse import ArgumentParser
-import sanitycheck
 import re
 import zipfile
+import subprocess
 
 import mx
 from mx_gate import Task
-from sanitycheck import _noneAsEmptyList
 
 from mx_unittest import unittest
-from mx_graal_bench import dacapo
 from mx_javamodules import as_java_module, get_module_deps
 import mx_gate
 import mx_unittest
 import mx_microbench
 
-import mx_graal_bench # pylint: disable=unused-import
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
 
@@ -346,6 +343,44 @@ class GraalTags:
     bootstrap = 'bootstrap'
     fulltest = 'fulltest'
 
+def _noneAsEmptyList(a):
+    if a is None:
+        return []
+    return a
+
+def _gate_java_benchmark(args, successRe):
+    """
+    Runs a Java benchmark and aborts if the benchmark process exits with a non-zero
+    exit code or the `successRe` pattern is not in the output of the benchmark process.
+
+    :param list args: the arguments to pass to the VM
+    :param str successRe: a regular expression
+    """
+    out = mx.OutputCapture()
+    try:
+        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
+    finally:
+        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\]hs_err_pid[0-9]+\.log)', out.data)
+        if jvmErrorFile:
+            jvmErrorFile = jvmErrorFile.group()
+            mx.log('Dumping ' + jvmErrorFile)
+            with open(jvmErrorFile, 'rb') as fp:
+                mx.log(fp.read())
+            os.unlink(jvmErrorFile)
+
+    if not re.search(successRe, out.data, re.MULTILINE):
+        mx.abort('Could not find benchmark success pattern: ' + successRe)
+
+def _gate_dacapo(name, iterations, extraVMarguments=None):
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-G:+ExitVMOnException'] + _noneAsEmptyList(extraVMarguments)
+    dacapoJar = mx.library('DACAPO').get_path(True)
+    _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+
+def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-G:+ExitVMOnException'] + _noneAsEmptyList(extraVMarguments)
+    scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
+    _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
     # Run unit tests in hosted mode
@@ -364,25 +399,53 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for b in bootstrap_tests:
         b.run(tasks, extraVMarguments)
 
-    # run dacapo sanitychecks
-    for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel='release', extraVmArguments=extraVMarguments) \
-            + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel='release', extraVmArguments=extraVMarguments):
-        with Task(str(test) + ':' + 'release', tasks, tags=[GraalTags.fulltest]) as t:
-            if t and not test.test('jvmci'):
-                t.abort(test.name + ' Failed')
+    # run selected DaCapo benchmarks
+    dacapos = {
+        'avrora':     1,
+        'batik':      1,
+        'fop':        8,
+        'h2':         1,
+        'jython':     2,
+        'luindex':    1,
+        'lusearch':   4,
+        'pmd':        1,
+        'sunflow':    2,
+        'tradebeans': 1,
+        'xalan':      1,
+    }
+    for name, iterations in sorted(dacapos.iteritems()):
+        with Task('DaCapo:' + name, tasks, tags=[GraalTags.fulltest]) as t:
+            if t: _gate_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+
+    # run selected Scala DaCapo benchmarks
+    scala_dacapos = {
+        'actors':     1,
+        'apparat':    1,
+        'factorie':   1,
+        'kiama':      4,
+        'scalac':     1,
+        'scaladoc':   1,
+        'scalap':     1,
+        'scalariform':1,
+        'scalatest':  1,
+        'scalaxb':    1,
+        'tmt':        1,
+    }
+    for name, iterations in sorted(scala_dacapos.iteritems()):
+        with Task('ScalaDaCapo:' + name, tasks, tags=[GraalTags.fulltest]) as t:
+            if t: _gate_scala_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # ensure -Xbatch still works
     with Task('DaCapo_pmd:BatchMode', tasks, tags=[GraalTags.fulltest]) as t:
-        if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch', 'pmd'])
+        if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
-    with Task('DaCapo_pmd:BenchmarkCounters:product', tasks, tags=[GraalTags.fulltest]) as t:
-        if t: dacapo(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-G:+LIRProfileMoves', '-G:+GenericDynamicCounters', '-XX:JVMCICounterSize=10', 'pmd'])
+    with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=[GraalTags.fulltest]) as t:
+        if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
         if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
-
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=[GraalTags.test]),
@@ -709,9 +772,8 @@ class GraalJDKFactory(mx.JDKFactory):
 
 mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 
-def run_vm(args, vm=None, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
-
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
