@@ -33,12 +33,11 @@ final class SourceImpl extends Source implements Cloneable {
     private static Ref SOURCES = null;
 
     SourceImpl(Content content) {
-        super(content, null, null);
-        registerSource(this);
+        this(content, null, null, false);
     }
 
-    SourceImpl(Content content, String mimeType, String name) {
-        super(content, mimeType, name);
+    SourceImpl(Content content, String mimeType, String name, boolean internal) {
+        super(content, mimeType, name, internal);
         registerSource(this);
     }
 

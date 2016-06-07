@@ -138,6 +138,7 @@ public abstract class Source {
     private String shortName;
     private String path;
     private String mimeType;
+    private boolean internal;
     private TextMap textMap;
 
     /**
@@ -492,10 +493,11 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType, String name) {
+    Source(Content content, String mimeType, String name, boolean internal) {
         this.content = content;
         this.mimeType = mimeType;
         this.name = name;
+        this.internal = internal;
     }
 
     Content content() {
@@ -556,10 +558,10 @@ public abstract class Source {
      * One can specify a source is internal when {@link Builder#internal building it}.
      *
      * @return boolean flag to check whether a source is internal or not
-     * @since 0.14
+     * @since 0.15
      */
     public boolean isInternal() {
-        return false;
+        return internal;
     }
 
     /**
@@ -1011,8 +1013,16 @@ public abstract class Source {
             return (Builder<Source>) this;
         }
 
-        public Builder<R> internal(boolean internal) {
-            this.internal = internal;
+        /**
+         * Marks the source as internal. Internal sources are those that aren't created by user, but
+         * rather inherently present by the language system. Calling this method influences result
+         * of create {@link Source#isInternal()}
+         *
+         * @return the instance of this builder
+         * @since 0.15
+         */
+        public Builder<R> internal() {
+            this.internal = true;
             return this;
         }
 
@@ -1039,7 +1049,7 @@ public abstract class Source {
             if (mime == null) {
                 throw new IOException("Unknown mime type for " + source);
             }
-            SourceImpl ret = new SourceImpl(content, mime, name);
+            SourceImpl ret = new SourceImpl(content, mime, name, internal);
             return (R) ret;
         }
 
@@ -1063,6 +1073,7 @@ public abstract class Source {
                             null, content);
             return source;
         }
+
         private Content buildString() throws IOException {
             final String r = (String) source;
             if (content == null) {

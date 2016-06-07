@@ -340,7 +340,7 @@ public class SourceBuilderTest {
 
     @Test
     public void markSourceAsInternal() throws IOException {
-        Source source = Source.newWithText("anything internal").mimeType("text/plain").internal(true).build();
+        Source source = Source.newWithText("anything internal").mimeType("text/plain").internal().build();
 
         assertTrue("This source is internal", source.isInternal());
     }
