@@ -394,7 +394,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newFromReader(java.io.Reader)}
      */
     @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
@@ -403,6 +403,18 @@ public abstract class Source {
         return new SourceImpl(content);
     }
 
+    /**
+     * Creates a new source whose content will be read once it is {@link Builder#build()
+     * constructed}. If multiple {@link Source} instances are constructed, they all share the (once
+     * read) content. When building source from reader, it is essential to
+     * {@link Builder#mimeType(java.lang.String) specify MIME type}. Example follows:
+     *
+     * {@link SourceSnippets#fromReader}
+     *
+     * @param reader reader to read the content from
+     * @return new builder to configure and {@link Builder#build() construct} {@link Source} from
+     * @since 0.15
+     */
     public static Builder<Void> newFromReader(Reader reader) {
         // TBD: read only once vs. build twice
         return EMPTY.new Builder<>(reader);
@@ -480,9 +492,10 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType) {
+    Source(Content content, String mimeType, String name) {
         this.content = content;
         this.mimeType = mimeType;
+        this.name = name;
     }
 
     Content content() {
@@ -1012,17 +1025,39 @@ public abstract class Source {
         }
 
         public R build() throws IOException {
+            Content content;
+            if (source instanceof File) {
+                content = buildFile();
+            } else {
+                content = buildReader();
+            }
+            String mime = mimeType == null ? content.findMimeType() : mimeType;
+            if (mime == null) {
+                throw new IOException("Unknown mime type for " + source);
+            }
+            SourceImpl ret = new SourceImpl(content, mime, name);
+            return (R) ret;
+        }
+
+        private Content buildFile() throws IOException {
             final File file = (File) source;
             File absoluteFile = file.getCanonicalFile();
             FileSourceImpl fileSource = new FileSourceImpl(
                             absoluteFile,
                             name == null ? file.getName() : name,
                             path == null ? absoluteFile.getPath() : path);
-            String mime = mimeType == null ? fileSource.findMimeType() : mimeType;
-            if (mime == null) {
-                throw new IOException("Unknown mime type for " + source);
+            return fileSource;
+        }
+
+        private Content buildReader() throws IOException {
+            final Reader r = (Reader) source;
+            if (content == null) {
+                content = read(r);
             }
-            return (R) new SourceImpl(fileSource, mime);
+            r.close();
+            LiteralSourceImpl source = new LiteralSourceImpl(
+                            null, content);
+            return source;
         }
     }
 }
@@ -1066,12 +1101,10 @@ class SourceSnippets {
             SourceSnippets.class.getResourceAsStream("sample.js")
         );
         Source source = Source.newFromReader(stream)
-            .name("/your/pkg/sample.js")
+            .name("sample.js")
             .mimeType("application/javascript")
             .build();
-        assert "/your/pkg/sample.js".equals(source.getShortName());
-        assert "/your/pkg/sample.js".equals(source.getPath());
-        assert "/your/pkg/sample.js".equals(source.getName());
+        assert "sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromReader
         return source;
