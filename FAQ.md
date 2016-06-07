@@ -1,4 +1,6 @@
-# Developing Sulong with Eclipse
+# Eclipse
+
+## How can I use Sulong with Eclipse?
 
 In order to work with Eclipse, use `mx eclipseinit` to generate the
 Eclipse project files. Import not only the Sulong project, but also the
@@ -11,7 +13,7 @@ packages are on the classpath and all necessary options set. You can
 determine them by using `-v` in the mx Sulong command to make mx
 output information on how it executed the command.
 
-## Debugging:
+## How can I debug Sulong with Eclipse?
 
 To debug the execution of a bitcode file in Eclipse, first start an mx
 command with the `-d` flag, e.g.:
@@ -24,18 +26,3 @@ In Eclipse, set a breakpoint, navigate to
 of the debug configurations, e.g.,`truffle-attach-localhost-8000`.
 After clicking `Debug`, execution starts and the program should stop at
 the specified breakpoint.
-
-## Useful Plugins:
-
-* Use [checkstyle](http://checkstyle.sourceforge.net/) to highlight
-style errors during development. Alternatively you can also use
-mx checkstyle to run checkstyle from mx.
-
-## Useful Configs:
-
-* See
-[http://stackoverflow.com/questions/2604424/how-can-i-add-a-
-    default-header-to-my-source-files-automatically-in-eclipse](http://stackoverflow.com/questions/2604424/how-can-i-add-a-
-    default-header-to-my-source-files-automatically-in-eclipse)
-for alternatives regarding adding the copyright header automatically
-for new filse.
