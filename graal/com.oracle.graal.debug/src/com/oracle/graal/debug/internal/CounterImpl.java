@@ -43,7 +43,7 @@ public abstract class CounterImpl extends DebugValue implements DebugCounter {
 
     @Override
     public String rawUnit() {
-        return null;
+        return "";
     }
 
     @Override

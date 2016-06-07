@@ -94,7 +94,7 @@ public abstract class DebugValue implements Comparable<DebugValue> {
     public abstract String toString(long value);
 
     /**
-     * The raw unit of the value (e.g. 'us', 'ms'). Use {@code null} if there is no unit.
+     * The raw unit of the value (e.g. 'us', 'ms'). Use {@code ""} if there is no unit.
      */
     public abstract String rawUnit();
 

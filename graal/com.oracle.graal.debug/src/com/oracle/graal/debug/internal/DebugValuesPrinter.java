@@ -208,8 +208,7 @@ public class DebugValuesPrinter {
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
             if (l != 0 || !SuppressZeroDebugValues.getValue()) {
-                String unit = value.rawUnit();
-                TTY.println(COMPUTER_READABLE_FMT, scope.toRawString(), value.getName(), value.toRawString(l), unit != null ? unit : "");
+                TTY.println(COMPUTER_READABLE_FMT, scope.toRawString(), value.getName(), value.toRawString(l), value.rawUnit());
             }
         }
 
