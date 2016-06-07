@@ -527,7 +527,9 @@ public abstract class Source {
      *
      * @return the short name of the guest language program
      * @since 0.8 or earlier
+     * @deprecated Use {@link #getName()} to obtain short name of the source
      */
+    @Deprecated
     public String getShortName() {
         return shortName == null ? content().getShortName() : shortName;
     }
@@ -1028,8 +1030,10 @@ public abstract class Source {
             Content content;
             if (source instanceof File) {
                 content = buildFile();
-            } else {
+            } else if (source instanceof Reader) {
                 content = buildReader();
+            } else {
+                content = buildString();
             }
             String mime = mimeType == null ? content.findMimeType() : mimeType;
             if (mime == null) {
@@ -1055,6 +1059,15 @@ public abstract class Source {
                 content = read(r);
             }
             r.close();
+            LiteralSourceImpl source = new LiteralSourceImpl(
+                            null, content);
+            return source;
+        }
+        private Content buildString() throws IOException {
+            final String r = (String) source;
+            if (content == null) {
+                content = r;
+            }
             LiteralSourceImpl source = new LiteralSourceImpl(
                             null, content);
             return source;
@@ -1115,12 +1128,10 @@ class SourceSnippets {
         Source source = Source.newWithText("function() {\n"
             + "  return 'Hi';\n"
             + "}\n")
-            .name("/my/scripts/hi.js")
+            .name("hi.js")
             .mimeType("application/javascript")
             .build();
-        assert "/my/scripts/hi.js".equals(source.getShortName());
-        assert "/my/scripts/hi.js".equals(source.getPath());
-        assert "/my/scripts/hi.js".equals(source.getName());
+        assert "hi.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromAString
         return source;
