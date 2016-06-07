@@ -69,12 +69,13 @@ public abstract class SLDispatchNode extends Node {
      * Inline cached specialization of the dispatch.
      *
      * <p>
-     * Since SL is a quite simple language, the benefit of the inline cache is quite small: after
+     * Since SL is a quite simple language, the benefit of the inline cache seems small: after
      * checking that the actual function to be executed is the same as the cachedFuntion, we can
      * safely execute the cached call target. You can reasonably argue that caching the call target
      * is overkill, since we could just retrieve it via {@code function.getCallTarget()}. However,
-     * in a more complex language the lookup of the call target is usually much more complicated
-     * than in SL. In addition, caching the call target allows method inlining.
+     * caching the call target and using a {@link DirectCallNode} allows Truffle to perform method
+     * inlining. In addition, in a more complex language the lookup of the call target is usually
+     * much more complicated than in SL.
      * </p>
      *
      * <p>
