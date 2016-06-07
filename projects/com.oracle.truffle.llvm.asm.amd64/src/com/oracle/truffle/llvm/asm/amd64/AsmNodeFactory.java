@@ -30,8 +30,14 @@
 package com.oracle.truffle.llvm.asm.amd64;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmAddlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAsmSublNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64AddlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64AndlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64DeclNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64InclNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64NotlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64OrlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64SublNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64XorlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
@@ -52,9 +58,34 @@ public class AsmNodeFactory {
     public LLVMI32Node createBinary(String operation, LLVMI32Node leftNode, LLVMI32Node rightNode) {
         switch (operation) {
             case "addl":
-                return LLVMAsmAddlNodeGen.create(leftNode, rightNode);
+                return LLVMAMD64AddlNodeGen.create(leftNode, rightNode);
             case "subl":
-                return LLVMAsmSublNodeGen.create(leftNode, rightNode);
+                return LLVMAMD64SublNodeGen.create(leftNode, rightNode);
+            case "andl":
+                return LLVMAMD64AndlNodeGen.create(leftNode, rightNode);
+            case "orl":
+                return LLVMAMD64OrlNodeGen.create(leftNode, rightNode);
+            case "xorl":
+                return LLVMAMD64XorlNodeGen.create(leftNode, rightNode);
+            default:
+                return new LLVMI32UnsupportedInlineAssemblerNode();
+        }
+    }
+
+    /**
+     *
+     * @param operation The unary assembly operation for which a new node has to be generated
+     * @param leftNode The child node of this operation
+     * @return A subclass of LLVMI32Node using the given parameters based on the given operation
+     */
+    public LLVMI32Node createUnary(String operation, LLVMI32Node leftNode) {
+        switch (operation) {
+            case "notl":
+                return LLVMAMD64NotlNodeGen.create(leftNode);
+            case "decl":
+                return LLVMAMD64DeclNodeGen.create(leftNode);
+            case "incl":
+                return LLVMAMD64InclNodeGen.create(leftNode);
             default:
                 return new LLVMI32UnsupportedInlineAssemblerNode();
         }

@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import java.io.ByteArrayInputStream;
 
@@ -60,33 +61,54 @@ IGNORE "\n\t\r"
 PRODUCTIONS
 
 InlineAssembly<> =
-										(.LLVMI32Node node;.)
+										(.LLVMI32Node node = null;.)
   "\""
-  AddSubOperation<out node>
+  (AddSubOperation<out node> | IncDecOperation<out node> | LogicOperation<out node>)
   "\""
   										(.root = factory.finishInline(node);.)
   .
 
 AddSubOperation<out LLVMI32Node n> =	(.String op; LLVMI32Node left = null, right = null;.)
   AddSubOp<out op>
-  (Register<out left, 1> | Immediate<out left, 1>)
-   "," Register<out right, 2>
+  ((Register<out left, 1> "," Register<out right, 2>)
+  |
+  (Immediate<out left> "," Register<out right, 1>))
    ";"									(.n = factory.createBinary(op, left, right);.)
    .
 
+IncDecOperation<out LLVMI32Node n> =	(.String op; LLVMI32Node left = null;.)
+  IncDecOp<out op>
+  Register<out left, 1>					
+  ";"									(.n = factory.createUnary(op, left);.)
+  .
+
+LogicOperation<out LLVMI32Node n> =		(.String op = null; LLVMI32Node left = null, right = null; n = null;.)
+  ((UnaryLogicOp<out op> 
+  Register<out left, 1>)				(.n = factory.createUnary(op, left);.)
+  | (BinaryLogicOp<out op>
+  Register<out left, 1>
+  "," Register<out right, 2>			(.n = factory.createBinary(op, left, right);.)
+  ))";"
+  .
+  
 AddSubOp<out String op> 				(.op = la.val;.)
-  = "addb"
-  | "adds"
-  | "addw"
-  | "addl"							
-  | "addq"
-  | "addt"
-  | "subb"
-  | "subs"
-  | "subw"
-  | "subl"						
-  | "subq"
-  | "subt"
+  = "addl"
+  | "subl"
+  .
+
+IncDecOp<out String op>					(.op = la.val;.)
+  = "incl"
+  | "decl"
+  .
+
+UnaryLogicOp<out String op>				(.op = la.val;.)
+  = "notl"
+  .
+  
+BinaryLogicOp<out String op>			(.op = la.val;.)
+  = "andl"
+  | "orl"
+  | "xorl"
   .
 
 Register<out LLVMI32Node n, int index> =
@@ -101,11 +123,11 @@ Register<out LLVMI32Node n, int index> =
   )										(.n = LLVMI32ArgNodeGen.create(index);.)
   .
 
-Immediate<out LLVMI32Node n, int index> =
-    "$"
-  ( number
-  | hexNumber
-  )										(.n = LLVMI32ArgNodeGen.create(index);.)
+Immediate<out LLVMI32Node n> =			(.n = null;.)
+    "$$"
+  ( number								(.n = new LLVMAMD64ImmNode(Integer.parseInt(t.val));.)
+  | hexNumber							(.n = new LLVMAMD64ImmNode(Integer.parseInt(t.val.substring(2), 16));.)
+  )										
   .
 
 END InlineAssembly.

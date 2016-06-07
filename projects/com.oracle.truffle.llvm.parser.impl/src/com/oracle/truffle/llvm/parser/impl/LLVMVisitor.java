@@ -250,7 +250,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         deallocations = globalDeallocations.toArray(new LLVMNode[globalDeallocations.size()]);
         RootCallTarget staticDestructorsTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(deallocations));
         if (mainFunction == null) {
-            return new ParserResult(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null)), staticInitsTarget, staticDestructorsTarget, parsedFunctions);
+            return new ParserResult(null, staticInitsTarget, staticDestructorsTarget, parsedFunctions);
         }
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
         RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, mainArgs, sourceFile, mainFunction.getParameterTypes());

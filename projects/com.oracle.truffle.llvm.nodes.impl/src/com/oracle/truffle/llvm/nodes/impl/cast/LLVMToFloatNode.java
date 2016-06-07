@@ -69,6 +69,15 @@ public abstract class LLVMToFloatNode extends LLVMFloatNode {
         }
     }
 
+    @NodeChild(value = "fromNode", type = LLVMI16Node.class)
+    public abstract static class LLVMI16ToFloatZeroExtNode extends LLVMToFloatNode {
+
+        @Specialization
+        public float executeDouble(short from) {
+            return from & LLVMI16Node.MASK;
+        }
+    }
+
     @NodeChild(value = "fromNode", type = LLVMI32Node.class)
     public abstract static class LLVMI32ToFloatNode extends LLVMToFloatNode {
 
