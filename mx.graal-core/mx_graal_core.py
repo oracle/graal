@@ -25,7 +25,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import join, exists
+from os.path import join, exists, getmtime
 from argparse import ArgumentParser
 import sanitycheck
 import re
@@ -44,6 +44,7 @@ import mx_microbench
 
 import mx_graal_bench # pylint: disable=unused-import
 import mx_graal_benchmark # pylint: disable=unused-import
+import mx_graal_tools #pylint: disable=unused-import
 
 _suite = mx.suite('graal-core')
 
@@ -82,24 +83,19 @@ def _version_check(condition, error_message):
             mx.abort(error_message)
     return True
 
-#: Check the JDK supports Graal
-if isJDK8:
-    MIN_JVMCI_VERSION = mx.VersionSpec('0.10')
-    out = mx.OutputCapture()
-    mx.run([jdk.java, '-version'], err=out)
-    match = re.search(r'-jvmci-(\d+.\d+)', out.data)
-    if _version_check(match is not None, '{} does not support JVMCI'.format(jdk.home)):
-        jvmciVersion = mx.VersionSpec(match.group(1))
-        _version_check(jvmciVersion >= MIN_JVMCI_VERSION, 'Incompatible JVMCI version supported by {}: {} < {}'.format(jdk.home, jvmciVersion, MIN_JVMCI_VERSION))
-else:
-    MIN_EARLY_ACCESS_BUILD = 120
-    out = mx.OutputCapture()
-    mx.run([jdk.java, '-fullversion'], err=out)
-    # http://openjdk.java.net/jeps/223
-    match = re.search(r'java full version "9-ea\+(\d+)"', out.data)
-    if _version_check(match is not None, '{} does not support JVMCI'.format(jdk.home)):
-        eaBuild = float(match.group(1))
-        _version_check(eaBuild >= MIN_EARLY_ACCESS_BUILD, 'Incompatible EA build in {}: {} < {}'.format(jdk.home, eaBuild, MIN_EARLY_ACCESS_BUILD))
+def _check_jvmci_version(jdk):
+    """
+    Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
+    """
+    name = 'com.oracle.graal.hotspot.JVMCIVersionCheck'
+    binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
+    javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
+    javaClass = join(binDir, name.replace('.', '/') + '.class')
+    if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
+        mx.run([jdk.javac, '-d', binDir, javaSource])
+    jdk.run_java(['-cp', binDir, name])
+
+_check_jvmci_version(jdk)
 
 if isJDK8:
     class JVMCIClasspathEntry(object):

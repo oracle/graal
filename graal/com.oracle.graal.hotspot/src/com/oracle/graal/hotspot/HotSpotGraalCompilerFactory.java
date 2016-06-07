@@ -79,6 +79,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
     @Override
     public void onSelection() {
         initializeOptions();
+        JVMCIVersionCheck.check(false);
     }
 
     static class Options {
