@@ -241,6 +241,11 @@ public class CompilationResultBuilder {
         return asm.getPlaceholder();
     }
 
+    public AbstractAddress recordDataReferenceInCode(ArrayDataPointerConstant constant) {
+        compilationResult.recordDataPatch(asm.position(), constant.dataRef);
+        return asm.getPlaceholder();
+    }
+
     public AbstractAddress recordDataReferenceInCode(DataPointerConstant constant) {
         return recordDataReferenceInCode(constant, constant.getAlignment());
     }
