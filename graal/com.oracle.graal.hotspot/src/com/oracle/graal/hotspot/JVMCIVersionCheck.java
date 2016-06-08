@@ -46,12 +46,14 @@ class JVMCIVersionCheck {
         Formatter errorMessage = new Formatter().format(reason, args);
         String javaHome = System.getProperty("java.home");
         String vmName = System.getProperty("java.vm.name");
+        errorMessage.format("Set the JVMCI_VERSION_CHECK environment variable to \"ignore\" to suppress ");
+        errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
         if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
-            errorMessage.format("Download the latest JVMCI JDK8 from http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html");
+            errorMessage.format("Download the latest JVMCI JDK 8 from http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html");
         } else {
-            errorMessage.format("Download the latest JDK9 EA from https://jdk9.java.net/download/");
+            errorMessage.format("Download the latest JDK 9 EA from https://jdk9.java.net/download/");
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
