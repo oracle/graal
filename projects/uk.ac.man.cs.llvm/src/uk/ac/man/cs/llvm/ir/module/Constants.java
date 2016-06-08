@@ -43,6 +43,8 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class Constants implements ParserListener {
 
+    private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
+
     protected final Types types;
 
     protected final List<Type> symbols;
@@ -86,8 +88,10 @@ public class Constants implements ParserListener {
             }
             case WIDE_INTEGER: {
                 BigInteger value = BigInteger.ZERO;
+
                 for (int i = 0; i < args.length; i++) {
                     BigInteger temp = BigInteger.valueOf(Records.toSignedValue(args[i]));
+                    temp = temp.and(WIDE_INTEGER_MASK);
                     temp = temp.shiftLeft(i * Long.SIZE);
                     value = value.add(temp);
                 }
