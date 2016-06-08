@@ -42,10 +42,12 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMFloatVectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 
 public abstract class LLVMToI64Node extends LLVMI64Node {
 
@@ -181,6 +183,18 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
         @Specialization
         public long executeI64(LLVMAddress from) {
             return from.getVal();
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMFloatVectorNode.class)
+    public abstract static class LLVMFloatVectorToI64Node extends LLVMToI64Node {
+
+        @Specialization
+        public long executeI64(LLVMFloatVector from) {
+            float f1 = from.getValue(0);
+            float f2 = from.getValue(1);
+            long composedValue = (long) Float.floatToRawIntBits(f1) << Float.SIZE | Float.floatToRawIntBits(f2);
+            return composedValue;
         }
     }
 
