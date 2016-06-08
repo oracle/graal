@@ -42,12 +42,14 @@ public class LLVMUAddWithOverflow {
     @NodeChildren({@NodeChild(value = "left", type = LLVMI32Node.class), @NodeChild(value = "right", type = LLVMI32Node.class), @NodeChild(value = "target", type = LLVMAddressNode.class)})
     public abstract static class LLVMUAddWithOverflowI32 extends LLVMAddressNode {
 
+        private static final int OVERFLOW_FIELD_OFFSET = 4;
+
         @Specialization
         public LLVMAddress executeDouble(int left, int right, LLVMAddress addr) {
             int result = left + right;
             boolean overflow = (((left ^ result) & (right ^ result)) < 0);
             LLVMMemory.putI32(addr, result);
-            LLVMMemory.putI32(addr.increment(result), overflow ? 1 : 0);
+            LLVMMemory.putI32(addr.increment(OVERFLOW_FIELD_OFFSET), overflow ? 1 : 0);
             return addr;
         }
     }
