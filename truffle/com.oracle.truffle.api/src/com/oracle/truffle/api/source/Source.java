@@ -1095,7 +1095,7 @@ public abstract class Source {
          */
         @SuppressWarnings("unchecked")
         public Builder<Source, E> mimeType(String newMimeType) {
-            Objects.nonNull(newMimeType);
+            Objects.requireNonNull(newMimeType);
             this.mime = newMimeType;
             return (Builder<Source, E>) this;
         }
