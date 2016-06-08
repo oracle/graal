@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 
+@SuppressWarnings("deprecation")
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
     /*
@@ -249,27 +250,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
         }
 
         @Override

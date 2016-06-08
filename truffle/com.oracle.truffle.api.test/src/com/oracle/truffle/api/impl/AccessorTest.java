@@ -68,6 +68,7 @@ public class AccessorTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
         engine = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor()).build();

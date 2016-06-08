@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
+@SuppressWarnings("deprecation")
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
     private PolyglotEngine vm;
@@ -195,27 +196,6 @@ public class ImplicitExplicitExportTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
         }
 
         @Override

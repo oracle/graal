@@ -1007,7 +1007,7 @@ public abstract class Source {
                         Objects.equals(getPath(), other.getPath());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "unused"})
     static <E extends Exception> E raise(Class<E> type, Exception ex) throws E {
         throw (E) ex;
     }

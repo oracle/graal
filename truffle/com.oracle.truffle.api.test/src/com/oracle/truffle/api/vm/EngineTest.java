@@ -47,6 +47,7 @@ import org.junit.Assert;
 
 import static org.junit.Assert.assertSame;
 
+@SuppressWarnings("deprecation")
 public class EngineTest {
     private Set<PolyglotEngine> toDispose = new HashSet<>();
 

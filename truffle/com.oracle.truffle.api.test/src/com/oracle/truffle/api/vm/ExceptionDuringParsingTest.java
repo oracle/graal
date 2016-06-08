@@ -38,6 +38,7 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
 
+@SuppressWarnings("deprecation")
 public class ExceptionDuringParsingTest {
     public static Accessor API;
 

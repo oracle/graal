@@ -37,6 +37,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 /**
  * Base class for instrumentation tests.
  */
+@SuppressWarnings("deprecation")
 public abstract class AbstractInstrumentationTest {
 
     protected PolyglotEngine engine;

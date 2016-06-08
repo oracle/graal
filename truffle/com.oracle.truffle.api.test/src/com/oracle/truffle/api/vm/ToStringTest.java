@@ -29,6 +29,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.source.Source;
 import org.junit.After;
 
+@SuppressWarnings("deprecation")
 public class ToStringTest {
     private PolyglotEngine engine;
 

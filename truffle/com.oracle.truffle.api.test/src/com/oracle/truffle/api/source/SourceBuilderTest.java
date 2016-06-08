@@ -44,6 +44,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+@SuppressWarnings("deprecation")
 @RunWith(SeparateClassloaderTestRunner.class)
 public class SourceBuilderTest {
     @Test
@@ -168,7 +169,7 @@ public class SourceBuilderTest {
             w.write(text);
         }
 
-        Source s1 = Source.fromURL(file.toURI().toURL(), "Hello.java");
+        Source s1 = Source.newFromURL(file.toURI().toURL()).name("Hello.java").build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
@@ -335,14 +336,14 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void normalSourceIsntInternal() throws IOException {
+    public void normalSourceIsntInternal() {
         Source source = Source.newFromText("anything").mimeType("text/plain").build();
 
         assertFalse("Not internal", source.isInternal());
     }
 
     @Test
-    public void markSourceAsInternal() throws IOException {
+    public void markSourceAsInternal() {
         Source source = Source.newFromText("anything internal").mimeType("text/plain").internal().build();
 
         assertTrue("This source is internal", source.isInternal());

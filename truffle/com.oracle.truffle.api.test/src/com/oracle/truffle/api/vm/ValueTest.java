@@ -39,6 +39,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.source.Source;
 import org.junit.After;
 
+@SuppressWarnings("deprecation")
 public class ValueTest implements Executor {
     private final List<Runnable> pending = new LinkedList<>();
     private PolyglotEngine engine;

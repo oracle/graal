@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+@SuppressWarnings("deprecation")
 public class SourceSectionFilterTest {
 
     private static final int LINE_LENGTH = 6;

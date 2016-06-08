@@ -33,6 +33,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 
+@SuppressWarnings("deprecation")
 final class TestSource {
 
     static Source createBlock8(String sourceName) {

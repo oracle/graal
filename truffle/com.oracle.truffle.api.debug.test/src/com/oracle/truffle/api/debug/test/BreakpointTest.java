@@ -38,6 +38,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.source.Source;
 import java.io.File;
 
+@SuppressWarnings("deprecation")
 public class BreakpointTest extends AbstractDebugTest {
 
     @Test
