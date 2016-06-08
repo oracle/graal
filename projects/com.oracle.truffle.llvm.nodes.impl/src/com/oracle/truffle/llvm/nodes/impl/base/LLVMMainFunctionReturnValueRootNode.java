@@ -83,4 +83,20 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
     }
 
+    public static class LLVMMainFunctionReturnVoidRootNode extends LLVMMainFunctionReturnValueRootNode {
+
+        private static final int VOID_RET_VALUE = 0;
+
+        public LLVMMainFunctionReturnVoidRootNode(RootCallTarget rootCallTarget) {
+            super(rootCallTarget);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            rootCallTarget.call();
+            return VOID_RET_VALUE;
+        }
+
+    }
+
 }

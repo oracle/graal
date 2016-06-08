@@ -270,6 +270,8 @@ public final class LLVMFunctionFactory {
                 return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(mainCallTarget);
             case I_VAR_BITWIDTH:
                 return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
+            case VOID:
+                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(mainCallTarget);
             default:
                 throw new AssertionError(returnType);
         }
