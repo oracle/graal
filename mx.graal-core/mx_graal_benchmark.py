@@ -79,7 +79,7 @@ class TimingBenchmarkMixin(object):
 
     @staticmethod
     def _mkDebugVariableRegex(valueName):
-        return r"(?P<scope>.*);" + valueName + ";(?P<value>[0-9]+);(?P<unit>us)"
+        return r"(?P<scope>.*);" + valueName + r";(?P<value>[0-9]+);(?P<unit>us)"
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = ['-Dgraal.Time=BackEnd,FrontEnd', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Complete'] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
@@ -98,7 +98,7 @@ class TimingBenchmarkMixin(object):
               "config.name": "default",
               "extra.value.path": ("<scope>", str),
               "extra.value.name": ("<name>", str),
-              "metric.name": ("time", str),
+              "metric.name": ("compile-time", str),
               "metric.value": ("<value>", int),
               "metric.unit": ("<unit>", str),
               "metric.type": "numeric",
