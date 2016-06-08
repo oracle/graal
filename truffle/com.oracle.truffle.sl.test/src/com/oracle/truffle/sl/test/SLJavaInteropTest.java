@@ -57,6 +57,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
+@SuppressWarnings("deprecation")
 public class SLJavaInteropTest {
 
     private PolyglotEngine engine;

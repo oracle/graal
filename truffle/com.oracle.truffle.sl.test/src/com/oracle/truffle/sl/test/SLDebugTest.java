@@ -75,6 +75,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.sl.SLLanguage;
 
+@SuppressWarnings("deprecation")
 public class SLDebugTest {
     private Debugger debugger;
     private final LinkedList<Runnable> run = new LinkedList<>();

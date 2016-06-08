@@ -65,6 +65,7 @@ public class ToStringOfEvalTest {
         engine.dispose();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void checkToStringOnAFunction() throws IOException {
         PolyglotEngine.Language sl = engine.getLanguages().get(SLLanguage.MIME_TYPE);
