@@ -919,7 +919,9 @@ public abstract class Source {
      * @param mime mime type to use
      * @return new (identical) source, just associated {@link #getMimeType()}
      * @since 0.8 or earlier
+     * @deprecated Use {@link Builder} and its {@link Builder#mimeType(java.lang.String)} method
      */
+    @Deprecated
     public final Source withMimeType(String mime) {
         try {
             Source another = (Source) clone();
