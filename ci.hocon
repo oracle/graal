@@ -110,7 +110,7 @@ bench-dacapo-x52: ${bench-common-8} {
   ]
 }
 
-bench-dacapo-timing-x52: ${bench-dacapo-x52} {
+bench-dacapo-timing-x52: ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-dacapo-timing-linux-x52"
   run: [
@@ -134,7 +134,7 @@ bench-scala-dacapo-x52: ${bench-common-8} {
   ]
 }
 
-bench-scala-dacapo-timing-x52: ${bench-scala-dacapo-x52} {
+bench-scala-dacapo-timing-x52: ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-scala-dacapo-timing-linux-x52"
   run: [
