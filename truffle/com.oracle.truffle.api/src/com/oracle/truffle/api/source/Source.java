@@ -376,7 +376,9 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
+     * @deprecated use {@link #newFromURL(java.net.URL)}
      */
+    @Deprecated
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
         Content content = URLSourceImpl.get(url, description);
@@ -1042,6 +1044,8 @@ public abstract class Source {
                 content = buildFile();
             } else if (source instanceof Reader) {
                 content = buildReader();
+            } else if (source instanceof URL) {
+                content = buildURL();
             } else {
                 content = buildString();
             }
@@ -1071,6 +1075,12 @@ public abstract class Source {
             r.close();
             LiteralSourceImpl source = new LiteralSourceImpl(
                             null, content);
+            return source;
+        }
+
+        private Content buildURL() throws IOException {
+            final URL url = (URL) source;
+            URLSourceImpl source = new URLSourceImpl(url, content, null);
             return source;
         }
 
@@ -1108,11 +1118,10 @@ class SourceSnippets {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
         Source source = Source.newFromURL(resource)
-            .name("/your/pkg/sample.js")
+            .name("sample.js")
             .build();
-        assert "/your/pkg/sample.js".equals(source.getShortName());
         assert resource.toExternalForm().equals(source.getPath());
-        assert "/your/pkg/sample.js".equals(source.getName());
+        assert "sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
         assert resource.toURI().equals(source.getURI());
         // END: SourceSnippets#fromURL
