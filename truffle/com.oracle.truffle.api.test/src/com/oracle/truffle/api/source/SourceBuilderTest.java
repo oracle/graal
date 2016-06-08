@@ -92,7 +92,7 @@ public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
-        final Source.Builder<Void> builder = Source.newFromReader(new StringReader(text));
+        Source.Builder<Void, IOException> builder = Source.newFromReader(new StringReader(text));
         Source s1 = builder.name("Hello").mimeType("text/plain").build();
         assertEquals("Base type assigned", "text/plain", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -120,7 +120,7 @@ public class SourceBuilderTest {
         String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
         final File nonCannonicalFile = new File(nonCannonical);
         assertTrue("Exists, as it is the same file", nonCannonicalFile.exists());
-        final Source.Builder<Source> builder = Source.newFromFile(new File(nonCannonical));
+        final Source.Builder<Source, IOException> builder = Source.newFromFile(new File(nonCannonical));
 
         Source s1 = builder.build();
         assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
@@ -267,8 +267,6 @@ public class SourceBuilderTest {
         assertEquals("c:\\temp\\hi.txt", source.getPath());
     }
 
-    /* Test currently fails on Sparc. */
-    @Ignore
     @Test
     public void relativeURL() throws Exception {
         URL resource = SourceSnippets.class.getResource("sample.js");
@@ -276,8 +274,13 @@ public class SourceBuilderTest {
         SourceSnippets.fromURL();
     }
 
-    /* Test currently fails on Sparc. */
     @Test
+    public void relativeURLWithOwnContent() throws Exception {
+        URL resource = SourceSnippets.class.getResource("sample.js");
+        assertNotNull("Sample js file found", resource);
+        SourceSnippets.fromURLWithOwnContent();
+    }
+
     public void fileSample() throws Exception {
         File sample = File.createTempFile("sample", ".java");
         sample.deleteOnExit();
