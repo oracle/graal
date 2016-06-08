@@ -88,12 +88,19 @@ class TimingBenchmarkMixin(object):
     def getBechmarkName(self):
         raise NotImplementedError()
 
+    def benchSuiteName(self):
+        raise NotImplementedError()
+
+    def name(self):
+        return self.benchSuiteName() + "-timing"
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.StdOutRule(
             TimingBenchmarkMixin._mkDebugVariableRegex(r"(?P<name>BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm"),
             {
               "benchmark": self.getBechmarkName(),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
               "extra.value.path": ("<scope>", str),
@@ -117,7 +124,6 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
 
     def getBechmarkName(self):
         return self.currentBenchname
-
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -316,8 +322,8 @@ mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
 class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """DaCapo 9.12 (Bach) benchmark suite implementation."""
 
-    def name(self):
-        return "dacapo-timing"
+    def benchSuiteName(self):
+        return "dacapo"
 
 
 mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
@@ -364,8 +370,9 @@ mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
-    def name(self):
-        return "scala-dacapo-timing"
+    def benchSuiteName(self):
+        return "scala-dacapo"
+
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
