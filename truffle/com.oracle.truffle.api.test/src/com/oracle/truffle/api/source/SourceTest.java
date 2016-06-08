@@ -327,14 +327,14 @@ public class SourceTest {
 
     @Test
     public void normalSourceIsntInternal() throws IOException {
-        Source source = Source.newWithText("anything").mimeType("text/plain").build();
+        Source source = Source.newFromText("anything").mimeType("text/plain").build();
 
         assertFalse("Not internal", source.isInternal());
     }
 
     @Test
     public void markSourceAsInternal() throws IOException {
-        Source source = Source.newWithText("anything internal").mimeType("text/plain").internal().build();
+        Source source = Source.newFromText("anything internal").mimeType("text/plain").internal().build();
 
         assertTrue("This source is internal", source.isInternal());
     }
