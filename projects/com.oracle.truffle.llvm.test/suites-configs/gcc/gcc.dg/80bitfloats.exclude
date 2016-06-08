@@ -1,0 +1,3 @@
+gcc.dg/pr19402-2.c
+gcc.dg/signbit-sa.c
+gcc.dg/pr43305.c
