@@ -1097,6 +1097,7 @@ public abstract class Source {
 }
 
 // @formatter:off
+// Checkstyle: stop
 class SourceSnippets {
     public static Source fromFile(File dir, String name) throws IOException {
         // BEGIN: SourceSnippets#fromFile
