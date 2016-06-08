@@ -277,3 +277,4 @@ gcc.dg/torture/arm-fp16-ops-6.c
 gcc.dg/torture/pr51071.c
 gcc.dg/torture/pr54098.c
 gcc.dg/torture/tls/tls-test.c
+gcc.dg/torture/Wsizeof-pointer-memaccess1.c
