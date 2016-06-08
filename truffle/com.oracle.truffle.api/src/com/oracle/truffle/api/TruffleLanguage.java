@@ -587,7 +587,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
+        @SuppressWarnings({"rawtypes", "deprecation"})
         public Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
