@@ -43,22 +43,26 @@ mx build
 mx vm
 ```
 
-The first time it's run, the `mx vm` step above will present you with a dialogue asking which top tier compiler the VM should use: `server` or `jvmci`. This is only for compilations requested by the VM (e.g., when a method becomes _hot_). If you select `server`, the C2 compiler will be used otherwise Graal will be used. Truffle requested compilations will always use the `jvmci` compiler (i.e., Graal).
+By default, Graal is only used for hosted compilation. To make the VM use it as the top tier JIT compiler, add the `-XX:+UseJVMCICompiler` option to the command line. To disable use of Graal altogether, use `-XX:-EnableJVMCI`.
 
 ## IDE Configuration
 
 You can generate IDE project configurations by running:
+
 ```
 mx ideinit
 ```
+
 This will generate both Eclipse and NetBeans project configurations. Further information on how to import these project configurations into Eclipse can be found [here](docs/Eclipse.md).
 
 The Graal code base includes the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) which is very useful in terms of visualizing Graal's intermediate representation (IR). You can get a quick insight into this tool by running the commands below. The first command launches the tool and the second runs one of the unit tests included in the Graal code base with extra options to make Graal output the IR for all methods it compiles to the tool. You should wait for the GUI to appear before running the second command.
+
 ```
 mx igv &
 mx unittest -G:Dump= BC_athrow0
 ```
-If you selected `jvmci` as the VM compiler above, you will see IR for compilations requested by the VM itself in addition to compilations requested by the unit test. The former are those with a prefix in the UI denoting the compiler thread and id of the compilation (e.g., `JVMCI CompilerThread0:390`).
+
+If you added `-XX:+UseJVMCICompiler` as described above, you will see IR for compilations requested by the VM itself in addition to compilations requested by the unit test. The former are those with a prefix in the UI denoting the compiler thread and id of the compilation (e.g., `JVMCI CompilerThread0:390`).
 
 The first time you run `mx igv`, the Ideal Graph Visualizer will be transparently built. This only works if `ant` has internet access because it needs to download the NetBeans platform packages. You therefore have to configure `ant` to use proxies if necessary (e.g., set `ANT_ARGS=-autoproxy` in your environment).
 
