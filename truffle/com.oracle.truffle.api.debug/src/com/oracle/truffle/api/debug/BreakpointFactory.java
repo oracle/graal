@@ -544,7 +544,7 @@ final class BreakpointFactory {
 
         private void doBreak(EventContext context, VirtualFrame vFrame) {
             if (++hitCount > ignoreCount) {
-                breakpointCallback.haltedAt(context, vFrame.materialize(), "Breakpoint");
+                breakpointCallback.haltedAt(context, vFrame.materialize(), this);
             }
         }
 
@@ -659,9 +659,12 @@ final class BreakpointFactory {
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
             if (TRACE) {
-                trace("hit breakpoint " + breakpoint.getShortDescription());
+                trace("BEGIN HIT breakpoint " + breakpoint.getShortDescription());
             }
             breakpoint.nodeEnter(context, frame);
+            if (TRACE) {
+                trace("END HIT breakpoint " + breakpoint.getShortDescription());
+            }
         }
 
         @Override

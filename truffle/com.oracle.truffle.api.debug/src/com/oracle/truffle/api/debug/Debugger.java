@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.Assumption;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -55,9 +58,6 @@ import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.net.URI;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -92,6 +92,10 @@ public final class Debugger {
     private static final SourceSectionFilter CALL_FILTER = SourceSectionFilter.newBuilder().tagIs(CallTag.class).build();
     private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
     private static final Assumption NO_DEBUGGER = Truffle.getRuntime().createAssumption("No debugger assumption");
+
+    private static boolean matchesHaltFilter(EventContext eventContext) {
+        return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
+    }
 
     private static final Set<Debugger> EXISTING_DEBUGGERS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<Debugger, Boolean>()));
 
@@ -166,7 +170,7 @@ public final class Debugger {
         /**
          * Passes control to the debugger with execution suspended.
          */
-        void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason);
+        void haltedAt(EventContext eventContext, MaterializedFrame mFrame, Breakpoint breakpoint);
     }
 
     interface WarningLog {
@@ -180,13 +184,18 @@ public final class Debugger {
     private final BreakpointCallback breakpointCallback = new BreakpointCallback() {
 
         @TruffleBoundary
-        public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
+        public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, Breakpoint breakpoint) {
             if (currentDebugContext == null) {
                 final SourceSection sourceSection = eventContext.getInstrumentedNode().getSourceSection();
                 assert sourceSection != null;
                 currentDebugContext = new DebugExecutionContext(sourceSection.getSource(), null, 0);
             }
-            currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
+            final StepStrategy strategy = currentDebugContext.strategy;
+            if (strategy != null && strategy.wouldHaltAt(eventContext)) {
+                currentDebugContext.trace("DOUBLE HALT, skip breakpoint at " + breakpoint.getLocationDescription());
+            } else {
+                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, "Breakpoint");
+            }
         }
     };
 
@@ -420,6 +429,8 @@ public final class Debugger {
             disposed = true;
         }
 
+        abstract boolean wouldHaltAt(EventContext eventContext);
+
         @TruffleBoundary
         protected final void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition haltPosition) {
             debugContext.halt(eventContext, mFrame, haltPosition, description());
@@ -481,6 +492,11 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return false;
         }
     }
 
@@ -570,6 +586,11 @@ public final class Debugger {
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return matchesHaltFilter(eventContext) && unfinishedStepCount <= 1;
+        }
     }
 
     /**
@@ -643,6 +664,11 @@ public final class Debugger {
                 return;
             }
             afterCallBinding.dispose();
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
         }
     }
 
@@ -730,6 +756,11 @@ public final class Debugger {
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return matchesHaltFilter(eventContext) && unfinishedStepCount <= 1;
+        }
     }
 
     /**
@@ -789,6 +820,11 @@ public final class Debugger {
                 return;
             }
             beforeHaltBinding.dispose();
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
         }
     }
 
