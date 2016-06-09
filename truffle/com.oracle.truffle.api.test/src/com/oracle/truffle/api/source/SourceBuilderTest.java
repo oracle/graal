@@ -121,7 +121,7 @@ public class SourceBuilderTest {
         String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
         final File nonCannonicalFile = new File(nonCannonical);
         assertTrue("Exists, as it is the same file", nonCannonicalFile.exists());
-        final Source.Builder<Source, IOException> builder = Source.newFromFile(new File(nonCannonical));
+        final Source.Builder<Source, IOException> builder = Source.newFromFile(nonCannonicalFile);
 
         Source s1 = builder.build();
         assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
