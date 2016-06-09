@@ -61,14 +61,14 @@ final class InstrumentationHandler {
     /* Enable trace output to stdout. */
     private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
-    /* All roots that were initialized (executed at least once) */
+    /*
+     * All roots that were initialized (executed at least once). The boolean indicates whether it
+     * was ever executed.
+     */
     private final Map<RootNode, Void> roots = Collections.synchronizedMap(new WeakHashMap<RootNode, Void>());
 
     /* All bindings that have been globally created by instrumenter instances. */
     private final List<EventBinding<?>> bindings = new ArrayList<>();
-
-    /* Cached instance for reuse for newly installed root nodes. */
-    private final AddBindingsVisitor addAllBindingsVisitor = new AddBindingsVisitor(bindings);
 
     /*
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
@@ -89,7 +89,7 @@ final class InstrumentationHandler {
         this.in = in;
     }
 
-    void installRootNode(RootNode root) {
+    void onFirstExecution(RootNode root) {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
         }
@@ -97,7 +97,13 @@ final class InstrumentationHandler {
             initializeInstrumentation();
         }
         roots.put(root, null);
-        visitRoot(root, addAllBindingsVisitor);
+
+        // fast path no bindings attached
+        if (bindings.isEmpty()) {
+            return;
+        }
+
+        visitRoot(root, new AddBindingsVisitor(bindings));
     }
 
     void addInstrument(Object key, Class<?> clazz) {
@@ -108,22 +114,31 @@ final class InstrumentationHandler {
         if (TRACE) {
             trace("BEGIN: Dispose instrumenter %n", key);
         }
-        AbstractInstrumenter disposedInstrumenter = instrumenterMap.get(key);
+
         List<EventBinding<?>> disposedBindings = new ArrayList<>();
-        for (Iterator<EventBinding<?>> iterator = bindings.listIterator(); iterator.hasNext();) {
-            EventBinding<?> binding = iterator.next();
-            if (binding.getInstrumenter() == disposedInstrumenter) {
-                iterator.remove();
-                disposedBindings.add(binding);
+        synchronized (instrumenterMap) {
+            AbstractInstrumenter disposedInstrumenter = instrumenterMap.get(key);
+            if (disposedInstrumenter != null) {
+                synchronized (bindings) {
+                    for (Iterator<EventBinding<?>> iterator = bindings.listIterator(); iterator.hasNext();) {
+                        EventBinding<?> binding = iterator.next();
+                        if (binding.getInstrumenter() == disposedInstrumenter) {
+                            iterator.remove();
+                            disposedBindings.add(binding);
+                        }
+                    }
+                }
+                disposedInstrumenter.dispose();
+                instrumenterMap.remove(key);
             }
         }
-        disposedInstrumenter.dispose();
-        instrumenterMap.remove(key);
 
         if (cleanupRequired) {
             DisposeBindingsVisitor disposeVisitor = new DisposeBindingsVisitor(disposedBindings);
-            for (RootNode root : roots.keySet()) {
-                visitRoot(root, disposeVisitor);
+            synchronized (roots) {
+                for (RootNode root : roots.keySet()) {
+                    visitRoot(root, disposeVisitor);
+                }
             }
         }
 
@@ -151,12 +166,16 @@ final class InstrumentationHandler {
             trace("BEGIN: Adding binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
-        this.bindings.add(binding);
+        synchronized (bindings) {
+            this.bindings.add(binding);
+        }
 
         if (instrumentationInitialized) {
             AddBindingVisitor addBindingsVisitor = new AddBindingVisitor(binding);
-            for (RootNode root : roots.keySet()) {
-                visitRoot(root, addBindingsVisitor);
+            synchronized (roots) {
+                for (RootNode root : roots.keySet()) {
+                    visitRoot(root, addBindingsVisitor);
+                }
             }
         }
 
@@ -172,10 +191,14 @@ final class InstrumentationHandler {
             trace("BEGIN: Dispose binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
 
-        this.bindings.remove(binding);
+        synchronized (bindings) {
+            this.bindings.remove(binding);
+        }
         DisposeBindingVisitor disposeVisitor = new DisposeBindingVisitor(binding);
-        for (RootNode root : roots.keySet()) {
-            visitRoot(root, disposeVisitor);
+        synchronized (roots) {
+            for (RootNode root : roots.keySet()) {
+                visitRoot(root, disposeVisitor);
+            }
         }
 
         if (TRACE) {
@@ -195,24 +218,26 @@ final class InstrumentationHandler {
         Set<Class<?>> providedTags = getProvidedTags(rootNode);
         EventChainNode root = null;
         EventChainNode parent = null;
-        for (int i = 0; i < bindings.size(); i++) {
-            EventBinding<?> binding = bindings.get(i);
-            if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
-                if (TRACE) {
-                    trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
-                }
-                EventChainNode next = probeNodeImpl.createEventChainCallback(binding);
-                if (next == null) {
-                    continue;
-                }
+        synchronized (bindings) {
+            for (int i = 0; i < bindings.size(); i++) {
+                EventBinding<?> binding = bindings.get(i);
+                if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
+                    if (TRACE) {
+                        trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
+                    }
+                    EventChainNode next = probeNodeImpl.createEventChainCallback(binding);
+                    if (next == null) {
+                        continue;
+                    }
 
-                if (root == null) {
-                    root = next;
-                } else {
-                    assert parent != null;
-                    parent.setNext(next);
+                    if (root == null) {
+                        root = next;
+                    } else {
+                        assert parent != null;
+                        parent.setNext(next);
+                    }
+                    parent = next;
                 }
-                parent = next;
             }
         }
 
@@ -222,40 +247,41 @@ final class InstrumentationHandler {
         return root;
     }
 
-    private void initializeInstrumentation() {
-        synchronized (this) {
-            if (!instrumentationInitialized) {
-                if (TRACE) {
-                    trace("BEGIN: Initialize instrumentation%n");
-                }
-                for (AbstractInstrumenter instrumenter : instrumenterMap.values()) {
-                    instrumenter.initialize();
-                }
-                if (TRACE) {
-                    trace("END: Initialized instrumentation%n");
-                }
-                instrumentationInitialized = true;
+    private synchronized void initializeInstrumentation() {
+        if (!instrumentationInitialized) {
+            if (TRACE) {
+                trace("BEGIN: Initialize instrumentation%n");
             }
+            for (AbstractInstrumenter instrumenter : instrumenterMap.values()) {
+                instrumenter.initialize();
+            }
+            if (TRACE) {
+                trace("END: Initialized instrumentation%n");
+            }
+            instrumentationInitialized = true;
         }
     }
 
     private void addInstrumenter(Object key, AbstractInstrumenter instrumenter) throws AssertionError {
         if (instrumenterMap.containsKey(key)) {
-            throw new AssertionError("Instrument already added.");
+            return;
         }
 
         if (instrumentationInitialized) {
             instrumenter.initialize();
             List<EventBinding<?>> addedBindings = new ArrayList<>();
-            for (EventBinding<?> binding : bindings) {
-                if (binding.getInstrumenter() == instrumenter) {
-                    addedBindings.add(binding);
+            synchronized (bindings) {
+                for (EventBinding<?> binding : bindings) {
+                    if (binding.getInstrumenter() == instrumenter) {
+                        addedBindings.add(binding);
+                    }
                 }
             }
-
             AddBindingsVisitor visitor = new AddBindingsVisitor(addedBindings);
-            for (RootNode root : roots.keySet()) {
-                visitRoot(root, visitor);
+            synchronized (roots) {
+                for (RootNode root : roots.keySet()) {
+                    visitRoot(root, visitor);
+                }
             }
         }
         instrumenterMap.put(key, instrumenter);
@@ -367,27 +393,18 @@ final class InstrumentationHandler {
 
         visitor.root = root;
         visitor.providedTags = getProvidedTags(root);
-        try {
-            if (visitor.shouldVisit()) {
-                if (TRACE) {
-                    trace("BEGIN: Traverse root %s wrappers for %s%n", visitor, root.toString());
-                }
-                // found a filter that matched
-                root.atomic(new Runnable() {
-                    public void run() {
-                        root.accept(visitor);
-                    }
-                });
-                if (TRACE) {
-                    trace("END: Traverse root %s wrappers for %s%n", visitor, root.toString());
-                }
-            }
+
+        if (visitor.shouldVisit()) {
             if (TRACE) {
-                trace("END: Visited root %s wrappers for %s%n", visitor, root.toString());
+                trace("BEGIN: Traverse root %s wrappers for %s%n", visitor, root.toString());
             }
-        } finally {
-            visitor.root = null;
-            visitor.providedTags = null;
+            root.accept(visitor);
+            if (TRACE) {
+                trace("END: Traverse root %s wrappers for %s%n", visitor, root.toString());
+            }
+        }
+        if (TRACE) {
+            trace("END: Visited root %s wrappers for %s%n", visitor, root.toString());
         }
     }
 
@@ -502,15 +519,20 @@ final class InstrumentationHandler {
 
         @Override
         boolean shouldVisit() {
+            if (bindings.isEmpty()) {
+                return false;
+            }
             final RootNode localRoot = root;
             if (localRoot == null) {
                 return false;
             }
             SourceSection sourceSection = localRoot.getSourceSection();
-            for (int i = 0; i < bindings.size(); i++) {
-                EventBinding<?> binding = bindings.get(i);
-                if (binding.isInstrumentedRoot(providedTags, localRoot, sourceSection)) {
-                    return true;
+            synchronized (bindings) {
+                for (int i = 0; i < bindings.size(); i++) {
+                    EventBinding<?> binding = bindings.get(i);
+                    if (binding.isInstrumentedRoot(providedTags, localRoot, sourceSection)) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -520,17 +542,19 @@ final class InstrumentationHandler {
             SourceSection sourceSection = node.getSourceSection();
             if (isInstrumentableNode(node, sourceSection)) {
                 List<EventBinding<?>> b = bindings;
-                for (int i = 0; i < b.size(); i++) {
-                    EventBinding<?> binding = b.get(i);
-                    if (binding.isInstrumentedFull(providedTags, root, node, sourceSection)) {
-                        if (TRACE) {
-                            traceFilterCheck("hit", providedTags, binding, node, sourceSection);
-                        }
-                        visitInstrumented(node, sourceSection);
-                        break;
-                    } else {
-                        if (TRACE) {
-                            traceFilterCheck("miss", providedTags, binding, node, sourceSection);
+                synchronized (b) {
+                    for (int i = 0; i < b.size(); i++) {
+                        EventBinding<?> binding = b.get(i);
+                        if (binding.isInstrumentedFull(providedTags, root, node, sourceSection)) {
+                            if (TRACE) {
+                                traceFilterCheck("hit", providedTags, binding, node, sourceSection);
+                            }
+                            visitInstrumented(node, sourceSection);
+                            break;
+                        } else {
+                            if (TRACE) {
+                                traceFilterCheck("miss", providedTags, binding, node, sourceSection);
+                            }
                         }
                     }
                 }
@@ -895,7 +919,7 @@ final class InstrumentationHandler {
                 // enclosing
                 // engine.
                 if (instrumentationHandler != null) {
-                    ((InstrumentationHandler) instrumentationHandler).installRootNode(rootNode);
+                    ((InstrumentationHandler) instrumentationHandler).onFirstExecution(rootNode);
                 }
             }
         }

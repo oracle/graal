@@ -57,7 +57,8 @@ public final class EventBinding<T> {
     private final T element;
 
     /* language bindings needs special treatment. */
-    private boolean disposed;
+    private volatile boolean disposed;
+    private boolean updateOnExecute;
 
     EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element) {
         this.instrumenter = instrumenter;
@@ -67,6 +68,10 @@ public final class EventBinding<T> {
 
     boolean isLanguageBinding() {
         return instrumenter instanceof LanguageClientInstrumenter;
+    }
+
+    boolean isUpdateOnExecute() {
+        return updateOnExecute;
     }
 
     AbstractInstrumenter getInstrumenter() {
@@ -108,13 +113,13 @@ public final class EventBinding<T> {
      *
      * @since 0.12
      */
-    public void dispose() throws IllegalStateException {
+    public synchronized void dispose() throws IllegalStateException {
         CompilerAsserts.neverPartOfCompilation();
         if (disposed) {
             throw new IllegalStateException("Bindings can only be disposed once");
         }
-        instrumenter.disposeBinding(this);
         this.disposed = true;
+        instrumenter.disposeBinding(this);
     }
 
     boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
