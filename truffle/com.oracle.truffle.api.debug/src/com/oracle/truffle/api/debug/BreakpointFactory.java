@@ -392,7 +392,7 @@ final class BreakpointFactory {
         @Override
         public String getLocationDescription() {
             if (locationKey instanceof LineLocation) {
-                return "Line: " + ((LineLocation) locationKey).getShortDescription();
+                return ((LineLocation) locationKey).getShortDescription();
             }
             return "Tag: " + locationKey.toString();
         }
@@ -659,11 +659,11 @@ final class BreakpointFactory {
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
             if (TRACE) {
-                trace("BEGIN HIT breakpoint " + breakpoint.getShortDescription());
+                trace("BEGIN HIT " + breakpoint.getShortDescription());
             }
             breakpoint.nodeEnter(context, frame);
             if (TRACE) {
-                trace("END HIT breakpoint " + breakpoint.getShortDescription());
+                trace("END HIT " + breakpoint.getShortDescription());
             }
         }
 
