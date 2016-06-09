@@ -55,12 +55,20 @@ public class ConstantFoldUtil {
 
             @Override
             public ConstantNode foldConstant(JavaConstant ret) {
-                return ConstantNode.forConstant(ret, metaAccess);
+                if (ret != null) {
+                    return ConstantNode.forConstant(ret, metaAccess);
+                } else {
+                    return null;
+                }
             }
 
             @Override
             public ConstantNode foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable) {
-                return ConstantNode.forConstant(ret, stableDimensions, isDefaultStable, metaAccess);
+                if (ret != null) {
+                    return ConstantNode.forConstant(ret, stableDimensions, isDefaultStable, metaAccess);
+                } else {
+                    return null;
+                }
             }
         });
     }
