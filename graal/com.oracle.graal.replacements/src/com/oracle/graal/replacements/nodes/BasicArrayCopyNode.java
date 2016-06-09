@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
@@ -56,11 +57,13 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
-    @Input protected ValueNode src;
-    @Input protected ValueNode srcPos;
-    @Input protected ValueNode dest;
-    @Input protected ValueNode destPos;
-    @Input protected ValueNode length;
+    static final int SRC_ARG = 0;
+    static final int SRC_POS_ARG = 1;
+    static final int DEST_ARG = 2;
+    static final int DEST_POS_ARG = 3;
+    static final int LENGTH_ARG = 4;
+
+    @Input NodeInputList<ValueNode> args;
 
     @OptionalInput(InputType.State) FrameState stateDuring;
 
@@ -73,43 +76,35 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
     public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
         super(type, StampFactory.forKind(JavaKind.Void));
         this.bci = bci;
-        this.src = src;
-        this.srcPos = srcPos;
-        this.dest = dest;
-        this.destPos = destPos;
-        this.length = length;
+        args = new NodeInputList<>(this, new ValueNode[]{src, srcPos, dest, destPos, length});
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
     public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind) {
         super(type, StampFactory.forKind(JavaKind.Void));
         this.bci = -6;
-        this.src = src;
-        this.srcPos = srcPos;
-        this.dest = dest;
-        this.destPos = destPos;
-        this.length = length;
+        args = new NodeInputList<>(this, new ValueNode[]{src, srcPos, dest, destPos, length});
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
     public ValueNode getSource() {
-        return src;
+        return args.get(SRC_ARG);
     }
 
     public ValueNode getSourcePosition() {
-        return srcPos;
+        return args.get(SRC_POS_ARG);
     }
 
     public ValueNode getDestination() {
-        return dest;
+        return args.get(DEST_ARG);
     }
 
     public ValueNode getDestinationPosition() {
-        return destPos;
+        return args.get(DEST_POS_ARG);
     }
 
     public ValueNode getLength() {
-        return length;
+        return args.get(LENGTH_ARG);
     }
 
     public int getBci() {
