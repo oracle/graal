@@ -55,7 +55,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.LocationImpl.TypedObjectLocation;
@@ -945,6 +944,7 @@ public abstract class ShapeImpl extends Shape {
             }
         }
 
+        @SuppressWarnings("deprecation")
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
@@ -971,8 +971,8 @@ public abstract class ShapeImpl extends Shape {
             } else {
                 return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.NonNull));
             }
-            if (newLocation instanceof EffectivelyFinalLocation) {
-                newLocation = ((EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
+            if (newLocation instanceof com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation) {
+                newLocation = ((com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
             }
             return newLocation;
         }
