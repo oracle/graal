@@ -430,9 +430,9 @@ public abstract class Source {
 
     /**
      * Creates a new source whose content will be read once it is {@link Builder#build()
-     * constructed}. If multiple {@link Source} instances are constructed, they all share the (once
-     * read) content. When building source from reader, it is essential to
-     * {@link Builder#mimeType(java.lang.String) specify MIME type}. Example follows:
+     * constructed}. Multiple {@link Source} instances constructed by a single {@link Builder}
+     * instance share the content, read only once. When building source from reader, it is essential
+     * to {@link Builder#mimeType(java.lang.String) specify MIME type}. Example follows:
      *
      * {@link SourceSnippets#fromReader}
      *
