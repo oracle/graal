@@ -573,14 +573,17 @@ public abstract class Source {
     }
 
     /**
-     * Check to recognize internal sources from the user provided ones. The internal sources are
-     * provided by the infrastructure, language, system library and should be avoided by default
-     * from being presented to user. For example when stepping into a function call in a debugger,
-     * internal sources are supposed to be skipped.
+     * Check whether this source has been marked as <em>internal</em>, meaning that it has been
+     * provided by the infrastructure, language implementation, or system library. <em>Internal</em>
+     * sources are presumed to be irrelevant to guest language programmers, as well as possibly
+     * confusing and revealing of language implementation details.
+     * <p>
+     * On the other hand, tools should be free to make <em>internal</em> sources visible in
+     * (possibly privileged) modes that are useful for language implementors.
+     * <p>
+     * One can specify whether a source is internal when {@link Builder#internal building it}.
      *
-     * One can specify a source is internal when {@link Builder#internal building it}.
-     *
-     * @return boolean flag to check whether a source is internal or not
+     * @return whether this source is marked as <em>internal</em>
      * @since 0.15
      */
     public boolean isInternal() {
