@@ -55,31 +55,6 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
-def _version_check(condition, error_message):
-    """
-    Tests a given condition related to a version check. If the condition is false, some action
-    is taken based on the value of the ``JVMCI_VERSION_CHECK`` environment variable:
-        'warn' - print `error_message` and continue
-        'ignore' - continue
-        <any other value including None> - abort with message `error_message`
-
-    :param bool condition: the condition to test
-    :param str error_message: description of failure if not `condition`
-    :return: `condition`
-    """
-    if not condition:
-        directive = mx.get_env('JVMCI_VERSION_CHECK', None)
-        if directive == 'warn':
-            mx.warn(error_message)
-            return False
-        elif directive == 'ignore':
-            return False
-        else:
-            if directive is not None:
-                error_message = 'Unknown JVMCI_VERSION_CHECK value: ' + directive + '\n' + error_message
-            mx.abort(error_message)
-    return True
-
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
@@ -90,7 +65,7 @@ def _check_jvmci_version(jdk):
     javaClass = join(binDir, name.replace('.', '/') + '.class')
     if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
         mx.run([jdk.javac, '-d', binDir, javaSource])
-    jdk.run_java(['-cp', binDir, name])
+    mx.run([jdk.java, '-cp', binDir, name])
 
 _check_jvmci_version(jdk)
 
