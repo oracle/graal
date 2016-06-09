@@ -302,6 +302,21 @@ public class SourceBuilderTest {
     }
 
     @Test
+    public void whatAreTheDefaultValuesOfNewFromReader() throws Exception {
+        StringReader r = new StringReader("Hi!");
+        Source source = Source.newFromReader(r).mimeType("text/plain").build();
+
+        assertEquals("Hi!", source.getCode());
+        assertNull(source.getName());
+        assertNull(source.getPath());
+        assertNull(source.getShortName());
+        assertNotNull(source.getURI());
+        assertEquals("truffle", source.getURI().getScheme());
+        assertNull(source.getURL());
+        assertEquals("text/plain", source.getMimeType());
+    }
+
+    @Test
     public void fileWithReload() throws Exception {
         File file = File.createTempFile("ChangeMe", ".java");
         file.deleteOnExit();
