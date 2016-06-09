@@ -1053,15 +1053,15 @@ public abstract class Source {
      * @since 0.15
      */
     public final class Builder<R, E extends Exception> {
-        private final Object source;
+        private final Object origin;
         private String name;
         private String path;
         private String mime;
         private String content;
         private boolean internal;
 
-        private Builder(Object source) {
-            this.source = source;
+        private Builder(Object origin) {
+            this.origin = origin;
         }
 
         /**
@@ -1157,18 +1157,18 @@ public abstract class Source {
         public R build() throws E {
             Content holder;
             try {
-                if (source instanceof File) {
+                if (origin instanceof File) {
                     holder = buildFile();
-                } else if (source instanceof Reader) {
+                } else if (origin instanceof Reader) {
                     holder = buildReader();
-                } else if (source instanceof URL) {
+                } else if (origin instanceof URL) {
                     holder = buildURL();
                 } else {
                     holder = buildString();
                 }
                 String type = this.mime == null ? holder.findMimeType() : this.mime;
                 if (type == null) {
-                    throw new IllegalStateException("Unknown mime type for " + source);
+                    throw new IllegalStateException("Unknown mime type for " + origin);
                 }
                 SourceImpl ret = new SourceImpl(holder, type, name, internal);
                 return (R) ret;
@@ -1178,7 +1178,7 @@ public abstract class Source {
         }
 
         private Content buildFile() throws IOException {
-            final File file = (File) source;
+            final File file = (File) origin;
             File absoluteFile = file.getCanonicalFile();
             FileSourceImpl fileSource = new FileSourceImpl(
                             absoluteFile,
@@ -1188,7 +1188,7 @@ public abstract class Source {
         }
 
         private Content buildReader() throws IOException {
-            final Reader r = (Reader) source;
+            final Reader r = (Reader) origin;
             if (content == null) {
                 content = read(r);
             }
@@ -1199,13 +1199,13 @@ public abstract class Source {
         }
 
         private Content buildURL() throws IOException {
-            final URL url = (URL) source;
+            final URL url = (URL) origin;
             URLSourceImpl ret = new URLSourceImpl(url, content, null);
             return ret;
         }
 
         private Content buildString() {
-            final String r = (String) source;
+            final String r = (String) origin;
             if (content == null) {
                 content = r;
             }
