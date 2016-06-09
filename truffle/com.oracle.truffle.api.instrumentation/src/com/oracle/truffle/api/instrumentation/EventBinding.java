@@ -58,7 +58,6 @@ public final class EventBinding<T> {
 
     /* language bindings needs special treatment. */
     private volatile boolean disposed;
-    private boolean updateOnExecute;
 
     EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element) {
         this.instrumenter = instrumenter;
@@ -68,10 +67,6 @@ public final class EventBinding<T> {
 
     boolean isLanguageBinding() {
         return instrumenter instanceof LanguageClientInstrumenter;
-    }
-
-    boolean isUpdateOnExecute() {
-        return updateOnExecute;
     }
 
     AbstractInstrumenter getInstrumenter() {
@@ -118,7 +113,7 @@ public final class EventBinding<T> {
         if (disposed) {
             throw new IllegalStateException("Bindings can only be disposed once");
         }
-        this.disposed = true;
+        disposed = true;
         instrumenter.disposeBinding(this);
     }
 
