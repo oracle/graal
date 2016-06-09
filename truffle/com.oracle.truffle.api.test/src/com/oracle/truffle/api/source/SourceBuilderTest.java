@@ -336,7 +336,7 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void normalSourceIsntInternal() {
+    public void normalSourceIsNotInternal() {
         Source source = Source.newFromText("anything").mimeType("text/plain").build();
 
         assertFalse("Not internal", source.isInternal());
