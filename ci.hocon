@@ -1,3 +1,6 @@
+# overlay version
+overlay = cb733e564850cd37b685fcef6f3c16b59802b22c
+
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 java9  : {name : oraclejdk, version : "9",    platformspecific: true}
