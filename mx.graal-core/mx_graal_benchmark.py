@@ -75,6 +75,57 @@ mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=g
     "jit"))
 
 
+class TimingBenchmarkMixin(object):
+
+    @staticmethod
+    def _mkDebugVariableRegex(valueName):
+        return r"(?P<scope>.*);" + valueName + r";(?P<value>[0-9]+);(?P<unit>us)"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = ['-Dgraal.Time=BackEnd,FrontEnd', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Complete'] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    def getBechmarkName(self):
+        raise NotImplementedError()
+
+    def benchSuiteName(self):
+        raise NotImplementedError()
+
+    def name(self):
+        return self.benchSuiteName() + "-timing"
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+          mx_benchmark.StdOutRule(
+            TimingBenchmarkMixin._mkDebugVariableRegex(r"(?P<name>BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm"),
+            {
+              "benchmark": self.getBechmarkName(),
+              "bench-suite": self.benchSuiteName(),
+              "vm": "jvmci",
+              "config.name": "default",
+              "extra.value.path": ("<scope>", str),
+              "extra.value.name": ("<name>", str),
+              "metric.name": ("compile-time", str),
+              "metric.value": ("<value>", int),
+              "metric.unit": ("<unit>", str),
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "higher",
+              "metric.iteration": 0
+            }
+          ),
+        ]
+
+
+class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
+    def postprocessRunArgs(self, benchname, runArgs):
+        self.currentBenchname = benchname
+        return super(DaCapoTimingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
+
+    def getBechmarkName(self):
+        return self.currentBenchname
+
+
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """Base benchmark suite for DaCapo-based benchmarks.
 
@@ -268,6 +319,16 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
 
 
+class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
+    """DaCapo 9.12 (Bach) benchmark suite implementation."""
+
+    def benchSuiteName(self):
+        return "dacapo"
+
+
+mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
+
+
 _daCapoScalaConfig = {
     "actors"      : 10,
     "apparat"     : 5,
@@ -304,6 +365,17 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+
+
+class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
+    """Scala DaCapo benchmark suite implementation."""
+
+    def benchSuiteName(self):
+        return "scala-dacapo"
+
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
 _allSpecJVM2008Benchs = [

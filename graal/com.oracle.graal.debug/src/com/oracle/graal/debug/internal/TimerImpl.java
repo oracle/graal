@@ -61,6 +61,16 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
         public DebugCloseable start() {
             return accm.start();
         }
+
+        @Override
+        public String rawUnit() {
+            return "us";
+        }
+
+        @Override
+        public String toRawString(long value) {
+            return valueToRawString(value);
+        }
     }
 
     public TimerImpl(String name, boolean conditional, boolean intercepting) {
@@ -149,6 +159,20 @@ public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer
                 MethodMetricsImpl.addToCurrentScopeMethodMetrics(counter.flat.getName(), difference);
             }
         }
+    }
+
+    @Override
+    public String rawUnit() {
+        return "us";
+    }
+
+    @Override
+    public String toRawString(long value) {
+        return valueToRawString(value);
+    }
+
+    public static String valueToRawString(long value) {
+        return Long.toString(value / 1000);
     }
 
 }

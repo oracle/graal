@@ -42,6 +42,16 @@ public abstract class CounterImpl extends DebugValue implements DebugCounter {
     }
 
     @Override
+    public String rawUnit() {
+        return "";
+    }
+
+    @Override
+    public String toRawString(long value) {
+        return Long.toString(value);
+    }
+
+    @Override
     public String toString(long value) {
         return Long.toString(value);
     }

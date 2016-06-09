@@ -79,6 +79,8 @@ public class GraalDebugConfig implements DebugConfig {
                        "Complete - aggregate by qualified name%n" +
                        "Thread - aggregate by qualified name and thread", type = OptionType.Debug)
         public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
+        @Option(help = "Print counters and timers in a human readable form.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> DebugValueHumanReadable = new OptionValue<>(true);
         @Option(help = "Omit reporting 0-value counters", type = OptionType.Debug)
         public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(true);
         @Option(help = "Only report debug values for maps which match the regular expression.", type = OptionType.Debug)
