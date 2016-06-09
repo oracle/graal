@@ -163,7 +163,7 @@ public abstract class Source {
      * The system tries to deduce appropriate {@link Source#getMimeType()} by consulting registered
      * {@link FileTypeDetector file type detectors}.
      * 
-     * @param file the location of the file to load source from
+     * @param file the location of the file to load content from
      * @return new instance of builder
      * @since 0.15
      */
