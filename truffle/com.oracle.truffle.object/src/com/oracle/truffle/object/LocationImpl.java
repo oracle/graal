@@ -38,6 +38,7 @@ public abstract class LocationImpl extends Location {
         T toNonFinalLocation();
     }
 
+    @Deprecated
     public interface TypedObjectLocation<T extends Location & ObjectLocation> extends ObjectLocation {
         T toUntypedLocation();
     }
