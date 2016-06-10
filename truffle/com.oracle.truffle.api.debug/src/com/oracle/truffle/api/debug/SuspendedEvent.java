@@ -230,13 +230,12 @@ public final class SuspendedEvent {
         debugger.prepareStepOver(stepCount);
     }
 
-    // TODO (mlvdv) change API to frame number
     /**
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frame the frame in which to evaluate the code; { means the current frame at the halted
-     *            location.
+     * @param frame the frame in which to evaluate the code; {@code null} means the current frame at
+     *            the halted location.
      * @return the computed value
      * @throws IOException in case an evaluation goes wrong
      * @throws KillException if the evaluation is killed by the debugger
