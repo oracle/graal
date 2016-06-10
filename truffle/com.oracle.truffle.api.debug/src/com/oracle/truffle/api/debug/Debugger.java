@@ -102,7 +102,6 @@ public final class Debugger {
     /** Counter for externally requested step actions. */
     private static int nextActionID = 0;
 
-    // TODO (mlvdv) export this information to SuspendedEvent for client use
     /**
      * Describes where an execution is halted relative to the instrumented node.
      */
@@ -191,6 +190,21 @@ public final class Debugger {
                 currentDebugContext = new DebugExecutionContext(sourceSection.getSource(), null, 0);
             }
             final StepStrategy strategy = currentDebugContext.strategy;
+            /*
+             * Check to see if this breakpoint is at a location where the current stepping strategy
+             * underway, if any, would halt. If so, then avoid the double-halt by ignoring the
+             * breakpoint now and letting execution resume. The expectation in this situation is
+             * that the current stepping strategy will halt during the same execution event
+             * notification, at which time clients will be notified of the halt.
+             *
+             * Note that the breakpoint's hit count is decremented before this notification, so that
+             * it counts as a hit whether or not it is ignored because of a double-halt.
+             *
+             * IMPORTANT: this implementation relies on the guarantee made by
+             * ExecutionEventListener.onEnter() about the order of notification. In particular, it
+             * is assumed here that any breakpoint halt at a particular code location will always
+             * take place before a halt at the same location caused by a stepping strategy.
+             */
             if (strategy != null && strategy.wouldHaltAt(eventContext)) {
                 currentDebugContext.trace("REDUNDANT HALT, breakpoint@" + breakpoint.getLocationDescription());
             } else {
