@@ -257,6 +257,10 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         } else if (a == null || b == null) {
             return null;
         } else {
+            // The `meetTypes` operation must be commutative. One way to achieve this is to totally
+            // order the types and always call `meetOrderedNonNullTypes` in the same order. We
+            // establish the order by first comparing the hash-codes for performance reasons, and
+            // then comparing the internal names of the types.
             int hashA = a.getName().hashCode();
             int hashB = b.getName().hashCode();
             if (hashA < hashB) {
