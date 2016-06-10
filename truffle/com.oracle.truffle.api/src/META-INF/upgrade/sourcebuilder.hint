@@ -1,0 +1,10 @@
+'Deprecated newFromFile method':
+com.oracle.truffle.api.source.Source.fromFileName($filename, $ignore$)
+=>
+'Use builder without getPath()':
+com.oracle.truffle.api.source.Source.newFromFile($file).build() :: matchesWithBind($filename, "$file.getPath()")
+=>
+'Use builder with new File':
+com.oracle.truffle.api.source.Source.newFromFile(new java.io.File($filename)).build() :: otherwise
+;;
+
