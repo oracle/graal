@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.Assumption;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -51,13 +54,11 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.net.URI;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -1176,6 +1177,14 @@ public final class Debugger {
         protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
             final TruffleLanguage<?> truffleLanguage = engineSupport().findLanguageImpl(null, languageClass, code.getMimeType());
             return languageSupport().parse(truffleLanguage, code, context, argumentNames);
+        }
+
+        @SuppressWarnings({"rawtypes", "static-method"})
+        String toStringInContext(RootNode rootNode, Object value) {
+            final Class<? extends TruffleLanguage> languageClass = nodesAccess().findLanguage(rootNode);
+            final TruffleLanguage.Env env = engineAccess().findEnv(languageClass);
+            final TruffleLanguage<?> language = langs().findLanguage(env);
+            return AccessorDebug.langs().toString(language, env, value);
         }
     }
 

@@ -1249,6 +1249,15 @@ public class PolyglotEngine {
             }
 
             @Override
+            public Env findEnv(Class<? extends TruffleLanguage> languageClass) {
+                final PolyglotEngine vm = (PolyglotEngine) ExecutionImpl.findVM();
+                if (vm == null) {
+                    throw new IllegalStateException("Accessor.findEnv access to vm");
+                }
+                return vm.findEnv(languageClass);
+            }
+
+            @Override
             public void dispatchEvent(Object obj, Object event, int type) {
                 PolyglotEngine vm = (PolyglotEngine) obj;
                 vm.dispatch(event, type);

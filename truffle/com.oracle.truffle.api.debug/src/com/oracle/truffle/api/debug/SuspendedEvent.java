@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * This event is delivered to all
@@ -229,6 +230,7 @@ public final class SuspendedEvent {
         debugger.prepareStepOver(stepCount);
     }
 
+    // TODO (mlvdv) change API to frame number
     /**
      * Evaluates given code snippet in the context of currently suspended execution.
      *
@@ -242,6 +244,27 @@ public final class SuspendedEvent {
      */
     public Object eval(String code, FrameInstance frame) throws IOException {
         return debugger.evalInContext(this, code, frame);
+    }
+
+    /**
+     * Generates a (potentially language-specific) description of an execution value in a part of
+     * the current execution context, for example the value stored in a frame slot. The description
+     * is intended to be useful to a guest language programmer.
+     *
+     * @param frameNumber the execution context where the value is being managed
+     * @param value an object presumed to represent a <em>value</em> managed by the language of the
+     *            AST where execution is halted.
+     *
+     * @return a user-oriented description of a possibly language-specific value
+     *
+     * @since 0.15
+     */
+    public String toString(int frameNumber, Object value) {
+        if (frameNumber < 0 || frameNumber >= stack.size()) {
+            throw new IllegalArgumentException("frameNumber out of range");
+        }
+        final RootNode rootNode = frameNumber == 0 ? haltedNode.getRootNode() : stack.get(frameNumber).getCallNode().getRootNode();
+        return Debugger.ACCESSOR.toStringInContext(rootNode, value);
     }
 
     /**
