@@ -82,4 +82,12 @@ final class Utils {
         return actualType.getKind() == TypeKind.ARRAY && ElementUtils.getQualifiedName(actualType).equals("java.lang.Object");
     }
 
+    static String getFullResolveClassName(TypeElement innerClass) {
+        return ElementUtils.getPackageName(innerClass) + "." + getSimpleResolveClassName(innerClass);
+    }
+
+    static String getSimpleResolveClassName(TypeElement innerClass) {
+        return ElementUtils.getSimpleName(innerClass) + "Sub";
+    }
+
 }

@@ -62,11 +62,11 @@ public abstract class MessageGenerator {
         this.messageName = resolveAnnotation.message();
         this.userClassName = ElementUtils.getQualifiedName(element);
         this.truffleLanguageFullClazzName = Utils.getTruffleLanguageFullClassName(messageResolutionAnnotation);
-        this.clazzName = ElementUtils.getSimpleName(element) + "Sub";
+        this.clazzName = Utils.getSimpleResolveClassName(element);
     }
 
     public final void generate() throws IOException {
-        JavaFileObject file = processingEnv.getFiler().createSourceFile(packageName + "." + clazzName, element);
+        JavaFileObject file = processingEnv.getFiler().createSourceFile(Utils.getFullResolveClassName(element), element);
         Writer w = file.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
