@@ -133,7 +133,9 @@ public class LinearScan {
      */
     private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
-    /** @see #intervals() */
+    /**
+     * @see #intervals()
+     */
     private Interval[] intervals;
 
     /**
@@ -170,6 +172,10 @@ public class LinearScan {
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
      */
     private final int firstVariableNumber;
+    /**
+     * Number of variables.
+     */
+    private int numVariables;
     private final boolean neverSpillConstants;
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks,
@@ -183,6 +189,7 @@ public class LinearScan {
 
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = getRegisters().length;
+        this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
     }
@@ -233,7 +240,7 @@ public class LinearScan {
      * Gets the number of operands. This value will increase by 1 for new variable.
      */
     int operandSize() {
-        return firstVariableNumber + ir.numVariables();
+        return firstVariableNumber + numVariables;
     }
 
     /**
@@ -342,7 +349,11 @@ public class LinearScan {
         }
         intervalsSize++;
         assert intervalsSize <= intervals.length;
-        Variable variable = new Variable(source.kind(), ir.nextVariable());
+        /*
+         * Note that these variables are not managed and must therefore never be inserted into the
+         * LIR
+         */
+        Variable variable = new Variable(source.kind(), numVariables++);
 
         Interval interval = createInterval(variable);
         assert intervals[intervalsSize - 1] == interval;
