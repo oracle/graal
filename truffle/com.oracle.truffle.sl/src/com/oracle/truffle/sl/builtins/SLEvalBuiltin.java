@@ -62,7 +62,7 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("unused")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
-    @Specialization(guards = {"cachedMimeType.equals(mimeType)", "cachedCode.equals(code)"})
+    @Specialization(guards = {"stringsEqual(cachedMimeType, mimeType)", "stringsEqual(cachedCode, code)"})
     public Object evalCached(VirtualFrame frame, String mimeType, String code,
                     @Cached("mimeType") String cachedMimeType,
                     @Cached("code") String cachedCode,
@@ -84,5 +84,10 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
         } catch (IOException ex) {
             throw new IllegalArgumentException(ex);
         }
+    }
+
+    /* Work around findbugs warning in generate code. */
+    protected static boolean stringsEqual(String a, String b) {
+        return a.equals(b);
     }
 }

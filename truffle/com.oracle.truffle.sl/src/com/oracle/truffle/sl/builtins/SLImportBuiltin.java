@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @SuppressWarnings("unused")
 public abstract class SLImportBuiltin extends SLBuiltinNode {
 
-    @Specialization(guards = "cachedName.equals(name)")
+    @Specialization(guards = "stringsEqual(cachedName, name)")
     public Object importSymbol(String name,
                     @Cached("name") String cachedName,
                     @Cached("doImport(name)") Object symbol) {
@@ -61,5 +61,10 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
 
     protected Object doImport(String name) {
         return getContext().importSymbol(name);
+    }
+
+    /* Work around findbugs warning in generate code. */
+    protected static boolean stringsEqual(String a, String b) {
+        return a.equals(b);
     }
 }
