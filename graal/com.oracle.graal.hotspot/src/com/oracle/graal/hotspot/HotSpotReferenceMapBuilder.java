@@ -27,6 +27,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import com.oracle.graal.compiler.common.LIRKind;
@@ -35,10 +36,12 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotReferenceMap;
+import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
@@ -50,6 +53,24 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
     private int objectCount;
 
     private final int totalFrameSize;
+
+    /**
+     * Employ reflection to read JVMCI values not available in all JVMCI releases.
+     */
+    public static class HotSpotVMConfigCompat {
+        public static final int maxOopMapStackOffset;
+        static {
+            int value = Integer.MAX_VALUE;
+            try {
+                Field f = HotSpotVMConfig.class.getDeclaredField("maxOopMapStackOffset");
+                f.setAccessible(true);
+                value = f.getInt(HotSpotVMConfig.config());
+            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                // maxOopMapStackOffset doesn't exist in older versions of JVMCI
+            }
+            maxOopMapStackOffset = value;
+        }
+    }
 
     public HotSpotReferenceMapBuilder(int totalFrameSize) {
         this.objectValues = new ArrayList<>();
@@ -125,7 +146,11 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             return Location.subregister(asRegister(v), offset);
         } else {
             StackSlot s = asStackSlot(v);
-            return Location.stack(s.getOffset(totalFrameSize) + offset);
+            int totalOffset = s.getOffset(totalFrameSize) + offset;
+            if (totalOffset > HotSpotVMConfigCompat.maxOopMapStackOffset) {
+                throw new BailoutException("stack offset %d for oopmap is greater than encoding limit %d", totalOffset, HotSpotVMConfigCompat.maxOopMapStackOffset);
+            }
+            return Location.stack(totalOffset);
         }
     }
 }

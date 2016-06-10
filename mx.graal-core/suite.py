@@ -8,7 +8,7 @@ suite = {
         "name" : "jvmci",
         "jdkProvidedSince" : "9",
         "optional" : "true",
-        "version" : "b2ca0db145463b6332c0096eaa68fa03e80ee5e8",
+        "version" : "28dbeb87ec75c1afa2f6384291790b12ed8b6548",
         "urls" : [
           {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -343,6 +343,22 @@ suite = {
         "jdk.internal.org.objectweb.asm",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "com.oracle.graal.hotspot.lir.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.graal.hotspot",
+        "com.oracle.graal.lir.jtt",
+        "com.oracle.graal.lir.test",
+        "jvmci:JVMCI_API",
+        "jvmci:JVMCI_HOTSPOT",
+        "jvmci:JVMCI_HOTSPOTVMCONFIG",
+      ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,HotSpot,Test",
