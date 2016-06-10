@@ -156,8 +156,18 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
-    /* Test currently fails on Sparc. */
-    @Ignore
+    @Test
+    public void noIOWhenContentSpecified() {
+        File file = new File("some.js");
+
+        String text = "// Hello";
+
+        Source source = Source.newFromFile(file).content(text).build();
+        assertEquals("The content has been changed", text, source.getCode());
+        assertEquals("application/javascript", source.getMimeType());
+        assertEquals("some.js", source.getName());
+    }
+
     @Test
     public void assignMimeTypeAndIdentityForURL() throws IOException {
         File file = File.createTempFile("Hello", ".java");
