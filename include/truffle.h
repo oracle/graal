@@ -60,6 +60,7 @@ bool truffle_is_executable(void *object);
 bool truffle_is_null(void *object);
 bool truffle_has_size(void *object);
 bool truffle_is_boxed(void *object);
+bool truffle_is_truffle_object(void *object);
 
 // Execute:
 void *truffle_execute(void *object, ...);
@@ -126,6 +127,8 @@ void truffle_write_idx_b(void *object, int idx, bool value);
 
 // Strings
 void *truffle_read_string(const char *string);
+void *truffle_read_bytes(const char *bytes);
+void *truffle_read_n_bytes(const char *bytes, int n);
 
 #if defined(__cplusplus)
 }
