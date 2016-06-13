@@ -1101,7 +1101,8 @@ public final class Debugger {
     }
 
     /**
-     * Evaluates a snippet of code in a halted execution context.
+     * Evaluates a snippet of code in a halted execution context. Assumes frame is part of the
+     * current execution stack, behavior is undefined if not.
      *
      * @param ev event notification where execution is halted
      * @param code text of the code to be executed

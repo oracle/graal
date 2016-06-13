@@ -237,11 +237,15 @@ public final class SuspendedEvent {
      * @param frame the frame in which to evaluate the code; {@code null} means the current frame at
      *            the halted location.
      * @return the computed value
+     * @throws IllegalArgumentException if the supplied frame is not part of current execution stack
      * @throws IOException in case an evaluation goes wrong
      * @throws KillException if the evaluation is killed by the debugger
      * @since 0.9
      */
     public Object eval(String code, FrameInstance frame) throws IOException {
+        if (!stack.contains(frame)) {
+            throw new IllegalArgumentException();
+        }
         return debugger.evalInContext(this, code, frame);
     }
 
