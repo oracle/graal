@@ -718,9 +718,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
             argsPrefix.append('-modulepath')
             argsPrefix.append(module.jarpath)
 
-        for export, targets in addedExports.iteritems():
-            argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
-
     # Set the default JVMCI compiler
     argsPrefix.append('-Djvmci.Compiler=' + _jvmci_compiler)
 
