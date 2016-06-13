@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.lir.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.HotSpotReferenceMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -56,7 +55,7 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
         @Override
         public void generate(LIRGeneratorTool gen) {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
-            LIRKind lirKind = LIRKind.value(gen.target().arch.getPlatformKind(constant.getJavaKind()));
+            LIRKind lirKind = LIRKind.reference(gen.target().arch.getPlatformKind(constant.getJavaKind()));
             // create slots
             for (int i = 0; i < slots.length; i++) {
                 AllocatableValue src = gen.emitLoadConstant(lirKind, constant);
@@ -113,11 +112,9 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
     private static final LIRTestSpecification writeFirstObjectStacks = new WriteStackSlotsSpec(JavaConstant.NULL_POINTER);
 
     public Object testFirstStackObject(Object obj) {
-        GraalDirectives.spillRegisters();
         instrinsic(writeFirstObjectStacks);
         safepoint();
         instrinsic(readStacks);
-        GraalDirectives.spillRegisters();
         return obj;
     }
 
