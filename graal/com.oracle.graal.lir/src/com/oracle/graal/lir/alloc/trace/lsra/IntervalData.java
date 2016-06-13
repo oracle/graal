@@ -71,10 +71,14 @@ public final class IntervalData implements IntervalDumper {
      */
     private int firstDerivedIntervalIndex = -1;
 
-    /** @see #fixedIntervals() */
+    /**
+     * @see #fixedIntervals()
+     */
     private final FixedInterval[] fixedIntervals;
 
-    /** @see #intervals() */
+    /**
+     * @see #intervals()
+     */
     private TraceInterval[] intervals;
 
     /**
@@ -222,7 +226,7 @@ public final class IntervalData implements IntervalDumper {
 
     /**
      * Creates a new variable for a derived interval. Note that the variable is not
-     * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
+     * {@linkplain LIR#numVariables() managed} so it must not be inserted into the {@link LIR}.
      */
     private Variable createVariable(ValueKind<?> kind) {
         return new Variable(kind, intervalsSize++);
