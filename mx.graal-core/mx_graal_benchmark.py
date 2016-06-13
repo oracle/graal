@@ -84,7 +84,10 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        mx_graal_core.run_java(
+        if mx.get_jdk_option().tag != mx_graal_core._JVMCI_JDK_TAG:
+            mx.abort("To use '{0}' VM, specify '--jdk={1}'".format(
+                self.name(), mx_graal_core._JVMCI_JDK_TAG))
+        mx.get_jdk().run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
@@ -92,7 +95,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-Enabl
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-client', '-XX:-EnableJVMCI']))
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']))
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-client', '-XX:+EnableJVMCI']))
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler']))
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal']))
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'
