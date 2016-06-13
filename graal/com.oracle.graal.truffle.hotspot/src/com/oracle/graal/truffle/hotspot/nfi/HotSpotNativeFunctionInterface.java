@@ -25,12 +25,12 @@ package com.oracle.graal.truffle.hotspot.nfi;
 import java.lang.reflect.Field;
 
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import sun.misc.Unsafe;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {

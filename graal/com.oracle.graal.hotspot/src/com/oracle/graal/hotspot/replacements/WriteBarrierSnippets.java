@@ -45,16 +45,13 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
@@ -92,6 +89,10 @@ import com.oracle.graal.replacements.nodes.DirectStoreNode;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Unsigned;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 
 public class WriteBarrierSnippets implements Snippets {
 

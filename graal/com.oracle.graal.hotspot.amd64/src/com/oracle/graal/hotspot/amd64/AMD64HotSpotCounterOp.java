@@ -33,6 +33,7 @@ import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotCounterOp;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -40,7 +41,6 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 

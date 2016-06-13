@@ -35,13 +35,13 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.amd64.AMD64HotSpotRegisterConfig;
 
 final class AMD64UncommonTrapStub extends UncommonTrapStub {
@@ -51,7 +51,7 @@ final class AMD64UncommonTrapStub extends UncommonTrapStub {
     AMD64UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotVMConfig config, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         Register[] allocatable = new Register[]{rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14};
-        registerConfig = new AMD64HotSpotRegisterConfig(target, config, allocatable);
+        registerConfig = new AMD64HotSpotRegisterConfig(target, allocatable, config.windowsOs);
     }
 
     @Override

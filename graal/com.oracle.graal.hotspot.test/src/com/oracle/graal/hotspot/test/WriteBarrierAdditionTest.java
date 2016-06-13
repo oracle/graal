@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1PreWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ReferentFieldReadBarrier;
@@ -54,7 +55,6 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.MidTierContext;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;

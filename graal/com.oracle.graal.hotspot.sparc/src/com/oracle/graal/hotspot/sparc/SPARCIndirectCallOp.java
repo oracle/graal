@@ -27,6 +27,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g5;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -35,7 +36,6 @@ import com.oracle.graal.lir.sparc.SPARCCall;
 import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 

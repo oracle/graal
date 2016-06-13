@@ -28,13 +28,13 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**

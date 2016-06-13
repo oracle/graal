@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.aarch64;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -32,7 +33,6 @@ import com.oracle.graal.lir.aarch64.AArch64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 

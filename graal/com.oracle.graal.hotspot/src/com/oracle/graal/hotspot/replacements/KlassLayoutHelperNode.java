@@ -29,6 +29,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FloatingGuardedNode;
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;

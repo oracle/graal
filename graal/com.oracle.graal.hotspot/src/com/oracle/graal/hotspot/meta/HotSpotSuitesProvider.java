@@ -28,6 +28,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotInstructionProfiling;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
 import com.oracle.graal.hotspot.phases.LoadJavaMirrorWithKlassPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
@@ -49,8 +50,6 @@ import com.oracle.graal.phases.common.ExpandLogicPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesCreator;
-
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * HotSpot implementation of {@link SuitesCreator}.

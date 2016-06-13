@@ -35,6 +35,7 @@ import java.util.zip.CRC32;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
 import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
@@ -85,7 +86,6 @@ import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -418,7 +418,7 @@ public class HotSpotGraphBuilderPlugins {
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            String arch = HotSpotVMConfig.config().getHostArchitectureName();
+            String arch = config.getHostArchitectureName();
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);

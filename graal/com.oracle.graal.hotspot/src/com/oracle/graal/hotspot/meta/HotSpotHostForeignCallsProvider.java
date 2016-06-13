@@ -95,6 +95,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.stubs.ArrayStoreExceptionStub;
 import com.oracle.graal.hotspot.stubs.ClassCastExceptionStub;
 import com.oracle.graal.hotspot.stubs.CreateExceptionStub;
@@ -112,7 +113,6 @@ import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 

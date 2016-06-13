@@ -35,7 +35,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLAS
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.lang.ref.Reference;
 
@@ -51,6 +50,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
@@ -147,7 +147,6 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;

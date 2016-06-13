@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -30,7 +31,6 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 

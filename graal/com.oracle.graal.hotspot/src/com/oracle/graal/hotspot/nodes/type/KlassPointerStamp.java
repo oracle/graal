@@ -28,11 +28,11 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.hotspot.CompressEncoding;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotMemoryAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -155,7 +155,7 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
         if (isCompressed()) {
-            return hsProvider.readNarrowKlassPointerConstant(base, displacement, encoding);
+            return hsProvider.readNarrowKlassPointerConstant(base, displacement);
         } else {
             return hsProvider.readKlassPointerConstant(base, displacement);
         }

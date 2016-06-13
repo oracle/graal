@@ -27,12 +27,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.Value;
 
 /**

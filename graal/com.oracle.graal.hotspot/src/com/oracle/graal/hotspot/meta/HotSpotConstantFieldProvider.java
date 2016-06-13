@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;

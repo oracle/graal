@@ -28,6 +28,7 @@ import java.util.Iterator;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeFlood;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.ArrayRangeWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.ObjectWriteBarrier;
@@ -48,8 +49,6 @@ import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.Phase;
-
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Verification phase that checks if, for every write, at least one write barrier is present at all

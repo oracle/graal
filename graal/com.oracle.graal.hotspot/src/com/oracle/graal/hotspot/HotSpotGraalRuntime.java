@@ -60,7 +60,6 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.runtime.JVMCIBackend;
 

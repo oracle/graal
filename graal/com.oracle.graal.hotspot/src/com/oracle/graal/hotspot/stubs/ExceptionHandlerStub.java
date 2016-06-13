@@ -41,6 +41,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.replacements.Snippet;
@@ -48,7 +49,6 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler

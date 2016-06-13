@@ -70,7 +70,6 @@ import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 

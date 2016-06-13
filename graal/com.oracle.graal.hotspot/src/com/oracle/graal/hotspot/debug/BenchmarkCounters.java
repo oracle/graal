@@ -40,6 +40,7 @@ import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.options.Option;
@@ -48,7 +49,6 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 //JaCoCo Exclude
 

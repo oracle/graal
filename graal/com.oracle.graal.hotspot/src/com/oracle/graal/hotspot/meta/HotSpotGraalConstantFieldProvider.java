@@ -31,6 +31,7 @@ import java.util.List;
 
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.SnippetCounter;
@@ -38,7 +39,6 @@ import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;

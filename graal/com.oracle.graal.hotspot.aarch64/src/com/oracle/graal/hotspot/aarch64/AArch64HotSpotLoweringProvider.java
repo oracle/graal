@@ -26,6 +26,7 @@ package com.oracle.graal.hotspot.aarch64;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.DefaultHotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
@@ -38,7 +39,6 @@ import com.oracle.graal.replacements.aarch64.AArch64IntegerArithmeticSnippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {

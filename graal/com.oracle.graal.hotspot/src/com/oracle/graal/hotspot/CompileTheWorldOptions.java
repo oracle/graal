@@ -26,8 +26,6 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 /**
  * Options related to {@link CompileTheWorld}.
  *

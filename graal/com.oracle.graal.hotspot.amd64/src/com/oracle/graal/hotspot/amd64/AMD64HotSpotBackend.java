@@ -28,7 +28,6 @@ import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Set;
 
@@ -45,6 +44,7 @@ import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -69,7 +69,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

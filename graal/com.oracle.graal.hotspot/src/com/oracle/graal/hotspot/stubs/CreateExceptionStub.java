@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
@@ -43,7 +44,6 @@ import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Base class for stubs that create a runtime exception.

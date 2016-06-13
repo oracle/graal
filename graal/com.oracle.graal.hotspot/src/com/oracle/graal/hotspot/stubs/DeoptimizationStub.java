@@ -39,6 +39,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
 import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
@@ -53,7 +54,6 @@ import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Deoptimization stub.
@@ -155,7 +155,7 @@ public class DeoptimizationStub extends SnippetStub {
          * Stack bang to make sure there's enough room for the interpreter frames. Bang stack for
          * total size of the interpreter frames plus shadow page size. Bang one page at a time
          * because large sizes can bang beyond yellow and red zones.
-         * 
+         *
          * @deprecated This code should go away as soon as JDK-8032410 hits the Graal repository.
          */
         final int totalFrameSizes = unrollBlock.readInt(deoptimizationUnrollBlockTotalFrameSizesOffset());

@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withNodeSource
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -49,6 +48,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
+import com.oracle.graal.hotspot.HotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -90,7 +90,6 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

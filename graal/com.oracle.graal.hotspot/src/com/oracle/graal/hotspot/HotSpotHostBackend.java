@@ -39,7 +39,6 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
