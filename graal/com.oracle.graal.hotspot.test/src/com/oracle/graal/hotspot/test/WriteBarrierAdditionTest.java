@@ -70,7 +70,7 @@ import sun.misc.Unsafe;
  */
 public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
-    private final GraalHotSpotVMConfig config = config();
+    private final GraalHotSpotVMConfig config = runtime().getVMConfig();
     private static final long referentOffset = referentOffset();
 
     public static class Container {
@@ -168,7 +168,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UNSAFE.getObject(wr, config().useCompressedOops ? 12L : 16L);
+        return UNSAFE.getObject(wr, config(null).useCompressedOops ? 12L : 16L);
     }
 
     /**

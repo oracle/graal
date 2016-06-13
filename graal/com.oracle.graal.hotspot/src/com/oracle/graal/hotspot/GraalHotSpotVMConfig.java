@@ -25,26 +25,30 @@ package com.oracle.graal.hotspot;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import jdk.internal.vm.annotation.Stable;
+import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
+
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 
 /**
  * Used to access native configuration details.
- *
- * All non-static, public fields in this class are so that they can be compiled as constants.
  */
 public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
-    private final String osName = getHostOSName();
-    private final String osArch = getHostArchitectureName();
+    /**
+     * Sentinel value to use for an {@linkplain InjectedParameter injected}
+     * {@link GraalHotSpotVMConfig} parameter to a {@linkplain Fold foldable} method.
+     */
+    public static final GraalHotSpotVMConfig INJECTED_VMCONFIG = null;
 
+    private final boolean isJDK8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    public final String osName = getHostOSName();
+    public final String osArch = getHostArchitectureName();
     public final boolean windowsOs = System.getProperty("os.name", "").startsWith("Windows");
     public final boolean linuxOs = System.getProperty("os.name", "").startsWith("Linux");
 
-    @SuppressWarnings("try")
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
@@ -52,11 +56,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
 
         assert check();
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 
     private final CompressEncoding oopEncoding;
@@ -96,11 +95,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return osName;
     }
 
-    /**
-     * Gets the host architecture name for the purpose of finding the corresponding
-     * {@linkplain HotSpotJVMCIBackendFactory backend}.
-     */
-    public String getHostArchitectureName() {
+    private static String getHostArchitectureName() {
         String arch = System.getProperty("os.arch");
         switch (arch) {
             case "x86_64":
@@ -113,8 +108,9 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return arch;
     }
 
-    private final Integer amd64RequiredInt = osArch.equals("amd64") ? null : 0;
-    private final Integer sparcRequiredInt = osArch.equals("sparc") ? null : 0;
+    private final Integer intRequiredOnAMD64 = osArch.equals("amd64") ? null : 0;
+    private final Integer intNotPresentInJDK8 = isJDK8 ? 0 : null;
+    private final Long longNotPresentInJDK8 = isJDK8 ? 0L : null;
 
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
@@ -148,8 +144,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int allocatePrefetchStepSize = getFlag("AllocatePrefetchStepSize", Integer.class);
     public final int allocatePrefetchDistance = getFlag("AllocatePrefetchDistance", Integer.class);
 
-    public final boolean flightRecorder = getFlag("FightRecorder", Boolean.class, false);
-
     private final long universeCollectedHeap = getFieldValue("CompilerToVM::Data::Universe_collectedHeap", Long.class, "CollectedHeap*");
     private final int collectedHeapTotalCollectionsOffset = getFieldOffset("CollectedHeap::_total_collections", Integer.class, "unsigned int");
 
@@ -181,12 +175,11 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int logKlassAlignment = getConstant("LogKlassAlignmentInBytes", Integer.class);
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
-    public final int stackReservedPages = getFlag("StackReservedPages", Integer.class);
+    public final int stackReservedPages = getFlag("StackReservedPages", Integer.class, 0);
     public final boolean useStackBanging = getFlag("UseStackBanging", Boolean.class);
     public final int stackBias = getConstant("STACK_BIAS", Integer.class);
     public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, "int");
 
-    // offsets, ...
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, "markOop");
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 
@@ -197,19 +190,14 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
 
-    /**
-     * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
-     */
     public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "oop");
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
     public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
-    public final int klassNameOffset = getFieldOffset("Klass::_name", Integer.class, "Symbol*");
 
     public final int klassLayoutHelperNeutralValue = getConstant("Klass::_lh_neutral_value", Integer.class);
-    public final int klassLayoutHelperInstanceSlowPathBit = getConstant("Klass::_lh_instance_slow_path_bit", Integer.class);
     public final int layoutHelperLog2ElementSizeShift = getConstant("Klass::_lh_log2_element_size_shift", Integer.class);
     public final int layoutHelperLog2ElementSizeMask = getConstant("Klass::_lh_log2_element_size_mask", Integer.class);
     public final int layoutHelperElementTypeShift = getConstant("Klass::_lh_element_type_shift", Integer.class);
@@ -227,16 +215,9 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
     }
 
-    /**
-     * Bit pattern in the klass layout helper that can be used to identify arrays.
-     */
-    public final int arrayKlassLayoutHelperIdentifier = 0x80000000;
-
     public final int vtableEntrySize = getTypeSize("vtableEntry");
     public final int vtableEntryMethodOffset = getFieldOffset("vtableEntry::_method", Integer.class, "Method*");
 
-    public final int instanceKlassSize = getTypeSize("InstanceKlass");
-    public final int instanceKlassSourceFileNameIndexOffset = getFieldOffset("InstanceKlass::_source_file_name_index", Integer.class, "u2");
     public final int instanceKlassInitStateOffset = getFieldOffset("InstanceKlass::_init_state", Integer.class, "u1");
     public final int instanceKlassConstantsOffset = getFieldOffset("InstanceKlass::_constants", Integer.class, "ConstantPool*");
     public final int instanceKlassFieldsOffset = getFieldOffset("InstanceKlass::_fields", Integer.class, "Array<u2>*");
@@ -282,27 +263,18 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int jvmAccFieldStable = getConstant("JVM_ACC_FIELD_STABLE", Integer.class);
     public final int jvmAccFieldHasGenericSignature = getConstant("JVM_ACC_FIELD_HAS_GENERIC_SIGNATURE", Integer.class);
     public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
-    public final int jvmAccIsCloneableFast = getConstant("JVM_ACC_IS_CLONEABLE_FAST", Integer.class);
-
-    // Modifier.SYNTHETIC is not public so we get it via vmStructs.
     public final int jvmAccSynthetic = getConstant("JVM_ACC_SYNTHETIC", Integer.class);
 
-    /**
-     * see HotSpotResolvedObjectTypeImpl#createField
-     */
-    public final int recognizedFieldModifiers = getConstant("JVM_RECOGNIZED_FIELD_MODIFIERS", Integer.class);
-
     public final int threadTlabOffset = getFieldOffset("Thread::_tlab", Integer.class, "ThreadLocalAllocBuffer");
-
     public final int javaThreadAnchorOffset = getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
     public final int threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int javaThreadDirtyCardQueueOffset = getFieldOffset("JavaThread::_dirty_card_queue", Integer.class, "DirtyCardQueue");
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
-    public final int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class, "SATBMarkQueue");
+    public final int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
-    public final int javaThreadReservedStackActivationOffset = getFieldOffset("JavaThread::_reserved_stack_activation", Integer.class, "address");
+    public final int javaThreadReservedStackActivationOffset = getFieldOffset("JavaThread::_reserved_stack_activation", Integer.class, "address", intNotPresentInJDK8);
 
     /**
      * An invalid value for {@link #rtldDefault}.
@@ -349,9 +321,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     private final int javaFrameAnchorLastJavaSpOffset = getFieldOffset("JavaFrameAnchor::_last_Java_sp", Integer.class, "intptr_t*");
     private final int javaFrameAnchorLastJavaPcOffset = getFieldOffset("JavaFrameAnchor::_last_Java_pc", Integer.class, "address");
-    private final int javaFrameAnchorLastJavaFpOffset = getFieldOffset("JavaFrameAnchor::_last_Java_fp", Integer.class, "intptr_t*",
-                    osArch.equals("aarch64") || osArch.equals("amd64") ? null : Integer.MAX_VALUE);
-    private final int javaFrameAnchorFlagsOffset = getFieldOffset("JavaFrameAnchor::_flags", Integer.class, "int", sparcRequiredInt);
 
     public int threadLastJavaSpOffset() {
         return javaThreadAnchorOffset + javaFrameAnchorLastJavaSpOffset;
@@ -362,29 +331,25 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     }
 
     public int threadLastJavaFpOffset() {
-        assert getHostArchitectureName().equals("aarch64") || getHostArchitectureName().equals("amd64");
-        return javaThreadAnchorOffset + javaFrameAnchorLastJavaFpOffset;
+        assert osArch.equals("aarch64") || osArch.equals("amd64");
+        return javaThreadAnchorOffset + getFieldOffset("JavaFrameAnchor::_last_Java_fp", Integer.class, "intptr_t*");
     }
 
-    /**
-     * This value is only valid on SPARC.
-     */
     public int threadJavaFrameAnchorFlagsOffset() {
-        // TODO add an assert for SPARC
-        return javaThreadAnchorOffset + javaFrameAnchorFlagsOffset;
+        assert osArch.equals("sparc");
+        return javaThreadAnchorOffset + getFieldOffset("JavaFrameAnchor::_flags", Integer.class, "int");
     }
 
-    // These are only valid on AMD64.
-    public final int runtimeCallStackSize = getConstant("frame::arg_reg_save_area_bytes", Integer.class, amd64RequiredInt);
-    public final int frameInterpreterFrameSenderSpOffset = getConstant("frame::interpreter_frame_sender_sp_offset", Integer.class, amd64RequiredInt);
-    public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, amd64RequiredInt);
+    public final int runtimeCallStackSize = getConstant("frame::arg_reg_save_area_bytes", Integer.class, intRequiredOnAMD64);
+    public final int frameInterpreterFrameSenderSpOffset = getConstant("frame::interpreter_frame_sender_sp_offset", Integer.class, intRequiredOnAMD64);
+    public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, intRequiredOnAMD64);
 
-    private final int dirtyCardQueueBufferOffset = getConstant("dirtyCardQueueBufferOffset", Integer.class);
-    private final int dirtyCardQueueIndexOffset = getConstant("dirtyCardQueueIndexOffset", Integer.class);
+    private final int dirtyCardQueueBufferOffset = isJDK8 ? getFieldOffset("PtrQueue::_buf", Integer.class, "void**") : getConstant("dirtyCardQueueBufferOffset", Integer.class);
+    private final int dirtyCardQueueIndexOffset = isJDK8 ? getFieldOffset("PtrQueue::_index", Integer.class, "size_t") : getConstant("dirtyCardQueueIndexOffset", Integer.class);
 
-    private final int satbMarkQueueBufferOffset = getConstant("satbMarkQueueBufferOffset", Integer.class);
-    private final int satbMarkQueueIndexOffset = getConstant("satbMarkQueueIndexOffset", Integer.class);
-    private final int satbMarkQueueActiveOffset = getConstant("satbMarkQueueActiveOffset", Integer.class);
+    private final int satbMarkQueueBufferOffset = getConstant("satbMarkQueueBufferOffset", Integer.class, intNotPresentInJDK8);
+    private final int satbMarkQueueIndexOffset = getConstant("satbMarkQueueIndexOffset", Integer.class, intNotPresentInJDK8);
+    private final int satbMarkQueueActiveOffset = isJDK8 ? getFieldOffset("PtrQueue::_active", Integer.class, "bool") : getConstant("satbMarkQueueActiveOffset", Integer.class, intNotPresentInJDK8);
 
     public final int osThreadInterruptedOffset = getFieldOffset("OSThread::_interrupted", Integer.class, "jint");
 
@@ -430,119 +395,36 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     public final int methodAccessFlagsOffset = getFieldOffset("Method::_access_flags", Integer.class, "AccessFlags");
     public final int methodConstMethodOffset = getFieldOffset("Method::_constMethod", Integer.class, "ConstMethod*");
-    public final int methodIntrinsicIdOffset = getFieldOffset("Method::_intrinsic_id", Integer.class, "u2");
-    public final int methodFlagsOffset = getFieldOffset("Method::_flags", Integer.class, "u2");
+    public final int methodIntrinsicIdOffset = getFieldOffset("Method::_intrinsic_id", Integer.class, isJDK8 ? "u1" : "u2");
+    public final int methodFlagsOffset = getFieldOffset("Method::_flags", Integer.class, isJDK8 ? "u1" : "u2");
     public final int methodVtableIndexOffset = getFieldOffset("Method::_vtable_index", Integer.class, "int");
 
     public final int methodCountersOffset = getFieldOffset("Method::_method_counters", Integer.class, "MethodCounters*");
     public final int methodDataOffset = getFieldOffset("Method::_method_data", Integer.class, "MethodData*");
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
-    public final int methodCodeOffset = getFieldOffset("Method::_code", Integer.class, "CompiledMethod*");
+    public final int methodCodeOffset = getFieldOffset("Method::_code", Integer.class, isJDK8 ? "nmethod*" : "CompiledMethod*");
 
     public final int methodFlagsJfrTowrite = getConstant("Method::_jfr_towrite", Integer.class);
     public final int methodFlagsCallerSensitive = getConstant("Method::_caller_sensitive", Integer.class);
     public final int methodFlagsForceInline = getConstant("Method::_force_inline", Integer.class);
     public final int methodFlagsDontInline = getConstant("Method::_dont_inline", Integer.class);
     public final int methodFlagsHidden = getConstant("Method::_hidden", Integer.class);
-    public final int methodFlagsReservedStackAccess = getConstant("Method::_reserved_stack_access", Integer.class);
     public final int nonvirtualVtableIndex = getConstant("Method::nonvirtual_vtable_index", Integer.class);
     public final int invalidVtableIndex = getConstant("Method::invalid_vtable_index", Integer.class);
 
     public final int invocationCounterOffset = getFieldOffset("MethodCounters::_invocation_counter", Integer.class, "InvocationCounter");
     public final int backedgeCounterOffset = getFieldOffset("MethodCounters::_backedge_counter", Integer.class, "InvocationCounter");
-    public final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class);
-    public final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class);
 
-    public final int methodDataSize = getFieldOffset("MethodData::_size", Integer.class, "int");
-    public final int methodDataDataSize = getFieldOffset("MethodData::_data_size", Integer.class, "int");
-    public final int methodDataOopDataOffset = getFieldOffset("MethodData::_data[0]", Integer.class, "intptr_t");
-    public final int methodDataOopTrapHistoryOffset = getFieldOffset("MethodData::_trap_hist._array[0]", Integer.class, "u1");
-    public final int methodDataIRSizeOffset = getFieldOffset("MethodData::_jvmci_ir_size", Integer.class, "int");
-
-    public final int nmethodEntryOffset = getFieldOffset("nmethod::_verified_entry_point", Integer.class, "address");
-    public final int nmethodCompLevelOffset = getFieldOffset("nmethod::_comp_level", Integer.class, "int");
-
-    public final int compilationLevelNone = getConstant("CompLevel_none", Integer.class);
-    public final int compilationLevelSimple = getConstant("CompLevel_simple", Integer.class);
-    public final int compilationLevelLimitedProfile = getConstant("CompLevel_limited_profile", Integer.class);
-    public final int compilationLevelFullProfile = getConstant("CompLevel_full_profile", Integer.class);
-    public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization", Integer.class);
-
-    public final int compLevelAdjustmentNone = getConstant("JVMCIRuntime::none", Integer.class);
-    public final int compLevelAdjustmentByHolder = getConstant("JVMCIRuntime::by_holder", Integer.class);
-    public final int compLevelAdjustmentByFullSignature = getConstant("JVMCIRuntime::by_full_signature", Integer.class);
-
-    public final int invocationEntryBci = getConstant("InvocationEntryBci", Integer.class);
-
-    public final int jvmciEnvTaskOffset = getFieldOffset("JVMCIEnv::_task", Integer.class, "CompileTask*");
-    public final int jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset = getFieldOffset("JVMCIEnv::_jvmti_can_hotswap_or_post_breakpoint", Integer.class, "bool");
-    public final int compileTaskNumInlinedBytecodesOffset = getFieldOffset("CompileTask::_num_inlined_bytecodes", Integer.class, "int");
-
-    public final int extraStackEntries = getFieldValue("CompilerToVM::Data::Method_extra_stack_entries", Integer.class, "int");
-
-    public final int constMethodConstantsOffset = getFieldOffset("ConstMethod::_constants", Integer.class, "ConstantPool*");
-    public final int constMethodFlagsOffset = getFieldOffset("ConstMethod::_flags", Integer.class, "u2");
-    public final int constMethodCodeSizeOffset = getFieldOffset("ConstMethod::_code_size", Integer.class, "u2");
-    public final int constMethodNameIndexOffset = getFieldOffset("ConstMethod::_name_index", Integer.class, "u2");
-    public final int constMethodSignatureIndexOffset = getFieldOffset("ConstMethod::_signature_index", Integer.class, "u2");
-    public final int constMethodMaxStackOffset = getFieldOffset("ConstMethod::_max_stack", Integer.class, "u2");
-    public final int methodMaxLocalsOffset = getFieldOffset("ConstMethod::_max_locals", Integer.class, "u2");
-
-    public final int constMethodHasLineNumberTable = getConstant("ConstMethod::_has_linenumber_table", Integer.class);
-    public final int constMethodHasLocalVariableTable = getConstant("ConstMethod::_has_localvariable_table", Integer.class);
-    public final int constMethodHasExceptionTable = getConstant("ConstMethod::_has_exception_table", Integer.class);
-
-    public final int exceptionTableElementSize = getTypeSize("ExceptionTableElement");
-    public final int exceptionTableElementStartPcOffset = getFieldOffset("ExceptionTableElement::start_pc", Integer.class, "u2");
-    public final int exceptionTableElementEndPcOffset = getFieldOffset("ExceptionTableElement::end_pc", Integer.class, "u2");
-    public final int exceptionTableElementHandlerPcOffset = getFieldOffset("ExceptionTableElement::handler_pc", Integer.class, "u2");
-    public final int exceptionTableElementCatchTypeIndexOffset = getFieldOffset("ExceptionTableElement::catch_type_index", Integer.class, "u2");
-
-    public final int localVariableTableElementSize = getTypeSize("LocalVariableTableElement");
-    public final int localVariableTableElementStartBciOffset = getFieldOffset("LocalVariableTableElement::start_bci", Integer.class, "u2");
-    public final int localVariableTableElementLengthOffset = getFieldOffset("LocalVariableTableElement::length", Integer.class, "u2");
-    public final int localVariableTableElementNameCpIndexOffset = getFieldOffset("LocalVariableTableElement::name_cp_index", Integer.class, "u2");
-    public final int localVariableTableElementDescriptorCpIndexOffset = getFieldOffset("LocalVariableTableElement::descriptor_cp_index", Integer.class, "u2");
-    public final int localVariableTableElementSignatureCpIndexOffset = getFieldOffset("LocalVariableTableElement::signature_cp_index", Integer.class, "u2");
-    public final int localVariableTableElementSlotOffset = getFieldOffset("LocalVariableTableElement::slot", Integer.class, "u2");
+    public final int nmethodEntryOffset = getFieldOffset("nmethod::_verified_entry_point",
+                    Integer.class, "address");
+    public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization",
+                    Integer.class);
 
     public final int constantPoolSize = getTypeSize("ConstantPool");
-    public final int constantPoolTagsOffset = getFieldOffset("ConstantPool::_tags", Integer.class, "Array<u1>*");
-    public final int constantPoolHolderOffset = getFieldOffset("ConstantPool::_pool_holder", Integer.class, "InstanceKlass*");
-    public final int constantPoolLengthOffset = getFieldOffset("ConstantPool::_length", Integer.class, "int");
-
-    public final int constantPoolCpCacheIndexTag = getConstant("ConstantPool::CPCACHE_INDEX_TAG", Integer.class);
-
-    public final int jvmConstantUtf8 = getConstant("JVM_CONSTANT_Utf8", Integer.class);
-    public final int jvmConstantInteger = getConstant("JVM_CONSTANT_Integer", Integer.class);
-    public final int jvmConstantLong = getConstant("JVM_CONSTANT_Long", Integer.class);
-    public final int jvmConstantFloat = getConstant("JVM_CONSTANT_Float", Integer.class);
-    public final int jvmConstantDouble = getConstant("JVM_CONSTANT_Double", Integer.class);
-    public final int jvmConstantClass = getConstant("JVM_CONSTANT_Class", Integer.class);
-    public final int jvmConstantUnresolvedClass = getConstant("JVM_CONSTANT_UnresolvedClass", Integer.class);
-    public final int jvmConstantUnresolvedClassInError = getConstant("JVM_CONSTANT_UnresolvedClassInError", Integer.class);
-    public final int jvmConstantString = getConstant("JVM_CONSTANT_String", Integer.class);
-    public final int jvmConstantFieldref = getConstant("JVM_CONSTANT_Fieldref", Integer.class);
-    public final int jvmConstantMethodref = getConstant("JVM_CONSTANT_Methodref", Integer.class);
-    public final int jvmConstantInterfaceMethodref = getConstant("JVM_CONSTANT_InterfaceMethodref", Integer.class);
-    public final int jvmConstantNameAndType = getConstant("JVM_CONSTANT_NameAndType", Integer.class);
-    public final int jvmConstantMethodHandle = getConstant("JVM_CONSTANT_MethodHandle", Integer.class);
-    public final int jvmConstantMethodHandleInError = getConstant("JVM_CONSTANT_MethodHandleInError", Integer.class);
-    public final int jvmConstantMethodType = getConstant("JVM_CONSTANT_MethodType", Integer.class);
-    public final int jvmConstantMethodTypeInError = getConstant("JVM_CONSTANT_MethodTypeInError", Integer.class);
-    public final int jvmConstantInvokeDynamic = getConstant("JVM_CONSTANT_InvokeDynamic", Integer.class);
-
-    public final int jvmConstantExternalMax = getConstant("JVM_CONSTANT_ExternalMax", Integer.class);
-    public final int jvmConstantInternalMin = getConstant("JVM_CONSTANT_InternalMin", Integer.class);
-    public final int jvmConstantInternalMax = getConstant("JVM_CONSTANT_InternalMax", Integer.class);
+    public final int constantPoolLengthOffset = getFieldOffset("ConstantPool::_length",
+                    Integer.class, "int");
 
     public final int heapWordSize = getConstant("HeapWordSize", Integer.class);
-
-    public final int symbolPointerSize = getTypeSize("Symbol*");
-
-    public final long vmSymbolsSymbols = getFieldAddress("vmSymbols::_symbols[0]", "Symbol*");
-    public final int vmSymbolsFirstSID = getConstant("vmSymbols::FIRST_SID", Integer.class);
-    public final int vmSymbolsSIDLimit = getConstant("vmSymbols::SID_LIMIT", Integer.class);
 
     /**
      * Bit pattern that represents a non-oop. Neither the high bits nor the low bits of this value
@@ -553,16 +435,11 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long verifyOopCounterAddress = getFieldAddress("StubRoutines::_verify_oop_count", "jint");
     public final long verifyOopMask = getFieldValue("CompilerToVM::Data::Universe_verify_oop_mask", Long.class, "uintptr_t");
     public final long verifyOopBits = getFieldValue("CompilerToVM::Data::Universe_verify_oop_bits", Long.class, "uintptr_t");
-    public final int universeBaseVtableSize = getFieldValue("CompilerToVM::Data::Universe_base_vtable_size", Integer.class, "int");
-
-    public final int baseVtableLength() {
-        return universeBaseVtableSize / vtableEntrySize;
-    }
 
     public final int logOfHRGrainBytes = getFieldValue("HeapRegion::LogOfHRGrainBytes", Integer.class, "int");
 
-    public final byte dirtyCardValue = getConstant("CardTableModRefBS::dirty_card", Byte.class);
-    public final byte g1YoungCardValue = getConstant("G1SATBCardTableModRefBS::g1_young_gen", Byte.class);
+    public final byte dirtyCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int") : getConstant("CardTableModRefBS::dirty_card", Byte.class);
+    public final byte g1YoungCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int") : getConstant("G1SATBCardTableModRefBS::g1_young_gen", Byte.class);
 
     private final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
     private final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
@@ -592,11 +469,11 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     }
 
     public int g1SATBQueueIndexOffset() {
-        return javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
+        return javaThreadSatbMarkQueueOffset + (isJDK8 ? dirtyCardQueueIndexOffset : satbMarkQueueIndexOffset);
     }
 
     public int g1SATBQueueBufferOffset() {
-        return javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
+        return javaThreadSatbMarkQueueOffset + (isJDK8 ? dirtyCardQueueBufferOffset : satbMarkQueueBufferOffset);
     }
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
@@ -664,43 +541,14 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long heapEndAddress = getFieldValue("CompilerToVM::Data::_heap_end_addr", Long.class, "HeapWord**");
     public final long heapTopAddress = getFieldValue("CompilerToVM::Data::_heap_top_addr", Long.class, "HeapWord**");
 
-    /**
-     * The DataLayout header size is the same as the cell size.
-     */
-    public final int dataLayoutHeaderSize = getConstant("DataLayout::cell_size", Integer.class);
-    public final int dataLayoutTagOffset = getFieldOffset("DataLayout::_header._struct._tag", Integer.class, "u1");
-    public final int dataLayoutFlagsOffset = getFieldOffset("DataLayout::_header._struct._flags", Integer.class, "u1");
-    public final int dataLayoutBCIOffset = getFieldOffset("DataLayout::_header._struct._bci", Integer.class, "u2");
-    public final int dataLayoutCellsOffset = getFieldOffset("DataLayout::_cells[0]", Integer.class, "intptr_t");
-    public final int dataLayoutCellSize = getConstant("DataLayout::cell_size", Integer.class);
-
-    public final int dataLayoutNoTag = getConstant("DataLayout::no_tag", Integer.class);
-    public final int dataLayoutBitDataTag = getConstant("DataLayout::bit_data_tag", Integer.class);
-    public final int dataLayoutCounterDataTag = getConstant("DataLayout::counter_data_tag", Integer.class);
-    public final int dataLayoutJumpDataTag = getConstant("DataLayout::jump_data_tag", Integer.class);
-    public final int dataLayoutReceiverTypeDataTag = getConstant("DataLayout::receiver_type_data_tag", Integer.class);
-    public final int dataLayoutVirtualCallDataTag = getConstant("DataLayout::virtual_call_data_tag", Integer.class);
-    public final int dataLayoutRetDataTag = getConstant("DataLayout::ret_data_tag", Integer.class);
-    public final int dataLayoutBranchDataTag = getConstant("DataLayout::branch_data_tag", Integer.class);
-    public final int dataLayoutMultiBranchDataTag = getConstant("DataLayout::multi_branch_data_tag", Integer.class);
-    public final int dataLayoutArgInfoDataTag = getConstant("DataLayout::arg_info_data_tag", Integer.class);
-    public final int dataLayoutCallTypeDataTag = getConstant("DataLayout::call_type_data_tag", Integer.class);
-    public final int dataLayoutVirtualCallTypeDataTag = getConstant("DataLayout::virtual_call_type_data_tag", Integer.class);
-    public final int dataLayoutParametersTypeDataTag = getConstant("DataLayout::parameters_type_data_tag", Integer.class);
-    public final int dataLayoutSpeculativeTrapDataTag = getConstant("DataLayout::speculative_trap_data_tag", Integer.class);
-
-    public final int bciProfileWidth = getFlag("BciProfileWidth", Integer.class);
-    public final int typeProfileWidth = getFlag("TypeProfileWidth", Integer.class);
-    public final int methodProfileWidth = getFlag("MethodProfileWidth", Integer.class);
-
     public final long inlineCacheMissStub = getFieldValue("CompilerToVM::Data::SharedRuntime_ic_miss_stub", Long.class, "address");
     public final long handleWrongMethodStub = getFieldValue("CompilerToVM::Data::SharedRuntime_handle_wrong_method_stub", Long.class, "address");
 
     public final long handleDeoptStub = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_unpack", Long.class, "address");
     public final long uncommonTrapStub = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
-    public final long codeCacheLowBound = getFieldValue("CodeCache::_low_bound", Long.class, "address");
-    public final long codeCacheHighBound = getFieldValue("CodeCache::_high_bound", Long.class, "address");
+    public final long codeCacheLowBound = getFieldValue(isJDK8 ? "CompilerToVM::Data::CodeCache_low_bound" : "CodeCache::_low_bound", Long.class, "address");
+    public final long codeCacheHighBound = getFieldValue(isJDK8 ? "CompilerToVM::Data::CodeCache_high_bound" : "CodeCache::_high_bound", Long.class, "address");
 
     public final long aescryptEncryptBlockStub = getFieldValue("StubRoutines::_aescrypt_encryptBlock", Long.class, "address");
     public final long aescryptDecryptBlockStub = getFieldValue("StubRoutines::_aescrypt_decryptBlock", Long.class, "address");
@@ -709,7 +557,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
-    public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
+    public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address", longNotPresentInJDK8);
 
     public final long jbyteArraycopy = getFieldValue("StubRoutines::_jbyte_arraycopy", Long.class, "address");
     public final long jshortArraycopy = getFieldValue("StubRoutines::_jshort_arraycopy", Long.class, "address");
@@ -769,7 +617,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long registerFinalizerAddress = getAddress("SharedRuntime::register_finalizer");
     public final long exceptionHandlerForReturnAddressAddress = getAddress("SharedRuntime::exception_handler_for_return_address");
     public final long osrMigrationEndAddress = getAddress("SharedRuntime::OSR_migration_end");
-    public final long enableStackReservedZoneAddress = getAddress("SharedRuntime::enable_stack_reserved_zone");
+    public final long enableStackReservedZoneAddress = getAddress("SharedRuntime::enable_stack_reserved_zone", longNotPresentInJDK8);
 
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
@@ -787,37 +635,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long deoptimizationUncommonTrap = getAddress("Deoptimization::uncommon_trap");
     public final long deoptimizationUnpackFrames = getAddress("Deoptimization::unpack_frames");
 
-    public final int deoptReasonNone = getConstant("Deoptimization::Reason_none", Integer.class);
-    public final int deoptReasonNullCheck = getConstant("Deoptimization::Reason_null_check", Integer.class);
-    public final int deoptReasonRangeCheck = getConstant("Deoptimization::Reason_range_check", Integer.class);
-    public final int deoptReasonClassCheck = getConstant("Deoptimization::Reason_class_check", Integer.class);
-    public final int deoptReasonArrayCheck = getConstant("Deoptimization::Reason_array_check", Integer.class);
-    public final int deoptReasonUnreached0 = getConstant("Deoptimization::Reason_unreached0", Integer.class);
-    public final int deoptReasonTypeCheckInlining = getConstant("Deoptimization::Reason_type_checked_inlining", Integer.class);
-    public final int deoptReasonOptimizedTypeCheck = getConstant("Deoptimization::Reason_optimized_type_check", Integer.class);
-    public final int deoptReasonNotCompiledExceptionHandler = getConstant("Deoptimization::Reason_not_compiled_exception_handler", Integer.class);
-    public final int deoptReasonUnresolved = getConstant("Deoptimization::Reason_unresolved", Integer.class);
-    public final int deoptReasonJsrMismatch = getConstant("Deoptimization::Reason_jsr_mismatch", Integer.class);
-    public final int deoptReasonDiv0Check = getConstant("Deoptimization::Reason_div0_check", Integer.class);
-    public final int deoptReasonConstraint = getConstant("Deoptimization::Reason_constraint", Integer.class);
-    public final int deoptReasonLoopLimitCheck = getConstant("Deoptimization::Reason_loop_limit_check", Integer.class);
-    public final int deoptReasonAliasing = getConstant("Deoptimization::Reason_aliasing", Integer.class);
-    public final int deoptReasonTransferToInterpreter = getConstant("Deoptimization::Reason_transfer_to_interpreter", Integer.class);
-    public final int deoptReasonOSROffset = getConstant("Deoptimization::Reason_LIMIT", Integer.class);
-
-    public final int deoptActionNone = getConstant("Deoptimization::Action_none", Integer.class);
-    public final int deoptActionMaybeRecompile = getConstant("Deoptimization::Action_maybe_recompile", Integer.class);
-    public final int deoptActionReinterpret = getConstant("Deoptimization::Action_reinterpret", Integer.class);
-    public final int deoptActionMakeNotEntrant = getConstant("Deoptimization::Action_make_not_entrant", Integer.class);
-    public final int deoptActionMakeNotCompilable = getConstant("Deoptimization::Action_make_not_compilable", Integer.class);
-
-    public final int deoptimizationActionBits = getConstant("Deoptimization::_action_bits", Integer.class);
-    public final int deoptimizationReasonBits = getConstant("Deoptimization::_reason_bits", Integer.class);
-    public final int deoptimizationDebugIdBits = getConstant("Deoptimization::_debug_id_bits", Integer.class);
-    public final int deoptimizationActionShift = getConstant("Deoptimization::_action_shift", Integer.class);
-    public final int deoptimizationReasonShift = getConstant("Deoptimization::_reason_shift", Integer.class);
-    public final int deoptimizationDebugIdShift = getConstant("Deoptimization::_debug_id_shift", Integer.class);
-
     public final int deoptimizationUnpackDeopt = getConstant("Deoptimization::Unpack_deopt", Integer.class);
     public final int deoptimizationUnpackException = getConstant("Deoptimization::Unpack_exception", Integer.class);
     public final int deoptimizationUnpackUncommonTrap = getConstant("Deoptimization::Unpack_uncommon_trap", Integer.class);
@@ -831,38 +648,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int deoptimizationUnrollBlockFrameSizesOffset = getFieldOffset("Deoptimization::UnrollBlock::_frame_sizes", Integer.class, "intptr_t*");
     public final int deoptimizationUnrollBlockFramePcsOffset = getFieldOffset("Deoptimization::UnrollBlock::_frame_pcs", Integer.class, "address*");
     public final int deoptimizationUnrollBlockInitialInfoOffset = getFieldOffset("Deoptimization::UnrollBlock::_initial_info", Integer.class, "intptr_t");
-
-    public final int vmIntrinsicInvokeBasic = getConstant("vmIntrinsics::_invokeBasic", Integer.class);
-    public final int vmIntrinsicLinkToVirtual = getConstant("vmIntrinsics::_linkToVirtual", Integer.class);
-    public final int vmIntrinsicLinkToStatic = getConstant("vmIntrinsics::_linkToStatic", Integer.class);
-    public final int vmIntrinsicLinkToSpecial = getConstant("vmIntrinsics::_linkToSpecial", Integer.class);
-    public final int vmIntrinsicLinkToInterface = getConstant("vmIntrinsics::_linkToInterface", Integer.class);
-
-    public final int codeInstallResultOk = getConstant("JVMCIEnv::ok", Integer.class);
-    public final int codeInstallResultDependenciesFailed = getConstant("JVMCIEnv::dependencies_failed", Integer.class);
-    public final int codeInstallResultDependenciesInvalid = getConstant("JVMCIEnv::dependencies_invalid", Integer.class);
-    public final int codeInstallResultCacheFull = getConstant("JVMCIEnv::cache_full", Integer.class);
-    public final int codeInstallResultCodeTooLarge = getConstant("JVMCIEnv::code_too_large", Integer.class);
-
-    public String getCodeInstallResultDescription(int codeInstallResult) {
-        if (codeInstallResult == codeInstallResultOk) {
-            return "ok";
-        }
-        if (codeInstallResult == codeInstallResultDependenciesFailed) {
-            return "dependencies failed";
-        }
-        if (codeInstallResult == codeInstallResultDependenciesInvalid) {
-            return "dependencies invalid";
-        }
-        if (codeInstallResult == codeInstallResultCacheFull) {
-            return "code cache is full";
-        }
-        if (codeInstallResult == codeInstallResultCodeTooLarge) {
-            return "code is too large";
-        }
-        assert false : codeInstallResult;
-        return "unknown";
-    }
 
     // Checkstyle: stop
     public final int MARKID_VERIFIED_ENTRY = getConstant("CodeInstaller::VERIFIED_ENTRY", Integer.class);
@@ -881,40 +666,22 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int MARKID_POLL_RETURN_FAR = getConstant("CodeInstaller::POLL_RETURN_FAR", Integer.class);
     public final int MARKID_CARD_TABLE_SHIFT = getConstant("CodeInstaller::CARD_TABLE_SHIFT", Integer.class);
     public final int MARKID_CARD_TABLE_ADDRESS = getConstant("CodeInstaller::CARD_TABLE_ADDRESS", Integer.class);
-    public final int MARKID_HEAP_TOP_ADDRESS = getConstant("CodeInstaller::HEAP_TOP_ADDRESS", Integer.class);
-    public final int MARKID_HEAP_END_ADDRESS = getConstant("CodeInstaller::HEAP_END_ADDRESS", Integer.class);
-    public final int MARKID_NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class);
-    public final int MARKID_CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class);
+    public final int MARKID_HEAP_TOP_ADDRESS = getConstant("CodeInstaller::HEAP_TOP_ADDRESS", Integer.class, intNotPresentInJDK8);
+    public final int MARKID_HEAP_END_ADDRESS = getConstant("CodeInstaller::HEAP_END_ADDRESS", Integer.class, intNotPresentInJDK8);
+    public final int MARKID_NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class, intNotPresentInJDK8);
+    public final int MARKID_CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class, intNotPresentInJDK8);
     public final int MARKID_INVOKE_INVALID = getConstant("CodeInstaller::INVOKE_INVALID", Integer.class);
-
-    public final int bitDataExceptionSeenFlag = getConstant("BitData::exception_seen_flag", Integer.class);
-    public final int bitDataNullSeenFlag = getConstant("BitData::null_seen_flag", Integer.class);
-    public final int methodDataCountOffset = getConstant("CounterData::count_off", Integer.class);
-    public final int jumpDataTakenOffset = getConstant("JumpData::taken_off_set", Integer.class);
-    public final int jumpDataDisplacementOffset = getConstant("JumpData::displacement_off_set", Integer.class);
-    public final int receiverTypeDataNonprofiledCountOffset = getConstant("ReceiverTypeData::nonprofiled_count_off_set", Integer.class);
-    public final int receiverTypeDataReceiverTypeRowCellCount = getConstant("ReceiverTypeData::receiver_type_row_cell_count", Integer.class);
-    public final int receiverTypeDataReceiver0Offset = getConstant("ReceiverTypeData::receiver0_offset", Integer.class);
-    public final int receiverTypeDataCount0Offset = getConstant("ReceiverTypeData::count0_offset", Integer.class);
-    public final int branchDataNotTakenOffset = getConstant("BranchData::not_taken_off_set", Integer.class);
-    public final int arrayDataArrayLenOffset = getConstant("ArrayData::array_len_off_set", Integer.class);
-    public final int arrayDataArrayStartOffset = getConstant("ArrayData::array_start_off_set", Integer.class);
-    public final int multiBranchDataPerCaseCellCount = getConstant("MultiBranchData::per_case_cell_count", Integer.class);
-
     // Checkstyle: resume
 
     private boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
             int modifiers = f.getModifiers();
             if (Modifier.isPublic(modifiers) && !Modifier.isStatic(modifiers)) {
-                assert Modifier.isFinal(modifiers) || f.getAnnotation(Stable.class) != null : "field should either be final or @Stable: " + f;
+                assert Modifier.isFinal(modifiers) : "field should be final: " + f;
             }
         }
 
         assert codeEntryAlignment > 0 : codeEntryAlignment;
-        assert (layoutHelperArrayTagObjectValue & (1 << (Integer.SIZE - 1))) != 0 : "object array must have first bit set";
-        assert (layoutHelperArrayTagTypeValue & (1 << (Integer.SIZE - 1))) != 0 : "type array must have first bit set";
-
         return true;
     }
 }

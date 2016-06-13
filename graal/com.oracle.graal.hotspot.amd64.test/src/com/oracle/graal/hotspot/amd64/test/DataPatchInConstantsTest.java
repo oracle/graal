@@ -23,14 +23,8 @@
 
 package com.oracle.graal.hotspot.amd64.test;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assume;
 import org.junit.Before;
@@ -56,6 +50,12 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
@@ -113,7 +113,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void narrowOopTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", config().useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getVMConfig().useCompressedOops);
         test("narrowOopSnippet");
     }
 
@@ -134,7 +134,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void compareTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", config().useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getVMConfig().useCompressedOops);
         test("compareSnippet");
     }
 
@@ -154,9 +154,9 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         r.register1("loadThroughCompressedPatch", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                ValueNode compressed = b.add(CompressionNode.compress(arg, config().getOopEncoding()));
+                ValueNode compressed = b.add(CompressionNode.compress(arg, runtime().getVMConfig().getOopEncoding()));
                 ValueNode patch = b.add(new LoadThroughPatchNode(compressed));
-                b.addPush(JavaKind.Object, CompressionNode.uncompress(patch, config().getOopEncoding()));
+                b.addPush(JavaKind.Object, CompressionNode.uncompress(patch, runtime().getVMConfig().getOopEncoding()));
                 return true;
             }
         });

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.jumpToExceptionHandler;
 import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.patchReturnAddress;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readExceptionOop;
@@ -36,12 +37,13 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.replacements.Snippet;
@@ -51,10 +53,10 @@ import com.oracle.graal.word.Word;
 import jdk.vm.ci.code.Register;
 
 /**
- * Stub called by the {@linkplain GraalHotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler
- * entry point} in a compiled method. This entry point is used when returning to a method to handle
- * an exception thrown by a callee. It is not used for routing implicit exceptions. Therefore, it
- * does not need to save any registers as HotSpot uses a caller save convention.
+ * Stub called by the {@linkplain GraalHotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception
+ * handler entry point} in a compiled method. This entry point is used when returning to a method to
+ * handle an exception thrown by a callee. It is not used for routing implicit exceptions.
+ * Therefore, it does not need to save any registers as HotSpot uses a caller save convention.
  * <p>
  * The descriptor for a call to this stub is {@link HotSpotBackend#EXCEPTION_HANDLER}.
  */
@@ -83,8 +85,8 @@ public class ExceptionHandlerStub extends SnippetStub {
     @Snippet
     private static void exceptionHandler(Object exception, Word exceptionPc, @ConstantParameter Register threadRegister) {
         Word thread = registerAsWord(threadRegister);
-        checkNoExceptionInThread(thread, assertionsEnabled());
-        checkExceptionNotNull(assertionsEnabled(), exception);
+        checkNoExceptionInThread(thread, assertionsEnabled(INJECTED_VMCONFIG));
+        checkExceptionNotNull(assertionsEnabled(INJECTED_VMCONFIG), exception);
         writeExceptionOop(thread, exception);
         writeExceptionPc(thread, exceptionPc);
         if (logging()) {
@@ -116,7 +118,7 @@ public class ExceptionHandlerStub extends SnippetStub {
             if (currentException != null) {
                 fatal("exception object in thread must be null, not %p", Word.objectToTrackedPointer(currentException).rawValue());
             }
-            if (cAssertionsEnabled()) {
+            if (cAssertionsEnabled(INJECTED_VMCONFIG)) {
                 // This thread-local is only cleared in DEBUG builds of the VM
                 // (see OptoRuntime::generate_exception_blob)
                 Word currentExceptionPc = readExceptionPc(thread);
@@ -147,10 +149,10 @@ public class ExceptionHandlerStub extends SnippetStub {
      */
     @Fold
     @SuppressWarnings("all")
-    static boolean assertionsEnabled() {
+    static boolean assertionsEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
         boolean enabled = false;
         assert enabled = true;
-        return enabled || cAssertionsEnabled();
+        return enabled || cAssertionsEnabled(config);
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class, Word.class);

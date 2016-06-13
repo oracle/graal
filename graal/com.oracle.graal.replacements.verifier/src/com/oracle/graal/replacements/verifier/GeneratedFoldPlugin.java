@@ -32,9 +32,11 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
 import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
 
 /**
@@ -75,7 +77,12 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
 
         int firstArg = argCount;
         for (VariableElement param : params) {
-            constantArgument(env, out, deps, argCount, param.asType(), argCount);
+            if (param.getAnnotation(InjectedParameter.class) == null) {
+                constantArgument(env, out, deps, argCount, param.asType(), argCount);
+            } else {
+                out.printf("            assert args[%d].isNullConstant() : \"must pass null to injected argument\";\n", argCount);
+                out.printf("            %s arg%d = %s;\n", param.asType(), argCount, deps.use(env, (DeclaredType) param.asType()));
+            }
             argCount++;
         }
 

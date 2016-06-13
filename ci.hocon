@@ -1,5 +1,5 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u92-jvmci-0.11", platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.12", platformspecific: true}
 java9  : {name : oraclejdk, version : "9",    platformspecific: true}
 
 common : {

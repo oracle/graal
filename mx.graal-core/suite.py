@@ -33,17 +33,10 @@ suite = {
       "optional" : False,
       "jdkStandardizedSince" : "9",
     },
-    "JVMCI_HOTSPOTVMCONFIG" : {
-      "path" : "jre/lib/jvmci/jvmci-hotspotvmconfig.jar",
-      "sourcePath" : "jre/lib/jvmci/jvmci-hotspotvmconfig.src.zip",
-      "optional" : False,
-      "jdkStandardizedSince" : "9",
-    },
     "JVMCI_HOTSPOT" : {
       "path" : "jre/lib/jvmci/jvmci-hotspot.jar",
       "sourcePath" : "jre/lib/jvmci/jvmci-hotspot.src.zip",
       "dependencies" : [
-        "JVMCI_HOTSPOTVMCONFIG",
         "JVMCI_API",
       ],
       "optional" : False,
@@ -1371,18 +1364,6 @@ suite = {
       ],
     },
 
-    "GRAAL_TRUFFLE_TEST" : {
-      "subDir" : "graal",
-      "dependencies" : [
-        "com.oracle.graal.truffle.test"
-      ],
-      "distDependencies" : [
-        "GRAAL_TEST",
-        "GRAAL_TRUFFLE",
-        "truffle:TRUFFLE_SL_TEST",
-      ],
-    },
-
     "GRAAL_SERVICEPROVIDER_PROCESSOR" : {
       "subDir" : "graal",
       "dependencies" : ["com.oracle.graal.serviceprovider.processor"],
@@ -1464,7 +1445,6 @@ suite = {
         "JVMCI_SERVICES",
         "JVMCI_API",
         "JVMCI_HOTSPOT",
-        "JVMCI_HOTSPOTVMCONFIG"
       ],
       # The root(s) of the module jar's contents
       "moduledeps" : [

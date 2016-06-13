@@ -59,7 +59,8 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
 
     private final GraalHotSpotVMConfig config;
 
-    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state, GraalHotSpotVMConfig config) {
+    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state,
+                    GraalHotSpotVMConfig config) {
         super(TYPE, SIZE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
         this.config = config;

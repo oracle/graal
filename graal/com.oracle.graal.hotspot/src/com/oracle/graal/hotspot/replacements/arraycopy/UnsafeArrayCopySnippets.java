@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayIndexScale;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
@@ -35,8 +36,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.asm.NumUtil;
@@ -57,6 +56,9 @@ import com.oracle.graal.replacements.nodes.DirectObjectStoreNode;
 import com.oracle.graal.word.ObjectAccess;
 import com.oracle.graal.word.Unsigned;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * As opposed to {@link ArrayCopySnippets}, these Snippets do <b>not</b> perform store checks.
@@ -230,8 +232,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyPrimitive(Object src, int srcPos, Object dest, int destPos, int length, int layoutHelper) {
-        int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
-        int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
+        int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
+        int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
 
         Unsigned vectorSize = Word.unsigned(VECTOR_SIZE);
         Unsigned srcOffset = Word.unsigned(srcPos).shiftLeft(log2ElementSize).add(headerSize);

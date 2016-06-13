@@ -32,9 +32,11 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
@@ -82,8 +84,8 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
             printf(")\n");
         }
         Word thread = registerAsWord(threadRegister);
-        checkNoExceptionInThread(thread, assertionsEnabled());
-        checkExceptionNotNull(assertionsEnabled(), exception);
+        checkNoExceptionInThread(thread, assertionsEnabled(null));
+        checkExceptionNotNull(assertionsEnabled(null), exception);
 
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread, returnAddress);
 
@@ -110,10 +112,10 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
      */
     @Fold
     @SuppressWarnings("all")
-    static boolean assertionsEnabled() {
+    static boolean assertionsEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
         boolean enabled = false;
         assert enabled = true;
-        return enabled || cAssertionsEnabled();
+        return enabled || cAssertionsEnabled(config);
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = newDescriptor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", Word.class, Word.class,

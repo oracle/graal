@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.osThreadInterruptedOffset;
@@ -47,10 +48,10 @@ public class ThreadSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Word javaThread = CurrentJavaThreadNode.get();
-        Object thread = javaThread.readObject(threadObjectOffset(), JAVA_THREAD_THREAD_OBJECT_LOCATION);
+        Object thread = javaThread.readObject(threadObjectOffset(INJECTED_VMCONFIG), JAVA_THREAD_THREAD_OBJECT_LOCATION);
         if (thisObject == thread) {
-            Word osThread = javaThread.readWord(osThreadOffset(), JAVA_THREAD_OSTHREAD_LOCATION);
-            boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), any()) != 0;
+            Word osThread = javaThread.readWord(osThreadOffset(INJECTED_VMCONFIG), JAVA_THREAD_OSTHREAD_LOCATION);
+            boolean interrupted = osThread.readInt(osThreadInterruptedOffset(INJECTED_VMCONFIG), any()) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
             }

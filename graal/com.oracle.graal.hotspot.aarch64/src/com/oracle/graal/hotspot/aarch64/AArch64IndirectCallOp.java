@@ -59,7 +59,8 @@ final class AArch64IndirectCallOp extends IndirectCallOp {
 
     private final GraalHotSpotVMConfig config;
 
-    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state, GraalHotSpotVMConfig config) {
+    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state,
+                    GraalHotSpotVMConfig config) {
         super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
         this.config = config;

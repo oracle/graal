@@ -43,7 +43,6 @@ import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
 import com.oracle.graal.hotspot.replacements.ClassGetHubNode;
 import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
-import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
 import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
 import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
@@ -129,9 +128,8 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
-                registerReplacementsUtilPlugins(invocationPlugins, snippetReflection, config);
                 registerObjectPlugins(invocationPlugins);
-                registerClassPlugins(plugins);
+                registerClassPlugins(plugins, config);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
                 registerCallSitePlugins(invocationPlugins);
@@ -148,18 +146,6 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
         return plugins;
-    }
-
-    private static void registerReplacementsUtilPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, HotSpotReplacementsUtil.class);
-        r.register0("config", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                JavaConstant c = snippetReflection.forObject(config);
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(c, b.getMetaAccess()));
-                return true;
-            }
-        });
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
@@ -180,7 +166,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
-    private static void registerClassPlugins(Plugins plugins) {
+    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins.getInvocationPlugins(), Class.class);
 
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
@@ -189,7 +175,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
-        if (HotSpotReplacementsUtil.arrayKlassComponentMirrorOffsetExists()) {
+        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
 
@@ -430,7 +416,7 @@ public class HotSpotGraphBuilderPlugins {
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            String arch = config.getHostArchitectureName();
+            String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
