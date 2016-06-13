@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 
 /**
@@ -30,5 +30,5 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
  */
 public interface HotSpotLoweringProvider extends LoweringProvider {
 
-    void initialize(HotSpotProviders providers, HotSpotVMConfig config);
+    void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config);
 }

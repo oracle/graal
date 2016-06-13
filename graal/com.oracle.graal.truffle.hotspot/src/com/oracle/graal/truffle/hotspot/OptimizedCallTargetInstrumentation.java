@@ -30,7 +30,7 @@ import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.DataBuilder;
@@ -45,11 +45,11 @@ import jdk.vm.ci.code.site.Mark;
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
  */
 public abstract class OptimizedCallTargetInstrumentation extends CompilationResultBuilder {
-    protected final HotSpotVMConfig config;
+    protected final GraalHotSpotVMConfig config;
     protected final HotSpotRegistersProvider registers;
 
     public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult, HotSpotVMConfig config, HotSpotRegistersProvider registers) {
+                    CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult);
         this.config = config;
         this.registers = registers;

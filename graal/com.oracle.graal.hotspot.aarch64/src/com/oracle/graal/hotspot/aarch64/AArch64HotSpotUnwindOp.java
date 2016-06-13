@@ -28,7 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -48,7 +48,7 @@ public final class AArch64HotSpotUnwindOp extends AArch64HotSpotEpilogueOp {
 
     @Use protected RegisterValue exception;
 
-    public AArch64HotSpotUnwindOp(HotSpotVMConfig config, RegisterValue exception) {
+    public AArch64HotSpotUnwindOp(GraalHotSpotVMConfig config, RegisterValue exception) {
         super(TYPE, config);
         this.exception = exception;
     }

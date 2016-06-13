@@ -36,7 +36,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
  *
  * All non-static, public fields in this class are so that they can be compiled as constants.
  */
-public class HotSpotVMConfig extends HotSpotVMConfigAccess {
+public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     private final String osName = getHostOSName();
     private final String osArch = getHostArchitectureName();
@@ -45,7 +45,7 @@ public class HotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean linuxOs = System.getProperty("os.name", "").startsWith("Linux");
 
     @SuppressWarnings("try")
-    HotSpotVMConfig(HotSpotVMConfigStore store) {
+    GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());

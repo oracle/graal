@@ -49,7 +49,7 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -271,7 +271,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return (HotSpotBackend) runtimeProvider.getHostBackend();
     }
 
-    private HotSpotVMConfig getVMConfig() {
+    private GraalHotSpotVMConfig getVMConfig() {
         RuntimeProvider runtimeProvider = getRequiredGraalCapability(RuntimeProvider.class);
         return ((HotSpotGraalRuntimeProvider) runtimeProvider).getVMConfig();
     }
@@ -362,7 +362,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotVMConfig config = getVMConfig();
+        GraalHotSpotVMConfig config = getVMConfig();
         Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
         if (factory == null) {
@@ -382,7 +382,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         }
 
-        static void traceTransferToInterpreter(HotSpotVMConfig config) {
+        static void traceTransferToInterpreter(GraalHotSpotVMConfig config) {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
             long pendingTransferToInterpreterAddress = thread + config.pendingTransferToInterpreterOffset;
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;

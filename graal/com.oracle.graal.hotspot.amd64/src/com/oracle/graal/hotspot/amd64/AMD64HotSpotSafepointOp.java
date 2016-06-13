@@ -30,7 +30,7 @@ import static jdk.vm.ci.amd64.AMD64.rip;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -56,9 +56,9 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
 
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeLIRBuilderTool tool) {
+    public AMD64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, NodeLIRBuilderTool tool) {
         super(TYPE);
         this.state = state;
         this.config = config;
@@ -79,12 +79,12 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
      * Tests if the polling page address can be reached from the code cache with 32-bit
      * displacements.
      */
-    private static boolean isPollingPageFar(HotSpotVMConfig config) {
+    private static boolean isPollingPageFar(GraalHotSpotVMConfig config) {
         final long pollingPageAddress = config.safepointPollingAddress;
         return config.forceUnreachable || !isInt(pollingPageAddress - config.codeCacheLowBound) || !isInt(pollingPageAddress - config.codeCacheHighBound);
     }
 
-    public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
+    public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         assert !atReturn || state == null : "state is unneeded at return";
         if (ImmutableCode.getValue()) {
             JavaKind hostWordKind = JavaKind.Long;

@@ -43,7 +43,7 @@ import static jdk.vm.ci.sparc.SPARC.o1;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.word.WordTypes;
@@ -70,7 +70,7 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     @Override
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig config = runtime.getVMConfig();
+        GraalHotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
 

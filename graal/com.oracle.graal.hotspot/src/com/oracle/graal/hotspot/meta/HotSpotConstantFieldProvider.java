@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
 
@@ -47,9 +47,9 @@ public class HotSpotConstantFieldProvider implements ConstantFieldProvider {
         public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
     }
 
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    public HotSpotConstantFieldProvider(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    public HotSpotConstantFieldProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         this.config = config;
         try {
             this.stringValueField = metaAccess.lookupJavaField(String.class.getDeclaredField("value"));

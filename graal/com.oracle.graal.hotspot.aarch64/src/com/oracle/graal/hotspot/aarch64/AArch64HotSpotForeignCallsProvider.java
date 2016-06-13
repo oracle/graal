@@ -38,7 +38,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.word.WordTypes;
@@ -64,7 +64,7 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
 
     @Override
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig config = runtime.getVMConfig();
+        GraalHotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
 

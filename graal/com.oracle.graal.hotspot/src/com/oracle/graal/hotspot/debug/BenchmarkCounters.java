@@ -40,7 +40,7 @@ import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.options.Option;
@@ -130,19 +130,19 @@ public class BenchmarkCounters {
     public static final ConcurrentHashMap<String, Counter> counterMap = new ConcurrentHashMap<>();
     public static long[] delta;
 
-    public static int getIndexConstantIncrement(String name, String group, HotSpotVMConfig config, long increment) {
+    public static int getIndexConstantIncrement(String name, String group, GraalHotSpotVMConfig config, long increment) {
         Counter counter = getCounter(name, group, config);
         counter.staticCounters.addAndGet(increment);
         return counter.index;
     }
 
-    public static int getIndex(String name, String group, HotSpotVMConfig config) {
+    public static int getIndex(String name, String group, GraalHotSpotVMConfig config) {
         Counter counter = getCounter(name, group, config);
         return counter.index;
     }
 
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
-    private static Counter getCounter(String name, String group, HotSpotVMConfig config) throws GraalError {
+    private static Counter getCounter(String name, String group, GraalHotSpotVMConfig config) throws GraalError {
         if (!enabled) {
             throw new GraalError("cannot access count index when counters are not enabled: " + group + ", " + name);
         }

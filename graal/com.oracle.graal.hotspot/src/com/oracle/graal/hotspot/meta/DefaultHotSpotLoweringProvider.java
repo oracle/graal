@@ -50,7 +50,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
@@ -184,7 +184,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+    public void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config) {
         super.initialize(providers, providers.getSnippetReflection());
 
         assert target == providers.getCodeCache().getTarget();

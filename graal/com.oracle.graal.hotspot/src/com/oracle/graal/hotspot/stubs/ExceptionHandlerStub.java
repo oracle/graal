@@ -41,7 +41,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.replacements.Snippet;
@@ -51,7 +51,7 @@ import com.oracle.graal.word.Word;
 import jdk.vm.ci.code.Register;
 
 /**
- * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler
+ * Stub called by the {@linkplain GraalHotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler
  * entry point} in a compiled method. This entry point is used when returning to a method to handle
  * an exception thrown by a callee. It is not used for routing implicit exceptions. Therefore, it
  * does not need to save any registers as HotSpot uses a caller save convention.

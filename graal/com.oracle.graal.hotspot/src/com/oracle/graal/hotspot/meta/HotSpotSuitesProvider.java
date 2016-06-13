@@ -28,7 +28,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotInstructionProfiling;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
 import com.oracle.graal.hotspot.phases.LoadJavaMirrorWithKlassPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
@@ -56,13 +56,13 @@ import com.oracle.graal.phases.tiers.SuitesCreator;
  */
 public class HotSpotSuitesProvider extends SuitesProviderBase {
 
-    protected final HotSpotVMConfig config;
+    protected final GraalHotSpotVMConfig config;
     protected final HotSpotGraalRuntimeProvider runtime;
 
     private final AddressLowering addressLowering;
     private final SuitesCreator defaultSuitesCreator;
 
-    public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLowering addressLowering) {
+    public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLowering addressLowering) {
         this.defaultSuitesCreator = defaultSuitesCreator;
         this.config = config;
         this.runtime = runtime;

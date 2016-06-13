@@ -39,7 +39,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
 import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
@@ -121,7 +121,7 @@ public class DeoptimizationStub extends SnippetStub {
 
     /**
      * Deoptimization handler for normal deoptimization
-     * {@link HotSpotVMConfig#deoptimizationUnpackDeopt}.
+     * {@link GraalHotSpotVMConfig#deoptimizationUnpackDeopt}.
      */
     @Snippet
     private static void deoptimizationHandler(@ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister) {

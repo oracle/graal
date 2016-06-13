@@ -27,7 +27,7 @@ import static jdk.vm.ci.sparc.SPARC.g0;
 
 import com.oracle.graal.asm.sparc.SPARCAddress;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -50,9 +50,9 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
 
     @State protected LIRFrameState state;
     @Use({OperandFlag.REG}) AllocatableValue safepointPollAddress;
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
+    public SPARCHotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, LIRGeneratorTool tool) {
         super(TYPE, SIZE);
         this.state = state;
         this.config = config;
@@ -65,7 +65,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
         emitCode(crb, masm, config, false, state, asRegister(safepointPollAddress));
     }
 
-    public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register safepointPollAddress) {
+    public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register safepointPollAddress) {
         crb.recordMark(atReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
         if (state != null) {
             final int pos = masm.position();
@@ -79,9 +79,9 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
         public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
-        private final HotSpotVMConfig config;
+        private final GraalHotSpotVMConfig config;
 
-        public SPARCLoadSafepointPollAddress(AllocatableValue result, HotSpotVMConfig config) {
+        public SPARCLoadSafepointPollAddress(AllocatableValue result, GraalHotSpotVMConfig config) {
             super(TYPE, SIZE);
             this.result = result;
             this.config = config;

@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -86,7 +86,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.
-        HotSpotVMConfig config = runtime.getVMConfig();
+        GraalHotSpotVMConfig config = runtime.getVMConfig();
         if (configType == null || wordTypesType == null || configType == null) {
             wordTypesType = wordTypes.getClass();
             runtimeType = runtime.getClass();

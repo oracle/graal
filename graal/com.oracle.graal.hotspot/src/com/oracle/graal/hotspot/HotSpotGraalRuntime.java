@@ -87,12 +87,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
     @SuppressWarnings("try")
     HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
 
-        config = new HotSpotVMConfig(jvmciRuntime.getConfigStore());
+        config = new GraalHotSpotVMConfig(jvmciRuntime.getConfigStore());
         CompileTheWorldOptions.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
@@ -209,7 +209,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     @Override
-    public HotSpotVMConfig getVMConfig() {
+    public GraalHotSpotVMConfig getVMConfig() {
         return config;
     }
 

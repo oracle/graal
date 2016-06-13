@@ -26,7 +26,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -50,7 +50,7 @@ public class HotSpotResolvedObjectTypeTest extends HotSpotGraalCompilerTest {
     public void testKlassLayoutHelper() {
         Constant klass = HotSpotResolvedObjectType.fromObjectClass(this.getClass()).klass();
         MemoryAccessProvider memoryAccess = getProviders().getConstantReflection().getMemoryAccessProvider();
-        HotSpotVMConfig config = runtime().getVMConfig();
+        GraalHotSpotVMConfig config = runtime().getVMConfig();
         Constant c = StampFactory.forKind(JavaKind.Int).readConstant(memoryAccess, klass, config.klassLayoutHelperOffset);
         assertTrue(c.toString(), c.getClass() == PrimitiveConstant.class);
         PrimitiveConstant pc = (PrimitiveConstant) c;

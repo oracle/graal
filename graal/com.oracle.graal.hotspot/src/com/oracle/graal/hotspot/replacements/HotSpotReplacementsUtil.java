@@ -41,7 +41,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
@@ -139,7 +139,7 @@ public class HotSpotReplacementsUtil {
         return HotSpotJVMCIRuntime.runtime();
     }
 
-    public static native HotSpotVMConfig config();
+    public static native GraalHotSpotVMConfig config();
 
     @Fold
     public static boolean useTLAB() {
@@ -154,7 +154,7 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity EXCEPTION_OOP_LOCATION = NamedLocationIdentity.mutable("ExceptionOop");
 
     /**
-     * @see HotSpotVMConfig#threadExceptionOopOffset
+     * @see GraalHotSpotVMConfig#threadExceptionOopOffset
      */
     @Fold
     public static int threadExceptionOopOffset() {
@@ -206,7 +206,7 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity PENDING_EXCEPTION_LOCATION = NamedLocationIdentity.mutable("PendingException");
 
     /**
-     * @see HotSpotVMConfig#pendingExceptionOffset
+     * @see GraalHotSpotVMConfig#pendingExceptionOffset
      */
     @Fold
     static int threadPendingExceptionOffset() {
@@ -216,7 +216,7 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity PENDING_DEOPTIMIZATION_LOCATION = NamedLocationIdentity.mutable("PendingDeoptimization");
 
     /**
-     * @see HotSpotVMConfig#pendingDeoptimizationOffset
+     * @see GraalHotSpotVMConfig#pendingDeoptimizationOffset
      */
     @Fold
     static int threadPendingDeoptimizationOffset() {
@@ -231,7 +231,7 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
-     * @see HotSpotVMConfig#threadExceptionOopOffset
+     * @see GraalHotSpotVMConfig#threadExceptionOopOffset
      */
     public static Object readExceptionOop(Word thread) {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
@@ -242,7 +242,7 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
-     * @see HotSpotVMConfig#threadExceptionOopOffset
+     * @see GraalHotSpotVMConfig#threadExceptionOopOffset
      */
     public static void writeExceptionOop(Word thread, Object value) {
         thread.writeObject(threadExceptionOopOffset(), value, EXCEPTION_OOP_LOCATION);
@@ -446,7 +446,7 @@ public class HotSpotReplacementsUtil {
         static {
             int value = Integer.MAX_VALUE;
             try {
-                Field f = HotSpotVMConfig.class.getDeclaredField("arrayKlassComponentMirrorOffset");
+                Field f = GraalHotSpotVMConfig.class.getDeclaredField("arrayKlassComponentMirrorOffset");
                 f.setAccessible(true);
                 value = f.getInt(config());
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {

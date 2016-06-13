@@ -35,7 +35,7 @@ import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ArrayRangePreWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
@@ -77,7 +77,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
 
     public static int barrierIndex;
 
-    private final HotSpotVMConfig config = runtime().getVMConfig();
+    private final GraalHotSpotVMConfig config = runtime().getVMConfig();
 
     public static class Container {
 
