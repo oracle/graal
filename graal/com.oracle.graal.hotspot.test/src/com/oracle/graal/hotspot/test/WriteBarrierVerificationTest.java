@@ -77,7 +77,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
 
     public static int barrierIndex;
 
-    private final HotSpotVMConfig config = config();
+    private final HotSpotVMConfig config = runtime().getVMConfig();
 
     public static class Container {
 

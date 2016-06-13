@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -142,7 +141,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;
                 } else {
-                    Assert.assertFalse(config().useAESIntrinsics);
+                    Assert.assertFalse(runtime().getVMConfig().useAESIntrinsics);
                 }
             }
         }

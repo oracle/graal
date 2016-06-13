@@ -50,7 +50,7 @@ public class HotSpotResolvedObjectTypeTest extends HotSpotGraalCompilerTest {
     public void testKlassLayoutHelper() {
         Constant klass = HotSpotResolvedObjectType.fromObjectClass(this.getClass()).klass();
         MemoryAccessProvider memoryAccess = getProviders().getConstantReflection().getMemoryAccessProvider();
-        HotSpotVMConfig config = config();
+        HotSpotVMConfig config = runtime().getVMConfig();
         Constant c = StampFactory.forKind(JavaKind.Int).readConstant(memoryAccess, klass, config.klassLayoutHelperOffset);
         assertTrue(c.toString(), c.getClass() == PrimitiveConstant.class);
         PrimitiveConstant pc = (PrimitiveConstant) c;

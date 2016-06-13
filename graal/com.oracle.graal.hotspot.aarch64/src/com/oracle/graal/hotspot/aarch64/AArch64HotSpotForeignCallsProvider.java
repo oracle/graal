@@ -64,7 +64,7 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
 
     @Override
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        HotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
 

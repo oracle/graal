@@ -141,7 +141,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(getProviders(), config(), lirGenRes);
+        return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getVMConfig(), lirGenRes);
     }
 
     @Override
@@ -311,7 +311,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = config();
         Label unverifiedStub = installedCodeOwner == null || installedCodeOwner.isStatic() ? null : new Label();
         for (int i = 0; i < 2; i++) {
             if (i > 0) {

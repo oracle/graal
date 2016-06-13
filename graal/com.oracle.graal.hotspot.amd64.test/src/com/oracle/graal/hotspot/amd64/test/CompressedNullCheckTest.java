@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -37,6 +34,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Ensures that frame omission works in cases where it is expected to.
@@ -53,7 +52,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testImplicit(Integer i) {
-        Assume.assumeTrue(config().useCompressedOops);
+        Assume.assumeTrue(runtime().getVMConfig().useCompressedOops);
 
         Container c = new Container();
         c.i = i;
@@ -72,7 +71,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
 
     @SuppressWarnings("try")
     private void testExplicit(Integer i) {
-        Assume.assumeTrue(config().useCompressedOops);
+        Assume.assumeTrue(runtime().getVMConfig().useCompressedOops);
 
         Container c = new Container();
         c.i = i;

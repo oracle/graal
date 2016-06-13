@@ -129,6 +129,7 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
+                registerReplacementsUtilPlugins(invocationPlugins, snippetReflection, config);
                 registerObjectPlugins(invocationPlugins);
                 registerClassPlugins(plugins);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
@@ -144,10 +145,21 @@ public class HotSpotGraphBuilderPlugins {
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
                 }
-
             }
         });
         return plugins;
+    }
+
+    private static void registerReplacementsUtilPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, HotSpotVMConfig config) {
+        Registration r = new Registration(plugins, HotSpotReplacementsUtil.class);
+        r.register0("config", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                JavaConstant c = snippetReflection.forObject(config);
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(c, b.getMetaAccess()));
+                return true;
+            }
+        });
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {

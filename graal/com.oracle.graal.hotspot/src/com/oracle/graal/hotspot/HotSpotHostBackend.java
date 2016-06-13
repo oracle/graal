@@ -61,7 +61,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
      */
     public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 
-    private final HotSpotVMConfig config;
+    protected final HotSpotVMConfig config;
 
     public HotSpotHostBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);

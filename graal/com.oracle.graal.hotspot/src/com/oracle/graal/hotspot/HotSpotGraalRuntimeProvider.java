@@ -48,4 +48,6 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
 
     @Override
     HotSpotBackend getHostBackend();
+
+    HotSpotVMConfig getVMConfig();
 }

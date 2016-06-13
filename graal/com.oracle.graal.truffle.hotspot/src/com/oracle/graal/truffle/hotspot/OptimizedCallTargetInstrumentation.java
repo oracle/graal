@@ -40,7 +40,6 @@ import com.oracle.graal.truffle.OptimizedCallTarget;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
@@ -59,8 +58,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
     @Override
     public Mark recordMark(Object id) {
         Mark mark = super.recordMark(id);
-        HotSpotCodeCacheProvider hsCodeCache = (HotSpotCodeCacheProvider) codeCache;
-        if ((int) id == hsCodeCache.config.MARKID_VERIFIED_ENTRY) {
+        if ((int) id == config.MARKID_VERIFIED_ENTRY) {
             injectTailCallCode();
         }
         return mark;

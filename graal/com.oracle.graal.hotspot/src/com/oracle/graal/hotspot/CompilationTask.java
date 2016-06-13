@@ -155,7 +155,7 @@ public class CompilationTask {
 
     @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation() {
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        HotSpotVMConfig config = compiler.getGraalRuntime().getVMConfig();
         final long threadId = Thread.currentThread().getId();
         int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;

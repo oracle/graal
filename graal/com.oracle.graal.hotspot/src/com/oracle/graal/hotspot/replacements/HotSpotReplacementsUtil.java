@@ -139,10 +139,7 @@ public class HotSpotReplacementsUtil {
         return HotSpotJVMCIRuntime.runtime();
     }
 
-    @Fold
-    public static HotSpotVMConfig config() {
-        return HotSpotVMConfig.config();
-    }
+    public static native HotSpotVMConfig config();
 
     @Fold
     public static boolean useTLAB() {

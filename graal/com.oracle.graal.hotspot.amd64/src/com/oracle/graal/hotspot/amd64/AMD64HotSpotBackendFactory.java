@@ -82,7 +82,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
 
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        HotSpotVMConfig config = graalRuntime.getVMConfig();
         HotSpotProviders providers;
         HotSpotRegistersProvider registers;
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();

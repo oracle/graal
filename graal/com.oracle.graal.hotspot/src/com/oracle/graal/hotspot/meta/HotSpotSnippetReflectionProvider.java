@@ -86,7 +86,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.
-        HotSpotVMConfig config = config();
+        HotSpotVMConfig config = runtime.getVMConfig();
         if (configType == null || wordTypesType == null || configType == null) {
             wordTypesType = wordTypes.getClass();
             runtimeType = runtime.getClass();

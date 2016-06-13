@@ -97,7 +97,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new AArch64HotSpotLIRGenerator(getProviders(), config(), lirGenRes);
+        return new AArch64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
     }
 
     @Override
@@ -237,15 +237,14 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = config();
         Label verifiedStub = new Label();
 
-        emitCodePrefix(crb, installedCodeOwner, masm, regConfig, config, verifiedStub);
+        emitCodePrefix(crb, installedCodeOwner, masm, regConfig, verifiedStub);
         emitCodeBody(crb, lir, masm);
-        emitCodeSuffix(crb, masm, config, frameMap);
+        emitCodeSuffix(crb, masm, frameMap);
     }
 
-    private void emitCodePrefix(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, AArch64MacroAssembler masm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedStub) {
+    private void emitCodePrefix(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, AArch64MacroAssembler masm, RegisterConfig regConfig, Label verifiedStub) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
             crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
@@ -290,7 +289,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         crb.emit(lir);
     }
 
-    private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm, HotSpotVMConfig config, FrameMap frameMap) {
+    private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {

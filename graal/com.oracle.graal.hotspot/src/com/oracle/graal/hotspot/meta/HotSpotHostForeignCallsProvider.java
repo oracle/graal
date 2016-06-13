@@ -225,7 +225,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig c = jvmciRuntime.getConfig();
+        HotSpotVMConfig c = runtime.getVMConfig();
         if (!PreferGraalStubs.getValue()) {
             registerForeignCall(DEOPTIMIZATION_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
             registerForeignCall(UNCOMMON_TRAP_HANDLER, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);

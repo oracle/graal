@@ -768,7 +768,7 @@ public final class CompileTheWorld {
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
             return false;
         }
-        HotSpotVMConfig c = config();
+        HotSpotVMConfig c = compiler.getGraalRuntime().getVMConfig();
         if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
             println(verbose || methodFilters != null,
                             String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter,

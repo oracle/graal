@@ -76,7 +76,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host) {
         assert host == null;
 
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        HotSpotVMConfig config = runtime.getVMConfig();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         HotSpotRegistersProvider registers = createRegisters();
         HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) jvmci.getMetaAccess();
