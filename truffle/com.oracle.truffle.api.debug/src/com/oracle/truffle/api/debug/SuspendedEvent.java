@@ -234,39 +234,39 @@ public final class SuspendedEvent {
      * Evaluates given code snippet in the context of currently suspended execution.
      *
      * @param code the snippet to evaluate
-     * @param frame the frame in which to evaluate the code; {@code null} means the current frame at
-     *            the halted location.
+     * @param frameInstance the frame in which to evaluate the code; {@code null} means the current
+     *            frame at the halted location.
      * @return the computed value
-     * @throws IllegalArgumentException if the supplied frame is not part of current execution stack
+     * @throws IllegalArgumentException if the frame is not part of current execution stack
      * @throws IOException in case an evaluation goes wrong
      * @throws KillException if the evaluation is killed by the debugger
      * @since 0.9
      */
-    public Object eval(String code, FrameInstance frame) throws IOException {
-        if (!stack.contains(frame)) {
+    public Object eval(String code, FrameInstance frameInstance) throws IOException {
+        if (!stack.contains(frameInstance)) {
             throw new IllegalArgumentException();
         }
-        return debugger.evalInContext(this, code, frame);
+        return debugger.evalInContext(this, code, frameInstance);
     }
 
     /**
      * Generates a (potentially language-specific) description of an execution value in a part of
      * the current execution context, for example the value stored in a frame slot. The description
      * is intended to be useful to a guest language programmer.
-     *
-     * @param frameNumber the execution context where the value is being managed
+     * 
      * @param value an object presumed to represent a <em>value</em> managed by the language of the
      *            AST where execution is halted.
+     * @param frameInstance the frame in which to evaluate the code;
      *
      * @return a user-oriented description of a possibly language-specific value
-     *
+     * @throws IllegalArgumentException if the frame is not part of current execution stack
      * @since 0.15
      */
-    public String toString(int frameNumber, Object value) {
-        if (frameNumber < 0 || frameNumber >= stack.size()) {
-            throw new IllegalArgumentException("frameNumber out of range");
+    public String toString(Object value, FrameInstance frameInstance) {
+        if (!stack.contains(frameInstance)) {
+            throw new IllegalArgumentException();
         }
-        final RootNode rootNode = frameNumber == 0 ? haltedNode.getRootNode() : stack.get(frameNumber).getCallNode().getRootNode();
+        final RootNode rootNode = frameInstance == stack.get(0) ? haltedNode.getRootNode() : frameInstance.getCallNode().getRootNode();
         return Debugger.ACCESSOR.toStringInContext(rootNode, value);
     }
 
