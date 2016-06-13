@@ -85,6 +85,9 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(true);
         @Option(help = "Only report debug values for maps which match the regular expression.", type = OptionType.Debug)
         public static final OptionValue<String> DebugValueThreadFilter = new OptionValue<>(null);
+        @Option(help = "Write debug values into a file instead of the terminal. " +
+                       "If DebugValueSummary is Thread, the thread name will be prepended.", type = OptionType.Debug)
+        public static final OptionValue<String> DebugValueFile = new OptionValue<>(null);
         @Option(help = "Send Graal compiler IR to dump handlers on error", type = OptionType.Debug)
         public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
         @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)

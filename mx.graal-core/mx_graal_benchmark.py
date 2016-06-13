@@ -76,13 +76,12 @@ mx_benchmark.add_java_vm(JvmciJdkVm("server", "graal-core", ["-Djvmci.Compiler=g
 
 
 class TimingBenchmarkMixin(object):
-
-    @staticmethod
-    def _mkDebugVariableRegex(valueName):
-        return r"(?P<scope>.*);" + valueName + r";(?P<value>[0-9]+);(?P<unit>us)"
+    debug_values_file = 'debug-values.csv'
+    name_re = re.compile(r"(?P<name>BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm")
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.Time=BackEnd,FrontEnd', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Complete'] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        vmArgs = ['-Dgraal.Time=BackEnd,FrontEnd', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Complete',
+                  '-Dgraal.DebugValueFile=' + TimingBenchmarkMixin.debug_values_file] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
     def getBechmarkName(self):
@@ -94,11 +93,19 @@ class TimingBenchmarkMixin(object):
     def name(self):
         return self.benchSuiteName() + "-timing"
 
+    def filterResult(self, r):
+        m = TimingBenchmarkMixin.name_re.match(r['name'])
+        if m:
+            r['name'] = m.groupdict()['name']
+            return r
+        return None
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-          mx_benchmark.StdOutRule(
-            TimingBenchmarkMixin._mkDebugVariableRegex(r"(?P<name>BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm"),
-            {
+          mx_benchmark.CSVFixedFileRule(
+            filename=TimingBenchmarkMixin.debug_values_file,
+            colnames=['scope', 'name', 'value', 'unit'],
+            replacement={
               "benchmark": self.getBechmarkName(),
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
@@ -112,7 +119,9 @@ class TimingBenchmarkMixin(object):
               "metric.score-function": "id",
               "metric.better": "higher",
               "metric.iteration": 0
-            }
+            },
+            filter_fn=self.filterResult,
+            delimiter=';', quotechar='"', escapechar='\\'
           ),
         ]
 
