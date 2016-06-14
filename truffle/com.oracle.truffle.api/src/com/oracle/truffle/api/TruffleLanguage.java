@@ -593,7 +593,7 @@ public abstract class TruffleLanguage<C> {
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
             final Env env = AccessAPI.engineAccess().findEnv(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
-            final Source source = Source.fromText(code, "eval in context");
+            final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
             return lang.evalInContext(source, node, frame);
         }
 

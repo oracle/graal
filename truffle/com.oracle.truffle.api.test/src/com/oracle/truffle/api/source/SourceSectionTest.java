@@ -32,13 +32,13 @@ import org.junit.Test;
 @SuppressWarnings("deprecation")
 public class SourceSectionTest {
 
-    private final Source emptySource = Source.fromText("", null);
+    private final Source emptySource = Source.newBuilder("").name(null).mimeType("content/unknown").build();
 
-    private final Source emptyLineSource = Source.fromText("\n", null);
+    private final Source emptyLineSource = Source.newBuilder("\n").name(null).mimeType("content/unknown").build();
 
-    private final Source shortSource = Source.fromText("01", null);
+    private final Source shortSource = Source.newBuilder("01").name(null).mimeType("content/unknown").build();
 
-    private final Source longSource = Source.fromText("01234\n67\n9\n", "long");
+    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name("long").mimeType("content/unknown").build();
 
     public void emptySourceTest0() {
         SourceSection section = emptySource.createSection("test", 0, 0);
@@ -135,14 +135,14 @@ public class SourceSectionTest {
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hello world!");
         }
-        Source complexHello = Source.fromFileName(sample.getPath(), true);
+        Source complexHello = Source.newBuilder(sample).build();
         SourceSection helloTo = complexHello.createSection("world", 6, 5);
         assertEquals("world", helloTo.getCode());
 
         try (FileWriter w = new FileWriter(sample)) {
             w.write("Hi world!");
         }
-        Source simpleHi = Source.fromFileName(sample.getPath(), true);
+        Source simpleHi = Source.newBuilder(sample).build();
         SourceSection hiTo = simpleHi.createSection("world", 3, 5);
         assertEquals("world", hiTo.getCode());
 

@@ -43,14 +43,14 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@SuppressWarnings("deprecation")
 @RunWith(SeparateClassloaderTestRunner.class)
 public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentity() {
-        Source s1 = Source.fromText("// a comment\n", "Empty comment");
-        assertNull("No mime type assigned", s1.getMimeType());
-        Source s2 = s1.withMimeType("text/x-c");
+        final Source.Builder<Void, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
+        Source s1 = builder.mimeType("content/unknown").build();
+        assertEquals("No mime type assigned", "content/unknown", s1.getMimeType());
+        Source s2 = builder.mimeType("text/x-c").build();
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
@@ -137,16 +137,16 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void assignMimeTypeAndIdentityForVirtualFile() throws IOException {
+    public void assignMimeTypeAndIdentityForVirtualFile() throws Exception {
         File file = File.createTempFile("Hello", ".java");
         file.deleteOnExit();
 
         String text = "// Hello";
-
+        final Source.Builder<Source, RuntimeException> builder = Source.newBuilder(file).content(text).mimeType("text/x-java");
         // JDK8 default fails on OS X: https://bugs.openjdk.java.net/browse/JDK-8129632
-        Source s1 = Source.fromFileName(text, file.getPath()).withMimeType("text/x-java");
+        Source s1 = builder.build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
-        Source s2 = s1.withMimeType("text/x-c");
+        Source s2 = builder.mimeType("text/x-c").build();
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertEquals("// Hello", s1.getCode());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
@@ -194,11 +194,9 @@ public class SourceBuilderTest {
     public void literalSources() throws IOException {
         final String code = "test code";
         final String description = "test description";
-        final Source literal = Source.fromText(code, description);
+        final Source literal = Source.newBuilder(code).name(description).mimeType("content/unknown").build();
         assertEquals(literal.getName(), description);
-        assertEquals(literal.getShortName(), description);
         assertEquals(literal.getCode(), code);
-        assertEquals("Non-appendable path is based on name", description, literal.getPath());
         assertNull(literal.getURL());
         assertNotNull("Every source must have URI", literal.getURI());
         final char[] buffer = new char[code.length()];
@@ -211,10 +209,10 @@ public class SourceBuilderTest {
         final String path = "test.input";
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
-        final Source source1 = Source.fromFileName(code1, path);
+        final Source source1 = Source.newBuilder(new File(path)).content(code1).mimeType("content/unknown").build();
         assertEquals(source1.getCode(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
-        final Source source2 = Source.fromFileName(code2, path);
+        final Source source2 = Source.newBuilder(new File(path)).content(code2).mimeType("content/unknown").build();
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File(path).toURI(), source1.getURI());
@@ -226,10 +224,10 @@ public class SourceBuilderTest {
         final String path = new File("test.input").getAbsolutePath();
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
-        final Source source1 = Source.fromFileName(code1, path);
+        final Source source1 = Source.newBuilder(new File(path)).content(code1).build();
         assertEquals(source1.getCode(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
-        final Source source2 = Source.fromFileName(code2, path);
+        final Source source2 = Source.newBuilder(new File(path)).content(code2).build();
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
@@ -241,7 +239,7 @@ public class SourceBuilderTest {
         final String tmpName = "/tmp/hi.tmp";
         final String realName = "/path/hi.txt";
 
-        Source orig = Source.fromText("Hi", tmpName);
+        Source orig = Source.newBuilder("Hi").name(tmpName).mimeType("content/unknown").build();
         assertEquals(tmpName, orig.getName());
         Source foundOrig = Source.find(tmpName);
         assertEquals(orig, foundOrig);
@@ -260,22 +258,6 @@ public class SourceBuilderTest {
 
         Source notFoundSource = Source.find(tmpName);
         assertNull("Original source isn't there anymore", notFoundSource);
-    }
-
-    @Test
-    public void withShortName() throws Exception {
-        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertEquals("/tmp/hi.tmp", orig.getShortName());
-        Source source = orig.withShortName("hi.txt");
-        assertEquals("hi.txt", source.getShortName());
-    }
-
-    @Test
-    public void withPath() throws Exception {
-        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertEquals("Path is derived from name", "/tmp/hi.tmp", orig.getPath());
-        Source source = orig.withPath("c:\\temp\\hi.txt");
-        assertEquals("c:\\temp\\hi.txt", source.getPath());
     }
 
     @Test
@@ -337,7 +319,7 @@ public class SourceBuilderTest {
             w.write(text);
         }
 
-        Source original = Source.fromFileName(file.getPath());
+        Source original = Source.newBuilder(file).build();
         assertEquals(text, original.getCode());
 
         String newText;
@@ -346,18 +328,11 @@ public class SourceBuilderTest {
             w.write(newText);
         }
 
-        Source still = Source.fromFileName(file.getPath(), false);
-        assertEquals(original, still);
-        assertEquals(text, still.getCode());
-        assertEquals(file.toURI(), still.getURI());
-
-        Source reloaded = Source.fromFileName(file.getPath(), true);
+        Source reloaded = Source.newBuilder(file).build();
         assertNotEquals(original, reloaded);
         assertEquals("New source has the new text", newText, reloaded.getCode());
-        assertEquals("New source has the same URI", reloaded.getURI(), still.getURI());
 
         assertEquals("Old source1 remains unchanged", text, original.getCode());
-        assertEquals("Old source2 remains unchanged", text, still.getCode());
     }
 
     @Test
@@ -375,7 +350,7 @@ public class SourceBuilderTest {
     }
 
     public void subSourceHashAndEquals() {
-        Source src = Source.fromText("One Two Three", "counting.en");
+        Source src = Source.newBuilder("One Two Three").name("counting.en").mimeType("content/unknown").build();
         Source one = Source.subSource(src, 0, 3);
         Source two = Source.subSource(src, 4, 3);
         Source three = Source.subSource(src, 8);
@@ -416,8 +391,8 @@ public class SourceBuilderTest {
             w.write("function test() {\n" + "  return 1;\n" + "}\n");
         }
 
-        Source s1 = Source.fromFileName(f1.getPath());
-        Source s2 = Source.fromFileName(f2.getPath());
+        Source s1 = Source.newBuilder(f1).build();
+        Source s2 = Source.newBuilder(f2).build();
 
         assertNotEquals("Different sources", s1, s2);
         assertEquals("But same content", s1.getCode(), s2.getCode());

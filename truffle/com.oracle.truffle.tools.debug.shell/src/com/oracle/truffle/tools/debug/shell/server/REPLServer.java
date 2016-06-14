@@ -364,7 +364,7 @@ public final class REPLServer {
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
-                    return engine.eval(Source.fromText(code, "eval(\"" + code + "\")").withMimeType(mimeType)).get();
+                    return engine.eval(Source.newBuilder(code).name("eval(\"" + code + "\")").mimeType(mimeType).build()).get();
                 } finally {
                     this.steppingInto = false;
                 }
@@ -665,7 +665,7 @@ public final class REPLServer {
 
         void setCondition(String expr) throws IOException {
             if (breakpoint == null) {
-                conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
+                conditionSource = expr == null ? null : Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("content/unknown").build();
             } else {
                 breakpoint.setCondition(expr);
             }

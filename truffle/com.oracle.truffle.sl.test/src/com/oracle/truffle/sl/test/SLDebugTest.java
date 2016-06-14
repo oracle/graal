@@ -117,7 +117,7 @@ public class SLDebugTest {
     }
 
     private static Source createFactorial() {
-        return Source.fromText("function test() {\n" +
+        return Source.newBuilder("function test() {\n" +
                         "  res = fac(2);\n" + "  println(res);\n" +
                         "  return res;\n" +
                         "}\n" +
@@ -127,12 +127,11 @@ public class SLDebugTest {
                         "  nMinusOne = n - 1;\n" +
                         "  nMOFact = fac(nMinusOne);\n" +
                         "  res = n * nMOFact;\n" +
-                        "  return res;\n" + "}\n",
-                        "factorial.sl").withMimeType(SLLanguage.MIME_TYPE);
+                        "  return res;\n" + "}\n").name("factorial.sl").mimeType(SLLanguage.MIME_TYPE).build();
     }
 
     private static Source createFactorialWithDebugger() {
-        return Source.fromText("function test() {\n" +
+        return Source.newBuilder("function test() {\n" +
                         "  res = fac(2);\n" + "  println(res);\n" +
                         "  return res;\n" +
                         "}\n" +
@@ -143,12 +142,11 @@ public class SLDebugTest {
                         "  nMOFact = fac(nMinusOne);\n" +
                         "  debugger;\n" +
                         "  res = n * nMOFact;\n" +
-                        "  return res;\n" + "}\n",
-                        "factorial.sl").withMimeType(SLLanguage.MIME_TYPE);
+                        "  return res;\n" + "}\n").name("factorial.sl").mimeType(SLLanguage.MIME_TYPE).build();
     }
 
     private static Source createInteropComputation() {
-        return Source.fromText("function test() {\n" +
+        return Source.newBuilder("function test() {\n" +
                         "}\n" +
                         "function interopFunction(notifyHandler) {\n" +
                         "  executing = true;\n" +
@@ -156,8 +154,7 @@ public class SLDebugTest {
                         "    executing = notifyHandler.isExecuting;\n" +
                         "  }\n" +
                         "  return executing;\n" +
-                        "}\n",
-                        "interopComputation.sl").withMimeType(SLLanguage.MIME_TYPE);
+                        "}\n").name("interopComputation.sl").mimeType(SLLanguage.MIME_TYPE).build();
     }
 
     protected final String getOut() {

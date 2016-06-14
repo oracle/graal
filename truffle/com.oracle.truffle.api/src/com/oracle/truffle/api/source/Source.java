@@ -1124,8 +1124,8 @@ public abstract class Source {
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
          * @param code the code to be available via {@link Source#getCode()}
-         * @return instance of this builder - which's {@link #build()} method
-         *   no longer throws an {@link IOException}
+         * @return instance of this builder - which's {@link #build()} method no longer throws an
+         *         {@link IOException}
          * @since 0.15
          */
         @SuppressWarnings("unchecked")
@@ -1143,14 +1143,14 @@ public abstract class Source {
          * Uses configuration of this builder to create new {@link Source} object. The return value
          * is parametrized to ensure your code doesn't compile until you specify a MIME type:
          * <ul>
-         * <li>either via file related methods like {@link Source#newBuilder(java.io.File)} that
-         * can guess the MIME type</li>
+         * <li>either via file related methods like {@link Source#newBuilder(java.io.File)} that can
+         * guess the MIME type</li>
          * <li>or directly via {@link #mimeType(java.lang.String)} method on this builder
          * </ul>
          * This method may throw an exception - especially when dealing with files (e.g.
          * {@link Source#newBuilder(java.net.URL)}, {@link Source#newBuilder(java.io.File)} or
-         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException}
-         * that one needs to deal with. In case of other building styles (like
+         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException} that
+         * one needs to deal with. In case of other building styles (like
          * {@link Source#newBuilder(java.lang.String)} one doesn't need to capture any exception
          * when calling this method.
          *
