@@ -81,7 +81,11 @@ final class URLSourceImpl extends Content {
         } catch (URISyntaxException ex) {
             throw new IOException("Bad URL: " + url, ex);
         }
-        this.code = code;
+        if (code != null) {
+            this.code = code;
+        } else {
+            this.code = Source.read(new InputStreamReader(url.openStream()));
+        }
     }
 
     @Override
