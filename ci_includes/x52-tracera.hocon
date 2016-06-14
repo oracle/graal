@@ -1,0 +1,86 @@
+enable-tracera = ["-Dgraal.TraceRA=true"]
+
+# DaCapo-related targets
+
+bench-dacapo-x52-tracera: ${bench-common-8} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-dacapo-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-dacapo} [
+      ] ${bench-dacapo-x52.args.mx} ["--"
+      ] ${bench-dacapo-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-dacapo-x52.args.bench}
+  ]
+}
+
+bench-dacapo-timing-x52-tracera: ${bench-common-8} {
+  capabilities: [linux, x52, daily]
+  name: "bench-dacapo-timing-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-dacapo-timing} [
+      ] ${bench-dacapo-timing-x52.args.mx} ["--"
+      ] ${bench-dacapo-timing-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-dacapo-timing-x52.args.bench}
+  ]
+}
+
+# Scala DaCapo-related targets
+
+bench-scala-dacapo-x52-tracera: ${bench-common-8} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-scala-dacapo-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-scala-dacapo} [
+      ] ${bench-scala-dacapo-x52.args.mx} ["--"
+      ] ${bench-scala-dacapo-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-scala-dacapo-x52.args.bench}
+  ]
+}
+
+bench-scala-dacapo-timing-x52-tracera: ${bench-common-8} {
+  capabilities: [linux, x52, daily]
+  name: "bench-scala-dacapo-timing-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-scala-dacapo-timing} [
+      ] ${bench-scala-dacapo-timing-x52.args.mx} ["--"
+      ] ${bench-scala-dacapo-timing-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-scala-dacapo-timing-x52.args.bench}
+  ]
+}
+
+# SPECJvm2008-related targets
+
+bench-specjvm2008-x52-tracera: ${bench-specjvm2008} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-specjvm2008-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-specjvm2008} [
+      ] ${bench-specjvm2008-x52.args.mx} ["--"
+      ] ${bench-specjvm2008-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-specjvm2008-x52.args.bench}
+  ]
+}
+
+# SPECjbb2015-related targets
+
+bench-specjbb2015-x52-tracera: ${bench-specjbb2015} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-specjbb2015-linux-x52-tracera"
+  run: [
+    ${bench-jvmci.mx-specjbb2015} [
+      ] ${bench-specjbb2015-x52.args.mx} ["--"
+      ] ${bench-specjbb2015-x52.args.jvm} ${enable-tracera} ["--"
+      ] ${bench-specjbb2015-x52.args.bench}
+  ]
+}
+
+# Build targets
+
+builds += [
+  ${bench-dacapo-x52-tracera}
+  ${bench-scala-dacapo-x52-tracera}
+  ${bench-specjvm2008-x52-tracera}
+  ${bench-specjbb2015-x52-tracera}
+  ${bench-dacapo-timing-x52-tracera}
+  ${bench-scala-dacapo-timing-x52-tracera}
+]
