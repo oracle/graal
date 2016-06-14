@@ -102,24 +102,23 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
 
     private static AllocatableValue[] slots;
 
-    private static final LIRTestSpecification readStacks = new ReadStackSlotsSpec();
+    private static final LIRTestSpecification readStackObjects = new ReadStackSlotsSpec();
 
     @SuppressWarnings("unused")
     @LIRIntrinsic
     public static void instrinsic(LIRTestSpecification spec) {
     }
 
-    private static final LIRTestSpecification writeFirstObjectStacks = new WriteStackSlotsSpec(JavaConstant.NULL_POINTER);
+    private static final LIRTestSpecification writeStackObjects = new WriteStackSlotsSpec(JavaConstant.NULL_POINTER);
 
-    public Object testFirstStackObject(Object obj) {
-        instrinsic(writeFirstObjectStacks);
+    public void testStackObjects() {
+        instrinsic(writeStackObjects);
         safepoint();
-        instrinsic(readStacks);
-        return obj;
+        instrinsic(readStackObjects);
     }
 
     @Test
-    public void runFirstStackObject() throws Throwable {
+    public void runStackObjects() throws Throwable {
         int max = HotSpotReferenceMapBuilder.HotSpotVMConfigCompat.maxOopMapStackOffset;
         if (max == Integer.MAX_VALUE) {
             max = 16 * 1024 - 64;
@@ -127,7 +126,7 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
         try {
             int numSlots = (max / 8) + 1;
             slots = new AllocatableValue[numSlots];
-            runTest("testFirstStackObject", this);
+            runTest("testStackObjects");
         } catch (BailoutException e) {
             return;
         }
