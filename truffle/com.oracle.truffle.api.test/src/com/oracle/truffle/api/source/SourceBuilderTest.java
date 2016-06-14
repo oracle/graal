@@ -147,7 +147,8 @@ public class SourceBuilderTest {
 
         Source source = Source.newBuilder(file).content(text).build();
         assertEquals("The content has been changed", text, source.getCode());
-        assertEquals("application/javascript", source.getMimeType());
+        assertNotNull("Mime type specified", source.getMimeType());
+        assertTrue("Recognized as JavaScript", source.getMimeType().endsWith("/javascript"));
         assertEquals("some.js", source.getName());
     }
 
