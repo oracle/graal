@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
+import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -276,6 +277,8 @@ public class BenchmarkCounters {
         }
     }
 
+    private static final String CSV_FMT = CSVUtil.buildFormatString("%s", "%s", "%s", "%d");
+
     private static void dumpComputerReadable(PrintStream out, boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet) {
         String category = staticCounter ? "static counters" : "dynamic counters";
         for (Map.Entry<String, Counter> entry : counterEntrySet) {
@@ -284,8 +287,7 @@ public class BenchmarkCounters {
                 String name = getName(entry.getKey(), group);
                 int index = counter.index;
                 long value = array[index];
-                // TODO(je): escape strings
-                out.printf("%s;%s;%s;%d\n", category, group, name, value);
+                CSVUtil.Escape.println(out, CSV_FMT, category, group, name, value);
             }
         }
     }
