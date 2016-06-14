@@ -34,7 +34,6 @@ import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@SuppressWarnings("deprecation")
 @RunWith(SeparateClassloaderTestRunner.class)
 public class LineLocationTest {
 

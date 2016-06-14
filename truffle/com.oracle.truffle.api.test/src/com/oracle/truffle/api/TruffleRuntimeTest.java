@@ -57,7 +57,6 @@ import com.oracle.truffle.api.source.SourceSection;
  * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.RootNodeTest}.
  * </p>
  */
-@SuppressWarnings("deprecation")
 public class TruffleRuntimeTest {
 
     private TruffleRuntime runtime;

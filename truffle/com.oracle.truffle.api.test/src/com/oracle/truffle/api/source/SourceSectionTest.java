@@ -29,7 +29,6 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
-@SuppressWarnings("deprecation")
 public class SourceSectionTest {
 
     private final Source emptySource = Source.newBuilder("").name(null).mimeType("content/unknown").build();

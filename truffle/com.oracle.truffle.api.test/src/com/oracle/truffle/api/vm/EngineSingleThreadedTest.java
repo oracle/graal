@@ -33,7 +33,6 @@ import com.oracle.truffle.api.source.Source;
 import java.util.concurrent.CountDownLatch;
 import org.junit.After;
 
-@SuppressWarnings("deprecation")
 public class EngineSingleThreadedTest {
     PolyglotEngine tvm;
     CountDownLatch readyForUse = new CountDownLatch(1);

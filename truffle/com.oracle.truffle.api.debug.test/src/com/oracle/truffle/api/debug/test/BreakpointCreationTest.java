@@ -48,7 +48,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 /**
  * Creating and modifying breakpoints; no actual executions.
  */
-@SuppressWarnings("deprecation")
 public final class BreakpointCreationTest {
 
     private Debugger db;

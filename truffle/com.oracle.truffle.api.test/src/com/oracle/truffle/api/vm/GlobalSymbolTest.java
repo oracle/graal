@@ -37,7 +37,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 
-@SuppressWarnings("deprecation")
 public class GlobalSymbolTest {
 
     private PolyglotEngine vm;

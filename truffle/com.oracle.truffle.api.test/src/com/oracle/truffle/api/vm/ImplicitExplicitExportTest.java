@@ -53,7 +53,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@SuppressWarnings("deprecation")
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
     private PolyglotEngine vm;

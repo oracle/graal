@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.ref.WeakReference;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
@@ -58,28 +57,14 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void assignMimeTypeAndIdentityForApppendable() {
         Source s1 = Source.fromAppendableText("<stdio>");
         assertEquals("<stdio>", s1.getName());
-        assertEquals("<stdio>", s1.getShortName());
         assertEquals("Appendable path is based on name", "<stdio>", s1.getPath());
         assertNull("No mime type assigned", s1.getMimeType());
         s1.appendCode("// Hello");
-        Source s2 = s1.withMimeType("text/x-c");
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
-        assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
-        assertNotEquals("So they are different", s1, s2);
-        assertNotNull("Every source must have URI", s1.getURI());
-        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
-    }
-
-    @Test
-    public void assignMimeTypeAndIdentityForBytes() {
-        String text = "// Hello";
-        Source s1 = Source.fromBytes(text.getBytes(StandardCharsets.UTF_8), "Hello", StandardCharsets.UTF_8);
-        assertNull("No mime type assigned", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
         assertEquals("// Hello", s1.getCode());
@@ -124,7 +109,6 @@ public class SourceBuilderTest {
 
         Source s1 = builder.build();
         assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
-        assertEquals("Just the name of the file", file.getName(), s1.getShortName());
         assertEquals("Name is short", file.getName(), s1.getName());
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -205,7 +189,7 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void clientManagedSourceChange() throws IOException {
+    public void clientManagedSourceChange() {
         final String path = "test.input";
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
@@ -220,7 +204,7 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void clientManagedSourceChangeAbsolute() throws IOException {
+    public void clientManagedSourceChangeAbsolute() {
         final String path = new File("test.input").getAbsolutePath();
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
@@ -301,7 +285,6 @@ public class SourceBuilderTest {
         assertEquals("Hi!", source.getCode());
         assertNull(source.getName());
         assertNull(source.getPath());
-        assertNull(source.getShortName());
         assertNotNull(source.getURI());
         assertEquals("truffle", source.getURI().getScheme());
         assertNull(source.getURL());

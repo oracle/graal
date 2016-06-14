@@ -43,7 +43,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 
-@SuppressWarnings("deprecation")
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
     /*

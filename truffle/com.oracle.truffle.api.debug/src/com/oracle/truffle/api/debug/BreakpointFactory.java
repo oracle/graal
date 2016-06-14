@@ -442,7 +442,6 @@ final class BreakpointFactory {
             return conditionSource;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         public void setCondition(String expr) throws IOException {
             assert getState() != DISPOSED : "disposed breakpoints are unusable";
@@ -589,7 +588,6 @@ final class BreakpointFactory {
             warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
         }
 
-        @SuppressWarnings("deprecation")
         private void resolve(Source source) {
             int line = ((URILocation) locationKey).line;
             LineLocation lineLocation = source.createLineLocation(line);
