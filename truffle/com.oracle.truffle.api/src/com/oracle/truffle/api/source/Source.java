@@ -153,7 +153,7 @@ public abstract class Source {
     }
 
     /**
-     * Creates new {@link Source} builder for specified <code>file</code>. One the source is built
+     * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
      * the {@link Source#getName() name} will become {@link File#getName()} and the
      * {@link Source#getCode()} will be loaded from the file, unless {@link Builder#content
      * redefined} on the builder. Sample usage:
