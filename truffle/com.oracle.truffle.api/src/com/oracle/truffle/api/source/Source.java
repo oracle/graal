@@ -388,7 +388,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
-     * @deprecated use {@link #newFromURL(java.net.URL)}
+     * @deprecated use {@link #newBuilder(java.net.URL)}
      */
     @Deprecated
     public static Source fromURL(URL url, String description) throws IOException {
@@ -419,7 +419,7 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
-     * @deprecated Use {@link #newFromReader(java.io.Reader)}
+     * @deprecated Use {@link #newBuilder(java.io.Reader)}
      */
     @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
