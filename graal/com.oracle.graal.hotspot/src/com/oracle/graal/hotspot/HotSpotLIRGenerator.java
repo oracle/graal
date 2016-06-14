@@ -152,5 +152,4 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
 
     Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 
-    void emitPrefetchAllocate(Value address);
 }
