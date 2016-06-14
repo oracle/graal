@@ -749,8 +749,9 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
-    def __init__(self, dist):
+    def __init__(self, dist, isTest=False):
         self.dist = dist
+        self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
@@ -758,17 +759,26 @@ class GraalArchiveParticipant:
 
     def __add__(self, arcname, contents):
         if arcname.startswith('META-INF/providers/'):
-            provider = arcname[len('META-INF/providers/'):]
-            for service in contents.strip().split(os.linesep):
-                assert service
-                self.services.setdefault(service, []).append(provider)
+            if self.isTest:
+                # The test distributions must not have their @ServiceProvider
+                # generated providers converted to real services otherwise
+                # bad things can happen such as InvocationPlugins being registered twice.
+                pass
+            else:
+                provider = arcname[len('META-INF/providers/'):]
+                for service in contents.strip().split(os.linesep):
+                    assert service
+                    self.services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
-            # Need to create service files for the providers of the
-            # jdk.vm.ci.options.Options service created by
-            # jdk.vm.ci.options.processor.OptionProcessor.
-            provider = arcname[:-len('.class'):].replace('/', '.')
-            self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
+            if self.isTest:
+                mx.warn('@Option defined in test code will be ignored: ' + arcname)
+            else:
+                # Need to create service files for the providers of the
+                # jdk.vm.ci.options.Options service created by
+                # jdk.vm.ci.options.processor.OptionProcessor.
+                provider = arcname[:-len('.class'):].replace('/', '.')
+                self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
         return False
 
     def __addsrc__(self, arcname, contents):
@@ -784,5 +794,5 @@ mx.update_commands(_suite, {
 
 def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
-        dist.set_archiveparticipant(GraalArchiveParticipant(dist))
+        dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
     add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))
