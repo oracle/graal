@@ -1,0 +1,21 @@
+# SPECjbb2005-related targets
+
+bench-specjbb2005-x4150: ${bench-specjbb2005} {
+  capabilities: [linux, x4150, bench, post-merge]
+  name: "bench-specjbb2005-linux-x4150"
+  args.mx : ["--machine-name", "x4150"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.bench : []
+  run: [
+    ${bench-jvmci.mx-specjbb2005} [
+      ] ${bench-specjbb2005-x4150.args.mx} ["--"
+      ] ${bench-specjbb2005-x4150.args.jvm} ["--"
+      ] ${bench-specjbb2005-x4150.args.bench}
+  ]
+}
+
+# Build targets
+
+builds += [
+  ${bench-specjbb2005-x4150}
+]
