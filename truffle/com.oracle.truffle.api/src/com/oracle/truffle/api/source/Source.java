@@ -167,7 +167,7 @@ public abstract class Source {
      * @return new instance of builder
      * @since 0.15
      */
-    public static Builder<Source, IOException> newFromFile(File file) {
+    public static Builder<Source, IOException> newBuilder(File file) {
         return EMPTY.new Builder<>(file);
     }
 
@@ -290,7 +290,7 @@ public abstract class Source {
      * @return new builder to configure additional properties
      * @since 0.15
      */
-    public static Builder<Void, RuntimeException> newFromText(String text) {
+    public static Builder<Void, RuntimeException> newBuilder(String text) {
         return EMPTY.new Builder<>(text);
     }
 
@@ -407,7 +407,7 @@ public abstract class Source {
      * @return new builder to configure and {@link Builder#build() construct} {@link Source} from
      * @since 0.15
      */
-    public static Builder<Source, IOException> newFromURL(URL url) {
+    public static Builder<Source, IOException> newBuilder(URL url) {
         return EMPTY.new Builder<>(url);
     }
 
@@ -440,7 +440,7 @@ public abstract class Source {
      * @return new builder to configure and {@link Builder#build() construct} {@link Source} from
      * @since 0.15
      */
-    public static Builder<Void, IOException> newFromReader(Reader reader) {
+    public static Builder<Void, IOException> newBuilder(Reader reader) {
         return EMPTY.new Builder<>(reader);
     }
 
@@ -1052,7 +1052,7 @@ public abstract class Source {
      *            {@link Source} once {@link Source#getMimeType() MIME type} can be known
      * @param <E> the (checked) exception that one should expect when calling {@link #build()}
      *            method - usually an {@link IOException},
-     *            {@link Source#newFromText(java.lang.String) sometimes} none.
+     *            {@link Source#newBuilder(java.lang.String) sometimes} none.
      * @since 0.15
      */
     public final class Builder<R, E extends Exception> {
@@ -1143,15 +1143,15 @@ public abstract class Source {
          * Uses configuration of this builder to create new {@link Source} object. The return value
          * is parametrized to ensure your code doesn't compile until you specify a MIME type:
          * <ul>
-         * <li>either via file related methods like {@link Source#newFromFile(java.io.File)} that
+         * <li>either via file related methods like {@link Source#newBuilder(java.io.File)} that
          * can guess the MIME type</li>
          * <li>or directly via {@link #mimeType(java.lang.String)} method on this builder
          * </ul>
          * This method may throw an exception - especially when dealing with files (e.g.
-         * {@link Source#newFromURL(java.net.URL)}, {@link Source#newFromFile(java.io.File)} or
-         * {@link Source#newFromReader(java.io.Reader)} this method may throw {@link IOException}
+         * {@link Source#newBuilder(java.net.URL)}, {@link Source#newBuilder(java.io.File)} or
+         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException}
          * that one needs to deal with. In case of other building styles (like
-         * {@link Source#newFromText(java.lang.String)} one doesn't need to capture any exception
+         * {@link Source#newBuilder(java.lang.String)} one doesn't need to capture any exception
          * when calling this method.
          *
          * @return the source object
@@ -1232,7 +1232,7 @@ class SourceSnippets {
         File file = new File(dir, name);
         assert name.endsWith(".java") : "Imagine 'c:\\sources\\Example.java' file";
 
-        Source source = Source.newFromFile(file).build();
+        Source source = Source.newBuilder(file).build();
 
         assert file.getName().equals(source.getName());
         assert file.getPath().equals(source.getPath());
@@ -1245,7 +1245,7 @@ class SourceSnippets {
     public static Source fromURL() throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
-        Source source = Source.newFromURL(resource)
+        Source source = Source.newBuilder(resource)
             .name("sample.js")
             .build();
         assert resource.toExternalForm().equals(source.getPath());
@@ -1259,7 +1259,7 @@ class SourceSnippets {
     public static Source fromURLWithOwnContent() throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURLWithOwnContent
         URL resource = SourceSnippets.class.getResource("sample.js");
-        Source source = Source.newFromURL(resource)
+        Source source = Source.newBuilder(resource)
             .name("sample.js")
             .content("{}")
             .build();
@@ -1277,7 +1277,7 @@ class SourceSnippets {
         Reader stream = new InputStreamReader(
             SourceSnippets.class.getResourceAsStream("sample.js")
         );
-        Source source = Source.newFromReader(stream)
+        Source source = Source.newBuilder(stream)
             .name("sample.js")
             .mimeType("application/javascript")
             .build();
@@ -1289,7 +1289,7 @@ class SourceSnippets {
 
     public static Source fromAString() {
         // BEGIN: SourceSnippets#fromAString
-        Source source = Source.newFromText("function() {\n"
+        Source source = Source.newBuilder("function() {\n"
             + "  return 'Hi';\n"
             + "}\n")
             .name("hi.js")

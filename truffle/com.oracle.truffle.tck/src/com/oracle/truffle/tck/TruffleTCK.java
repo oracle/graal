@@ -782,7 +782,7 @@ public abstract class TruffleTCK {
         String mime = mimeType();
         String code = invalidCode();
         // @formatter:off
-        Source invalidCode = Source.newFromText(code).
+        Source invalidCode = Source.newBuilder(code).
             name("Invalid code").
             mimeType(mime).
             build();
@@ -1206,7 +1206,7 @@ public abstract class TruffleTCK {
         final String secondVar = "var" + (char) ('0' + RANDOM.nextInt(10));
         String mulCode = multiplyCode(firstVar, secondVar);
         // @formatter:off
-        Source source = Source.newFromText("TCK42:" + mimeType() + ":" + mulCode).
+        Source source = Source.newBuilder("TCK42:" + mimeType() + ":" + mulCode).
             name("evaluate " + firstVar + " * " + secondVar).
             mimeType("application/x-tck").
             build();

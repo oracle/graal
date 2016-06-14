@@ -93,7 +93,7 @@ public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
-        Source.Builder<Void, IOException> builder = Source.newFromReader(new StringReader(text));
+        Source.Builder<Void, IOException> builder = Source.newBuilder(new StringReader(text));
         Source s1 = builder.name("Hello").mimeType("text/plain").build();
         assertEquals("Base type assigned", "text/plain", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -121,7 +121,7 @@ public class SourceBuilderTest {
         String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
         final File nonCannonicalFile = new File(nonCannonical);
         assertTrue("Exists, as it is the same file", nonCannonicalFile.exists());
-        final Source.Builder<Source, IOException> builder = Source.newFromFile(nonCannonicalFile);
+        final Source.Builder<Source, IOException> builder = Source.newBuilder(nonCannonicalFile);
 
         Source s1 = builder.build();
         assertEquals("Path is cannonicalized", file.getPath(), s1.getPath());
@@ -162,7 +162,7 @@ public class SourceBuilderTest {
 
         String text = "// Hello";
 
-        Source source = Source.newFromFile(file).content(text).build();
+        Source source = Source.newBuilder(file).content(text).build();
         assertEquals("The content has been changed", text, source.getCode());
         assertEquals("application/javascript", source.getMimeType());
         assertEquals("some.js", source.getName());
@@ -179,7 +179,7 @@ public class SourceBuilderTest {
             w.write(text);
         }
 
-        Source s1 = Source.newFromURL(file.toURI().toURL()).name("Hello.java").build();
+        Source s1 = Source.newBuilder(file.toURI().toURL()).name("Hello.java").build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = s1.withMimeType("text/x-c");
         assertEquals("They have the same content", s1.getCode(), s2.getCode());
@@ -314,7 +314,7 @@ public class SourceBuilderTest {
     @Test
     public void whatAreTheDefaultValuesOfNewFromReader() throws Exception {
         StringReader r = new StringReader("Hi!");
-        Source source = Source.newFromReader(r).mimeType("text/plain").build();
+        Source source = Source.newBuilder(r).mimeType("text/plain").build();
 
         assertEquals("Hi!", source.getCode());
         assertNull(source.getName());
@@ -362,14 +362,14 @@ public class SourceBuilderTest {
 
     @Test
     public void normalSourceIsNotInternal() {
-        Source source = Source.newFromText("anything").mimeType("text/plain").build();
+        Source source = Source.newBuilder("anything").mimeType("text/plain").build();
 
         assertFalse("Not internal", source.isInternal());
     }
 
     @Test
     public void markSourceAsInternal() {
-        Source source = Source.newFromText("anything internal").mimeType("text/plain").internal().build();
+        Source source = Source.newBuilder("anything internal").mimeType("text/plain").internal().build();
 
         assertTrue("This source is internal", source.isInternal());
     }

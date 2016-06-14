@@ -177,13 +177,13 @@ public final class SLMain {
         Source source;
         if (args.length == 0) {
             // @formatter:off
-            source = Source.newFromReader(new InputStreamReader(System.in)).
+            source = Source.newBuilder(new InputStreamReader(System.in)).
                 name("<stdin>").
                 mimeType(SLLanguage.MIME_TYPE).
                 build();
             // @formatter:on
         } else {
-            source = Source.newFromFile(new File(args[0])).build();
+            source = Source.newBuilder(new File(args[0])).build();
         }
 
         executeSource(source, System.in, System.out);
