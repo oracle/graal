@@ -82,6 +82,7 @@ public class SLRootNode extends RootNode {
         return bodyNode;
     }
 
+    @Override
     public String getName() {
         return name;
     }

@@ -198,7 +198,7 @@ public class SLDebugTest {
                 // the breakpoint should hit instead
             }
         });
-        assertLocation(8, true,
+        assertLocation("fac", 8, true,
                         "return 1", "n",
                         1L, "nMinusOne",
                         null, "nMOFact",
@@ -233,7 +233,7 @@ public class SLDebugTest {
                 // the breakpoint should hit instead
             }
         });
-        assertLocation(12, true,
+        assertLocation("fac", 12, true,
                         "debugger", "n",
                         2L, "nMinusOne",
                         1L, "nMOFact",
@@ -263,40 +263,40 @@ public class SLDebugTest {
             }
         });
 
-        assertLocation(2, true, "res = fac(2)", "res", null);
+        assertLocation("test", 2, true, "res = fac(2)", "res", null);
         stepInto(1);
-        assertLocation(7, true,
+        assertLocation("fac", 7, true,
                         "n <= 1", "n",
                         2L, "nMinusOne",
                         null, "nMOFact",
                         null, "res", null);
         stepOver(1);
-        assertLocation(10, true,
+        assertLocation("fac", 10, true,
                         "nMinusOne = n - 1", "n",
                         2L, "nMinusOne",
                         null, "nMOFact",
                         null, "res", null);
         stepOver(1);
-        assertLocation(11, true,
+        assertLocation("fac", 11, true,
                         "nMOFact = fac(nMinusOne)", "n",
                         2L, "nMinusOne",
                         1L, "nMOFact",
                         null, "res", null);
         stepOver(1);
-        assertLocation(12, true,
+        assertLocation("fac", 12, true,
                         "res = n * nMOFact", "n", 2L, "nMinusOne",
                         1L, "nMOFact",
                         1L, "res", null);
         stepOver(1);
-        assertLocation(13, true,
+        assertLocation("fac", 13, true,
                         "return res", "n",
                         2L, "nMinusOne",
                         1L, "nMOFact",
                         1L, "res", 2L);
         stepOver(1);
-        assertLocation(2, false, "fac(2)", "res", null);
+        assertLocation("test", 2, false, "fac(2)", "res", null);
         stepOver(1);
-        assertLocation(3, true, "println(res)", "res", 2L);
+        assertLocation("test", 3, true, "println(res)", "res", 2L);
         stepOut();
 
         Value value = engine.findGlobalSymbol("test").execute();
@@ -411,10 +411,12 @@ public class SLDebugTest {
         });
     }
 
-    private void assertLocation(final int line, final boolean isBefore, final String code, final Object... expectedFrame) {
+    private void assertLocation(final String name, final int line, final boolean isBefore, final String code, final Object... expectedFrame) {
         run.addLast(new Runnable() {
             public void run() {
                 assertNotNull(suspendedEvent);
+                final String actualName = suspendedEvent.getNode().getRootNode().getName();
+                Assert.assertEquals(name, actualName);
                 Assert.assertEquals(line, suspendedEvent.getNode().getSourceSection().getLineLocation().getLineNumber());
                 Assert.assertEquals(code, suspendedEvent.getNode().getSourceSection().getCode());
                 Assert.assertEquals(isBefore, suspendedEvent.isHaltedBefore());

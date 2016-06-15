@@ -106,6 +106,19 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * A description of the AST, typically a method or procedure name, that identifies it for guest
+     * language programmers; it might appear, for example in the context of a stack dump or trace.
+     * Language execution semantics should not depend on this result. It should rather be formatted
+     * in a way most useful for programmers using the language.
+     *
+     * @return a name that helps guest language programmers identify code corresponding to the AST
+     * @since 0.15
+     */
+    public String getName() {
+        return null;
+    }
+
+    /**
      * Returns <code>true</code> if this {@link RootNode} is allowed to be cloned. The runtime
      * system might decide to create deep copies of the {@link RootNode} in order to gather context
      * sensitive profiling feedback. The default implementation returns <code>false</code>. Guest
