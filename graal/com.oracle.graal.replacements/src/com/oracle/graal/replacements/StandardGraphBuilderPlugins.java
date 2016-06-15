@@ -78,6 +78,7 @@ import com.oracle.graal.nodes.extended.GetClassNode;
 import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.extended.UnboxNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.extended.UnsafeMemoryStoreNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
@@ -99,7 +100,6 @@ import com.oracle.graal.phases.common.instrumentation.nodes.IsMethodInlinedNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.RootNameNode;
 import com.oracle.graal.phases.common.instrumentation.nodes.RuntimePathNode;
 import com.oracle.graal.replacements.nodes.DirectReadNode;
-import com.oracle.graal.replacements.nodes.DirectStoreNode;
 import com.oracle.graal.replacements.nodes.ReverseBytesNode;
 import com.oracle.graal.replacements.nodes.VirtualizableInvokeMacroNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
@@ -629,7 +629,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address, ValueNode value) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.add(new DirectStoreNode(address, value, kind));
+            b.add(new UnsafeMemoryStoreNode(address, value, kind, LocationIdentity.any()));
             b.getGraph().markUnsafeAccess();
             return true;
         }
