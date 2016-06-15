@@ -122,7 +122,6 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     String findMimeType() throws IOException {
-        String mime = Files.probeContentType(file.toPath());
-        return mime != null ? mime : "content/unknown";
+        return Files.probeContentType(file.toPath());
     }
 }

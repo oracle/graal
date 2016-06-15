@@ -211,16 +211,15 @@ public class SourceBuilderTest {
         final String path = new File("test.input").getAbsolutePath();
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
-        final Source source1 = Source.newBuilder(new File(path)).content(code1).build();
+        final Source source1 = Source.newBuilder(new File(path)).content(code1).mimeType("x-application/input").build();
         assertEquals(source1.getCode(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
-        final Source source2 = Source.newBuilder(new File(path)).content(code2).build();
+        final Source source2 = Source.newBuilder(new File(path)).content(code2).mimeType("x-application/input").build();
         assertEquals(source2.getCode(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
-
 
     @Test
     public void relativeURL() throws Exception {
