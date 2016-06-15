@@ -25,16 +25,4 @@ com.oracle.truffle.api.source.Source.fromURL($u, $n)
 'Use builder':
 com.oracle.truffle.api.source.Source.newBuilder($u).name($n).build()
 ;;
-'Set MIME type on builder':
-$b.build().withMimeType($m) :: $b instanceof com.oracle.truffle.api.source.Source.Builder;
-=>
-'Use builder mimetype':
-$b.mimeType($m).build()
-;;
-'Set any MIME type on builder':
-$b.build() :: $b instanceof com.oracle.truffle.api.source.Source.Builder<java.lang.Void,?>;
-=>
-'Specify any mimetype':
-$b.mimeType("content/unknown").build()
-;;
 
