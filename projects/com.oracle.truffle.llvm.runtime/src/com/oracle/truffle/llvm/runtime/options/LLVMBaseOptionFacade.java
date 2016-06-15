@@ -129,4 +129,8 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.PRINT_EXECUTION_TIME);
     }
 
+    public static long getStackSizeKB() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.STACK_SIZE_KB);
+    }
+
 }
