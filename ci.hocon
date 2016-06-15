@@ -97,54 +97,6 @@ bench-common-8 : ${common} ${java8Downloads} {
   ]
 }
 
-# DaCapo-related targets
-
-bench-dacapo-x52: ${bench-common-8} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-bench-dacapo-timing-x52: ${bench-common-8} {
-  capabilities: [linux, x52, daily]
-  name: "bench-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-# Scala DaCapo-related targets
-
-bench-scala-dacapo-x52: ${bench-common-8} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-scala-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-bench-scala-dacapo-timing-x52: ${bench-common-8} {
-  capabilities: [linux, x52, daily]
-  name: "bench-scala-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
 # SPECJvm2008-related targets
 
 bench-specjvm2008: ${bench-common-8} {
@@ -152,18 +104,6 @@ bench-specjvm2008: ${bench-common-8} {
     SPECJVM2008: { name: specjvm2008, version: "1.01" }
   }
   timelimit: "2:50:00"
-}
-
-bench-specjvm2008-x52: ${bench-specjvm2008} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjvm2008-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjvm2008} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--",
-      "-it", "240s", "-wt", "120s"
-    ]
-  ]
 }
 
 # SPECjbb2005-related targets
@@ -175,17 +115,6 @@ bench-specjbb2005: ${bench-common-8} {
   timelimit: "2:00:00"
 }
 
-bench-specjbb2005-x4150: ${bench-specjbb2005} {
-  capabilities: [linux, x4150, bench, post-merge]
-  name: "bench-specjbb2005-linux-x4150"
-  run: [
-    ${bench-jvmci.mx-specjbb2005} [
-      "--machine-name", "x4150", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
 # SPECjbb2013-related targets
 
 bench-specjbb2013: ${bench-common-8} {
@@ -195,17 +124,6 @@ bench-specjbb2013: ${bench-common-8} {
   timelimit: "3:00:00"
 }
 
-bench-specjbb2013-x52: ${bench-specjbb2013} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2013-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjbb2013} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
 # SPECjbb2015-related targets
 
 bench-specjbb2015: ${bench-common-8} {
@@ -213,17 +131,6 @@ bench-specjbb2015: ${bench-common-8} {
     SPECJBB2015: { name: specjbb2015, version: "1.00" }
   }
   timelimit: "3:00:00"
-}
-
-bench-specjbb2015-x52: ${bench-specjbb2015} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2015-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjbb2015} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
 }
 
 # Build targets
@@ -239,12 +146,8 @@ builds = [
   ${gateTest8}        ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9",      timelimit: "1:00:00"}
   ${gateBootstrap8}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-bootstrap-8-solaris-sparcv9", timelimit: "1:00:00"}
 #  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
-  ${bench-dacapo-x52}
-  ${bench-scala-dacapo-x52}
-  ${bench-specjvm2008-x52}
-  ${bench-specjbb2005-x4150}
-  ${bench-specjbb2013-x52}
-  ${bench-specjbb2015-x52}
-  ${bench-dacapo-timing-x52}
-  ${bench-scala-dacapo-timing-x52}
 ]
+
+include "ci_includes/x52.hocon"
+include "ci_includes/x4150.hocon"
+include "ci_includes/x52-tracera.hocon"
