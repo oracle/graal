@@ -158,7 +158,7 @@ public class BytecodeDisassembler {
                     case GETFIELD       :
                     case PUTFIELD       : {
                         int cpi = stream.readCPI();
-                        JavaField field = cp.lookupField(cpi, opcode);
+                        JavaField field = cp.lookupField(cpi, method, opcode);
                         String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? field.format("%n:%T") : field.format("%H.%n:%T");
                         buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
                         break;
