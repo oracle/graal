@@ -1,1 +1,1 @@
-com.oracle.truffle.api.source.MakeSureJavaIsJava
+com.oracle.truffle.api.source.CommonMIMETypeTestDetector

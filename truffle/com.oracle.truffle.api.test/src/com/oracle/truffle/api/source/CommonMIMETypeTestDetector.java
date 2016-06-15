@@ -26,15 +26,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
 
-public final class MakeSureJavaIsJava extends FileTypeDetector {
-
+public final class CommonMIMETypeTestDetector extends FileTypeDetector {
     @Override
     public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().endsWith(".java")) {
+        if (path.getFileName().toString().endsWith(".java")) {
             return "text/x-java";
         }
-        if (path.getFileName().endsWith(".js")) {
-            return "text/javascript";
+        if (path.getFileName().toString().endsWith(".js")) {
+            return "application/javascript";
         }
         return null;
     }
