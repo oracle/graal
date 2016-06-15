@@ -63,6 +63,7 @@ public enum LLVMBaseOption implements LLVMOption {
                     null,
                     LLVMOptions::parseString,
                     PropertyCategory.TESTS),
+    STACK_SIZE_KB("StackSizeKB", "The stack size in KB.", 81920L, LLVMOptions::parseLong, PropertyCategory.GENERAL),
     DYN_LIBRARY_PATHS(
                     "DynamicNativeLibraryPath",
                     "The native library search paths delimited by " + LLVMOptions.getPathDelimiter(),
