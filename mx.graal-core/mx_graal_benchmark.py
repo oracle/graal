@@ -204,7 +204,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             [benchmarks[0]] + runArgs)
 
     def benchmarks(self):
-        return self.daCapoIterations().keys()
+        return [key for key, value in self.daCapoIterations().iteritems() if value != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
