@@ -119,7 +119,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         try {
             node = parse(code);
         } catch (LanguageError e) {
-            throw new IOException(e.getMessage());
+            throw new IOException(e);
         }
         return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(outer, node));
     }
