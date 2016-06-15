@@ -223,48 +223,6 @@ public class SourceTest {
     }
 
     @Test
-    public void withName() throws Exception {
-        final String tmpName = "/tmp/hi.tmp";
-        final String realName = "/path/hi.txt";
-
-        Source orig = Source.fromText("Hi", tmpName);
-        assertEquals(tmpName, orig.getName());
-        Source foundOrig = Source.find(tmpName);
-        assertEquals(orig, foundOrig);
-
-        Source source = orig.withName(realName);
-        assertEquals(realName, source.getName());
-
-        Source foundSource = Source.find(realName);
-        assertSame(source, foundSource);
-
-        WeakReference<Source> refOrig = new WeakReference<>(orig);
-        orig = null;
-        foundOrig = null;
-
-        assertGC("The source can disappear", refOrig);
-
-        Source notFoundSource = Source.find(tmpName);
-        assertNull("Original source isn't there anymore", notFoundSource);
-    }
-
-    @Test
-    public void withShortName() throws Exception {
-        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertEquals("/tmp/hi.tmp", orig.getShortName());
-        Source source = orig.withShortName("hi.txt");
-        assertEquals("hi.txt", source.getShortName());
-    }
-
-    @Test
-    public void withPath() throws Exception {
-        Source orig = Source.fromText("Hi", "/tmp/hi.tmp");
-        assertEquals("Path is derived from name", "/tmp/hi.tmp", orig.getPath());
-        Source source = orig.withPath("c:\\temp\\hi.txt");
-        assertEquals("c:\\temp\\hi.txt", source.getPath());
-    }
-
-    @Test
     public void relativeURL() throws Exception {
         URL resource = SourceSnippets.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);

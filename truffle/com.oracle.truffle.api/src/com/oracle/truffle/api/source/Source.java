@@ -936,57 +936,6 @@ public abstract class Source {
     }
 
     /**
-     * Associates the source with specified name.
-     *
-     * @param newName name to be returned from {@link #getName()} method
-     * @return new (identical) source, with changed {@link #getName()}
-     * @since 0.14
-     */
-    final Source withName(String newName) {
-        try {
-            Source another = (Source) clone();
-            another.name = newName;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
-     * Associates the source with specified short name.
-     *
-     * @param newShortName name to be returned from {@link #getShortName()} method
-     * @return new (identical) source, with changed {@link #getShortName()}
-     * @since 0.14
-     */
-    final Source withShortName(String newShortName) {
-        try {
-            Source another = (Source) clone();
-            another.shortName = newShortName;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
-     * Associates the source with specified short name.
-     *
-     * @param newPath name to be returned from {@link #getPath()} method
-     * @return new (identical) source, with changed {@link #getPath()}
-     * @since 0.14
-     */
-    final Source withPath(String newPath) {
-        try {
-            Source another = (Source) clone();
-            another.path = newPath;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
      * MIME type that is associated with this source. By default file extensions known to the system
      * are used to determine the MIME type (via registered {@link FileTypeDetector} classes), yet
      * one can directly {@link #withMimeType(java.lang.String) provide a MIME type} to each source.

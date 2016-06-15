@@ -221,31 +221,6 @@ public class SourceBuilderTest {
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
-    @Test
-    public void withName() throws Exception {
-        final String tmpName = "/tmp/hi.tmp";
-        final String realName = "/path/hi.txt";
-
-        Source orig = Source.newBuilder("Hi").name(tmpName).mimeType("content/unknown").build();
-        assertEquals(tmpName, orig.getName());
-        Source foundOrig = Source.find(tmpName);
-        assertEquals(orig, foundOrig);
-
-        Source source = orig.withName(realName);
-        assertEquals(realName, source.getName());
-
-        Source foundSource = Source.find(realName);
-        assertSame(source, foundSource);
-
-        WeakReference<Source> refOrig = new WeakReference<>(orig);
-        orig = null;
-        foundOrig = null;
-
-        assertGC("The source can disappear", refOrig);
-
-        Source notFoundSource = Source.find(tmpName);
-        assertNull("Original source isn't there anymore", notFoundSource);
-    }
 
     @Test
     public void relativeURL() throws Exception {
