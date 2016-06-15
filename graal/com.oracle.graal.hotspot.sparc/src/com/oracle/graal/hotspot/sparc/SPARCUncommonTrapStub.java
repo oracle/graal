@@ -33,7 +33,6 @@ import static jdk.vm.ci.sparc.SPARC.o3;
 import static jdk.vm.ci.sparc.SPARC.o4;
 
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 
@@ -46,11 +45,11 @@ final class SPARCUncommonTrapStub extends UncommonTrapStub {
 
     private RegisterConfig registerConfig;
 
-    SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, GraalHotSpotVMConfig config) {
+    SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
-        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable, config.linuxOs);
+        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable);
     }
 
     @Override
