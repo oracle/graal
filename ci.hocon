@@ -69,6 +69,6 @@ builds = [
       ["mx", "unittest", "--verbose" ]
     ], 
     capabilities : [solaris, sparcv9, gate],
-    name: "sanity-check-solaris"
+    name: "gate-solaris-lite"
   }
 ]
