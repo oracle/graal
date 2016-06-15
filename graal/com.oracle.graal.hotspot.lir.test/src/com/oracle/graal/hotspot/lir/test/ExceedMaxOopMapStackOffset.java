@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.lir.test;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.hotspot.HotSpotReferenceMapBuilder;
+import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.jtt.LIRTest;
@@ -119,7 +119,7 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
 
     @Test
     public void runStackObjects() throws Throwable {
-        int max = HotSpotReferenceMapBuilder.HotSpotVMConfigCompat.maxOopMapStackOffset;
+        int max = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig().maxOopMapStackOffset;
         if (max == Integer.MAX_VALUE) {
             max = 16 * 1024 - 64;
         }

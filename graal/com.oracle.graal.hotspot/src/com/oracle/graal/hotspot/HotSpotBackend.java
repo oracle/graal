@@ -54,7 +54,6 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 import com.oracle.graal.nodes.UnwindNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -274,11 +273,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         if (HotSpotBackend.Options.ASMInstructionProfiling.getValue() != null) {
             HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
         }
-    }
-
-    @Override
-    public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
-        return new HotSpotReferenceMapBuilder(totalFrameSize);
     }
 
     @Override

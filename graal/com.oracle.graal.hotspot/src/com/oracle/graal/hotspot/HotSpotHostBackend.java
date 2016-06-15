@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 import com.oracle.graal.nodes.StructuredGraph;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -136,4 +137,10 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
     }
 
     protected abstract void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset);
+
+    @Override
+    public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
+        return new HotSpotReferenceMapBuilder(totalFrameSize, config.maxOopMapStackOffset);
+    }
+
 }

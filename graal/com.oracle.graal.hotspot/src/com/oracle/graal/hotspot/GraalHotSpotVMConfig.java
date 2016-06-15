@@ -452,6 +452,12 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return cardtableShift;
     }
 
+    /**
+     * This is the largest stack offset encodeable in an OopMapValue. Offsets larger than this will
+     * throw an exception during code installation.
+     */
+    public final int maxOopMapStackOffset = getFieldValue("JVMCIRuntime::max_oop_map_stack_offset", Integer.class, "int");
+
     public final long safepointPollingAddress = getFieldValue("os::_polling_page", Long.class, "address");
 
     // G1 Collector Related Values.

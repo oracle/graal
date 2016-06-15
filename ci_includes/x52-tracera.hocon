@@ -2,7 +2,7 @@ enable-tracera = ["-Dgraal.TraceRA=true"]
 
 # DaCapo-related targets
 
-bench-dacapo-x52-tracera: ${bench-common-8} {
+bench-dacapo-x52-tracera: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, daily]
   name: "bench-dacapo-linux-x52-tracera"
   run: [
@@ -13,7 +13,7 @@ bench-dacapo-x52-tracera: ${bench-common-8} {
   ]
 }
 
-bench-dacapo-timing-x52-tracera: ${bench-common-8} {
+bench-dacapo-timing-x52-tracera: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-dacapo-timing-linux-x52-tracera"
   run: [
@@ -26,7 +26,7 @@ bench-dacapo-timing-x52-tracera: ${bench-common-8} {
 
 # Scala DaCapo-related targets
 
-bench-scala-dacapo-x52-tracera: ${bench-common-8} {
+bench-scala-dacapo-x52-tracera: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, daily]
   name: "bench-scala-dacapo-linux-x52-tracera"
   run: [
@@ -37,7 +37,7 @@ bench-scala-dacapo-x52-tracera: ${bench-common-8} {
   ]
 }
 
-bench-scala-dacapo-timing-x52-tracera: ${bench-common-8} {
+bench-scala-dacapo-timing-x52-tracera: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-scala-dacapo-timing-linux-x52-tracera"
   run: [
@@ -50,7 +50,7 @@ bench-scala-dacapo-timing-x52-tracera: ${bench-common-8} {
 
 # SPECJvm2008-related targets
 
-bench-specjvm2008-x52-tracera: ${bench-specjvm2008} {
+bench-specjvm2008-x52-tracera: ${commonLinux} ${bench-specjvm2008} {
   capabilities: [linux, x52, bench, daily]
   name: "bench-specjvm2008-linux-x52-tracera"
   run: [
@@ -63,7 +63,7 @@ bench-specjvm2008-x52-tracera: ${bench-specjvm2008} {
 
 # SPECjbb2015-related targets
 
-bench-specjbb2015-x52-tracera: ${bench-specjbb2015} {
+bench-specjbb2015-x52-tracera: ${commonLinux} ${bench-specjbb2015} {
   capabilities: [linux, x52, bench, daily]
   name: "bench-specjbb2015-linux-x52-tracera"
   run: [

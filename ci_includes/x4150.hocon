@@ -1,6 +1,6 @@
 # SPECjbb2005-related targets
 
-bench-specjbb2005-x4150: ${bench-specjbb2005} {
+bench-specjbb2005-x4150: ${commonLinux} ${bench-specjbb2005} {
   capabilities: [linux, x4150, bench, post-merge]
   name: "bench-specjbb2005-linux-x4150"
   args.mx : ["--machine-name", "x4150"]

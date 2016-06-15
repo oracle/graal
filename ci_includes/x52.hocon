@@ -1,6 +1,6 @@
 # DaCapo-related targets
 
-bench-dacapo-x52: ${bench-common-8} {
+bench-dacapo-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-dacapo-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -14,7 +14,7 @@ bench-dacapo-x52: ${bench-common-8} {
   ]
 }
 
-bench-dacapo-timing-x52: ${bench-common-8} {
+bench-dacapo-timing-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-dacapo-timing-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -30,7 +30,7 @@ bench-dacapo-timing-x52: ${bench-common-8} {
 
 # Scala DaCapo-related targets
 
-bench-scala-dacapo-x52: ${bench-common-8} {
+bench-scala-dacapo-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-scala-dacapo-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -44,7 +44,7 @@ bench-scala-dacapo-x52: ${bench-common-8} {
   ]
 }
 
-bench-scala-dacapo-timing-x52: ${bench-common-8} {
+bench-scala-dacapo-timing-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-scala-dacapo-timing-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -60,7 +60,7 @@ bench-scala-dacapo-timing-x52: ${bench-common-8} {
 
 # SPECJvm2008-related targets
 
-bench-specjvm2008-x52: ${bench-specjvm2008} {
+bench-specjvm2008-x52: ${commonLinux} ${bench-specjvm2008} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjvm2008-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -76,7 +76,7 @@ bench-specjvm2008-x52: ${bench-specjvm2008} {
 
 # SPECjbb2013-related targets
 
-bench-specjbb2013-x52: ${bench-specjbb2013} {
+bench-specjbb2013-x52: ${commonLinux} ${bench-specjbb2013} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjbb2013-linux-x52"
   args.mx : ["--machine-name", "x52"]
@@ -92,7 +92,7 @@ bench-specjbb2013-x52: ${bench-specjbb2013} {
 
 # SPECjbb2015-related targets
 
-bench-specjbb2015-x52: ${bench-specjbb2015} {
+bench-specjbb2015-x52: ${commonLinux} ${bench-specjbb2015} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjbb2015-linux-x52"
   args.mx : ["--machine-name", "x52"]
