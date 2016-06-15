@@ -155,6 +155,20 @@ public class SourceBuilderTest {
     }
 
     @Test
+    public void fromTextWithFileURI() {
+        File file = new File("some.js");
+
+        String text = "// Hello";
+
+        Source source = Source.newBuilder(text).uri(file.toURI()).mimeType("plain/text").name("another.js").build();
+        assertEquals("The content has been changed", text, source.getCode());
+        assertNotNull("Mime type specified", source.getMimeType());
+        assertEquals("Assigned MIME type", "plain/text", source.getMimeType());
+        assertEquals("another.js", source.getName());
+        assertEquals("Using the specified URI", file.toURI(), source.getURI());
+    }
+
+    @Test
     public void assignMimeTypeAndIdentityForURL() throws IOException {
         File file = File.createTempFile("Hello", ".java");
         file.deleteOnExit();

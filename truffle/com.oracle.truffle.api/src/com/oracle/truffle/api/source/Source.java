@@ -134,11 +134,11 @@ public abstract class Source {
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
     private final Content content;
-    private String name;
-    private String shortName;
+    private final URI uri;
+    private final String name;
     private String path;
     private String mimeType;
-    private boolean internal;
+    private final boolean internal;
     private TextMap textMap;
 
     /**
@@ -516,11 +516,12 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType, String name, boolean internal) {
+    Source(Content content, String mimeType, URI uri, String name, boolean internal) {
         this.content = content;
         this.mimeType = mimeType;
         this.name = name;
         this.internal = internal;
+        this.uri = uri;
     }
 
     Content content() {
@@ -556,7 +557,7 @@ public abstract class Source {
      */
     @Deprecated
     public String getShortName() {
-        return shortName == null ? content().getShortName() : shortName;
+        return content().getShortName();
     }
 
     /**
@@ -569,7 +570,7 @@ public abstract class Source {
      * @since 0.8 or earlier
      */
     public String getPath() {
-        return path == null ? content().getPath() : path;
+        return content().getPath();
     }
 
     /**
@@ -616,7 +617,7 @@ public abstract class Source {
      * @since 0.14
      */
     public URI getURI() {
-        return content().getURI();
+        return uri == null ? content().getURI() : uri;
     }
 
     /**
@@ -1010,6 +1011,7 @@ public abstract class Source {
      */
     public final class Builder<E1 extends Exception, E2 extends Exception, E3 extends Exception> {
         private final Object origin;
+        private URI uri;
         private String name;
         private String path;
         private String mime;
@@ -1068,6 +1070,22 @@ public abstract class Source {
          */
         public Builder<E1, E2, E3> internal() {
             this.internal = true;
+            return this;
+        }
+
+        /**
+         * Assigns new {@link URI} to the {@link #build() to-be-created} {@link Source}. Each source
+         * provides {@link Source#getURI()} as a persistent identification of its location. A
+         * default value for the method is deduced from the location or content, but one can change
+         * it by using this method
+         * 
+         * @param uri the URL to use, cannot be <code>null</code>
+         * @return the instance of this builder
+         * @since 0.15
+         */
+        public Builder<E1, E2, E3> uri(URI uri) {
+            Objects.requireNonNull(uri);
+            this.uri = uri;
             return this;
         }
 
@@ -1135,7 +1153,7 @@ public abstract class Source {
                 if (content != null) {
                     holder.code = content;
                 }
-                SourceImpl ret = new SourceImpl(holder, type, name, internal);
+                SourceImpl ret = new SourceImpl(holder, type, uri, name, internal);
                 if (ret.getName() == null) {
                     throw raise(RuntimeException.class, new MissingNameException());
                 }
