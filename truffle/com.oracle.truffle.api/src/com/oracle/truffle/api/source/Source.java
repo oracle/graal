@@ -54,39 +54,42 @@ import java.net.URISyntaxException;
  *
  * {@link SourceSnippets#fromFile}
  *
- * Methods of interest are {@link Source#fromFileName(String)},
- * {@link Source#fromFileName(String, boolean)}, and {@link Source#find(String)}.
+ * The starting point is {@link Source#newBuilder(java.io.File)} method.
  *
  * <h3>Read from an URL</h3>
  *
- * One can read remote or in JAR resources using the {@link Source#fromURL(URL, String)} factory:
- * <br>
+ * One can read remote or in JAR resources using the {@link Source#newBuilder(java.net.URL)}
+ * factory: <br>
  *
  * {@link SourceSnippets#fromURL}
  *
  * Each URL source is represented as a canonical object, indexed by the URL. Contents are
- * <em>read eagerly</em> and <em>cached</em> locally.
+ * <em>read eagerly</em> once the {@link Builder#build()} method is called.
  *
  * <h3>Source from a literal text</h3>
  *
  * An anonymous immutable code snippet can be created from a string via the
- * {@link Source#fromText(CharSequence, String)} factory method: <br>
+ * {@link Source#newBuilder(java.lang.String) } factory method: <br>
  *
  * {@link SourceSnippets#fromAString}
  *
  * the created {@link Source} doesn't have associated {@link #getMimeType() mime type}. One has to
- * additionally attach one to it via {@link #withMimeType(java.lang.String)} method.
+ * explicitly attach via {@link Builder#mimeType(java.lang.String)} method. The created
+ * {@link Source} doesn't have associated {@link #getName() name}, one has to attach it via
+ * {@link Builder#name(java.lang.String)} method.
  *
  * <h3>Reading from a stream</h3>
  *
  * If one has a {@link Reader} one can convert its content into a {@link Source} via
- * {@link Source#fromReader(Reader, String)} method: <br>
+ * {@link Source#newBuilder(java.io.Reader)} method: <br>
  *
  * {@link SourceSnippets#fromReader}
  *
- * the content is <em>read eagerly</em> and it doesn't have associated {@link #getMimeType() mime
- * type}. One has to additionally attach one to it via {@link #withMimeType(java.lang.String)}
- * method.
+ * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called. It
+ * doesn't have associated {@link #getMimeType() mime type} and {@link #getName()}. Both values have
+ * to be explicitly provided by {@link Builder#name} and {@link Builder#mimeType(java.lang.String)}
+ * methods otherwise {@link MissingMIMETypeException} and/or {@link MissingNameException} are
+ * thrown.
  *
  * <!-- <strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
  * {@link Source}.<br>
@@ -102,24 +105,23 @@ import java.net.URISyntaxException;
  *
  * <p>
  * {@link Source} is an immutable object - once (lazily) loaded, it remains the same. The source
- * object can be associated with various attributes like {@link #getName()}, {@link #getShortName()}
- * , {@link #getPath()}, {@link #getMimeType()} and these are immutable as well. The system makes
- * the best effort to derive values of these attributes from the location and/or content of the
- * {@link Source} object. However, to give the user that creates the source control over these
- * attributes, the API offers an easy way to alter values of these attributes by creating clones of
- * the source via {@link #withMimeType(java.lang.String)}, {@link #withName(java.lang.String)},
- * {@link #withPath(java.lang.String)} or {@link #withShortName(java.lang.String)} methods.
+ * object can be associated with various attributes like {@link #getName()} , {@link #getURI() ()},
+ * {@link #getMimeType()} and these are immutable as well. The system makes the best effort to
+ * derive values of these attributes from the location and/or content of the {@link Source} object.
+ * However, to give the user that creates the source control over these attributes, the API offers
+ * an easy way to alter values of these attributes by creating clones of the source via
+ * {@link Builder#mimeType(java.lang.String)}, {@link Builder#name(java.lang.String)},
+ * {@link Builder#uri(java.net.URI)} methods.
  * </p>
  * <p>
  * While {@link Source} is immutable, the world around it is changing. The content of a file from
- * which a {@link Source#fromFileName(java.lang.String) source has been read} may change few seconds
+ * which a {@link Source#newBuilder(java.io.File) source has been read} may change few seconds
  * later. How can we balance the immutability with ability to see real state of the world? In this
- * case, one can request a reload of a new version of the
- * {@link Source#fromFileName(java.lang.String, boolean) source for the same file}. The newly loaded
- * {@link Source} will be different than the previous one, however it will have the same attributes
- * ({@link #getName()}, presumably also {@link #getMimeType()}, etc.). There isn't much to do about
- * this - just keep in mind that there can be multiple different {@link Source} objects representing
- * the same source origin.
+ * case, one can load of a new version of the {@link Source#newBuilder(java.io.File) source for the
+ * same file}. The newly loaded {@link Source} will be different than the previous one, however it
+ * will have the same attributes ({@link #getName()}, presumably also {@link #getMimeType()}, etc.).
+ * There isn't much to do about this - just keep in mind that there can be multiple different
+ * {@link Source} objects representing the same {@link #getURI() source origin}.
  * </p>
  *
  * @since 0.8 or earlier
@@ -532,9 +534,6 @@ public abstract class Source {
      * name of a guest language source code file. Name is supposed to be at least as long as
      * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
      *
-     * One can change name for an existing source by creating its clone via
-     * {@link #withName(java.lang.String)} method.
-     *
      * @return the name of the guest language program
      * @since 0.8 or earlier
      */
@@ -546,9 +545,6 @@ public abstract class Source {
      * Returns a short version of the name of the resource holding a guest language program (as
      * described in {@link #getName()}). For example, this could be just the name of the file,
      * rather than a full path.
-     *
-     * One can change name for an existing source by creating its clone via
-     * {@link #withShortName(java.lang.String)} method.
      *
      * @return the short name of the guest language program
      * @since 0.8 or earlier
@@ -562,9 +558,6 @@ public abstract class Source {
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File},
      * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
-     *
-     * One can change path associated with a file by calling {@link #withPath(java.lang.String)} and
-     * obtaining cloned instance of the source with new path.
      *
      * @since 0.8 or earlier
      */
