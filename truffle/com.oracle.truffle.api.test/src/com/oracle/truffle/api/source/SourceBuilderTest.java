@@ -46,7 +46,7 @@ import org.junit.runner.RunWith;
 public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentity() {
-        final Source.Builder<Void, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
+        Source.Builder<Void, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
         Source s1 = builder.mimeType("content/unknown").build();
         assertEquals("No mime type assigned", "content/unknown", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -77,7 +77,7 @@ public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
-        Source.Builder<Void, IOException> builder = Source.newBuilder(new StringReader(text));
+        Source.Builder<Void, IOException> builder = Source.newBuilder(new StringReader(text)).name("test.txt");
         Source s1 = builder.name("Hello").mimeType("text/plain").build();
         assertEquals("Base type assigned", "text/plain", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -281,10 +281,10 @@ public class SourceBuilderTest {
     @Test
     public void whatAreTheDefaultValuesOfNewFromReader() throws Exception {
         StringReader r = new StringReader("Hi!");
-        Source source = Source.newBuilder(r).mimeType("text/plain").build();
+        Source source = Source.newBuilder(r).name("almostEmpty").mimeType("text/plain").build();
 
         assertEquals("Hi!", source.getCode());
-        assertNull(source.getName());
+        assertEquals("almostEmpty", source.getName());
         assertNull(source.getPath());
         assertNotNull(source.getURI());
         assertEquals("truffle", source.getURI().getScheme());
@@ -321,14 +321,14 @@ public class SourceBuilderTest {
 
     @Test
     public void normalSourceIsNotInternal() {
-        Source source = Source.newBuilder("anything").mimeType("text/plain").build();
+        Source source = Source.newBuilder("anything").mimeType("text/plain").name("anyname").build();
 
         assertFalse("Not internal", source.isInternal());
     }
 
     @Test
     public void markSourceAsInternal() {
-        Source source = Source.newBuilder("anything internal").mimeType("text/plain").internal().build();
+        Source source = Source.newBuilder("anything internal").mimeType("text/plain").name("internalsrc").internal().build();
 
         assertTrue("This source is internal", source.isInternal());
     }
@@ -392,6 +392,16 @@ public class SourceBuilderTest {
         assertEquals(s1.getURI(), sub1.getURI());
         assertEquals(f2.toURI(), s2.getURI());
         assertEquals(s2.getURI(), sub2.getURI());
+    }
+
+    @Test
+    public void throwsErrorNameCannotBeNull() {
+        try {
+            Source.newBuilder("Hi").name(null);
+        } catch (NullPointerException ex) {
+            return;
+        }
+        fail("Expecting NullPointerException");
     }
 
     private static void assertGC(String msg, WeakReference<?> ref) {

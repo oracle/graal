@@ -30,13 +30,13 @@ import org.junit.Test;
 @SuppressWarnings("deprecation")
 public class SourceTextTest {
 
-    private final Source emptySource = Source.newBuilder("").name(null).mimeType("content/unknown").build();
+    private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
 
-    private final Source emptyLineSource = Source.newBuilder("\n").name(null).mimeType("content/unknown").build();
+    private final Source emptyLineSource = Source.newBuilder("\n").name("emptyLineSource").mimeType("content/unknown").build();
 
-    private final Source shortSource = Source.newBuilder("01").name(null).mimeType("content/unknown").build();
+    private final Source shortSource = Source.newBuilder("01").name("shortSource").mimeType("content/unknown").build();
 
-    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name(null).mimeType("content/unknown").build();
+    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name("longSource").mimeType("content/unknown").build();
 
     @Test
     public void emptyTextTest0() {
@@ -44,8 +44,8 @@ public class SourceTextTest {
     }
 
     @Test
-    public void noName() {
-        assertNull(emptySource.getName());
+    public void nameName() {
+        assertEquals("emptySource", emptySource.getName());
     }
 
     @Test

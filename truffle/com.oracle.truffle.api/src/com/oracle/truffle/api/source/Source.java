@@ -1070,11 +1070,12 @@ public abstract class Source {
         /**
          * Gives a new name to the {@link #build() to-be-built} {@link Source}.
          *
-         * @param newName name that replaces the previously given one
+         * @param newName name that replaces the previously given one, cannot be <code>null</code>
          * @return instance of <code>this</code> builder
          * @since 0.15
          */
         public Builder<R, E> name(String newName) {
+            Objects.requireNonNull(newName);
             this.name = newName;
             return this;
         }

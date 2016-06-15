@@ -102,7 +102,7 @@ public abstract class AbstractInstrumentationTest {
             b.append(line);
             b.append("\n");
         }
-        return Source.newBuilder(b.toString()).name(null).mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        return Source.newBuilder(b.toString()).name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
     }
 
     @After
