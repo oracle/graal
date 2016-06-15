@@ -56,11 +56,11 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLPropertyCacheNode extends Node {
     protected static final int CACHE_LIMIT = 3;
 
-    protected boolean shapeCheck(Shape shape, DynamicObject receiver) {
+    protected static boolean shapeCheck(Shape shape, DynamicObject receiver) {
         return shape != null && shape.check(receiver);
     }
 
-    protected Shape lookupShape(DynamicObject receiver) {
+    protected static Shape lookupShape(DynamicObject receiver) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (!SLContext.isSLObject(receiver)) {
@@ -70,7 +70,7 @@ public abstract class SLPropertyCacheNode extends Node {
         return receiver.getShape();
     }
 
-    protected boolean isValidSimpleLanguageObject(DynamicObject receiver) {
+    protected static boolean isValidSLObject(DynamicObject receiver) {
         if (!SLContext.isSLObject(receiver)) {
             /* The specialization doForeignObject handles this case. */
             return false;
@@ -78,7 +78,7 @@ public abstract class SLPropertyCacheNode extends Node {
         return receiver.getShape().isValid();
     }
 
-    protected boolean isForeignObject(TruffleObject receiver) {
+    protected static boolean isForeignObject(TruffleObject receiver) {
         return !SLContext.isSLObject(receiver);
     }
 

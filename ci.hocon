@@ -31,6 +31,22 @@ common : {
   timelimit : "30:00"
 }
 
+solaris : {
+  packages : {
+    git : ">=1.8.3"
+  }
+
+  downloads : {
+    JAVA_HOME : ${java8}
+  }
+
+  environment : {
+    PATH : "$JAVA_HOME/bin:$PATH"
+  }
+
+  timelimit : "30:00"
+}
+
 deploy-dry-run : ${common} {
   capabilities : [linux, amd64, gate]
   name : gate-deploy-dry-run
@@ -48,4 +64,11 @@ builds = [
   ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
   ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
   ${deploy-dry-run}
+  ${solaris} {run : [
+      ["mx", "build" ],
+      ["mx", "unittest", "--verbose" ]
+    ], 
+    capabilities : [solaris, sparcv9, gate],
+    name: "gate-solaris-lite"
+  }
 ]

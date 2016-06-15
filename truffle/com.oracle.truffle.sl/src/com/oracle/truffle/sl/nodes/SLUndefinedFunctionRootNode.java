@@ -40,63 +40,23 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
+import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
- * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
- * class {@link RootNode}. This class is used for both builtin and user-defined functions. For
- * builtin functions, the {@link #bodyNode} is a subclass of {@link SLBuiltinNode}. For user-defined
- * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
+ * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., when
+ * they are still undefined. Executing it throws an
+ * {@link SLUndefinedNameException#undefinedFunction exception}.
  */
-@NodeInfo(language = "SL", description = "The root of all SL execution trees")
-public class SLRootNode extends RootNode {
-    /** The function body that is executed, and specialized during execution. */
-    @Child private SLExpressionNode bodyNode;
-
-    /** The name of the function, for printing purposes only. */
-    private final String name;
-
-    @CompilationFinal private boolean isCloningAllowed;
-
-    public SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
-        super(SLLanguage.class, sourceSection, frameDescriptor);
-        this.bodyNode = bodyNode;
-        this.name = name;
+public class SLUndefinedFunctionRootNode extends SLRootNode {
+    public SLUndefinedFunctionRootNode(String name) {
+        super(null, null, null, name);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert SLLanguage.INSTANCE.findContext() != null;
-        return bodyNode.executeGeneric(frame);
-    }
-
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setCloningAllowed(boolean isCloningAllowed) {
-        this.isCloningAllowed = isCloningAllowed;
-    }
-
-    @Override
-    public boolean isCloningAllowed() {
-        return isCloningAllowed;
-    }
-
-    @Override
-    public String toString() {
-        return "root " + name;
+        throw SLUndefinedNameException.undefinedFunction(getName());
     }
 }

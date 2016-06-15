@@ -56,7 +56,8 @@ import com.oracle.truffle.sl.runtime.SLFunction;
  * inline cache.
  */
 @NodeInfo(shortName = "invoke")
-public class SLInvokeNode extends SLExpressionNode {
+public final class SLInvokeNode extends SLExpressionNode {
+
     @Child private SLExpressionNode functionNode;
     @Children private final SLExpressionNode[] argumentNodes;
     @Child private SLDispatchNode dispatchNode;

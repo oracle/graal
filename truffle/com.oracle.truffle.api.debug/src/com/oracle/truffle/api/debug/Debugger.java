@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.Assumption;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -55,9 +58,6 @@ import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.net.URI;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -93,12 +93,15 @@ public final class Debugger {
     private static final SourceSectionFilter HALT_FILTER = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build();
     private static final Assumption NO_DEBUGGER = Truffle.getRuntime().createAssumption("No debugger assumption");
 
+    private static boolean matchesHaltFilter(EventContext eventContext) {
+        return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
+    }
+
     private static final Set<Debugger> EXISTING_DEBUGGERS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<Debugger, Boolean>()));
 
     /** Counter for externally requested step actions. */
     private static int nextActionID = 0;
 
-    // TODO (mlvdv) export this information to SuspendedEvent for client use
     /**
      * Describes where an execution is halted relative to the instrumented node.
      */
@@ -166,7 +169,7 @@ public final class Debugger {
         /**
          * Passes control to the debugger with execution suspended.
          */
-        void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason);
+        void haltedAt(EventContext eventContext, MaterializedFrame mFrame, Breakpoint breakpoint);
     }
 
     interface WarningLog {
@@ -180,13 +183,33 @@ public final class Debugger {
     private final BreakpointCallback breakpointCallback = new BreakpointCallback() {
 
         @TruffleBoundary
-        public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, String haltReason) {
+        public void haltedAt(EventContext eventContext, MaterializedFrame mFrame, Breakpoint breakpoint) {
             if (currentDebugContext == null) {
                 final SourceSection sourceSection = eventContext.getInstrumentedNode().getSourceSection();
                 assert sourceSection != null;
                 currentDebugContext = new DebugExecutionContext(sourceSection.getSource(), null, 0);
             }
-            currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, haltReason);
+            final StepStrategy strategy = currentDebugContext.strategy;
+            /*
+             * Check to see if this breakpoint is at a location where the current stepping strategy
+             * underway, if any, would halt. If so, then avoid the double-halt by ignoring the
+             * breakpoint now and letting execution resume. The expectation in this situation is
+             * that the current stepping strategy will halt during the same execution event
+             * notification, at which time clients will be notified of the halt.
+             *
+             * Note that the breakpoint's hit count is decremented before this notification, so that
+             * it counts as a hit whether or not it is ignored because of a double-halt.
+             *
+             * IMPORTANT: this implementation relies on the guarantee made by
+             * ExecutionEventListener.onEnter() about the order of notification. In particular, it
+             * is assumed here that any breakpoint halt at a particular code location will always
+             * take place before a halt at the same location caused by a stepping strategy.
+             */
+            if (strategy != null && strategy.wouldHaltAt(eventContext)) {
+                currentDebugContext.trace("REDUNDANT HALT, breakpoint@" + breakpoint.getLocationDescription());
+            } else {
+                currentDebugContext.halt(eventContext, mFrame, HaltPosition.BEFORE, breakpoint);
+            }
         }
     };
 
@@ -420,9 +443,11 @@ public final class Debugger {
             disposed = true;
         }
 
+        abstract boolean wouldHaltAt(EventContext eventContext);
+
         @TruffleBoundary
         protected final void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition haltPosition) {
-            debugContext.halt(eventContext, mFrame, haltPosition, description());
+            debugContext.halt(eventContext, mFrame, haltPosition, this);
         }
 
         @TruffleBoundary
@@ -437,16 +462,6 @@ public final class Debugger {
             }
         }
 
-        @TruffleBoundary
-        protected final void suspendUserBreakpoints() {
-            breakpoints.setActive(false);
-        }
-
-        @SuppressWarnings("unused")
-        protected final void restoreUserBreakpoints() {
-            breakpoints.setActive(true);
-        }
-
         /**
          * Reconfigures debugger so that this strategy will be in effect when execution continues.
          */
@@ -457,7 +472,7 @@ public final class Debugger {
          */
         protected abstract void unsetStrategy();
 
-        private String description() {
+        String description() {
             return name + "<" + actionID + ">";
         }
     }
@@ -481,6 +496,11 @@ public final class Debugger {
 
         @Override
         protected void unsetStrategy() {
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return false;
         }
     }
 
@@ -570,6 +590,11 @@ public final class Debugger {
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return matchesHaltFilter(eventContext) && unfinishedStepCount <= 1;
+        }
     }
 
     /**
@@ -643,6 +668,11 @@ public final class Debugger {
                 return;
             }
             afterCallBinding.dispose();
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
         }
     }
 
@@ -730,6 +760,11 @@ public final class Debugger {
             beforeHaltBinding.dispose();
             afterCallBinding.dispose();
         }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return matchesHaltFilter(eventContext) && unfinishedStepCount <= 1;
+        }
     }
 
     /**
@@ -789,6 +824,11 @@ public final class Debugger {
                 return;
             }
             beforeHaltBinding.dispose();
+        }
+
+        @Override
+        boolean wouldHaltAt(EventContext eventContext) {
+            return AccessorDebug.nodesAccess().isTaggedWith(eventContext.getInstrumentedNode(), StatementTag.class);
         }
     }
 
@@ -959,7 +999,7 @@ public final class Debugger {
          * @param haltReason what caused the halt
          */
         @TruffleBoundary
-        private void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition position, String haltReason) {
+        private void halt(EventContext eventContext, MaterializedFrame mFrame, HaltPosition position, Object cause) {
             if (disposed) {
                 throw new IllegalStateException("DebugExecutionContexts are single-use.");
             }
@@ -972,7 +1012,7 @@ public final class Debugger {
             haltedPosition = position;
             running = false;
 
-            if (haltReason.startsWith("Step")) {
+            if (cause instanceof StepStrategy) {
                 clearAction();
             }
             clearPause();
@@ -1003,10 +1043,17 @@ public final class Debugger {
                 }
             });
             contextStack = Collections.unmodifiableList(frames);
+            String haltReason = null;
 
             if (TRACE) {
-                final String reason = haltReason;
-                trace("HALT %s: (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
+                if (cause instanceof StepStrategy) {
+                    haltReason = ((StepStrategy) cause).description();
+                } else if (cause instanceof Breakpoint) {
+                    haltReason = "breakpoint@" + ((Breakpoint) cause).getLocationDescription();
+                } else {
+                    haltReason = cause.toString();
+                }
+                trace("HALT %s: (%s) stack base=%d", haltedPosition.toString(), haltReason, contextStackBase);
             }
 
             try {
@@ -1021,8 +1068,7 @@ public final class Debugger {
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
                 if (TRACE) {
-                    final String reason = haltReason;
-                    trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), reason, contextStackBase);
+                    trace("RESUME %s : (%s) stack base=%d", haltedPosition.toString(), haltReason, contextStackBase);
                 }
             } finally {
                 haltedEventContext = null;
