@@ -1216,7 +1216,7 @@ class SourceSnippets {
         return source;
     }
 
-    public static Source fromURLWithOwnContent() throws Exception {
+    public static Source fromURLWithOwnContent() {
         // BEGIN: SourceSnippets#fromURLWithOwnContent
         URL resource = SourceSnippets.class.getResource("sample.js");
         Source source = Source.newBuilder(resource)
@@ -1226,7 +1226,7 @@ class SourceSnippets {
         assert resource.toExternalForm().equals(source.getPath());
         assert "sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
-        assert resource.toURI().equals(source.getURI());
+        assert resource.toExternalForm().equals(source.getURI().toString());
         assert "{}".equals(source.getCode());
         // END: SourceSnippets#fromURLWithOwnContent
         return source;
