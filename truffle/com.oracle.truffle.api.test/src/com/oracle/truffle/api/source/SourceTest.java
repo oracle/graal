@@ -31,13 +31,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -342,16 +339,5 @@ public class SourceTest {
         assertEquals(s1.getURI(), sub1.getURI());
         assertEquals(f2.toURI(), s2.getURI());
         assertEquals(s2.getURI(), sub2.getURI());
-    }
-
-    private static void assertGC(String msg, WeakReference<?> ref) {
-        for (int i = 0; i < 100; i++) {
-            if (ref.get() == null) {
-                return;
-            }
-            System.gc();
-            System.runFinalization();
-        }
-        fail(msg + " ref: " + ref.get());
     }
 }

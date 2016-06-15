@@ -31,13 +31,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.ref.WeakReference;
 import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -420,16 +416,5 @@ public class SourceBuilderTest {
     public void succeedsWithBothNameAndMIME() {
         Source src = Source.newBuilder("Hi").mimeType("content/unknown").name("unknown.txt").build();
         assertNotNull(src);
-    }
-
-    private static void assertGC(String msg, WeakReference<?> ref) {
-        for (int i = 0; i < 100; i++) {
-            if (ref.get() == null) {
-                return;
-            }
-            System.gc();
-            System.runFinalization();
-        }
-        fail(msg + " ref: " + ref.get());
     }
 }

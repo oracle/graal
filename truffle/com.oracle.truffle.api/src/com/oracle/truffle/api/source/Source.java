@@ -136,7 +136,6 @@ public abstract class Source {
     private final Content content;
     private final URI uri;
     private final String name;
-    private String path;
     private String mimeType;
     private final boolean internal;
     private TextMap textMap;
@@ -1079,13 +1078,13 @@ public abstract class Source {
          * default value for the method is deduced from the location or content, but one can change
          * it by using this method
          * 
-         * @param uri the URL to use, cannot be <code>null</code>
+         * @param ownUri the URL to use instead of default one, cannot be <code>null</code>
          * @return the instance of this builder
          * @since 0.15
          */
-        public Builder<E1, E2, E3> uri(URI uri) {
-            Objects.requireNonNull(uri);
-            this.uri = uri;
+        public Builder<E1, E2, E3> uri(URI ownUri) {
+            Objects.requireNonNull(ownUri);
+            this.uri = ownUri;
             return this;
         }
 
@@ -1133,7 +1132,6 @@ public abstract class Source {
          * @throws E3 eliminate this exception by calling {@link #name}
          * @since 0.15
          */
-        @SuppressWarnings("unchecked")
         public Source build() throws E1, E2, E3 {
             Content holder;
             try {
