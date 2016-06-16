@@ -150,4 +150,5 @@ builds = [
 
 include "ci_includes/x52.hocon"
 include "ci_includes/x4150.hocon"
-include "ci_includes/x52-tracera.hocon"
+# TODO: ensure the right config.name is set an reenable
+#include "ci_includes/x52-tracera.hocon"
