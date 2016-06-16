@@ -1061,10 +1061,10 @@ final class InstrumentationHandler {
 
     /**
      * A list data structure that is optimized for fast non-blocking traversals. There is no
-     * explicit removal. Removals are based on a side effect of the element. Adds do block,
-     * automatically compact and perform cleanups whenever they were scheduled.
+     * explicit removal. Removals are based on a side effect of the element. Adds do block and
+     * automatically compact on oveflows.
      */
-    private abstract static class AbstractAsncList<T> {
+    private abstract static class AbstractAsyncList<T> {
         /*
          * We use an atomic reference list as we don't want to see wholes in the array when
          * appending to it. This allows us to use null as a safe terminator for the array.
@@ -1076,7 +1076,7 @@ final class InstrumentationHandler {
          */
         private int size;
 
-        AbstractAsncList(int initialCapacity) {
+        AbstractAsyncList(int initialCapacity) {
             if (initialCapacity <= 0) {
                 throw new IllegalArgumentException("Invalid initial capacity " + initialCapacity);
             }
@@ -1151,7 +1151,7 @@ final class InstrumentationHandler {
     /**
      * A async list implementation that removes elements whenever a binding was disposed.
      */
-    private static final class EventBindingList extends AbstractAsncList<EventBinding<?>> {
+    private static final class EventBindingList extends AbstractAsyncList<EventBinding<?>> {
 
         public static final EventBindingList EMPTY = new EventBindingList(1);
 
@@ -1168,7 +1168,7 @@ final class InstrumentationHandler {
     /**
      * An async list using weak references.
      */
-    private static final class WeakAsyncList<T> extends AbstractAsncList<WeakReference<T>> {
+    private static final class WeakAsyncList<T> extends AbstractAsyncList<WeakReference<T>> {
 
         WeakAsyncList(int initialCapacity) {
             super(initialCapacity);
