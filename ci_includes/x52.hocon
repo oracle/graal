@@ -4,7 +4,7 @@ bench-dacapo-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-dacapo-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-dacapo} [
@@ -18,7 +18,7 @@ bench-dacapo-timing-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-dacapo-timing-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-dacapo-timing} [
@@ -34,7 +34,7 @@ bench-scala-dacapo-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-scala-dacapo-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-scala-dacapo} [
@@ -48,7 +48,7 @@ bench-scala-dacapo-timing-x52: ${commonLinux} ${bench-common-8} {
   capabilities: [linux, x52, daily]
   name: "bench-scala-dacapo-timing-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} [
@@ -64,7 +64,7 @@ bench-specjvm2008-x52: ${commonLinux} ${bench-specjvm2008} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjvm2008-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : ["-it", "240s", "-wt", "120s"]
   run: [
     ${bench-jvmci.mx-specjvm2008} [
@@ -80,7 +80,7 @@ bench-specjbb2013-x52: ${commonLinux} ${bench-specjbb2013} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjbb2013-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-specjbb2013} [
@@ -96,7 +96,7 @@ bench-specjbb2015-x52: ${commonLinux} ${bench-specjbb2015} {
   capabilities: [linux, x52, bench, post-merge]
   name: "bench-specjbb2015-linux-x52"
   args.mx : ["--machine-name", "x52"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-specjbb2015} [

@@ -92,7 +92,7 @@ gateStyle : ${java8Downloads} {
 }
 
 bench-jvmci : {
-  mx-benchmark : ["mx", "--jdk=jvmci", "-Mjit", "benchmark", "--results-file", "bench-results.json"]
+  mx-benchmark : ["mx", "--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -163,7 +163,7 @@ builds = [
 # ${gateTest8}        ${commonLinux}   {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
   ${gateTest8}        ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9",      timelimit: "1:00:00"}
   ${gateBootstrap8}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-bootstrap-8-solaris-sparcv9", timelimit: "1:00:00"}
-#  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+# ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
 ]
 
 include "ci_includes/x52.hocon"
