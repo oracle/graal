@@ -30,9 +30,8 @@ import com.oracle.graal.code.DataSection.Data;
 import com.oracle.graal.code.DataSection.RawData;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.code.site.DataSectionReference;
+import jdk.vm.ci.meta.Constant;
 
 /**
  * Base class for {@link Constant constants} that represent a pointer to the data section.
@@ -41,7 +40,7 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
 
     public DataSectionReference dataRef;
     public CompilationResultBuilder crb;
-    private int [] array;
+    private int[] array;
     private ByteBuffer byteBuffer;
 
     // TODO: add other base type array support as needed
@@ -57,7 +56,8 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
     public boolean isDefaultForKind() {
         return false;
     }
-    
+
+    @Override
     public void serialize(ByteBuffer buffer) {
         byteBuffer.order(ByteOrder.nativeOrder());
         IntBuffer intBuffer = byteBuffer.asIntBuffer();
@@ -66,13 +66,14 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
         Data data = new RawData(rawBytes, getAlignment());
         dataRef = crb.compilationResult.getDataSection().insertData(data);
     }
-    
+
+    @Override
     public int getSerializedSize() {
         return array.length * 4;
     }
-    
+
+    @Override
     public String toValueString() {
         return "no context value available";
     }
 }
-

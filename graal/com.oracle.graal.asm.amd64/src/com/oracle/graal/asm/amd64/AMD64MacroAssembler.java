@@ -25,12 +25,13 @@ package com.oracle.graal.asm.amd64;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseIncDec;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
+
+import com.oracle.graal.asm.NumUtil;
+
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-
-import com.oracle.graal.asm.NumUtil;
 
 /**
  * This class implements commonly used X86 code patterns.
