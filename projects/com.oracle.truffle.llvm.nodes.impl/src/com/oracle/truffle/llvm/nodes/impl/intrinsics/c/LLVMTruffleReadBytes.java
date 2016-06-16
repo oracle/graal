@@ -45,14 +45,14 @@ public abstract class LLVMTruffleReadBytes extends LLVMAddressIntrinsic {
         int count = 0;
         while ((c = LLVMMemory.getI8(adr)) != 0) {
             count++;
-            adr = adr.increment(1);
+            adr = adr.increment(Byte.BYTES);
         }
         byte[] bytes = new byte[count];
         count = 0;
         adr = value;
         while ((c = LLVMMemory.getI8(adr)) != 0) {
             bytes[count++] = c;
-            adr = adr.increment(1);
+            adr = adr.increment(Byte.BYTES);
         }
         return bytes;
     }
