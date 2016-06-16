@@ -99,6 +99,7 @@ import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
 import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.lir.sparc.SPARCPrefetchOp;
 import com.oracle.graal.lir.sparc.SPARCSaveRegistersOp;
 
 import jdk.vm.ci.code.CallingConvention;

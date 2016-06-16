@@ -251,4 +251,6 @@ public interface LIRGeneratorTool extends BenchmarkCounterFactory, ValueKindFact
     LIRKind getLIRKind(Stamp stamp);
 
     void emitPause();
+
+    void emitPrefetchAllocate(Value address);
 }

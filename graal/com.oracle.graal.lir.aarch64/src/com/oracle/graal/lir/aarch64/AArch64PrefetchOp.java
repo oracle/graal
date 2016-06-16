@@ -21,14 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.aarch64;
+package com.oracle.graal.lir.aarch64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.aarch64.AArch64AddressValue;
-import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 public final class AArch64PrefetchOp extends AArch64LIRInstruction {

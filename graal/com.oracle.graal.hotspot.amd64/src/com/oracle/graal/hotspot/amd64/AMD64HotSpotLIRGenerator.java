@@ -64,6 +64,7 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64FrameMapBuilder;
 import com.oracle.graal.lir.amd64.AMD64Move;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
+import com.oracle.graal.lir.amd64.AMD64PrefetchOp;
 import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
