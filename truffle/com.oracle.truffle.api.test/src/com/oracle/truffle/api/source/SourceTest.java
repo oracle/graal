@@ -104,7 +104,7 @@ public class SourceTest {
 
     @Test
     public void assignMimeTypeAndIdentityForFile() throws IOException {
-        File file = File.createTempFile("Hello", ".java");
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
         String text;
