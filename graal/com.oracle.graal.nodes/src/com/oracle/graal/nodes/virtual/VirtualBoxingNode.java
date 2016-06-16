@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 
+import com.oracle.graal.nodes.spi.VirtualizerTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -56,5 +57,9 @@ public final class VirtualBoxingNode extends VirtualInstanceNode {
         assert entries.length == 1;
         assert locks == null;
         return new BoxNode(entries[0], type(), boxingKind);
+    }
+
+    public ValueNode getBoxedValue(VirtualizerTool tool) {
+        return tool.getEntry(this, 0);
     }
 }
