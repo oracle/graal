@@ -37,7 +37,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class InstrumentationMultiThreadingTest {
@@ -94,19 +96,9 @@ public class InstrumentationMultiThreadingTest {
 
         @Override
         protected void onCreate(Env env) {
-            ExecutionEventListener dummyListener = new ExecutionEventListener() {
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                }
-
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                }
-            };
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
+            createDummyBindings(env.getInstrumenter());
         }
+
     }
 
     @Registration(id = "testAsyncAttachement2")
@@ -114,19 +106,38 @@ public class InstrumentationMultiThreadingTest {
 
         @Override
         protected void onCreate(Env env) {
-            ExecutionEventListener dummyListener = new ExecutionEventListener() {
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                }
-
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                }
-            };
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
+            createDummyBindings(env.getInstrumenter());
         }
+    }
+
+    private static void createDummyBindings(Instrumenter instrumenter) {
+        ExecutionEventListener dummyListener = new ExecutionEventListener() {
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onEnter(EventContext context, VirtualFrame frame) {
+            }
+        };
+        instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
+        instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
+        instrumenter.attachLoadSourceListener(SourceSectionFilter.newBuilder().build(), new LoadSourceEventListener() {
+            public void onLoad(Source source) {
+            }
+        }, true);
+        instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new LoadSourceSectionEventListener() {
+            public void onLoad(SourceSection sourceSection, Node node) {
+
+            }
+        }, true);
+
+        instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new LoadSourceSectionEventListener() {
+            public void onLoad(SourceSection sourceSection, Node node) {
+
+            }
+        }, true);
     }
 
 }

@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -219,6 +220,7 @@ public final class ProbeNode extends Node {
      * Handles exceptions from non-language instrumentation code that must not be allowed to alter
      * guest language execution semantics. Normal response is to log and continue.
      */
+    @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
         if (t instanceof ThreadDeath) {
@@ -281,7 +283,6 @@ public final class ProbeNode extends Node {
                 if (binding.isLanguageBinding()) {
                     throw t;
                 } else {
-                    CompilerDirectives.transferToInterpreter();
                     exceptionEventForClientInstrument(binding, "onEnter", t);
                 }
             }

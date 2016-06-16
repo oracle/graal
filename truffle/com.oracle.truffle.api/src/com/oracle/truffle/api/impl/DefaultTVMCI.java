@@ -40,8 +40,12 @@ final class DefaultTVMCI extends TVMCI {
         return super.findLanguageClass(root);
     }
 
-    void initCallTarget(DefaultCallTarget callTarget) {
+    void onFirstExecution(DefaultCallTarget callTarget) {
         super.onFirstExecution(callTarget.getRootNode());
+    }
+
+    void onLoad(DefaultCallTarget callTarget) {
+        super.onLoad(callTarget.getRootNode());
     }
 
 }
