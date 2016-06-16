@@ -25,10 +25,14 @@ package com.oracle.graal.lir.asm;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.nio.FloatBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.LongBuffer;
 
 import com.oracle.graal.code.DataSection.Data;
 import com.oracle.graal.code.DataSection.RawData;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import com.oracle.graal.debug.GraalError;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.Constant;
@@ -39,16 +43,55 @@ import jdk.vm.ci.meta.Constant;
 public class ArrayDataPointerConstant extends DataPointerConstant {
 
     public DataSectionReference dataRef;
-    public CompilationResultBuilder crb;
-    private int[] array;
+    private CompilationResultBuilder crb;
+    private int[] intArray;
+    private float[] floatArray;
+    private double[] doubleArray;
+    private long[] longArray;
     private ByteBuffer byteBuffer;
 
-    // TODO: add other base type array support as needed
-    public ArrayDataPointerConstant(int[] array, CompilationResultBuilder crb, int alignment) {
+    public enum ArrayType {
+        INT_ARRAY,
+        FLOAT_ARRAY,
+        DOUBLE_ARRAY,
+        LONG_ARRAY
+    }
+
+    private final ArrayType arrayType;
+
+    public ArrayDataPointerConstant(int[] array, ArrayType arrayType, CompilationResultBuilder crb, int alignment) {
         super(alignment);
         this.crb = crb;
-        this.array = array;
+        this.arrayType = arrayType;
+        this.intArray = array;
         this.byteBuffer = ByteBuffer.allocate(array.length * 4);
+        serialize(byteBuffer);
+    }
+
+    public ArrayDataPointerConstant(float[] array, ArrayType arrayType, CompilationResultBuilder crb, int alignment) {
+        super(alignment);
+        this.crb = crb;
+        this.arrayType = arrayType;
+        this.floatArray = array;
+        this.byteBuffer = ByteBuffer.allocate(array.length * 4);
+        serialize(byteBuffer);
+    }
+
+    public ArrayDataPointerConstant(double[] array, ArrayType arrayType, CompilationResultBuilder crb, int alignment) {
+        super(alignment);
+        this.crb = crb;
+        this.arrayType = arrayType;
+        this.doubleArray = array;
+        this.byteBuffer = ByteBuffer.allocate(array.length * 8);
+        serialize(byteBuffer);
+    }
+
+    public ArrayDataPointerConstant(long[] array, ArrayType arrayType, CompilationResultBuilder crb, int alignment) {
+        super(alignment);
+        this.crb = crb;
+        this.arrayType = arrayType;
+        this.longArray = array;
+        this.byteBuffer = ByteBuffer.allocate(array.length * 8);
         serialize(byteBuffer);
     }
 
@@ -60,8 +103,26 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
     @Override
     public void serialize(ByteBuffer buffer) {
         byteBuffer.order(ByteOrder.nativeOrder());
-        IntBuffer intBuffer = byteBuffer.asIntBuffer();
-        intBuffer.put(array);
+        switch(arrayType) {
+            case INT_ARRAY:
+                IntBuffer intBuffer = byteBuffer.asIntBuffer();
+                intBuffer.put(intArray);
+                break;
+            case FLOAT_ARRAY:
+                FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
+                floatBuffer.put(floatArray);
+                break;
+            case DOUBLE_ARRAY:
+                DoubleBuffer doubleBuffer = byteBuffer.asDoubleBuffer();
+                doubleBuffer.put(doubleArray);
+                break;
+            case LONG_ARRAY:
+                LongBuffer longBuffer = byteBuffer.asLongBuffer();
+                longBuffer.put(longArray);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
         byte[] rawBytes = byteBuffer.array();
         Data data = new RawData(rawBytes, getAlignment());
         dataRef = crb.compilationResult.getDataSection().insertData(data);
@@ -69,7 +130,18 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
 
     @Override
     public int getSerializedSize() {
-        return array.length * 4;
+        switch(arrayType) {
+            case INT_ARRAY:
+                return intArray.length * 4;
+            case FLOAT_ARRAY:
+                return floatArray.length * 4;
+            case DOUBLE_ARRAY:
+                return doubleArray.length * 8;
+            case LONG_ARRAY:
+                return longArray.length * 8;   
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
     }
 
     @Override
