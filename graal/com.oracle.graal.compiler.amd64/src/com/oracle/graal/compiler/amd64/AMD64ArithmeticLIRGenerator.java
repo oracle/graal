@@ -887,7 +887,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitMathLog(Value input, boolean base10) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, getLIRGen().asAllocatable(input)));
+        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 

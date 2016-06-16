@@ -81,6 +81,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         // @formatter:off
         @Option(help = "Use Graal stubs instead of HotSpot stubs where possible")
         public static final OptionValue<Boolean> PreferGraalStubs = new OptionValue<>(false);
+        @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
+        public static final OptionValue<Boolean> GraalArithmeticStubs = new OptionValue<>(true);
         @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
                         " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
         public static final OptionValue<String> ASMInstructionProfiling = new OptionValue<>(null);

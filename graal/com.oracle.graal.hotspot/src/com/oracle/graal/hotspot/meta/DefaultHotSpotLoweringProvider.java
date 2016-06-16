@@ -26,6 +26,13 @@ import static com.oracle.graal.compiler.common.GraalOptions.AlwaysInlineVTableSt
 import static com.oracle.graal.compiler.common.GraalOptions.InlineVTableStubs;
 import static com.oracle.graal.compiler.common.GraalOptions.OmitHotExceptionStacktrace;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
@@ -141,7 +148,12 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.replacements.DefaultJavaLoweringProvider;
+import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.nodes.AssertionNode;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
@@ -324,8 +336,58 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
             }
+        } else if (n instanceof UnaryMathIntrinsicNode) {
+            lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
+        } else if (n instanceof BinaryMathIntrinsicNode) {
+            lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
         } else {
             super.lower(n, tool);
+        }
+    }
+
+    private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
+        StructuredGraph graph = math.graph();
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getX(), math.getY()));
+        graph.addAfterFixed(tool.lastFixedNode(), call);
+        math.replaceAtUsages(call);
+    }
+
+    private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
+        if (math.graph().method() != null && math.graph().method().getAnnotation(Snippet.class) != null) {
+            // In the context of the snippet we want the LIR lowering instead of the Node lowering.
+            return;
+        }
+        StructuredGraph graph = math.graph();
+        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
+        graph.addAfterFixed(tool.lastFixedNode(), call);
+        math.replaceAtUsages(call);
+    }
+
+    private static ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
+        switch (operation) {
+            case LOG:
+                return ARITHMETIC_LOG;
+            case LOG10:
+                return ARITHMETIC_LOG10;
+            case EXP:
+                return ARITHMETIC_EXP;
+            case SIN:
+                return ARITHMETIC_SIN;
+            case COS:
+                return ARITHMETIC_COS;
+            case TAN:
+                return ARITHMETIC_TAN;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    private static ForeignCallDescriptor toForeignCall(BinaryOperation operation) {
+        switch (operation) {
+            case POW:
+                return ARITHMETIC_POW;
+            default:
+                throw GraalError.shouldNotReachHere();
         }
     }
 
