@@ -1217,14 +1217,6 @@ public class PolyglotEngine {
     }
 
     static class Access {
-        static {
-            try {
-                Class.forName("com.oracle.truffle.api.debug.Debugger");
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
