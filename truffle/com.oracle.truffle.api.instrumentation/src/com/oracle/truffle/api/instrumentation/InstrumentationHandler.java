@@ -1066,13 +1066,13 @@ final class InstrumentationHandler {
      */
     private abstract static class AbstractAsyncList<T> {
         /*
-         * We use an atomic reference list as we don't want to see wholes in the array when
-         * appending to it. This allows us to use null as a safe terminator for the array.
+         * We use an atomic reference list as we don't want to see holes in the array when appending
+         * to it. This allows us to use null as a safe terminator for the array.
          */
         private volatile AtomicReferenceArray<T> values;
 
         /*
-         * Size can be non volatile as its not exposed or used for traversal.
+         * Size can be non volatile as it is not exposed or used for traversal.
          */
         private int size;
 
@@ -1118,7 +1118,7 @@ final class InstrumentationHandler {
 
             /*
              * We ensure that the capacity after compaction is always twice as big as the number of
-             * live elements. This might either to a growing or shrinking array.
+             * live elements. This can make the array grow or shrink as needed.
              */
             AtomicReferenceArray<T> newValues = new AtomicReferenceArray<>(Math.max(liveElements * 2, 8));
             int index = 0;
@@ -1149,7 +1149,7 @@ final class InstrumentationHandler {
     }
 
     /**
-     * A async list implementation that removes elements whenever a binding was disposed.
+     * An async list implementation that removes elements whenever a binding was disposed.
      */
     private static final class EventBindingList extends AbstractAsyncList<EventBinding<?>> {
 
@@ -1247,9 +1247,10 @@ final class InstrumentationHandler {
             @Override
             public void onFirstExecution(RootNode rootNode) {
                 Object instrumentationHandler = engineAccess().getInstrumentationHandler(null);
-                // we want to still support cases where call targets are executed without an
-                // enclosing
-                // engine.
+                /*
+                 * we want to still support cases where call targets are executed without an
+                 * enclosing engine.
+                 */
                 if (instrumentationHandler != null) {
                     ((InstrumentationHandler) instrumentationHandler).onFirstExecution(rootNode);
                 }
@@ -1258,9 +1259,10 @@ final class InstrumentationHandler {
             @Override
             public void onLoad(RootNode rootNode) {
                 Object instrumentationHandler = engineAccess().getInstrumentationHandler(null);
-                // we want to still support cases where call targets are executed without an
-                // enclosing
-                // engine.
+                /*
+                 * we want to still support cases where call targets are executed without an
+                 * enclosing engine.
+                 */
                 if (instrumentationHandler != null) {
                     ((InstrumentationHandler) instrumentationHandler).onLoad(rootNode);
                 }
