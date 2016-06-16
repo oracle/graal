@@ -53,7 +53,6 @@ import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.services.EventProvider;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
@@ -156,7 +155,7 @@ public class CompilationTask {
 
     @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation() {
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        GraalHotSpotVMConfig config = compiler.getGraalRuntime().getVMConfig();
         final long threadId = Thread.currentThread().getId();
         int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;

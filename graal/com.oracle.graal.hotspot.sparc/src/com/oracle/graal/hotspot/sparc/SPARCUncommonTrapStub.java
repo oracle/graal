@@ -39,18 +39,17 @@ import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.sparc.SPARCHotSpotRegisterConfig;
 
 final class SPARCUncommonTrapStub extends UncommonTrapStub {
 
     private RegisterConfig registerConfig;
 
-    SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage, HotSpotVMConfig config) {
+    SPARCUncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         // This is basically the maximum we can spare. All other G and O register are used.
         Register[] allocatable = new Register[]{g1, g3, g4, g5, o0, o1, o2, o3, o4};
-        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable, config);
+        registerConfig = new SPARCHotSpotRegisterConfig(target, allocatable);
     }
 
     @Override

@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -88,7 +86,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         // Need to test all fields since there no guarantee under the JMM
         // about the order in which these fields are written.
-        HotSpotVMConfig config = config();
+        GraalHotSpotVMConfig config = runtime.getVMConfig();
         if (configType == null || wordTypesType == null || configType == null) {
             wordTypesType = wordTypes.getClass();
             runtimeType = runtime.getClass();

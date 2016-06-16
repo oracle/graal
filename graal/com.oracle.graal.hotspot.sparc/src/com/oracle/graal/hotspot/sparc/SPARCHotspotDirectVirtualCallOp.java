@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import static jdk.vm.ci.sparc.SPARC.g5;
 
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -33,7 +34,6 @@ import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -47,9 +47,9 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
     public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
     private final InvokeKind invokeKind;
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    SPARCHotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
+    SPARCHotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, GraalHotSpotVMConfig config) {
         super(TYPE, SIZE, target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
         this.config = config;

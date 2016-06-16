@@ -33,13 +33,13 @@ import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 import com.oracle.graal.nodes.StructuredGraph;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
@@ -62,9 +62,9 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
      */
     public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 
-    private final HotSpotVMConfig config;
+    protected final GraalHotSpotVMConfig config;
 
-    public HotSpotHostBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+    public HotSpotHostBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
         this.config = config;
     }
@@ -137,4 +137,10 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
     }
 
     protected abstract void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset);
+
+    @Override
+    public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
+        return new HotSpotReferenceMapBuilder(totalFrameSize, config.maxOopMapStackOffset);
+    }
+
 }

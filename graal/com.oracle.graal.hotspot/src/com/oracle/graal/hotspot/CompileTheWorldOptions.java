@@ -26,8 +26,6 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 /**
  * Options related to {@link CompileTheWorld}.
  *
@@ -65,7 +63,7 @@ public class CompileTheWorldOptions {
      * Overrides {@link #CompileTheWorldStartAt} and {@link #CompileTheWorldStopAt} from {@code -XX}
      * HotSpot options of the same name if the latter have non-default values.
      */
-    public static void overrideWithNativeOptions(HotSpotVMConfig c) {
+    public static void overrideWithNativeOptions(GraalHotSpotVMConfig c) {
         if (c.compileTheWorldStartAt != 1) {
             CompileTheWorldStartAt.setValue(c.compileTheWorldStartAt);
         }

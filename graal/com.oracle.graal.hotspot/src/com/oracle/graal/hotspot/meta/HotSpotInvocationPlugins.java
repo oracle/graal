@@ -27,6 +27,7 @@ import java.lang.reflect.Type;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
@@ -36,7 +37,6 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.replacements.nodes.MacroNode;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -45,9 +45,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
-    final HotSpotVMConfig config;
+    final GraalHotSpotVMConfig config;
 
-    HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    HotSpotInvocationPlugins(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         super(metaAccess);
         this.config = config;
     }

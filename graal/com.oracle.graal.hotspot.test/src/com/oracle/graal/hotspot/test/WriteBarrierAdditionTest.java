@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1PreWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ReferentFieldReadBarrier;
@@ -54,7 +55,6 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.MidTierContext;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
@@ -70,7 +70,7 @@ import sun.misc.Unsafe;
  */
 public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
-    private final HotSpotVMConfig config = config();
+    private final GraalHotSpotVMConfig config = runtime().getVMConfig();
     private static final long referentOffset = referentOffset();
 
     public static class Container {
@@ -168,7 +168,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UNSAFE.getObject(wr, config().useCompressedOops ? 12L : 16L);
+        return UNSAFE.getObject(wr, config(null).useCompressedOops ? 12L : 16L);
     }
 
     /**

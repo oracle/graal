@@ -28,7 +28,6 @@ import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Set;
 
@@ -45,6 +44,7 @@ import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -69,7 +69,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -78,7 +77,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
-    public AMD64HotSpotBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+    public AMD64HotSpotBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(config, runtime, providers);
     }
 
@@ -95,7 +94,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), config(), lirGenRes);
+        return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
     }
 
     @Override
@@ -229,17 +228,16 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = config();
         Label verifiedEntry = new Label();
 
         // Emit the prefix
-        emitCodePrefix(installedCodeOwner, crb, asm, regConfig, config, verifiedEntry);
+        emitCodePrefix(installedCodeOwner, crb, asm, regConfig, verifiedEntry);
 
         // Emit code for the LIR
         emitCodeBody(installedCodeOwner, crb, lir);
 
         // Emit the suffix
-        emitCodeSuffix(installedCodeOwner, crb, asm, config, frameMap);
+        emitCodeSuffix(installedCodeOwner, crb, asm, frameMap);
 
         // Profile assembler instructions
         profileInstructions(lir, crb);
@@ -250,7 +248,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
      *
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
+    public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, Label verifiedEntry) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
             crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
@@ -291,9 +289,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
-     * @param config
      */
-    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, FrameMap frameMap) {
+    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {

@@ -35,6 +35,7 @@ import java.util.zip.CRC32;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
 import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
@@ -42,7 +43,6 @@ import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
 import com.oracle.graal.hotspot.replacements.ClassGetHubNode;
 import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
-import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
 import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
 import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
@@ -85,7 +85,6 @@ import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -107,7 +106,7 @@ public class HotSpotGraphBuilderPlugins {
      * @param foreignCalls
      * @param stampProvider
      */
-    public static Plugins create(HotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
+    public static Plugins create(GraalHotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
@@ -130,7 +129,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public void run() {
                 registerObjectPlugins(invocationPlugins);
-                registerClassPlugins(plugins);
+                registerClassPlugins(plugins, config);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
                 registerCallSitePlugins(invocationPlugins);
@@ -144,7 +143,6 @@ public class HotSpotGraphBuilderPlugins {
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
                 }
-
             }
         });
         return plugins;
@@ -168,7 +166,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
-    private static void registerClassPlugins(Plugins plugins) {
+    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins.getInvocationPlugins(), Class.class);
 
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
@@ -177,7 +175,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
-        if (HotSpotReplacementsUtil.arrayKlassComponentMirrorOffsetExists()) {
+        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
 
@@ -254,7 +252,7 @@ public class HotSpotGraphBuilderPlugins {
      * @return a node representing the metaspace {@code ConstantPool} pointer associated with
      *         {@code constantPoolOop}
      */
-    private static ValueNode getMetaspaceConstantPool(GraphBuilderContext b, ValueNode constantPoolOop, WordTypes wordTypes, HotSpotVMConfig config) {
+    private static ValueNode getMetaspaceConstantPool(GraphBuilderContext b, ValueNode constantPoolOop, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         // ConstantPool.constantPoolOop is in fact the holder class.
         ClassGetHubNode klass = b.add(new ClassGetHubNode(constantPoolOop));
 
@@ -268,7 +266,7 @@ public class HotSpotGraphBuilderPlugins {
      *
      * @param constantPoolOop value of the {@code constantPoolOop} field in a ConstantPool value
      */
-    private static boolean readMetaspaceConstantPoolElement(GraphBuilderContext b, ValueNode constantPoolOop, ValueNode index, JavaKind elementKind, WordTypes wordTypes, HotSpotVMConfig config) {
+    private static boolean readMetaspaceConstantPoolElement(GraphBuilderContext b, ValueNode constantPoolOop, ValueNode index, JavaKind elementKind, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         ValueNode constants = getMetaspaceConstantPool(b, constantPoolOop, wordTypes, config);
         int shift = CodeUtil.log2(wordTypes.getWordKind().getByteCount());
         ValueNode scaledIndex = b.add(new LeftShiftNode(index, b.add(ConstantNode.forInt(shift))));
@@ -280,7 +278,7 @@ public class HotSpotGraphBuilderPlugins {
         return true;
     }
 
-    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, HotSpotVMConfig config) {
+    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, constantPoolClass);
 
         r.register2("getSize0", Receiver.class, Object.class, new InvocationPlugin() {
@@ -351,7 +349,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, HotSpotVMConfig config) {
+    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, Thread.class);
         r.register0("currentThread", new InvocationPlugin() {
             @Override
@@ -412,13 +410,13 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, HotSpotVMConfig config) {
+    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            String arch = HotSpotVMConfig.config().getHostArchitectureName();
+            String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
@@ -430,7 +428,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerCRC32Plugins(InvocationPlugins plugins, HotSpotVMConfig config) {
+    private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
         if (config.useCRC32Intrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;

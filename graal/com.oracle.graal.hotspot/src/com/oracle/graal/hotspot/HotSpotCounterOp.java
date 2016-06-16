@@ -39,7 +39,6 @@ import com.oracle.graal.lir.LIRInstructionClass;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
@@ -50,14 +49,14 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     private final String[] names;
     private final String[] groups;
     protected final Register thread;
-    protected final HotSpotVMConfig config;
+    protected final GraalHotSpotVMConfig config;
     @Alive({OperandFlag.CONST, OperandFlag.REG}) protected Value[] increments;
 
-    public HotSpotCounterOp(LIRInstructionClass<? extends HotSpotCounterOp> c, String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
+    public HotSpotCounterOp(LIRInstructionClass<? extends HotSpotCounterOp> c, String name, String group, Value increment, HotSpotRegistersProvider registers, GraalHotSpotVMConfig config) {
         this(c, new String[]{name}, new String[]{group}, new Value[]{increment}, registers, config);
     }
 
-    public HotSpotCounterOp(LIRInstructionClass<? extends HotSpotCounterOp> c, String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
+    public HotSpotCounterOp(LIRInstructionClass<? extends HotSpotCounterOp> c, String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, GraalHotSpotVMConfig config) {
         super(c);
 
         assert names.length == groups.length;

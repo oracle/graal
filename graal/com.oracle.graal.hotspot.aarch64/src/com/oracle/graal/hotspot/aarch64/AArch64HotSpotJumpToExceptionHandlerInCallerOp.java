@@ -31,12 +31,12 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
@@ -55,7 +55,7 @@ public class AArch64HotSpotJumpToExceptionHandlerInCallerOp extends AArch64HotSp
     private final int isMethodHandleReturnOffset;
 
     public AArch64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, int isMethodHandleReturnOffset,
-                    Register thread, HotSpotVMConfig config) {
+                    Register thread, GraalHotSpotVMConfig config) {
         super(TYPE, config);
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOops;
@@ -37,9 +37,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.DeoptimizeCallerNode;
 import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
@@ -104,8 +106,8 @@ public class StubUtil {
      * Determines if this is a HotSpot build where the ASSERT mechanism is enabled.
      */
     @Fold
-    public static boolean cAssertionsEnabled() {
-        return config().cAssertions;
+    public static boolean cAssertionsEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.cAssertions;
     }
 
     @NodeIntrinsic(StubForeignCallNode.class)
@@ -230,15 +232,15 @@ public class StubUtil {
      * Verifies that a given object value is well formed if {@code -XX:+VerifyOops} is enabled.
      */
     public static Object verifyObject(Object object) {
-        if (verifyOops()) {
-            Word verifyOopCounter = Word.unsigned(verifyOopCounterAddress());
+        if (verifyOops(INJECTED_VMCONFIG)) {
+            Word verifyOopCounter = Word.unsigned(verifyOopCounterAddress(INJECTED_VMCONFIG));
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
             Pointer oop = Word.objectToTrackedPointer(object);
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'
-                if (!oop.and(unsigned(verifyOopMask())).equal(unsigned(verifyOopBits()))) {
+                if (!oop.and(unsigned(verifyOopMask(INJECTED_VMCONFIG))).equal(unsigned(verifyOopBits(INJECTED_VMCONFIG)))) {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
@@ -252,22 +254,22 @@ public class StubUtil {
     }
 
     @Fold
-    static long verifyOopCounterAddress() {
-        return config().verifyOopCounterAddress;
+    static long verifyOopCounterAddress(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopCounterAddress;
     }
 
     @Fold
-    static long verifyOopMask() {
-        return config().verifyOopMask;
+    static long verifyOopMask(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopMask;
     }
 
     @Fold
-    static long verifyOopBits() {
-        return config().verifyOopBits;
+    static long verifyOopBits(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopBits;
     }
 
     @Fold
-    static int hubOffset() {
-        return config().hubOffset;
+    static int hubOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.hubOffset;
     }
 }

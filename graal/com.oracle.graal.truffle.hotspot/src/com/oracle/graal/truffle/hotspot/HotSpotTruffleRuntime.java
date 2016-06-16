@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withNodeSource
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -49,6 +48,8 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -90,7 +91,6 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -236,7 +236,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
         for (OptimizedCallTargetInstrumentationFactory factory : GraalServices.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.init(config(), getHotSpotProviders().getRegisters());
+                factory.init(getVMConfig(), getHotSpotProviders().getRegisters());
                 return factory;
             }
         }
@@ -269,6 +269,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private HotSpotBackend getHotSpotBackend() {
         RuntimeProvider runtimeProvider = getRequiredGraalCapability(RuntimeProvider.class);
         return (HotSpotBackend) runtimeProvider.getHostBackend();
+    }
+
+    private GraalHotSpotVMConfig getVMConfig() {
+        RuntimeProvider runtimeProvider = getRequiredGraalCapability(RuntimeProvider.class);
+        return ((HotSpotGraalRuntimeProvider) runtimeProvider).getVMConfig();
     }
 
     private HotSpotProviders getHotSpotProviders() {
@@ -342,7 +347,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
         if (TraceTruffleTransferToInterpreter.getValue()) {
-            TraceTraceTransferToInterpreterHelper.traceTransferToInterpreter();
+            TraceTraceTransferToInterpreterHelper.traceTransferToInterpreter(getVMConfig());
         }
     }
 
@@ -357,7 +362,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotVMConfig config = config();
+        GraalHotSpotVMConfig config = getVMConfig();
         Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
         if (factory == null) {
@@ -377,9 +382,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         }
 
-        static void traceTransferToInterpreter() {
+        static void traceTransferToInterpreter(GraalHotSpotVMConfig config) {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + config().pendingTransferToInterpreterOffset;
+            long pendingTransferToInterpreterAddress = thread + config.pendingTransferToInterpreterOffset;
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);

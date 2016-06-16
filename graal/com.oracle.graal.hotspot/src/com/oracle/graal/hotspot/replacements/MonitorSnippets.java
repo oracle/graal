@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.nodes.BeginLockScopeNode.beginLockScope;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.compareAndSwap;
 import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.endLockScope;
@@ -56,15 +57,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.List;
-
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -113,6 +105,15 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordBase;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
@@ -208,7 +209,7 @@ public class MonitorSnippets implements Snippets {
         verifyOop(object);
 
         // Load the mark word - this includes a null-check on object
-        final Word mark = loadWordFromObject(object, markOffset());
+        final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
 
         final Word lock = beginLockScope(lockDepth);
 
@@ -218,18 +219,18 @@ public class MonitorSnippets implements Snippets {
 
         incCounter();
 
-        if (useBiasedLocking()) {
+        if (useBiasedLocking(INJECTED_VMCONFIG)) {
             // See whether the lock is currently biased toward our thread and
             // whether the epoch is still valid.
             // Note that the runtime guarantees sufficient alignment of JavaThread
             // pointers to allow age to be placed into low bits.
-            final Word biasableLockBits = mark.and(biasedLockMaskInPlace());
+            final Word biasableLockBits = mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG));
 
             // Check whether the bias pattern is present in the object's mark word
             // and the bias owner and the epoch are both still current.
-            final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+            final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
             final Word thread = registerAsWord(threadRegister);
-            final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
+            final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace(INJECTED_VMCONFIG));
             trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
             trace(trace, "           thread: 0x%016lx\n", thread);
             trace(trace, "              tmp: 0x%016lx\n", tmp);
@@ -242,7 +243,7 @@ public class MonitorSnippets implements Snippets {
             }
 
             // Now check to see whether biasing is enabled for this object
-            if (probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
                 // Biasing not enabled -> fall through to lightweight locking
                 unbiasable.inc();
             } else {
@@ -255,7 +256,7 @@ public class MonitorSnippets implements Snippets {
                 // If the low three bits in the xor result aren't clear, that means
                 // the prototype header is no longer biasable and we have to revoke
                 // the bias on this object.
-                if (probability(FREQUENT_PROBABILITY, tmp.and(biasedLockMaskInPlace()).equal(0))) {
+                if (probability(FREQUENT_PROBABILITY, tmp.and(biasedLockMaskInPlace(INJECTED_VMCONFIG)).equal(0))) {
                     // Biasing is still enabled for object's type. See whether the
                     // epoch of the current bias is still valid, meaning that the epoch
                     // bits of the mark word are equal to the epoch bits of the
@@ -265,19 +266,19 @@ public class MonitorSnippets implements Snippets {
                     // that the current epoch is invalid in order to do this because
                     // otherwise the manipulations it performs on the mark word are
                     // illegal.
-                    if (probability(FREQUENT_PROBABILITY, tmp.and(epochMaskInPlace()).equal(0))) {
+                    if (probability(FREQUENT_PROBABILITY, tmp.and(epochMaskInPlace(INJECTED_VMCONFIG)).equal(0))) {
                         // The epoch of the current bias is still valid but we know nothing
                         // about the owner; it might be set or it might be clear. Try to
                         // acquire the bias of the object using an atomic operation. If this
                         // fails we will go in to the runtime to revoke the object's bias.
                         // Note that we first construct the presumed unbiased header so we
                         // don't accidentally blow away another thread's valid bias.
-                        Word unbiasedMark = mark.and(biasedLockMaskInPlace() | ageMaskInPlace() | epochMaskInPlace());
+                        Word unbiasedMark = mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG) | ageMaskInPlace(INJECTED_VMCONFIG) | epochMaskInPlace(INJECTED_VMCONFIG));
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
                         if (probability(VERY_FAST_PATH_PROBABILITY,
-                                        compareAndSwap(OffsetAddressNode.address(object, markOffset()), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
+                                        compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object, true);
                             lockBiasAcquired.inc();
@@ -297,7 +298,8 @@ public class MonitorSnippets implements Snippets {
                         // the bias from one thread to another directly in this situation.
                         Word biasedMark = prototypeMarkWord.or(thread);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(OffsetAddressNode.address(object, markOffset()), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY,
+                                        compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:transfer}", object, true);
                             lockBiasTransfer.inc();
@@ -320,7 +322,7 @@ public class MonitorSnippets implements Snippets {
                     // that another thread raced us for the privilege of revoking the
                     // bias of this particular object, so it's okay to continue in the
                     // normal locking code.
-                    Word result = compareAndSwap(OffsetAddressNode.address(object, markOffset()), mark, prototypeMarkWord, MARK_WORD_LOCATION);
+                    Word result = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), mark, prototypeMarkWord, MARK_WORD_LOCATION);
 
                     // Fall through to the normal CAS-based lock, because no matter what
                     // the result of the above CAS, some thread must have succeeded in
@@ -335,15 +337,15 @@ public class MonitorSnippets implements Snippets {
         }
 
         // Create the unlocked mark word pattern
-        Word unlockedMark = mark.or(unlockedMask());
+        Word unlockedMark = mark.or(unlockedMask(INJECTED_VMCONFIG));
         trace(trace, "     unlockedMark: 0x%016lx\n", unlockedMark);
 
         // Copy this unlocked mark word into the lock slot on the stack
-        lock.writeWord(lockDisplacedMarkOffset(), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
+        lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
 
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
-        Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset()), unlockedMark, lock, MARK_WORD_LOCATION);
+        Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), unlockedMark, lock, MARK_WORD_LOCATION);
         if (probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, currentMark.notEqual(unlockedMark))) {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
             // The mark word in the object header was not the same.
@@ -362,7 +364,7 @@ public class MonitorSnippets implements Snippets {
             // assuming both the stack pointer and page_size have their least
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.unsigned(wordSize() - 1);
-            final Word stackPointer = registerAsWord(stackPointerRegister).add(config().stackBias);
+            final Word stackPointer = registerAsWord(stackPointerRegister).add(config(INJECTED_VMCONFIG).stackBias);
             if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
                 // Most likely not a recursive lock, go into a slow runtime call
                 traceObject(trace, "+lock{stub:failed-cas}", object, true);
@@ -371,7 +373,7 @@ public class MonitorSnippets implements Snippets {
                 return;
             } else {
                 // Recursively locked => write 0 to the lock slot
-                lock.writeWord(lockDisplacedMarkOffset(), Word.zero(), DISPLACED_MARK_WORD_LOCATION);
+                lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), Word.zero(), DISPLACED_MARK_WORD_LOCATION);
                 traceObject(trace, "+lock{cas:recursive}", object, true);
                 lockCasRecursive.inc();
             }
@@ -402,16 +404,16 @@ public class MonitorSnippets implements Snippets {
     @Snippet
     public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
-        if (useBiasedLocking()) {
+        if (useBiasedLocking(INJECTED_VMCONFIG)) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.
             // First, the interpreter checks for IllegalMonitorStateException at
             // a higher level. Second, if the bias was revoked while we held the
             // lock, the object could not be rebiased toward another thread, so
             // the bias bit would be clear.
-            final Word mark = loadWordFromObject(object, markOffset());
+            final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
             trace(trace, "             mark: 0x%016lx\n", mark);
-            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
+            if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG)).equal(Word.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object, false);
@@ -423,7 +425,7 @@ public class MonitorSnippets implements Snippets {
         final Word lock = CurrentLockNode.currentLock(lockDepth);
 
         // Load displaced mark
-        final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(), DISPLACED_MARK_WORD_LOCATION);
+        final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), DISPLACED_MARK_WORD_LOCATION);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
         if (probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, displacedMark.equal(0))) {
@@ -436,7 +438,7 @@ public class MonitorSnippets implements Snippets {
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
             if (probability(VERY_SLOW_PATH_PROBABILITY,
-                            DirectCompareAndSwapNode.compareAndSwap(OffsetAddressNode.address(object, markOffset()), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
+                            DirectCompareAndSwapNode.compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
                 traceObject(trace, "-lock{stub}", object, false);

@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.truffle.OptimizedCallTarget;
-
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
@@ -35,11 +34,11 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
  */
 public abstract class OptimizedCallTargetInstrumentationFactory implements CompilationResultBuilderFactory {
 
-    protected HotSpotVMConfig config;
+    protected GraalHotSpotVMConfig config;
     protected HotSpotRegistersProvider registers;
 
     @SuppressWarnings("hiding")
-    public final void init(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
+    public final void init(GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         this.config = config;
         this.registers = registers;
     }

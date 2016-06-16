@@ -1,8 +1,12 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.14", platformspecific: true}
 java9  : {name : oraclejdk, version : "9",    platformspecific: true}
 
 common : {
+  timelimit : "30:00"
+}
+
+commonLinux : ${common} {
   packages : {
     git : ">=1.8.3"
     mercurial : ">=2.2"
@@ -11,15 +15,28 @@ common : {
     make : ">=3.83"
     gcc-build-essentials : ">=4.9.1" # GCC 4.9.0 fails on cluster
   }
-  environment : {
-    DEFAULT_VM : "jvmci"
-  }
-  timelimit : "30:00"
 }
 
-commonSolaris : {
+commonSolaris : ${common} {
   packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
     "solarisstudio" : "==12.3"
+  }
+}
+
+commonDarwin : ${common} {
+  packages : {
+    # Brew does not support versions
+    git : ""
+    mercurial : ""
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    # No need to specify "make" or "gcc" as Mac OS X has these
+    # available once Xcode has been installed.
   }
 }
 
@@ -44,13 +61,13 @@ java9Downloads : {
   }
 }
 
-gateTest : ${common} {
+gateTest : {
   run : [
     ${gateCmd} ["build,test"]
   ]
 }
 
-gateBootstrap : ${common} {
+gateBootstrap : {
   run : [
     ${gateCmd} ["build,bootstrap"]
   ]
@@ -61,12 +78,12 @@ gateTest9  : ${gateTest} ${java9Downloads}
 gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
 gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
 
-gateStyle : ${common} ${java8Downloads} {
+gateStyle : ${java8Downloads} {
   downloads : {
     JDT : {name: ecj, version: "4.5.1", platformspecific: false}
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
   }
-  environment : ${common.environment} {
+  environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
   }
   run : [
@@ -88,7 +105,7 @@ bench-jvmci : {
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
-bench-common-8 : ${common} ${java8Downloads} {
+bench-common-8 : ${java8Downloads} {
   setup: [
     ${bench-jvmci.mx-settings} ["build"]
   ]
@@ -136,13 +153,15 @@ bench-specjbb2015: ${bench-common-8} {
 # Build targets
 
 builds = [
-  ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
-  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
-# ${gateTest9}        {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
-# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
-  ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
+# ${gateTest8}        ${commonDarwin}  {capabilities : [darwin, amd64, gate],   name: "gate-test-8-darwin-amd64"}
+  ${gateTest8}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateBootstrap8}   ${commonDarwin}  {capabilities : [darwin, amd64, gate],   name: "gate-bootstrap-8-darwin-amd64"}
+  ${gateBootstrap8}   ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}   ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateStyle}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
 # The linux-sparc gate machine throws OOME when running `javac -X -J-Xms64M -J-Xint` too often.
-#  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
+# ${gateTest8}        ${commonLinux}   {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
   ${gateTest8}        ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9",      timelimit: "1:00:00"}
   ${gateBootstrap8}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-bootstrap-8-solaris-sparcv9", timelimit: "1:00:00"}
 #  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}

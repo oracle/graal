@@ -32,7 +32,6 @@ import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldMet
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldStartAt;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldStopAt;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldVerbose;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 
 import java.io.Closeable;
 import java.io.File;
@@ -61,6 +60,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -83,6 +83,7 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.options.OptionDescriptor;
+import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.options.OptionsParser;
@@ -94,7 +95,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCI;
@@ -147,7 +147,7 @@ public final class CompileTheWorld {
                         OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                     }
                 }
-                OptionsParser.parseOptions(optionSettings, this, null, null);
+                OptionsParser.parseOptions(optionSettings, this, ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader()));
             }
         }
 
@@ -768,7 +768,7 @@ public final class CompileTheWorld {
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
             return false;
         }
-        HotSpotVMConfig c = config();
+        GraalHotSpotVMConfig c = compiler.getGraalRuntime().getVMConfig();
         if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
             println(verbose || methodFilters != null,
                             String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter,
