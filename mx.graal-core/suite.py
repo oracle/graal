@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "4cedec080054e9be81d8f6fdf7a2fa37587afde6",
+        "version" : "58f8339cf1c7e6afaa7ff437ab7edcebda35ab69",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
