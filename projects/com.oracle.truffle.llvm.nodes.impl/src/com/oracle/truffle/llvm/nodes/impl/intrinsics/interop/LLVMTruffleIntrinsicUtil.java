@@ -42,7 +42,7 @@ public final class LLVMTruffleIntrinsicUtil {
         StringBuilder sb = new StringBuilder();
         while ((c = LLVMMemory.getI8(adr)) != 0) {
             sb.append((char) c);
-            adr = adr.increment(1);
+            adr = adr.increment(Byte.BYTES);
         }
         return sb.toString();
     }
