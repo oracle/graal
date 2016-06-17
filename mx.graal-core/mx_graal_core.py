@@ -184,7 +184,7 @@ class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
         return ['-server'] + _parseVmArgs(vmArgs)
 
     def run_java(self, args):
-        run_vm(args)
+        return run_vm(args)
 
 mx_microbench.set_microbenchmark_executor(JVMCIMicrobenchExecutor())
 
