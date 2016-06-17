@@ -238,7 +238,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<com.oracle.truffl
                 vm = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
 
                 final String src = readAllLines(testCase.path);
-                vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType(SLLanguage.MIME_TYPE));
+                vm.eval(Source.newBuilder(src).name(testCase.path.toString()).mimeType(SLLanguage.MIME_TYPE).build());
 
                 PolyglotEngine.Value main = vm.findGlobalSymbol("main");
                 main.execute();

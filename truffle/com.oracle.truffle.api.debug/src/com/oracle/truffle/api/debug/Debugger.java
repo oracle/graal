@@ -1096,7 +1096,7 @@ public final class Debugger {
                 if (haltedEventContext != null && haltedEventContext.getInstrumentedNode().getSourceSection() != null) {
                     location = haltedEventContext.getInstrumentedNode().getSourceSection().getShortDescription();
                 } else if (source != null) {
-                    location = source.getShortName();
+                    location = source.getName();
                 } else {
                     location = "no source";
                 }

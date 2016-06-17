@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+@SuppressWarnings("deprecation")
 public class SourceSectionFilterTest {
 
     private static final int LINE_LENGTH = 6;
@@ -90,7 +91,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testEmpty() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
         Node unavailable = createNode(SourceSection.createUnavailable(null, null));
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().build();
@@ -126,7 +127,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testLineIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
         Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineIn(2, 1).build(),
                         root, createNode(sampleSource.createSection(null, 6, 5), tags())));
@@ -181,7 +182,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testLineStartIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
 
         Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineStartsIn(IndexRange.byLength(2, 1)).build(),
@@ -205,7 +206,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testLineEndsIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
 
         Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().lineEndsIn(IndexRange.byLength(2, 1)).build(),
@@ -229,7 +230,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testLineNotIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
         Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().lineNotIn(IndexRange.byLength(2, 1)).build(),
                         root, createNode(sampleSource.createSection(null, 6, 5), tags())));
@@ -294,7 +295,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testMimeType() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().mimeTypeIs().build(),
                                         null, createNode(sampleSource.withMimeType("mime3").createSection(null, 0, 5), tags())));
@@ -324,7 +325,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testIndexIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
         Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().indexIn(0, 0).build(),
                         root, createNode(sampleSource.createSection(null, 0, 5), tags())));
@@ -377,7 +378,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testIndexNotIn() {
-        Source sampleSource = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root = createNode(sampleSource.createSection(null, 0, 23));
         Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.byLength(0, 0)).build(),
                         root, createNode(sampleSource.createSection(null, 0, 5), tags())));
@@ -440,9 +441,9 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testSourceIn() {
-        Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null);
-        Source sampleSource2 = Source.fromText("line1\nline2\nline3\nline4", null);
-        Source sampleSource3 = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Source sampleSource2 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Source sampleSource3 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root1 = createNode(sampleSource1.createSection(null, 0, 23));
         Node root2 = createNode(sampleSource2.createSection(null, 0, 23));
         Node root3 = createNode(sampleSource3.createSection(null, 0, 23));
@@ -476,8 +477,8 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testSourceSectionEquals() {
-        Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null);
-        Source sampleSource2 = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Source sampleSource2 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Node root1 = createNode(sampleSource1.createSection(null, 0, 23));
         Node root2 = createNode(sampleSource2.createSection(null, 0, 23));
 
@@ -518,7 +519,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testRootSourceSectionEquals() {
-        Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null);
+        Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
 
         Assert.assertTrue(isInstrumentedNode(SourceSectionFilter.newBuilder().rootSourceSectionEquals(sampleSource1.createSection(null, 1, 6)).build(),
                         createNode(sampleSource1.createSection(null, 6, 4))));
@@ -541,7 +542,7 @@ public class SourceSectionFilterTest {
     }
 
     private static Node source(Class<?>... tags) {
-        return createNode(Source.fromText("foo", null).createSection(null, 0, 3), tags);
+        return createNode(Source.newBuilder("foo").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build().createSection(null, 0, 3), tags);
     }
 
     @Test
@@ -617,7 +618,7 @@ public class SourceSectionFilterTest {
 
     @Test
     public void testComplexFilter() {
-        Source sampleSource1 = Source.fromText("line1\nline2\nline3\nline4", null).withMimeType("mime2");
+        Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType("mime2").build();
         Node root = createNode(sampleSource1.createSection(null, 0, 23));
 
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.DEFINE).//

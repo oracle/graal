@@ -28,12 +28,17 @@ import java.lang.ref.WeakReference;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.net.URI;
 
 final class SourceImpl extends Source implements Cloneable {
     private static Ref SOURCES = null;
 
     SourceImpl(Content content) {
-        super(content);
+        this(content, null, null, null, false);
+    }
+
+    SourceImpl(Content content, String mimeType, URI uri, String name, boolean internal) {
+        super(content, mimeType, uri, name, internal);
         registerSource(this);
     }
 

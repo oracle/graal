@@ -609,7 +609,7 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                         return null;
                     }
                     final String path = file.getCanonicalPath();
-                    runSource = Source.fromFileName(path);
+                    runSource = Source.newBuilder(new File(path)).build();
                 } catch (IOException e) {
                     context.displayFailReply("Can't find file: " + args[1]);
                     return null;

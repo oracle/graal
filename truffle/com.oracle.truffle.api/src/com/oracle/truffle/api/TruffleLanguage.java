@@ -587,13 +587,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
+        @SuppressWarnings({"rawtypes"})
         public Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
             final Env env = AccessAPI.engineAccess().findEnv(vm, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
-            final Source source = Source.fromText(code, "eval in context");
+            final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
             return lang.evalInContext(source, node, frame);
         }
 

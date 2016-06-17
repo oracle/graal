@@ -39,7 +39,7 @@ public class LineLocationTest {
 
     @Test
     public void lineLocationLiteralTest() {
-        final Source source = Source.fromText("line 1\nline2\n", "lineLocationTest");
+        final Source source = Source.newBuilder("line 1\nline2\n").name("lineLocationTest").mimeType("content/unknown").build();
         final LineLocation line1 = source.createLineLocation(1);
         final LineLocation line2 = source.createLineLocation(2);
         assertEquals(line1.getLineNumber(), 1);
@@ -66,7 +66,7 @@ public class LineLocationTest {
     @Test
     public void lineLocationMixedTest() throws IOException {
         final Source s1 = createSourceFile("same contents", "Testfile");
-        final Source s2 = Source.fromText("same contents", null).withName("literal test source");
+        final Source s2 = Source.newBuilder("same contents").name("literal test source").mimeType("content/unknown").build();
         final LineLocation s1l1 = s1.createLineLocation(1);
         final LineLocation s2l1 = s2.createLineLocation(1);
         assertEquals(s1l1.compareTo(s2l1), 0);
@@ -79,6 +79,6 @@ public class LineLocationTest {
             w.write(contents);
         }
         file.deleteOnExit();
-        return Source.fromFileName(file.getAbsolutePath());
+        return Source.newBuilder(new File(file.getAbsolutePath())).build();
     }
 }

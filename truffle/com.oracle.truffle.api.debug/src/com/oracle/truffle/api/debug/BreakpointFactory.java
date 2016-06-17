@@ -111,7 +111,7 @@ final class BreakpointFactory {
             if (key1 instanceof LineLocation && key2 instanceof LineLocation) {
                 final LineLocation line1 = (LineLocation) key1;
                 final LineLocation line2 = (LineLocation) key2;
-                final int nameOrder = line1.getSource().getShortName().compareTo(line2.getSource().getShortName());
+                final int nameOrder = line1.getSource().getName().compareTo(line2.getSource().getName());
                 if (nameOrder != 0) {
                     return nameOrder;
                 }
@@ -451,7 +451,7 @@ final class BreakpointFactory {
                     conditionSource = null;
                     binding = instrumenter.attachListener(locationQuery, new BreakpointListener(this));
                 } else {
-                    conditionSource = Source.fromText(expr, "breakpoint condition from text: " + expr);
+                    conditionSource = Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("text/plain").build();
                     binding = instrumenter.attachFactory(locationQuery, this);
                 }
             }
@@ -595,7 +595,12 @@ final class BreakpointFactory {
                             StandardTags.StatementTag.class).build();
             locationQuery = query;
             if (conditionExpr != null) {
-                conditionSource = Source.fromText(conditionExpr, "breakpoint condition from text: " + conditionExpr);
+                // @formatter:off
+                conditionSource = Source.newBuilder(conditionExpr).
+                    name("breakpoint condition from text: " + conditionExpr).
+                    mimeType(source.getMimeType()).
+                    build();
+                // @formatter:on
                 binding = instrumenter.attachFactory(locationQuery, this);
             } else {
                 binding = instrumenter.attachListener(query, new BreakpointListener(this));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
-
-import static org.junit.Assert.assertEquals;
+package com.oracle.truffle.api.source;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.spi.FileTypeDetector;
 
-import org.junit.Test;
-
-import com.oracle.truffle.api.source.Source;
-import org.junit.After;
-import org.junit.Before;
-
-public class IsMimeTypeSupportedTest {
-
-    private static final String MIME_TYPE = "application/x-test-mime-type-supported";
-    private PolyglotEngine vm;
-
-    @Before
-    public void create() {
-        vm = PolyglotEngine.newBuilder().build();
-    }
-
-    @After
-    public void dispose() {
-        vm.dispose();
-    }
-
-    @Test
-    public void isMimeSupported() throws IOException {
-        assertEquals(true, vm.eval(Source.newBuilder(MIME_TYPE).name("supported").mimeType(MIME_TYPE).build()).as(Boolean.class));
-        assertEquals(false, vm.eval(Source.newBuilder("application/x-this-language-does-not-exist").name("unsupported").mimeType(MIME_TYPE).build()).as(Boolean.class));
+public final class CommonMIMETypeTestDetector extends FileTypeDetector {
+    @Override
+    public String probeContentType(Path path) throws IOException {
+        if (path.getFileName().toString().endsWith(".java")) {
+            return "text/x-java";
+        }
+        if (path.getFileName().toString().endsWith(".js")) {
+            return "application/javascript";
+        }
+        return null;
     }
 
 }

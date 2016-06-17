@@ -77,7 +77,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
     }
 
     protected CallTarget parse(String mimeType, String code) {
-        final Source source = Source.fromText(code, "(eval)").withMimeType(mimeType);
+        final Source source = Source.newBuilder(code).name("(eval)").mimeType(mimeType).build();
 
         try {
             return getContext().parse(source);
