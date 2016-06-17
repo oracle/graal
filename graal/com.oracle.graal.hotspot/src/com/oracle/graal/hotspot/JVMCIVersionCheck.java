@@ -108,7 +108,7 @@ class JVMCIVersionCheck {
                 if (build >= JVMCI9_MIN_EA_BUILD) {
                     return;
                 }
-                failVersionCheck(exitOnFailure, "The VM is an insufficiently recent EA JDK9 build for Graal: %d < %d.%n", build < JVMCI9_MIN_EA_BUILD);
+                failVersionCheck(exitOnFailure, "The VM is an insufficiently recent EA JDK9 build for Graal: %d < %d.%n", build, JVMCI9_MIN_EA_BUILD);
                 return;
             }
             failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
