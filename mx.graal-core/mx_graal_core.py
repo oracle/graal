@@ -184,7 +184,7 @@ class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
         return ['-server'] + _parseVmArgs(vmArgs)
 
     def run_java(self, args):
-        run_vm(args)
+        return run_vm(args)
 
 mx_microbench.set_microbenchmark_executor(JVMCIMicrobenchExecutor())
 
@@ -733,7 +733,7 @@ class GraalJVMCI9JDKConfig(mx.JDKConfig):
         mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
-        run_java(args, **kwArgs)
+        return run_java(args, **kwArgs)
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
