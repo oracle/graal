@@ -165,6 +165,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -346,6 +347,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
         StructuredGraph graph = math.graph();
         ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getX(), math.getY()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
@@ -353,13 +357,25 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        if (math.graph().method() != null) {
-            if (math.graph().method().getAnnotation(Snippet.class) != null) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+        ResolvedJavaMethod method = math.graph().method();
+        if (method != null) {
+            if (method.getAnnotation(Snippet.class) != null) {
                 /*
                  * In the context of the snippet use the LIR lowering instead of the Node lowering.
                  */
                 return;
             }
+            if (method.getDeclaringClass().getName().equals("java.lang.Math") && method.getName().equals(math.getOperation().name().toLowerCase())) {
+                /*
+                 * A root compilation of the intrinsic method should emit the full assembly
+                 * implementation.
+                 */
+                return;
+            }
+
         }
         StructuredGraph graph = math.graph();
         ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
