@@ -117,7 +117,7 @@ public abstract class RootNode extends Node {
      * whenever it becomes possible, for example when a functional value is assigned. This means
      * that the name might not be stable over time.
      * <p>
-     * Language execution semantics should not depend on either this name or the way that is
+     * Language execution semantics should not depend on either this name or the way that it is
      * formatted. The name should be presented in the way expected to be most useful for
      * programmers.
      *
