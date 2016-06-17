@@ -736,10 +736,10 @@ public final class REPLServer {
                 return null;
             }
             RootNode root = node.getRootNode();
-            if (root == null) {
-                return "unknown";
+            if (root != null && root.getName() != null) {
+                return root.getName();
             }
-            return root.getCallTarget().toString();
+            return "??";
         }
 
         /**
