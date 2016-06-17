@@ -733,7 +733,7 @@ class GraalJVMCI9JDKConfig(mx.JDKConfig):
         mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
-        run_java(args, **kwArgs)
+        return run_java(args, **kwArgs)
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
