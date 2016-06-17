@@ -25,7 +25,6 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static com.oracle.graal.lir.asm.ArrayDataPointerConstant.ArrayType.INT_ARRAY;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.Label;
@@ -261,9 +260,9 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
      */
 
     public void logIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        ArrayDataPointerConstant logTwoTablePtr = new ArrayDataPointerConstant(logTwoTable, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant logTwoDataPtr = new ArrayDataPointerConstant(logTwoData, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant coeffLogTwoDataPtr = new ArrayDataPointerConstant(coeffLogTwoData, INT_ARRAY, crb, 16);
+        ArrayDataPointerConstant logTwoTablePtr = new ArrayDataPointerConstant(logTwoTable, 16);
+        ArrayDataPointerConstant logTwoDataPtr = new ArrayDataPointerConstant(logTwoData, 16);
+        ArrayDataPointerConstant coeffLogTwoDataPtr = new ArrayDataPointerConstant(coeffLogTwoData, 16);
 
         Label bb0 = new Label();
         Label bb1 = new Label();
@@ -613,11 +612,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
      */
 
     public void log10Intrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        ArrayDataPointerConstant highmaskLogTenPtr = new ArrayDataPointerConstant(highmaskLogTen, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant logTenEPtr = new ArrayDataPointerConstant(logTenE, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant logTenTablePtr = new ArrayDataPointerConstant(logTenTable, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant logTwoLogTenDataPtr = new ArrayDataPointerConstant(logTwoLogTenData, INT_ARRAY, crb, 16);
-        ArrayDataPointerConstant coeffLogTenDataPtr = new ArrayDataPointerConstant(coeffLogTenData, INT_ARRAY, crb, 16);
+        ArrayDataPointerConstant highmaskLogTenPtr = new ArrayDataPointerConstant(highmaskLogTen, 16);
+        ArrayDataPointerConstant logTenEPtr = new ArrayDataPointerConstant(logTenE, 16);
+        ArrayDataPointerConstant logTenTablePtr = new ArrayDataPointerConstant(logTenTable, 16);
+        ArrayDataPointerConstant logTwoLogTenDataPtr = new ArrayDataPointerConstant(logTwoLogTenData, 16);
+        ArrayDataPointerConstant coeffLogTenDataPtr = new ArrayDataPointerConstant(coeffLogTenData, 16);
 
         Label bb0 = new Label();
         Label bb1 = new Label();
