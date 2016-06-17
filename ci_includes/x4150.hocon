@@ -4,7 +4,7 @@ bench-specjbb2005-x4150: ${commonLinux} ${bench-specjbb2005} {
   capabilities: [linux, x4150, bench, post-merge]
   name: "bench-specjbb2005-linux-x4150"
   args.mx : ["--machine-name", "x4150"]
-  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks"]
+  args.jvm : ["--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks"]
   args.bench : []
   run: [
     ${bench-jvmci.mx-specjbb2005} [
