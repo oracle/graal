@@ -353,9 +353,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
-        if (math.graph().method() != null && math.graph().method().getAnnotation(Snippet.class) != null) {
-            // In the context of the snippet we want the LIR lowering instead of the Node lowering.
-            return;
+        if (math.graph().method() != null) {
+            if (math.graph().method().getAnnotation(Snippet.class) != null) {
+                /*
+                 * In the context of the snippet use the LIR lowering instead of the Node lowering.
+                 */
+                return;
+            }
         }
         StructuredGraph graph = math.graph();
         ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
