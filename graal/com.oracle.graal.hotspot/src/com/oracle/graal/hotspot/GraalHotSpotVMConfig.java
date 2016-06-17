@@ -58,6 +58,29 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         assert check();
     }
 
+    /**
+     * Gets the value of a static C++ field under two possible names. {@code name} is the preferred
+     * name and will be checked first.
+     *
+     * @param name fully qualified name of the field
+     * @param alternateName fully qualified alternate name of the field
+     * @param type the boxed type to which the constant value will be converted
+     * @param cppType if non-null, the expected C++ type of the field (e.g., {@code "HeapWord*"})
+     * @return the value of the requested field
+     * @throws JVMCIError if the field is not static or not present
+     */
+    public <T> T getFieldValueWithAlternate(String name, String alternateName, Class<T> type, String cppType) {
+        try {
+            return getFieldValue(name, type, cppType);
+        } catch (JVMCIError e) {
+            try {
+                return getFieldValue(alternateName, type, cppType);
+            } catch (JVMCIError e2) {
+                throw new JVMCIError("expected VM field not found: " + name + " or " + alternateName);
+            }
+        }
+    }
+
     private final CompressEncoding oopEncoding;
     private final CompressEncoding klassEncoding;
 
@@ -456,7 +479,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
      * This is the largest stack offset encodeable in an OopMapValue. Offsets larger than this will
      * throw an exception during code installation.
      */
-    public final int maxOopMapStackOffset = getFieldValue("JVMCIRuntime::max_oop_map_stack_offset", Integer.class, "int");
+    public final int maxOopMapStackOffset = getFieldValueWithAlternate("CompilerToVM::Data::_max_oop_map_stack_offset", "JVMCIRuntime::max_oop_map_stack_offset", Integer.class, "int");
 
     public final long safepointPollingAddress = getFieldValue("os::_polling_page", Long.class, "address");
 
