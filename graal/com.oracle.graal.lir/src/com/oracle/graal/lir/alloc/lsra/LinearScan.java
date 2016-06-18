@@ -63,6 +63,7 @@ import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -122,7 +123,7 @@ public class LinearScan {
     private final LIR ir;
     private final FrameMapBuilder frameMapBuilder;
     private final RegisterAttributes[] registerAttributes;
-    private final Register[] registers;
+    private final RegisterArray registers;
     private final RegisterAllocationConfig regAllocConfig;
     private final MoveFactory moveFactory;
 
@@ -188,7 +189,7 @@ public class LinearScan {
         this.regAllocConfig = regAllocConfig;
 
         this.registers = target.arch.getRegisters();
-        this.firstVariableNumber = getRegisters().length;
+        this.firstVariableNumber = getRegisters().size();
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
@@ -916,7 +917,7 @@ public class LinearScan {
         return sortedBlocks;
     }
 
-    public Register[] getRegisters() {
+    public RegisterArray getRegisters() {
         return registers;
     }
 

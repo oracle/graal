@@ -127,7 +127,7 @@ final class RegisterVerifier {
 
     protected void printState(Interval[] inputState) {
         for (int i = 0; i < stateSize(); i++) {
-            Register reg = allocator.getRegisters()[i];
+            Register reg = allocator.getRegisters().get(i);
             assert reg.number == i;
             if (inputState[i] != null) {
                 Debug.log(" %6s %4d  --  %s", reg, inputState[i].operandNumber, inputState[i]);

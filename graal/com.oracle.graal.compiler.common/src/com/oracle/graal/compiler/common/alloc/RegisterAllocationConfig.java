@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.PlatformKind;
 
@@ -44,14 +45,14 @@ public class RegisterAllocationConfig {
         public final int minRegisterNumber;
         public final int maxRegisterNumber;
 
-        public AllocatableRegisters(Register[] allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
-            this.allocatableRegisters = allocatableRegisters;
+        public AllocatableRegisters(RegisterArray allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
+            this.allocatableRegisters = allocatableRegisters.toArray();
             this.minRegisterNumber = minRegisterNumber;
             this.maxRegisterNumber = maxRegisterNumber;
             assert verify(allocatableRegisters, minRegisterNumber, maxRegisterNumber);
         }
 
-        private static boolean verify(Register[] allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
+        private static boolean verify(RegisterArray allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
             int min = Integer.MAX_VALUE;
             int max = Integer.MIN_VALUE;
             for (Register reg : allocatableRegisters) {
@@ -71,7 +72,7 @@ public class RegisterAllocationConfig {
 
     public static final String ALL_REGISTERS = "<all>";
 
-    private static Register findRegister(String name, Register[] all) {
+    private static Register findRegister(String name, RegisterArray all) {
         for (Register reg : all) {
             if (reg.name.equals(name)) {
                 return reg;
@@ -80,14 +81,14 @@ public class RegisterAllocationConfig {
         throw new IllegalArgumentException("register " + name + " is not allocatable");
     }
 
-    protected Register[] initAllocatable(Register[] registers) {
+    protected RegisterArray initAllocatable(RegisterArray registers) {
         if (RegisterPressure.getValue() != null && !RegisterPressure.getValue().equals(ALL_REGISTERS)) {
             String[] names = RegisterPressure.getValue().split(",");
             Register[] regs = new Register[names.length];
             for (int i = 0; i < names.length; i++) {
                 regs[i] = findRegister(names[i], registers);
             }
-            return regs;
+            return new RegisterArray(regs);
         }
 
         return registers;
@@ -95,7 +96,7 @@ public class RegisterAllocationConfig {
 
     protected final RegisterConfig registerConfig;
     private final Map<PlatformKind.Key, AllocatableRegisters> categorized = new HashMap<>();
-    private Register[] cachedRegisters;
+    private RegisterArray cachedRegisters;
 
     public RegisterAllocationConfig(RegisterConfig registerConfig) {
         assert registerConfig != null;
@@ -117,7 +118,7 @@ public class RegisterAllocationConfig {
         return ret;
     }
 
-    protected AllocatableRegisters createAllocatableRegisters(Register[] registers) {
+    protected AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Register reg : registers) {
@@ -137,7 +138,7 @@ public class RegisterAllocationConfig {
     /**
      * Gets the set of registers that can be used by the register allocator.
      */
-    public Register[] getAllocatableRegisters() {
+    public RegisterArray getAllocatableRegisters() {
         if (cachedRegisters == null) {
             cachedRegisters = initAllocatable(registerConfig.getAllocatableRegisters());
         }

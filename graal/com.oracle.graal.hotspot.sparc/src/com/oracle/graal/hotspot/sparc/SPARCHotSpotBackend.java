@@ -513,6 +513,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     private Register translateInputToOutputRegister(Register register) {
         assert i0.number <= register.number && register.number <= i7.number : "Not an input register " + register;
-        return getTarget().arch.getRegisters()[o0.number + register.number - i0.number];
+        return getTarget().arch.getRegisters().get(o0.number + register.number - i0.number);
     }
 }

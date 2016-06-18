@@ -58,7 +58,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCall
                 @SuppressWarnings("hiding")
                 SPARCMacroAssembler asm = (SPARCMacroAssembler) this.asm;
                 try (ScratchRegister scratch = asm.getScratchRegister()) {
-                    Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object)[0];
+                    Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
                     SPARCAddress entryPointAddress = new SPARCAddress(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));

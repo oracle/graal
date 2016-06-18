@@ -338,7 +338,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public SaveRegistersOp emitSaveAllRegisters() {
         // We are saving all registers.
         // TODO Save upper half of YMM registers.
-        return emitSaveAllRegisters(target().arch.getAvailableValueRegisters(), false);
+        return emitSaveAllRegisters(target().arch.getAvailableValueRegisters().toArray(), false);
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {
@@ -371,7 +371,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Stub stub = getStub();
         if (destroysRegisters) {
             if (stub != null && stub.preservesRegisters()) {
-                Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
+                Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters().toArray();
                 save = emitSaveAllRegisters(savedRegisters, true);
             }
         }
@@ -447,7 +447,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected boolean zapRegisters() {
-        Register[] zappedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
+        Register[] zappedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters().toArray();
         JavaConstant[] zapValues = new JavaConstant[zappedRegisters.length];
         for (int i = 0; i < zappedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());

@@ -29,11 +29,11 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
 import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
 import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotConstantFieldProvider;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider;
@@ -55,7 +55,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.InitTimer;
@@ -177,10 +177,11 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected static Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
         AArch64HotSpotRegisterConfig conf = (AArch64HotSpotRegisterConfig) regConfig;
-        Register[] callerSavedRegisters = conf.getCallerSaveRegisters();
-        Value[] nativeABICallerSaveRegisters = new Value[callerSavedRegisters.length];
-        for (int i = 0; i < callerSavedRegisters.length; i++) {
-            nativeABICallerSaveRegisters[i] = callerSavedRegisters[i].asValue();
+        RegisterArray callerSavedRegisters = conf.getCallerSaveRegisters();
+        int size = callerSavedRegisters.size();
+        Value[] nativeABICallerSaveRegisters = new Value[size];
+        for (int i = 0; i < size; i++) {
+            nativeABICallerSaveRegisters[i] = callerSavedRegisters.get(i).asValue();
         }
         return nativeABICallerSaveRegisters;
     }

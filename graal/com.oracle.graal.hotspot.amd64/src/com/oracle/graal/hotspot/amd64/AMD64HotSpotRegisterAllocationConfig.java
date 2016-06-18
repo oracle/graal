@@ -59,6 +59,7 @@ import java.util.BitSet;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 
 class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
@@ -85,19 +86,19 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     }
 
     @Override
-    protected Register[] initAllocatable(Register[] registers) {
-        BitSet regMap = new BitSet(registerConfig.getAllocatableRegisters().length);
+    protected RegisterArray initAllocatable(RegisterArray registers) {
+        BitSet regMap = new BitSet(registerConfig.getAllocatableRegisters().size());
         for (Register reg : registers) {
             regMap.set(reg.number);
         }
 
-        ArrayList<Register> allocatableRegisters = new ArrayList<>(registers.length);
+        ArrayList<Register> allocatableRegisters = new ArrayList<>(registers.size());
         for (Register reg : registerAllocationOrder) {
             if (regMap.get(reg.number)) {
                 allocatableRegisters.add(reg);
             }
         }
 
-        return super.initAllocatable(allocatableRegisters.toArray(new Register[allocatableRegisters.size()]));
+        return super.initAllocatable(new RegisterArray(allocatableRegisters));
     }
 }

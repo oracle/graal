@@ -45,6 +45,7 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -58,7 +59,7 @@ public final class IntervalData implements IntervalDumper {
 
     private final LIR ir;
     private final RegisterAttributes[] registerAttributes;
-    private final Register[] registers;
+    private final RegisterArray registers;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -106,7 +107,7 @@ public final class IntervalData implements IntervalDumper {
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
 
         this.registers = target.arch.getRegisters();
-        this.fixedIntervals = new FixedInterval[registers.length];
+        this.fixedIntervals = new FixedInterval[registers.size()];
     }
 
     private int getFirstLirInstructionId(AbstractBlockBase<?> block) {

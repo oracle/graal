@@ -54,7 +54,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -131,7 +131,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
         return spillMoveFactory;
     }
 
-    private Register[] getRegisters() {
+    private RegisterArray getRegisters() {
         return frameMapBuilder.getRegisterConfig().getAllocatableRegisters();
     }
 
@@ -145,7 +145,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
 
         this.frameMapBuilder = res.getFrameMapBuilder();
         this.spillMoveFactory = spillMoveFactory;
-        this.registerBlocked = new int[arch.getRegisters().length];
+        this.registerBlocked = new int[arch.getRegisters().size()];
 
         FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) frameMapBuilder;
         this.stackBlocked = new int[frameMapBuilderTool.getNumberOfStackSlots()];
@@ -159,7 +159,7 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
             assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
         }
         assert mappingFrom.size() == 0 && mappingTo.size() == 0 && mappingFromStack.size() == 0 : "list must be empty before and after processing";
-        for (int i = 0; i < getRegisters().length; i++) {
+        for (int i = 0; i < getRegisters().size(); i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
         return true;

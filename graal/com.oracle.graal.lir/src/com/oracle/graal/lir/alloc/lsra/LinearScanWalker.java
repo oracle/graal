@@ -91,12 +91,12 @@ class LinearScanWalker extends IntervalWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        spillIntervals = Util.uncheckedCast(new List<?>[allocator.getRegisters().length]);
-        for (int i = 0; i < allocator.getRegisters().length; i++) {
+        spillIntervals = Util.uncheckedCast(new List<?>[allocator.getRegisters().size()]);
+        for (int i = 0; i < allocator.getRegisters().size(); i++) {
             spillIntervals[i] = EMPTY_LIST;
         }
-        usePos = new int[allocator.getRegisters().length];
-        blockPos = new int[allocator.getRegisters().length];
+        usePos = new int[allocator.getRegisters().size()];
+        blockPos = new int[allocator.getRegisters().size()];
     }
 
     void initUseLists(boolean onlyProcessUsePos) {
