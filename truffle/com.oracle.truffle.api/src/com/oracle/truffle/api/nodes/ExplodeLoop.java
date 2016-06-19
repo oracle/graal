@@ -32,11 +32,66 @@ import java.lang.annotation.Target;
 /**
  * Specifies for a method that the loops with constant number of invocations should be fully
  * unrolled.
- * 
+ *
  * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface ExplodeLoop {
+
+    /**
+     * @since 0.14
+     */
+    enum LoopExplosionKind {
+        /**
+         * Fully unroll all loops. The loops must have a known finite number of iterations. If a
+         * loop has multiple loop ends, they are merged so that the subsequent loop iteration is
+         * processed only once. For example, a loop with 4 iterations and 2 loop ends leads to
+         * 1+1+1+1 = 4 copies of the loop body.
+         *
+         * @since 0.14
+         */
+        FULL_UNROLL,
+        /**
+         * Fully explode all loops. The loops must have a known finite number of iterations. If a
+         * loop has multiple loop ends, they are not merged so that subsequent loop iterations are
+         * processed multiple times. For example, a loop with 4 iterations and 2 loop ends leads to
+         * 1+2+4+8 = 15 copies of the loop body.
+         *
+         * @since 0.14
+         */
+        FULL_EXPLODE,
+        /**
+         * Like {@link #FULL_EXPLODE}, but in addition explosion does not stop at loop exits. Code
+         * after the loop is duplicated for every loop exit of every loop iteration. For example, a
+         * loop with 4 iterations and 2 loop exits leads to 4 * 2 = 8 copies of the code after the
+         * loop.
+         *
+         * @since 0.14
+         */
+        FULL_EXPLODE_UNTIL_RETURN,
+        /**
+         * like {@link #FULL_EXPLODE}, but copies of the loop body that have the exact same state
+         * (all local variables have the same value) are merged. This reduces the number of copies
+         * necessary, but can introduce loops again. This kind is useful for bytecode interpreter
+         * loops.
+         *
+         * @since 0.14
+         */
+        MERGE_EXPLODE
+    }
+
+    /**
+     * The loop explosion kind.
+     *
+     * @since 0.14
+     */
+    LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL;
+
+    /**
+     * @deprecated Use {@link #kind} = {@link LoopExplosionKind#MERGE_EXPLODE} instead of setting
+     *             this property to true.
+     */
+    @Deprecated
     boolean merge() default false;
 }

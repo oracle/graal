@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
@@ -53,9 +52,6 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeChild("valueNode")
 @NodeInfo(shortName = "!")
 public abstract class SLLogicalNotNode extends SLExpressionNode {
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     @Specialization
     protected boolean doBoolean(boolean value) {

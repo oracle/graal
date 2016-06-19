@@ -3,7 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.14
-1-Jul-2016
+2-Jun-2016
 * [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) has been
 rewritten to be more immutable. Once (part of) content of a source is loaded, it cannot be
 changed.

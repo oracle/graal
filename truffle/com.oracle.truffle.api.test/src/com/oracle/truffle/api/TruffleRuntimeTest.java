@@ -122,7 +122,7 @@ public class TruffleRuntimeTest {
      */
     @Test
     public void testGetCallTargets3() {
-        Source source1 = Source.fromText("a\nb\n", "");
+        Source source1 = Source.newBuilder("a\nb\n").name("").mimeType("content/unknown").build();
         SourceSection sourceSection1 = source1.createSection("foo", 1);
         SourceSection sourceSection2 = source1.createSection("bar", 2);
 

@@ -82,11 +82,11 @@ import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.nodes.call.SLUndefinedFunctionException;
 import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
@@ -323,7 +323,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         }
 
         /* Parse the SL source file. */
-        Source source = Source.fromFileName(path.toString());
+        Source source = Source.newBuilder(path.toFile()).build();
         context.getFunctionRegistry().register(Parser.parseSL(source));
 
         /* Lookup our main entry point, which is per definition always named "main". */
@@ -341,8 +341,8 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
                 }
             } catch (UnsupportedSpecializationException ex) {
                 out.println(SLMain.formatTypeError(ex));
-            } catch (SLUndefinedFunctionException ex) {
-                out.println(String.format("Undefined function: %s", ex.getFunctionName()));
+            } catch (SLUndefinedNameException ex) {
+                out.println(ex.getMessage());
             }
         }
     }

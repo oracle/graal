@@ -34,7 +34,7 @@ public class ValidTruffleObject7MR {
     @Resolve(message = "EXECUTE")
     public abstract static class Execute2 extends Node {
 
-        @ExpectError({"Wrong number of arguments."})
+        @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, arguments: Object[])"})
         public Object access(String string, ValidTruffleObject0 object, Object[] args) {
             return true;
         }
@@ -52,7 +52,7 @@ public class ValidTruffleObject7MR {
     @Resolve(message = "IS_BOXED")
     public abstract static class IsBoxed2 extends Node {
 
-        @ExpectError({"Wrong number of arguments."})
+        @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject)"})
         public Object access(String string, ValidTruffleObject0 object) {
             return true;
         }
@@ -71,7 +71,7 @@ public class ValidTruffleObject7MR {
     @Resolve(message = "WRITE")
     public abstract static class WriteNode2 extends Node {
 
-        @ExpectError({"Wrong number of arguments."})
+        @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, value: Object)"})
         protected int access(VirtualFrame frame, Object receiver, Object name) {
             return 0;
         }

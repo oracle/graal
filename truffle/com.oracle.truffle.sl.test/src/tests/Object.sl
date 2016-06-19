@@ -1,6 +1,5 @@
 function main() {  
   obj1 = new();
-  println(obj1.x);
   obj1.x = 42;
   println(obj1.x);
   
@@ -23,6 +22,9 @@ function main() {
   read(obj4);
   write(obj4, "three");
   read(obj4);
+
+  obj5 = new();
+  println(obj5.x);
 }
 
 function mkobj() {

@@ -52,8 +52,7 @@ public class GlobalSymbolTest {
     public void globalSymbolFoundByLanguage() throws IOException {
         vm = createEngineBuilder().globalSymbol("ahoj", "42").build();
         // @formatter:off
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("42", ret);

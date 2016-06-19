@@ -54,39 +54,42 @@ import java.net.URISyntaxException;
  *
  * {@link SourceSnippets#fromFile}
  *
- * Methods of interest are {@link Source#fromFileName(String)},
- * {@link Source#fromFileName(String, boolean)}, and {@link Source#find(String)}.
+ * The starting point is {@link Source#newBuilder(java.io.File)} method.
  *
  * <h3>Read from an URL</h3>
  *
- * One can read remote or in JAR resources using the {@link Source#fromURL(URL, String)} factory:
- * <br>
+ * One can read remote or in JAR resources using the {@link Source#newBuilder(java.net.URL)}
+ * factory: <br>
  *
  * {@link SourceSnippets#fromURL}
  *
  * Each URL source is represented as a canonical object, indexed by the URL. Contents are
- * <em>read eagerly</em> and <em>cached</em> locally.
+ * <em>read eagerly</em> once the {@link Builder#build()} method is called.
  *
  * <h3>Source from a literal text</h3>
  *
  * An anonymous immutable code snippet can be created from a string via the
- * {@link Source#fromText(CharSequence, String)} factory method: <br>
+ * {@link Source#newBuilder(java.lang.String) } factory method: <br>
  *
  * {@link SourceSnippets#fromAString}
  *
  * the created {@link Source} doesn't have associated {@link #getMimeType() mime type}. One has to
- * additionally attach one to it via {@link #withMimeType(java.lang.String)} method.
+ * explicitly attach via {@link Builder#mimeType(java.lang.String)} method. The created
+ * {@link Source} doesn't have associated {@link #getName() name}, one has to attach it via
+ * {@link Builder#name(java.lang.String)} method.
  *
  * <h3>Reading from a stream</h3>
  *
  * If one has a {@link Reader} one can convert its content into a {@link Source} via
- * {@link Source#fromReader(Reader, String)} method: <br>
+ * {@link Source#newBuilder(java.io.Reader)} method: <br>
  *
  * {@link SourceSnippets#fromReader}
  *
- * the content is <em>read eagerly</em> and it doesn't have associated {@link #getMimeType() mime
- * type}. One has to additionally attach one to it via {@link #withMimeType(java.lang.String)}
- * method.
+ * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called. It
+ * doesn't have associated {@link #getMimeType() mime type} and {@link #getName()}. Both values have
+ * to be explicitly provided by {@link Builder#name} and {@link Builder#mimeType(java.lang.String)}
+ * methods otherwise {@link MissingMIMETypeException} and/or {@link MissingNameException} are
+ * thrown.
  *
  * <!-- <strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
  * {@link Source}.<br>
@@ -102,24 +105,23 @@ import java.net.URISyntaxException;
  *
  * <p>
  * {@link Source} is an immutable object - once (lazily) loaded, it remains the same. The source
- * object can be associated with various attributes like {@link #getName()}, {@link #getShortName()}
- * , {@link #getPath()}, {@link #getMimeType()} and these are immutable as well. The system makes
- * the best effort to derive values of these attributes from the location and/or content of the
- * {@link Source} object. However, to give the user that creates the source control over these
- * attributes, the API offers an easy way to alter values of these attributes by creating clones of
- * the source via {@link #withMimeType(java.lang.String)}, {@link #withName(java.lang.String)},
- * {@link #withPath(java.lang.String)} or {@link #withShortName(java.lang.String)} methods.
+ * object can be associated with various attributes like {@link #getName()} , {@link #getURI() ()},
+ * {@link #getMimeType()} and these are immutable as well. The system makes the best effort to
+ * derive values of these attributes from the location and/or content of the {@link Source} object.
+ * However, to give the user that creates the source control over these attributes, the API offers
+ * an easy way to alter values of these attributes by creating clones of the source via
+ * {@link Builder#mimeType(java.lang.String)}, {@link Builder#name(java.lang.String)},
+ * {@link Builder#uri(java.net.URI)} methods.
  * </p>
  * <p>
  * While {@link Source} is immutable, the world around it is changing. The content of a file from
- * which a {@link Source#fromFileName(java.lang.String) source has been read} may change few seconds
+ * which a {@link Source#newBuilder(java.io.File) source has been read} may change few seconds
  * later. How can we balance the immutability with ability to see real state of the world? In this
- * case, one can request a reload of a new version of the
- * {@link Source#fromFileName(java.lang.String, boolean) source for the same file}. The newly loaded
- * {@link Source} will be different than the previous one, however it will have the same attributes
- * ({@link #getName()}, presumably also {@link #getMimeType()}, etc.). There isn't much to do about
- * this - just keep in mind that there can be multiple different {@link Source} objects representing
- * the same source origin.
+ * case, one can load of a new version of the {@link Source#newBuilder(java.io.File) source for the
+ * same file}. The newly loaded {@link Source} will be different than the previous one, however it
+ * will have the same attributes ({@link #getName()}, presumably also {@link #getMimeType()}, etc.).
+ * There isn't much to do about this - just keep in mind that there can be multiple different
+ * {@link Source} objects representing the same {@link #getURI() source origin}.
  * </p>
  *
  * @since 0.8 or earlier
@@ -130,13 +132,14 @@ public abstract class Source {
 
     static boolean fileCacheEnabled = true;
 
+    private static final Source EMPTY = new SourceImpl(new LiteralSourceImpl("<empty>", ""));
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
 
     private final Content content;
-    private String name;
-    private String shortName;
-    private String path;
+    private final URI uri;
+    private final String name;
     private String mimeType;
+    private final boolean internal;
     private TextMap textMap;
 
     /**
@@ -148,6 +151,25 @@ public abstract class Source {
      */
     public static Source find(String name) {
         return SourceImpl.findSource(name);
+    }
+
+    /**
+     * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
+     * the {@link Source#getName() name} will become {@link File#getName()} and the
+     * {@link Source#getCode()} will be loaded from the file, unless {@link Builder#content
+     * redefined} on the builder. Sample usage:
+     * <p>
+     * {@link SourceSnippets#fromFile}
+     * <p>
+     * The system tries to deduce appropriate {@link Source#getMimeType()} by consulting registered
+     * {@link FileTypeDetector file type detectors}.
+     *
+     * @param file the location of the file to load content from
+     * @return new instance of builder
+     * @since 0.15
+     */
+    public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(File file) {
+        return EMPTY.new Builder<>(file);
     }
 
     /**
@@ -164,7 +186,9 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(String fileName, boolean reload) throws IOException {
         if (!reload) {
             Source source = find(fileName);
@@ -192,7 +216,9 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(String fileName) throws IOException {
         return fromFileName(fileName, false);
     }
@@ -218,7 +244,9 @@ public abstract class Source {
      * @throws IOException if the file cannot be found, or if an existing Source not created by this
      *             method matches the file name
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
@@ -242,11 +270,29 @@ public abstract class Source {
      *            <code>null</code>
      * @return a newly created, source representation
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public static Source fromText(CharSequence chars, String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
         return new SourceImpl(content);
+    }
+
+    /**
+     * Builds new {@link Source source} from a provided text. One needs to specify a
+     * {@link Builder#mimeType(java.lang.String)}, possibly a {@link Builder#name(java.lang.String)}
+     * and other attributes and then can {@link Builder#build()} a new instance of the source.
+     * Sample usage:
+     *
+     * {@link SourceSnippets#fromAString}
+     *
+     * @param text the text to be returned by {@link Source#getCode()}
+     * @return new builder to configure additional properties
+     * @since 0.15
+     */
+    public static Builder<RuntimeException, MissingMIMETypeException, MissingNameException> newBuilder(String text) {
+        return EMPTY.new Builder<>(text);
     }
 
     /**
@@ -343,11 +389,27 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
+     * @deprecated use {@link #newBuilder(java.net.URL)}
      */
+    @Deprecated
     public static Source fromURL(URL url, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
         Content content = URLSourceImpl.get(url, description);
         return new SourceImpl(content);
+    }
+
+    /**
+     * Creates a new source whose content will be read from the provided URL once it is
+     * {@link Builder#build() constructed}. Example:
+     *
+     * {@link SourceSnippets#fromURL}
+     *
+     * @param url the URL to read from and identify the source by
+     * @return new builder to configure and {@link Builder#build() construct} {@link Source} from
+     * @since 0.15
+     */
+    public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(URL url) {
+        return EMPTY.new Builder<>(url);
     }
 
     /**
@@ -358,11 +420,29 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      * @since 0.8 or earlier
+     * @deprecated Use {@link #newBuilder(java.io.Reader)}
      */
+    @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
         Content content = new LiteralSourceImpl(description, read(reader));
         return new SourceImpl(content);
+    }
+
+    /**
+     * Creates a new source whose content will be read once it is {@link Builder#build()
+     * constructed}. Multiple {@link Source} instances constructed by a single {@link Builder}
+     * instance share the content, read only once. When building source from reader, it is essential
+     * to {@link Builder#mimeType(java.lang.String) specify MIME type}. Example follows:
+     *
+     * {@link SourceSnippets#fromReader}
+     *
+     * @param reader reader to read the content from
+     * @return new builder to configure and {@link Builder#build() construct} {@link Source} from
+     * @since 0.15
+     */
+    public static Builder<IOException, MissingMIMETypeException, MissingNameException> newBuilder(Reader reader) {
+        return EMPTY.new Builder<>(reader);
     }
 
     /**
@@ -437,8 +517,12 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content) {
+    Source(Content content, String mimeType, URI uri, String name, boolean internal) {
         this.content = content;
+        this.mimeType = mimeType;
+        this.name = name;
+        this.internal = internal;
+        this.uri = uri;
     }
 
     Content content() {
@@ -449,9 +533,6 @@ public abstract class Source {
      * Returns the name of this resource holding a guest language program. An example would be the
      * name of a guest language source code file. Name is supposed to be at least as long as
      * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
-     *
-     * One can change name for an existing source by creating its clone via
-     * {@link #withName(java.lang.String)} method.
      *
      * @return the name of the guest language program
      * @since 0.8 or earlier
@@ -465,27 +546,41 @@ public abstract class Source {
      * described in {@link #getName()}). For example, this could be just the name of the file,
      * rather than a full path.
      *
-     * One can change name for an existing source by creating its clone via
-     * {@link #withShortName(java.lang.String)} method.
-     *
      * @return the short name of the guest language program
      * @since 0.8 or earlier
+     * @deprecated Use {@link #getName()} to obtain short name of the source
      */
+    @Deprecated
     public String getShortName() {
-        return shortName == null ? content().getShortName() : shortName;
+        return content().getShortName();
     }
 
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File},
      * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
      *
-     * One can change path associated with a file by calling {@link #withPath(java.lang.String)} and
-     * obtaining cloned instance of the source with new path.
-     *
      * @since 0.8 or earlier
      */
     public String getPath() {
-        return path == null ? content().getPath() : path;
+        return content().getPath();
+    }
+
+    /**
+     * Check whether this source has been marked as <em>internal</em>, meaning that it has been
+     * provided by the infrastructure, language implementation, or system library. <em>Internal</em>
+     * sources are presumed to be irrelevant to guest language programmers, as well as possibly
+     * confusing and revealing of language implementation details.
+     * <p>
+     * On the other hand, tools should be free to make <em>internal</em> sources visible in
+     * (possibly privileged) modes that are useful for language implementors.
+     * <p>
+     * One can specify whether a source is internal when {@link Builder#internal building it}.
+     *
+     * @return whether this source is marked as <em>internal</em>
+     * @since 0.15
+     */
+    public boolean isInternal() {
+        return internal;
     }
 
     /**
@@ -514,7 +609,7 @@ public abstract class Source {
      * @since 0.14
      */
     public URI getURI() {
-        return content().getURI();
+        return uri == null ? content().getURI() : uri;
     }
 
     /**
@@ -820,62 +915,13 @@ public abstract class Source {
      * @param mime mime type to use
      * @return new (identical) source, just associated {@link #getMimeType()}
      * @since 0.8 or earlier
+     * @deprecated Use {@link Builder} and its {@link Builder#mimeType(java.lang.String)} method
      */
+    @Deprecated
     public final Source withMimeType(String mime) {
         try {
             Source another = (Source) clone();
             another.mimeType = mime;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
-     * Associates the source with specified name.
-     *
-     * @param newName name to be returned from {@link #getName()} method
-     * @return new (identical) source, with changed {@link #getName()}
-     * @since 0.14
-     */
-    final Source withName(String newName) {
-        try {
-            Source another = (Source) clone();
-            another.name = newName;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
-     * Associates the source with specified short name.
-     *
-     * @param newShortName name to be returned from {@link #getShortName()} method
-     * @return new (identical) source, with changed {@link #getShortName()}
-     * @since 0.14
-     */
-    final Source withShortName(String newShortName) {
-        try {
-            Source another = (Source) clone();
-            another.shortName = newShortName;
-            return another;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    /**
-     * Associates the source with specified short name.
-     *
-     * @param newPath name to be returned from {@link #getPath()} method
-     * @return new (identical) source, with changed {@link #getPath()}
-     * @since 0.14
-     */
-    final Source withPath(String newPath) {
-        try {
-            Source another = (Source) clone();
-            another.path = newPath;
             return another;
         } catch (CloneNotSupportedException ex) {
             throw new IllegalStateException(ex);
@@ -907,20 +953,258 @@ public abstract class Source {
                         Objects.equals(getShortName(), other.getShortName()) &&
                         Objects.equals(getPath(), other.getPath());
     }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    static <E extends Exception> E raise(Class<E> type, Exception ex) throws E {
+        throw (E) ex;
+    }
+
+    /**
+     * Allows one to specify additional attribute before {@link #build() creating} new
+     * {@link Source} instance. One can specify {@link #name(java.lang.String)},
+     * {@link #mimeType(java.lang.String)}, {@link #content(java.lang.String)} and/or whether a
+     * {@link Source} is {@link #internal() internal} or not.
+     *
+     * To load a source from disk one can use:
+     * <p>
+     * {@link SourceSnippets#fromFile}
+     * <p>
+     * To load source from a {@link URL} one can use:
+     * <p>
+     * {@link SourceSnippets#fromURL}
+     * <p>
+     * To create a source representing text in a string use:
+     * <p>
+     * {@link SourceSnippets#fromAString}
+     * <p>
+     * or read a source from a {@link Reader}:
+     * <p>
+     * {@link SourceSnippets#fromReader}
+     * <p>
+     *
+     * The system does all it can to guarantee that newly created {@link Source source} has a
+     * {@link Source#getMimeType() MIME type assigned}. In some situations the mime type can be
+     * guessed, in others it has to be explicitly specified via the
+     * {@link #mimeType(java.lang.String)} method.
+     *
+     * Once your builder is configured, call {@link #build()} to perform the loading and
+     * construction of new {@link Source}.
+     *
+     * @param <E1> the (checked) exception that one should expect when calling {@link #build()}
+     *            method - usually an {@link IOException},
+     *            {@link Source#newBuilder(java.lang.String) sometimes} none.
+     * @param <E2> either a {@link MissingMIMETypeException} to signal that one has to call
+     *            {@link #mimeType(java.lang.String)} or a {@link RuntimeException} to signal
+     *            everything seems to be OK
+     * @param <E3> either a {@link MissingNameException} to signal that one has to call
+     *            {@link #name(java.lang.String)} or a {@link RuntimeException} to signal everything
+     *            seems to be OK
+     * @since 0.15
+     */
+    public final class Builder<E1 extends Exception, E2 extends Exception, E3 extends Exception> {
+        private final Object origin;
+        private URI uri;
+        private String name;
+        private String path;
+        private String mime;
+        private String content;
+        private boolean internal;
+
+        private Builder(Object origin) {
+            this.origin = origin;
+        }
+
+        /**
+         * Gives a new name to the {@link #build() to-be-built} {@link Source}.
+         *
+         * @param newName name that replaces the previously given one, cannot be <code>null</code>
+         * @return instance of <code>this</code> builder
+         * @since 0.15
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<E1, E2, RuntimeException> name(String newName) {
+            Objects.requireNonNull(newName);
+            this.name = newName;
+            return (Builder<E1, E2, RuntimeException>) this;
+        }
+
+        Builder<E1, E2, E3> path(String p) {
+            this.path = p;
+            return this;
+        }
+
+        /**
+         * Explicitly assignes a {@link Source#getMimeType() MIME type} to the {@link #build()
+         * to-be-built} {@link Source}. This method returns the builder parametrized with
+         * {@link Source} type parameter to signal to the compiler that it is safe to call
+         * {@link #build()} method and create an instance of a {@link Source}. Example:
+         *
+         * {@link SourceSnippets#fromAString}
+         *
+         * @param newMimeType the new mime type to be assigned
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 0.15
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<E1, RuntimeException, E3> mimeType(String newMimeType) {
+            Objects.requireNonNull(newMimeType);
+            this.mime = newMimeType;
+            return (Builder<E1, RuntimeException, E3>) this;
+        }
+
+        /**
+         * Marks the source as internal. Internal sources are those that aren't created by user, but
+         * rather inherently present by the language system. Calling this method influences result
+         * of create {@link Source#isInternal()}
+         *
+         * @return the instance of this builder
+         * @since 0.15
+         */
+        public Builder<E1, E2, E3> internal() {
+            this.internal = true;
+            return this;
+        }
+
+        /**
+         * Assigns new {@link URI} to the {@link #build() to-be-created} {@link Source}. Each source
+         * provides {@link Source#getURI()} as a persistent identification of its location. A
+         * default value for the method is deduced from the location or content, but one can change
+         * it by using this method
+         * 
+         * @param ownUri the URL to use instead of default one, cannot be <code>null</code>
+         * @return the instance of this builder
+         * @since 0.15
+         */
+        public Builder<E1, E2, E3> uri(URI ownUri) {
+            Objects.requireNonNull(ownUri);
+            this.uri = ownUri;
+            return this;
+        }
+
+        /**
+         * Specifies content of {@link #build() to-be-built} {@link Source}. Using this method one
+         * can ignore the real content of a file or URL and use already read one, or completely
+         * different one. Example:
+         *
+         * {@link SourceSnippets#fromURLWithOwnContent}
+         *
+         * @param code the code to be available via {@link Source#getCode()}
+         * @return instance of this builder - which's {@link #build()} method no longer throws an
+         *         {@link IOException}
+         * @since 0.15
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<RuntimeException, E2, E3> content(String code) {
+            this.content = code;
+            return (Builder<RuntimeException, E2, E3>) this;
+        }
+
+        Builder<E1, E2, E3> content(byte[] arr, int offset, int length, Charset encoding) {
+            this.content = new String(arr, offset, length, encoding);
+            return this;
+        }
+
+        /**
+         * Uses configuration of this builder to create new {@link Source} object. The return value
+         * is parametrized to ensure your code doesn't compile until you specify a MIME type:
+         * <ul>
+         * <li>either via file related methods like {@link Source#newBuilder(java.io.File)} that can
+         * guess the MIME type</li>
+         * <li>or directly via {@link #mimeType(java.lang.String)} method on this builder
+         * </ul>
+         * This method may throw an exception - especially when dealing with files (e.g.
+         * {@link Source#newBuilder(java.net.URL)}, {@link Source#newBuilder(java.io.File)} or
+         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException} that
+         * one needs to deal with. In case of other building styles (like
+         * {@link Source#newBuilder(java.lang.String)} one doesn't need to capture any exception
+         * when calling this method.
+         *
+         * @return the source object
+         * @throws E1 exception if something went wrong while creating the source
+         * @throws E2 eliminate this exception by calling {@link #mimeType}
+         * @throws E3 eliminate this exception by calling {@link #name}
+         * @since 0.15
+         */
+        public Source build() throws E1, E2, E3 {
+            Content holder;
+            try {
+                if (origin instanceof File) {
+                    holder = buildFile();
+                } else if (origin instanceof Reader) {
+                    holder = buildReader();
+                } else if (origin instanceof URL) {
+                    holder = buildURL();
+                } else {
+                    holder = buildString();
+                }
+                String type = this.mime == null ? holder.findMimeType() : this.mime;
+                if (type == null) {
+                    throw raise(RuntimeException.class, new MissingMIMETypeException());
+                }
+                if (content != null) {
+                    holder.code = content;
+                }
+                SourceImpl ret = new SourceImpl(holder, type, uri, name, internal);
+                if (ret.getName() == null) {
+                    throw raise(RuntimeException.class, new MissingNameException());
+                }
+                return ret;
+            } catch (IOException ex) {
+                throw raise(RuntimeException.class, ex);
+            }
+        }
+
+        private Content buildFile() throws IOException {
+            final File file = (File) origin;
+            File absoluteFile = file.getCanonicalFile();
+            FileSourceImpl fileSource = new FileSourceImpl(
+                            absoluteFile,
+                            name == null ? file.getName() : name,
+                            path == null ? absoluteFile.getPath() : path);
+            return fileSource;
+        }
+
+        private Content buildReader() throws IOException {
+            final Reader r = (Reader) origin;
+            if (content == null) {
+                content = read(r);
+            }
+            r.close();
+            LiteralSourceImpl ret = new LiteralSourceImpl(
+                            null, content);
+            return ret;
+        }
+
+        private Content buildURL() throws IOException {
+            final URL url = (URL) origin;
+            URLSourceImpl ret = new URLSourceImpl(url, content, null);
+            return ret;
+        }
+
+        private Content buildString() {
+            final String r = (String) origin;
+            if (content == null) {
+                content = r;
+            }
+            LiteralSourceImpl ret = new LiteralSourceImpl(
+                            null, content);
+            return ret;
+        }
+    }
 }
 
 // @formatter:off
+// Checkstyle: stop
 class SourceSnippets {
     public static Source fromFile(File dir, String name) throws IOException {
         // BEGIN: SourceSnippets#fromFile
         File file = new File(dir, name);
         assert name.endsWith(".java") : "Imagine 'c:\\sources\\Example.java' file";
 
-        Source source = Source.fromFileName(file.getPath());
+        Source source = Source.newBuilder(file).build();
 
-        assert file.getName().equals(source.getShortName());
+        assert file.getName().equals(source.getName());
         assert file.getPath().equals(source.getPath());
-        assert file.getPath().equals(source.getName());
         assert file.toURI().equals(source.getURI());
         assert "text/x-java".equals(source.getMimeType());
         // END: SourceSnippets#fromFile
@@ -930,13 +1214,30 @@ class SourceSnippets {
     public static Source fromURL() throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
         URL resource = SourceSnippets.class.getResource("sample.js");
-        Source source = Source.fromURL(resource, "/your/pkg/sample.js");
-        assert "/your/pkg/sample.js".equals(source.getShortName());
+        Source source = Source.newBuilder(resource)
+            .name("sample.js")
+            .build();
         assert resource.toExternalForm().equals(source.getPath());
-        assert "/your/pkg/sample.js".equals(source.getName());
+        assert "sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
         assert resource.toURI().equals(source.getURI());
         // END: SourceSnippets#fromURL
+        return source;
+    }
+
+    public static Source fromURLWithOwnContent() {
+        // BEGIN: SourceSnippets#fromURLWithOwnContent
+        URL resource = SourceSnippets.class.getResource("sample.js");
+        Source source = Source.newBuilder(resource)
+            .name("sample.js")
+            .content("{}")
+            .build();
+        assert resource.toExternalForm().equals(source.getPath());
+        assert "sample.js".equals(source.getName());
+        assert "application/javascript".equals(source.getMimeType());
+        assert resource.toExternalForm().equals(source.getURI().toString());
+        assert "{}".equals(source.getCode());
+        // END: SourceSnippets#fromURLWithOwnContent
         return source;
     }
 
@@ -945,25 +1246,26 @@ class SourceSnippets {
         Reader stream = new InputStreamReader(
             SourceSnippets.class.getResourceAsStream("sample.js")
         );
-        Source source = Source.fromReader(stream, "/your/pkg/sample.js");
-        assert "/your/pkg/sample.js".equals(source.getShortName());
-        assert "/your/pkg/sample.js".equals(source.getPath());
-        assert "/your/pkg/sample.js".equals(source.getName());
-        assert null == source.getMimeType();
+        Source source = Source.newBuilder(stream)
+            .name("sample.js")
+            .mimeType("application/javascript")
+            .build();
+        assert "sample.js".equals(source.getName());
+        assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromReader
         return source;
     }
 
-    public static Source fromAString() throws Exception {
+    public static Source fromAString() {
         // BEGIN: SourceSnippets#fromAString
-        Source source = Source.fromText("function() {\n"
+        Source source = Source.newBuilder("function() {\n"
             + "  return 'Hi';\n"
-            + "}\n", "/my/scripts/hi.js"
-        );
-        assert "/my/scripts/hi.js".equals(source.getShortName());
-        assert "/my/scripts/hi.js".equals(source.getPath());
-        assert "/my/scripts/hi.js".equals(source.getName());
-        assert null == source.getMimeType() : "No mime type associated";
+            + "}\n")
+            .name("hi.js")
+            .mimeType("application/javascript")
+            .build();
+        assert "hi.js".equals(source.getName());
+        assert "application/javascript".equals(source.getMimeType());
         // END: SourceSnippets#fromAString
         return source;
     }

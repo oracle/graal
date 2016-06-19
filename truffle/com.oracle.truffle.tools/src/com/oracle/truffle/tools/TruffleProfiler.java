@@ -156,6 +156,7 @@ public class TruffleProfiler extends TruffleInstrument {
 
     private void printHistogram(PrintStream out, List<Counter> sortedCounters, final TimeKind time) {
         Collections.sort(sortedCounters, new Comparator<Counter>() {
+            @Override
             public int compare(Counter o1, Counter o2) {
                 if (timingDisabled) {
                     return Long.compare(o2.getInvocations(time), o1.getInvocations(time));
@@ -203,7 +204,7 @@ public class TruffleProfiler extends TruffleInstrument {
         }
         StringBuilder b = new StringBuilder();
         if (sourceSection.getIdentifier() != null) {
-            b.append(sourceSection.getSource().getShortName());
+            b.append(sourceSection.getSource().getName());
         } else {
             b.append("<unknown>");
         }

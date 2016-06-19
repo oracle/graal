@@ -55,9 +55,9 @@ public final class BreakpointCreationTest {
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
-    final Source testSource = Source.fromText("line 1\n" +
+    final Source testSource = Source.newBuilder("line 1\n" +
                     "line 2\n" +
-                    "line 3\n", "testSource");
+                    "line 3\n").name("testSource").mimeType("content/unknown").build();
 
     @Before
     public void before() {

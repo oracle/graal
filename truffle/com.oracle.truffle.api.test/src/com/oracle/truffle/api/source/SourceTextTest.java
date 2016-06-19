@@ -27,15 +27,16 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class SourceTextTest {
 
-    private final Source emptySource = Source.fromText("", null);
+    private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
 
-    private final Source emptyLineSource = Source.fromText("\n", null);
+    private final Source emptyLineSource = Source.newBuilder("\n").name("emptyLineSource").mimeType("content/unknown").build();
 
-    private final Source shortSource = Source.fromText("01", null);
+    private final Source shortSource = Source.newBuilder("01").name("shortSource").mimeType("content/unknown").build();
 
-    private final Source longSource = Source.fromText("01234\n67\n9\n", null);
+    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name("longSource").mimeType("content/unknown").build();
 
     @Test
     public void emptyTextTest0() {
@@ -43,8 +44,8 @@ public class SourceTextTest {
     }
 
     @Test
-    public void noName() {
-        assertNull(emptySource.getName());
+    public void nameName() {
+        assertEquals("emptySource", emptySource.getName());
     }
 
     @Test
@@ -221,9 +222,7 @@ public class SourceTextTest {
     @Test
     public void nameAndShortNameNoPath() {
         final String name = "/tmp/hi.txt";
-        Source source = Source.fromText("Hi", name);
+        Source source = Source.newBuilder("Hi").name(name).mimeType("content/unknown").build();
         assertEquals(name, source.getName());
-        assertEquals(name, source.getShortName());
-        assertEquals(name, source.getPath());
     }
 }

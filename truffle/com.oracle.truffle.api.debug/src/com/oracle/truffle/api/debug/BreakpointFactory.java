@@ -111,7 +111,7 @@ final class BreakpointFactory {
             if (key1 instanceof LineLocation && key2 instanceof LineLocation) {
                 final LineLocation line1 = (LineLocation) key1;
                 final LineLocation line2 = (LineLocation) key2;
-                final int nameOrder = line1.getSource().getShortName().compareTo(line2.getSource().getShortName());
+                final int nameOrder = line1.getSource().getName().compareTo(line2.getSource().getName());
                 if (nameOrder != 0) {
                     return nameOrder;
                 }
@@ -359,7 +359,7 @@ final class BreakpointFactory {
         private static final String SHOULD_NOT_HAPPEN = "BreakpointImpl:  should not happen";
 
         private final Object locationKey;
-        private final SourceSectionFilter locationQuery;
+        private SourceSectionFilter locationQuery;
         private final boolean isOneShot;
         private int ignoreCount;
         private int hitCount = 0;
@@ -373,6 +373,7 @@ final class BreakpointFactory {
         @CompilationFinal private boolean isEnabled;
         @CompilationFinal private Assumption enabledUnchangedAssumption;
 
+        private String conditionExpr;
         private Source conditionSource;
         @SuppressWarnings("rawtypes") private Class<? extends TruffleLanguage> condLangClass;
 
@@ -391,7 +392,7 @@ final class BreakpointFactory {
         @Override
         public String getLocationDescription() {
             if (locationKey instanceof LineLocation) {
-                return "Line: " + ((LineLocation) locationKey).getShortDescription();
+                return ((LineLocation) locationKey).getShortDescription();
             }
             return "Tag: " + locationKey.toString();
         }
@@ -444,14 +445,17 @@ final class BreakpointFactory {
         @Override
         public void setCondition(String expr) throws IOException {
             assert getState() != DISPOSED : "disposed breakpoints are unusable";
-            binding.dispose();
-            if (expr == null) {
-                conditionSource = null;
-                binding = instrumenter.attachListener(locationQuery, new BreakpointListener(this));
-            } else {
-                conditionSource = Source.fromText(expr, "breakpoint condition from text: " + expr);
-                binding = instrumenter.attachFactory(locationQuery, this);
+            if (binding != null) {
+                binding.dispose();
+                if (expr == null) {
+                    conditionSource = null;
+                    binding = instrumenter.attachListener(locationQuery, new BreakpointListener(this));
+                } else {
+                    conditionSource = Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("text/plain").build();
+                    binding = instrumenter.attachFactory(locationQuery, this);
+                }
             }
+            conditionExpr = expr;
         }
 
         @Override
@@ -540,7 +544,7 @@ final class BreakpointFactory {
 
         private void doBreak(EventContext context, VirtualFrame vFrame) {
             if (++hitCount > ignoreCount) {
-                breakpointCallback.haltedAt(context, vFrame.materialize(), "Breakpoint");
+                breakpointCallback.haltedAt(context, vFrame.materialize(), this);
             }
         }
 
@@ -589,7 +593,18 @@ final class BreakpointFactory {
             LineLocation lineLocation = source.createLineLocation(line);
             final SourceSectionFilter query = SourceSectionFilter.newBuilder().sourceIs(lineLocation.getSource()).lineStartsIn(IndexRange.byLength(lineLocation.getLineNumber(), 1)).tagIs(
                             StandardTags.StatementTag.class).build();
-            binding = instrumenter.attachListener(query, new BreakpointListener(this));
+            locationQuery = query;
+            if (conditionExpr != null) {
+                // @formatter:off
+                conditionSource = Source.newBuilder(conditionExpr).
+                    name("breakpoint condition from text: " + conditionExpr).
+                    mimeType(source.getMimeType()).
+                    build();
+                // @formatter:on
+                binding = instrumenter.attachFactory(locationQuery, this);
+            } else {
+                binding = instrumenter.attachListener(query, new BreakpointListener(this));
+            }
         }
 
         /** Attached to implement a conditional breakpoint. */
@@ -649,9 +664,12 @@ final class BreakpointFactory {
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
             if (TRACE) {
-                trace("hit breakpoint " + breakpoint.getShortDescription());
+                trace("BEGIN HIT " + breakpoint.getShortDescription());
             }
             breakpoint.nodeEnter(context, frame);
+            if (TRACE) {
+                trace("END HIT " + breakpoint.getShortDescription());
+            }
         }
 
         @Override

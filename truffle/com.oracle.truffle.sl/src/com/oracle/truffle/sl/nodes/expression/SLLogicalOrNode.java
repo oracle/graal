@@ -53,9 +53,6 @@ import com.oracle.truffle.sl.nodes.SLBinaryNode;
 @SuppressWarnings("unused")
 public abstract class SLLogicalOrNode extends SLBinaryNode {
 
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
-
     @ShortCircuit("rightNode")
     protected boolean needsRightNode(boolean left) {
         return !left;

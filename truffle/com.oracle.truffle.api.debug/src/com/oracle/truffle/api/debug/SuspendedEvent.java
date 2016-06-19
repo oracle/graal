@@ -34,6 +34,7 @@ import com.oracle.truffle.api.debug.Debugger.HaltPosition;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -145,14 +146,11 @@ public final class SuspendedEvent {
 
     /**
      * Prepare to execute in Continue mode when guest language program execution resumes. In this
-     * mode:
+     * mode execution will continue until either:
      * <ul>
-     * <li>Execution will continue until either:
-     * <ol>
      * <li>execution arrives at a node to which an enabled breakpoint is attached,
      * <strong>or:</strong></li>
      * <li>execution completes.</li>
-     * </ol>
      * </ul>
      *
      * @since 0.9
@@ -162,22 +160,40 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Prepare to execute in StepInto mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to execute in <strong>StepInto</strong> mode when guest language program execution
+     * resumes. In this mode:
      * <ul>
-     * <li>User breakpoints are disabled.</li>
-     * <li>Execution will continue until either:
+     * <li>Execution, when resumed, continues until either:
      * <ol>
-     * <li>execution arrives at a node with the tag {@link Debugger#HALT_TAG}, <strong>or:</strong>
-     * </li>
+     * <li>execution arrives at at the <em>nth</em> node (specified by {@code stepCount}) with the
+     * tag {@link StatementTag}, <strong>or</strong></li>
+     * <li>execution arrives at a {@link Breakpoint}, <strong>or</strong></li>
      * <li>execution completes.</li>
      * </ol>
-     * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),
-     * and reverts by default to Continue mode.</li>
+     * </li>
+     * <li>The mode persists only until either:
+     * <ol>
+     * <li>program execution resumes and then halts, at which time the mode reverts to
+     * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
+     * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
+     * Continue}, <strong>or</strong></li>
+     * <li>another mode is chosen.</li>
+     * </ol>
+     * </li>
+     * <li>A breakpoint set at a location where execution would halt is treated specially to avoid a
+     * "double halt" during stepping:
+     * <ul>
+     * <li>execution halts only <em>once</em> at the location;</li>
+     * <li>the halt counts as a breakpoint {@link Breakpoint#getHitCount() hit};</li>
+     * <li>the mode reverts to {@linkplain #prepareContinue() Continue}, as if there were no
+     * breakpoint; and</li>
+     * <li>this special treatment applies only for breakpoints created <strong>before</strong> the
+     * mode is set.</li>
+     * </ul>
      * </ul>
      *
      * @param stepCount the number of times to perform StepInto before halting
-     * @throws IllegalArgumentException if the specified number is {@code <= 0}
+     * @throws IllegalArgumentException if {@code stepCount <= 0}
      * @since 0.9
      */
     public void prepareStepInto(int stepCount) {
@@ -185,18 +201,26 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Prepare to execute in StepOut mode when guest language program execution resumes. In this
-     * mode:
+     * Prepare to execute in <strong>StepOut</strong> mode when guest language program execution
+     * resumes. In this mode:
      * <ul>
-     * <li>User breakpoints are enabled.</li>
-     * <li>Execution will continue until either:
+     * <li>Execution, when resumed, continues until either:
      * <ol>
      * <li>execution arrives at the nearest enclosing call site on the stack, <strong>or</strong>
      * </li>
+     * <li>execution arrives at a {@link Breakpoint}, <strong>or</strong></li>
      * <li>execution completes.</li>
      * </ol>
-     * <li>StepOut mode persists only through one resumption, and reverts by default to Continue
-     * mode.</li>
+     * </li>
+     * <li>The mode persists only until either:
+     * <ol>
+     * <li>program execution resumes and then halts, at which time the mode reverts to
+     * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
+     * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
+     * Continue}, <strong>or</strong></li>
+     * <li>another mode is chosen.</li>
+     * </ol>
+     * </li>
      * </ul>
      *
      * @since 0.9
@@ -209,20 +233,37 @@ public final class SuspendedEvent {
      * Prepare to execute in StepOver mode when guest language program execution resumes. In this
      * mode:
      * <ul>
-     * <li>Execution will continue until either:
+     * <li>Execution, when resumed, continues until either:
      * <ol>
-     * <li>execution arrives at a node with the tag {@link Debugger#HALT_TAG} when not nested in one
-     * or more function/method calls, <strong>or:</strong></li>
-     * <li>execution arrives at a node to which a breakpoint is attached and when nested in one or
-     * more function/method calls, <strong>or:</strong></li>
+     * <li>execution arrives at at the <em>nth</em> node (specified by {@code stepCount}) with the
+     * tag {@link StatementTag}, ignoring nodes nested in function/method calls, <strong>or</strong>
+     * </li>
+     * <li>execution arrives at a {@link Breakpoint}, <strong>or</strong></li>
      * <li>execution completes.</li>
      * </ol>
-     * <li>StepOver mode persists only through one resumption (i.e. {@code stepOverCount} steps),
-     * and reverts by default to Continue mode.</li>
+     * </li>
+     * <li>The mode persists only until either:
+     * <ol>
+     * <li>program execution resumes and then halts, at which time the mode reverts to
+     * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
+     * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
+     * Continue}, <strong>or</strong></li>
+     * <li>another mode is chosen.</li>
+     * </ol>
+     * </li>
+     * <li>A breakpoint set at a location where execution would halt is treated specially to avoid a
+     * "double halt" during stepping:
+     * <ul>
+     * <li>execution halts only <em>once</em> at the location;</li>
+     * <li>the halt counts as a breakpoint {@link Breakpoint#getHitCount() hit};</li>
+     * <li>the mode reverts to {@linkplain #prepareContinue() Continue}, as if there were no
+     * breakpoint; and</li>
+     * <li>this special treatment applies only for breakpoints created <strong>before</strong> the
+     * mode is set.</li>
      * </ul>
      *
-     * @param stepCount the number of times to perform StepInto before halting
-     * @throws IllegalArgumentException if the specified number is {@code <= 0}
+     * @param stepCount the number of times to perform StepOver before halting
+     * @throws IllegalArgumentException if {@code stepCount <= 0}
      * @since 0.9
      */
     public void prepareStepOver(int stepCount) {

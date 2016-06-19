@@ -58,7 +58,6 @@ import com.oracle.truffle.sl.nodes.access.SLReadPropertyNodeGen;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.access.SLWritePropertyNodeGen;
 import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
-import com.oracle.truffle.sl.nodes.call.SLInvokeNodeGen;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -159,7 +158,7 @@ public class SLNodeFactory {
          * specialized.
          */
         final SLReadArgumentNode readArg = new SLReadArgumentNode(parameterCount);
-        SLExpressionNode assignment = createAssignment(nameToken, readArg);
+        SLExpressionNode assignment = createAssignment(createStringLiteral(nameToken, false), readArg);
         methodNodes.add(assignment);
         parameterCount++;
     }
@@ -372,7 +371,7 @@ public class SLNodeFactory {
      * @return An SLInvokeNode for the given parameters.
      */
     public SLExpressionNode createCall(SLExpressionNode functionNode, List<SLExpressionNode> parameterNodes, Token finalToken) {
-        final SLExpressionNode result = SLInvokeNodeGen.create(parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]), functionNode);
+        final SLExpressionNode result = new SLInvokeNode(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
 
         final int startPos = functionNode.getSourceSection().getCharIndex();
         final int endPos = finalToken.charPos + finalToken.val.length();
@@ -384,17 +383,18 @@ public class SLNodeFactory {
     /**
      * Returns an {@link SLWriteLocalVariableNode} for the given parameters.
      *
-     * @param nameToken The name of the variable being assigned
+     * @param nameNode The name of the variable being assigned
      * @param valueNode The value to be assigned
      * @return An SLExpressionNode for the given parameters.
      */
-    public SLExpressionNode createAssignment(Token nameToken, SLExpressionNode valueNode) {
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(nameToken.val);
-        lexicalScope.locals.put(nameToken.val, frameSlot);
+    public SLExpressionNode createAssignment(SLExpressionNode nameNode, SLExpressionNode valueNode) {
+        String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
+        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
+        lexicalScope.locals.put(name, frameSlot);
         final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
 
         if (valueNode.getSourceSection() != null) {
-            final int start = nameToken.charPos;
+            final int start = nameNode.getSourceSection().getCharIndex();
             final int length = valueNode.getSourceSection().getCharEndIndex() - start;
             result.setSourceSection(source.createSection("=", start, length));
         }
@@ -404,37 +404,40 @@ public class SLNodeFactory {
 
     /**
      * Returns a {@link SLReadLocalVariableNode} if this read is a local variable or a
-     * {@link SLFunctionLiteralNode} if this read is global. In Simple, the only global names are
+     * {@link SLFunctionLiteralNode} if this read is global. In SL, the only global names are
      * functions.
      *
-     * @param nameToken The name of the variable/function being read
+     * @param nameNode The name of the variable/function being read
      * @return either:
      *         <ul>
      *         <li>A SLReadLocalVariableNode representing the local variable being read.</li>
      *         <li>A SLFunctionLiteralNode representing the function definition</li>
      *         </ul>
      */
-    public SLExpressionNode createRead(Token nameToken) {
+    public SLExpressionNode createRead(SLExpressionNode nameNode) {
+        String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
         final SLExpressionNode result;
-        final FrameSlot frameSlot = lexicalScope.locals.get(nameToken.val);
+        final FrameSlot frameSlot = lexicalScope.locals.get(name);
         if (frameSlot != null) {
             /* Read of a local variable. */
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new SLFunctionLiteralNode(nameToken.val);
+            result = new SLFunctionLiteralNode(name);
         }
-        srcFromToken(result, nameToken);
+        result.setSourceSection(nameNode.getSourceSection());
         return result;
     }
 
-    public SLExpressionNode createStringLiteral(Token literalToken) {
+    public SLExpressionNode createStringLiteral(Token literalToken, boolean removeQuotes) {
         /* Remove the trailing and ending " */
         String literal = literalToken.val;
-        assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
-        literal = literal.substring(1, literal.length() - 1);
+        if (removeQuotes) {
+            assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
+            literal = literal.substring(1, literal.length() - 1);
+        }
 
-        final SLStringLiteralNode result = new SLStringLiteralNode(literal);
+        final SLStringLiteralNode result = new SLStringLiteralNode(literal.intern());
         srcFromToken(result, literalToken);
         return result;
     }
@@ -462,14 +465,14 @@ public class SLNodeFactory {
      * Returns an {@link SLReadPropertyNode} for the given parameters.
      *
      * @param receiverNode The receiver of the property access
-     * @param nameToken The name of the property being accessed
+     * @param nameNode The name of the property being accessed
      * @return An SLExpressionNode for the given parameters.
      */
-    public SLExpressionNode createReadProperty(SLExpressionNode receiverNode, Token nameToken) {
-        final SLExpressionNode result = SLReadPropertyNodeGen.create(nameToken.val, receiverNode);
+    public SLExpressionNode createReadProperty(SLExpressionNode receiverNode, SLExpressionNode nameNode) {
+        final SLExpressionNode result = SLReadPropertyNodeGen.create(receiverNode, nameNode);
 
         final int startPos = receiverNode.getSourceSection().getCharIndex();
-        final int endPos = nameToken.charPos + nameToken.val.length();
+        final int endPos = nameNode.getSourceSection().getCharEndIndex();
         result.setSourceSection(source.createSection(".", startPos, endPos - startPos));
 
         return result;
@@ -479,12 +482,12 @@ public class SLNodeFactory {
      * Returns an {@link SLWritePropertyNode} for the given parameters.
      *
      * @param receiverNode The receiver object of the property assignment
-     * @param nameToken The name of the property being assigned
+     * @param nameNode The name of the property being assigned
      * @param valueNode The value to be assigned
      * @return An SLExpressionNode for the given parameters.
      */
-    public SLExpressionNode createWriteProperty(SLExpressionNode receiverNode, Token nameToken, SLExpressionNode valueNode) {
-        final SLExpressionNode result = SLWritePropertyNodeGen.create(nameToken.val, receiverNode, valueNode);
+    public SLExpressionNode createWriteProperty(SLExpressionNode receiverNode, SLExpressionNode nameNode, SLExpressionNode valueNode) {
+        final SLExpressionNode result = SLWritePropertyNodeGen.create(receiverNode, nameNode, valueNode);
 
         final int start = receiverNode.getSourceSection().getCharIndex();
         final int length = valueNode.getSourceSection().getCharEndIndex() - start;

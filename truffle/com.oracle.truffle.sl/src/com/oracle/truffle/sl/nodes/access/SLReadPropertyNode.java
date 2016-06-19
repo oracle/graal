@@ -40,77 +40,34 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * The node for accessing a property of an object. When executed, this node first evaluates the
- * object expression on the left side of the dot operator and then reads the named property.
+ * The node for reading a property of an object. When executed, this node:
+ * <ol>
+ * <li>evaluates the object expression on the left hand side of the object access operator</li>
+ * <li>evaluated the property name</li>
+ * <li>reads the named property</li>
+ * </ol>
  */
 @NodeInfo(shortName = ".")
-@NodeChild(value = "receiver", type = SLExpressionNode.class)
+@NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode")})
 public abstract class SLReadPropertyNode extends SLExpressionNode {
 
-    @Child private SLReadPropertyCacheNode cacheNode;
-    private final String propertyName;
-
-    public SLReadPropertyNode(String propertyName) {
-        this.propertyName = propertyName;
-        this.cacheNode = SLReadPropertyCacheNode.create(propertyName);
-    }
-
-    @Specialization(guards = "isSLObject(object)")
-    public Object doSLObject(DynamicObject object) {
-        return cacheNode.executeObject(SLContext.castSLObject(object));
-    }
-
-    /*
-     * The child node to access the foreign object.
+    /**
+     * The polymorphic cache node that performs the actual read. This is a separate node so that it
+     * can be re-used in cases where the receiver and name are not nodes but already evaluated
+     * values.
      */
-    @Child private Node foreignRead;
+    @Child private SLReadPropertyCacheNode readNode = SLReadPropertyCacheNodeGen.create();
 
-    /*
-     * The child node to convert the result of the foreign object access to an SL value.
-     */
-    @Child private SLForeignToSLTypeNode toSLType;
-
-    /*
-     * If the receiver object is a foreign value we use Truffle's interop API to access the foreign
-     * data.
-     */
     @Specialization
-    public Object doForeignObject(VirtualFrame frame, TruffleObject object) {
-        // Lazily insert the foreign object access nodes upon the first execution.
-        if (foreignRead == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // SL maps a property access to a READ message if the receiver is a foreign object.
-            this.foreignRead = insert(Message.READ.createNode());
-            this.toSLType = insert(SLForeignToSLTypeNodeGen.create(null));
-        }
-        try {
-            // Perform the foreign object access.
-            Object result = ForeignAccess.sendRead(foreignRead, frame, object, propertyName);
-            // Convert the result to an SL value.
-            Object slValue = toSLType.executeWithTarget(frame, result);
-            return slValue;
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            // In case the foreign access is not successful, we return null.
-            return SLNull.SINGLETON;
-        }
+    protected Object read(VirtualFrame frame, Object receiver, Object name) {
+        return readNode.executeRead(frame, receiver, name);
     }
 }

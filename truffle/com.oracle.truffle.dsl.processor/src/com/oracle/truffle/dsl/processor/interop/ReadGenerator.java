@@ -95,7 +95,7 @@ public final class ReadGenerator extends MessageGenerator {
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 
         if (params.size() != expectedNumberOfArguments) {
-            return "Wrong number of arguments.";
+            return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String)";
         }
         return null;
     }
