@@ -90,7 +90,7 @@ suite = {
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
     },
-                
+
     "com.oracle.truffle.api.benchmark" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
