@@ -59,10 +59,10 @@ import com.oracle.truffle.api.source.Source;
  * possibly inlined.
  */
 @NodeInfo(shortName = "eval")
+@SuppressWarnings("unused")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"stringsEqual(mimeType, cachedMimeType)", "stringsEqual(code, cachedCode)"})
+    @Specialization(guards = {"stringsEqual(cachedMimeType, mimeType)", "stringsEqual(cachedCode, code)"})
     public Object evalCached(VirtualFrame frame, String mimeType, String code,
                     @Cached("mimeType") String cachedMimeType,
                     @Cached("code") String cachedCode,
@@ -86,8 +86,8 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
         }
     }
 
-    protected boolean stringsEqual(String a, String b) {
+    /* Work around findbugs warning in generate code. */
+    protected static boolean stringsEqual(String a, String b) {
         return a.equals(b);
     }
-
 }
