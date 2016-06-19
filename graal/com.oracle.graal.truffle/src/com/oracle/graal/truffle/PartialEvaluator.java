@@ -77,6 +77,7 @@ import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.debug.HistogramInlineInvokePlugin;
+import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode;
@@ -240,6 +241,7 @@ public class PartialEvaluator {
                     lastDirectCallNode = null;
                     if (decision != null && decision.isInline()) {
                         inlining.push(decision);
+                        builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
                         return new InlineInfo(callInlinedMethod, false);
                     }
                 }

@@ -34,8 +34,11 @@ import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Spliterators;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -43,6 +46,7 @@ import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -69,6 +73,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 @SuppressWarnings("deprecation")
 public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
 
+    private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
+
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
 
@@ -85,6 +91,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @CompilationFinal private volatile boolean initialized;
     private volatile int callSitesKnown = 0;
     private volatile Future<?> compilationTask;
+    /**
+     * When this call target is inlined, the inlining {@link InstalledCode} registers this
+     * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
+     * compiled methods that have this call target inlined are properly invalidated.
+     */
+    private volatile Assumption nodeRewritingAssumption;
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    Assumption.class, "nodeRewritingAssumption");
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(rootNode.toString());
@@ -93,6 +107,43 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.rootNode = rootNode;
         this.rootNode.adoptChildren();
         this.rootNode.applyInstrumentation();
+    }
+
+    public Assumption getNodeRewritingAssumption() {
+        Assumption assumption = nodeRewritingAssumption;
+        if (assumption == null) {
+            assumption = initializeNodeRewritingAssumption();
+        }
+        return assumption;
+    }
+
+    /**
+     * @return an existing or the newly initialized node rewriting assumption.
+     */
+    private Assumption initializeNodeRewritingAssumption() {
+        Assumption newAssumption = runtime().createAssumption(
+                        !TruffleCompilerOptions.TraceTruffleAssumptions.getValue() ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+        if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
+            return newAssumption;
+        } else {
+            // if CAS failed, assumption is already initialized; cannot be null after that.
+            return Objects.requireNonNull(nodeRewritingAssumption);
+        }
+    }
+
+    /**
+     * Invalidate node rewriting assumption iff it has been initialized.
+     */
+    private void invalidateNodeRewritingAssumption() {
+        Assumption oldAssumption = NODE_REWRITING_ASSUMPTION_UPDATER.getAndUpdate(this, new UnaryOperator<Assumption>() {
+            @Override
+            public Assumption apply(Assumption prev) {
+                return prev == null ? null : runtime().createAssumption(prev.getName());
+            }
+        });
+        if (oldAssumption != null) {
+            oldAssumption.invalidate();
+        }
     }
 
     @Override
@@ -386,6 +437,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (isValid()) {
             invalidate(newNode, reason);
         }
+        /* Notify compiled method that have inlined this call target that the tree changed. */
+        invalidateNodeRewritingAssumption();
+
         AbstractCompilationProfile profile = this.compilationProfile;
         if (profile != null) {
             profile.reportNodeReplaced();
