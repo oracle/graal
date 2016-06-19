@@ -30,7 +30,7 @@ install:
   - git clone https://github.com/graalvm/mx
   - wget -O mx/ecj.jar 'http://www.eclipse.org/downloads/download.php?file=/eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar'
   - export JDT=`pwd`/mx/ecj.jar
-  - wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz
+  - wget http://lafo.ssw.uni-linz.ac.at/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
   - export ECLIPSE_EXE=eclipse/eclipse
   - export DEFAULT_VM=server
