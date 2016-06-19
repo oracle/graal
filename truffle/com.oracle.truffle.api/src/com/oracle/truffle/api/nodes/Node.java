@@ -159,7 +159,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * node.
      *
      * @param newChildren the array of new children whose parent should be updated
-     * @return the array of new children new
+     * @return the array of new children
      * @since 0.8 or earlier
      */
     protected final <T extends Node> T[] insert(final T[] newChildren) {
