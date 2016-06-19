@@ -89,7 +89,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     @CompilationFinal private volatile boolean initialized;
-    private volatile int callSitesKnown = 0;
+    private volatile int callSitesKnown;
     private volatile Future<?> compilationTask;
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this

@@ -47,7 +47,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
      * Number of times an installed code for this tree was seen invalidated.
      */
     private int invalidationCount;
-    private int deferedCount;
+    private int deferredCount;
 
     private int interpreterCallCount;
     private int interpreterCallAndLoopCount;
@@ -259,7 +259,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
             // defer compilation
             ensureProfiling(0, getTimestampThreshold() + 1);
             timestamp = 0;
-            deferedCount++;
+            deferredCount++;
             return true;
         }
         return false;
@@ -338,8 +338,8 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         return interpreterCallCount;
     }
 
-    public int getDeferedCount() {
-        return deferedCount;
+    public int getDeferredCount() {
+        return deferredCount;
     }
 
     public int getCompilationCallAndLoopThreshold() {

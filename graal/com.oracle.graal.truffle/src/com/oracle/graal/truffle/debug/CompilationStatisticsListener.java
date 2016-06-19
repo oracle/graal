@@ -164,7 +164,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
 
         DefaultCompilationProfile profile = getDefaultCompilationProfile(target);
         if (profile != null) {
-            deferCompilations.accept(profile.getDeferedCount());
+            deferCompilations.accept(profile.getDeferredCount());
             timeToCompilation.accept(local.compilationStarted - profile.getTimestamp());
         }
     }
