@@ -67,8 +67,8 @@ final class InstrumentationHandler {
     /* Enable trace output to stdout. */
     private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
-    /* Load order needs to be preserved for sources, thats why we cannot use WeakHashMap. */
     private final Map<Source, Void> sources = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
+    /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
     private final Collection<Source> sourcesList = new WeakAsyncList<>(16);
 
     private final Collection<RootNode> loadedRoots = new WeakAsyncList<>(256);
