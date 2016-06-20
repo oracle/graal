@@ -49,8 +49,8 @@ public class IsMimeTypeSupportedTest {
 
     @Test
     public void isMimeSupported() throws IOException {
-        assertEquals(true, vm.eval(Source.fromText(MIME_TYPE, "supported").withMimeType(MIME_TYPE)).as(Boolean.class));
-        assertEquals(false, vm.eval(Source.fromText("application/x-this-language-does-not-exist", "unsupported").withMimeType(MIME_TYPE)).as(Boolean.class));
+        assertEquals(true, vm.eval(Source.newBuilder(MIME_TYPE).name("supported").mimeType(MIME_TYPE).build()).as(Boolean.class));
+        assertEquals(false, vm.eval(Source.newBuilder("application/x-this-language-does-not-exist").name("unsupported").mimeType(MIME_TYPE).build()).as(Boolean.class));
     }
 
 }

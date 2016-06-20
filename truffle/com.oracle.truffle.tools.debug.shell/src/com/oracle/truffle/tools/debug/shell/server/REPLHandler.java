@@ -42,6 +42,7 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer.REPLVisualizer;
+import java.io.File;
 
 /**
  * Server-side REPL implementation of an
@@ -200,7 +201,7 @@ public abstract class REPLHandler {
             final String lookupFile = (path == null || path.isEmpty()) ? fileName : path;
             Source source = null;
             try {
-                source = Source.fromFileName(lookupFile, false);
+                source = Source.newBuilder(new File(lookupFile)).build();
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
@@ -240,7 +241,7 @@ public abstract class REPLHandler {
             final String lookupFile = (path == null || path.isEmpty()) ? fileName : path;
             Source source = null;
             try {
-                source = Source.fromFileName(lookupFile, true);
+                source = Source.newBuilder(new File(lookupFile)).build();
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
@@ -423,7 +424,7 @@ public abstract class REPLHandler {
             }
             reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, fileName);
             try {
-                Source source = Source.fromFileName(fileName);
+                Source source = Source.newBuilder(new File(fileName)).build();
                 if (source == null) {
                     return finishReplyFailed(reply, "file \"" + fileName + "\" not found");
                 } else {
@@ -563,7 +564,7 @@ public abstract class REPLHandler {
             final String fileName = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
             final boolean stepInto = com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE.equals(request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO));
             try {
-                final Source fileSource = Source.fromFileName(fileName);
+                final Source fileSource = Source.newBuilder(new File(fileName)).build();
                 replServer.getCurrentContext().eval(fileSource, stepInto);
                 reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, fileName);
                 return finishReplySucceeded(reply, fileName + "  loaded");

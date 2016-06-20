@@ -323,7 +323,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         }
 
         /* Parse the SL source file. */
-        Source source = Source.fromFileName(path.toString());
+        Source source = Source.newBuilder(path.toFile()).build();
         context.getFunctionRegistry().register(Parser.parseSL(source));
 
         /* Lookup our main entry point, which is per definition always named "main". */

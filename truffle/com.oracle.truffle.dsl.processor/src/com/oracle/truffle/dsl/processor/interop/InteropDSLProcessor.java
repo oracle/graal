@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.FilerException;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
@@ -149,6 +150,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             if (innerClass.getAnnotation(Resolve.class) != null) {
                 elements.add((TypeElement) innerClass);
             }
+
         }
 
         ForeignAccessFactoryGenerator factoryGenerator = new ForeignAccessFactoryGenerator(processingEnv, messageImplementations, (TypeElement) e);
@@ -169,7 +171,12 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return;
         }
 
-        factoryGenerator.generate();
+        try {
+            factoryGenerator.generate();
+        } catch (FilerException ex) {
+            emitError("Foreign factory class with same name already exists", e);
+            return;
+        }
     }
 
     private boolean processLanguageCheck(MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator)
@@ -204,7 +211,12 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return false;
         }
 
-        generator.generate();
+        try {
+            generator.generate();
+        } catch (FilerException ex) {
+            emitError("Language check class with same name already exists", element);
+            return false;
+        }
         factoryGenerator.addLanguageCheckHandler(generator.getRootNodeFactoryInvokation());
         return true;
     }
@@ -267,7 +279,12 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             }
         }
 
-        currentGenerator.generate();
+        try {
+            currentGenerator.generate();
+        } catch (FilerException ex) {
+            emitError("Message resolution class with same name already exists", element);
+            return false;
+        }
         Object currentMessage = Utils.getMessage(processingEnv, resolveAnnotation.message());
         factoryGenerator.addMessageHandler(currentMessage, currentGenerator.getRootNodeFactoryInvokation());
         return true;

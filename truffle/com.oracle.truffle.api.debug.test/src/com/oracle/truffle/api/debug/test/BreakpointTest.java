@@ -161,7 +161,7 @@ public class BreakpointTest extends AbstractDebugTest {
         for (int i = 0; i < 3; i++) {
             expectSuspendedEvent().checkState(4, true, "STATEMENT").resume();
         }
-        getEngine().eval(Source.fromFileName(loopFile.getAbsolutePath()));
+        getEngine().eval(Source.newBuilder(new File(loopFile.getAbsolutePath())).build());
         assertExecutedOK();
         assertTrue(breakpoint.isEnabled());
         assertEquals(breakpoint.getHitCount(), 3);

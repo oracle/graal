@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class BytesSourceSectionTest {
 
     @Test

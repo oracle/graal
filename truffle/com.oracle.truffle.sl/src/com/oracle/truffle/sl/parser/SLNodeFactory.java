@@ -404,7 +404,7 @@ public class SLNodeFactory {
 
     /**
      * Returns a {@link SLReadLocalVariableNode} if this read is a local variable or a
-     * {@link SLFunctionLiteralNode} if this read is global. In Simple, the only global names are
+     * {@link SLFunctionLiteralNode} if this read is global. In SL, the only global names are
      * functions.
      *
      * @param nameNode The name of the variable/function being read

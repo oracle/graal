@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -50,6 +51,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
+/**
+ * The loop body of a {@link SLWhileNode while loop}. A Truffle framework {@link LoopNode} between
+ * the {@link SLWhileNode} and {@link SLWhileRepeatingNode} allows Truffle to perform loop
+ * optimizations, for example, compile just the loop body for long running loops.
+ */
 public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
 
     /**

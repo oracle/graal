@@ -62,7 +62,7 @@ import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
-@TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = SLLanguage.MIME_TYPE)
+@TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
 
