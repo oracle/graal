@@ -64,7 +64,7 @@ public final class LIRVerifier {
     }
 
     private int maxRegisterNum() {
-        return frameMap.getTarget().arch.getRegisters().length;
+        return frameMap.getTarget().arch.getRegisters().size();
     }
 
     private boolean isAllocatableRegister(Value value) {

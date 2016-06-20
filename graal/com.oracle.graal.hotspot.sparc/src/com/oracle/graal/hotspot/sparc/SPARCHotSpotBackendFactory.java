@@ -22,18 +22,17 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
 import com.oracle.graal.compiler.sparc.SPARCSuitesProvider;
 import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotReplacementsImpl;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotConstantFieldProvider;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider;
@@ -129,8 +128,8 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     @SuppressWarnings("unused")
     private static Value[] createNativeABICallerSaveRegisters(GraalHotSpotVMConfig config, RegisterConfig regConfig) {
         Set<Register> callerSavedRegisters = new HashSet<>();
-        Collections.addAll(callerSavedRegisters, SPARC.fpusRegisters);
-        Collections.addAll(callerSavedRegisters, SPARC.fpudRegisters);
+        SPARC.fpusRegisters.addTo(callerSavedRegisters);
+        SPARC.fpudRegisters.addTo(callerSavedRegisters);
         callerSavedRegisters.add(SPARC.g1);
         callerSavedRegisters.add(SPARC.g4);
         callerSavedRegisters.add(SPARC.g5);

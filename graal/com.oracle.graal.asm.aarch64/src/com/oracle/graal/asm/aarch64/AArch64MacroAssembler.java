@@ -1360,7 +1360,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
                 int sizeEncoding = information & 1;
                 int regEncoding = information >>> 1;
-                Register reg = AArch64.cpuRegisters[regEncoding];
+                Register reg = AArch64.cpuRegisters.get(regEncoding);
                 // 1 => 64; 0 => 32
                 int size = sizeEncoding * 32 + 32;
                 switch (type) {
@@ -1376,7 +1376,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             case ADR: {
                 int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
                 int regEncoding = information;
-                Register reg = AArch64.cpuRegisters[regEncoding];
+                Register reg = AArch64.cpuRegisters.get(regEncoding);
                 super.adr(reg, branchOffset, branch);
                 break;
             }

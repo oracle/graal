@@ -1481,7 +1481,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         public static Register getRS1(int word) {
             int regNum = BitSpec.rs1.getBits(word);
-            return SPARC.cpuRegisters[regNum];
+            return SPARC.cpuRegisters.get(regNum);
         }
 
         public static int getImm22(int word) {

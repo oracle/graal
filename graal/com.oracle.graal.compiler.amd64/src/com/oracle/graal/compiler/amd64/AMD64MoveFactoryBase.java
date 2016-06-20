@@ -39,6 +39,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
@@ -76,9 +77,9 @@ public abstract class AMD64MoveFactoryBase implements MoveFactory {
 
             RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
 
-            Register[] availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
-            assert availableRegister != null && availableRegister.length > 1;
-            Register scratchRegister = availableRegister[0];
+            RegisterArray availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
+            assert availableRegister != null && availableRegister.size() > 1;
+            Register scratchRegister = availableRegister.get(0);
 
             Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
             LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));
