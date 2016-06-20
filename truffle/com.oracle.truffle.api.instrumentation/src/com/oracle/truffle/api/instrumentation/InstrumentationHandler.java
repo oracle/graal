@@ -985,9 +985,9 @@ final class InstrumentationHandler {
     /**
      * A list collection data structure that is optimized for fast non-blocking traversals. There is
      * adds and no explicit removal. Removals are based on a side effect of the element, by
-     * returning <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. Its not
-     * possible to reliably query the {@link AbstractAsyncCollection#nextInsertionIndex} of the
-     * collection, therefore it throws an {@link UnsupportedOperationException}.
+     * returning <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. It is not
+     * possible to reliably query the {@link AbstractAsyncCollection#size()} of the collection,
+     * therefore it throws an {@link UnsupportedOperationException}.
      */
     private abstract static class AbstractAsyncCollection<T, R> extends AbstractCollection<R> {
         /*
@@ -1074,12 +1074,19 @@ final class InstrumentationHandler {
         }
 
         /**
-         * Returns an iterator which can be traversed without a lock.
+         * Returns an iterator which can be traversed without a lock. The iterator that is
+         * constructed is not sequentially consistent. In other words, the user of the iterator may
+         * observe values that were added after the iterator was created.
          */
         @Override
         public Iterator<R> iterator() {
             return new Iterator<R>() {
 
+                /*
+                 * We need to capture the values field in the iterator to have a consistent view on
+                 * the data while iterating.
+                 */
+                private final AtomicReferenceArray<T> values = AbstractAsyncCollection.this.values;
                 private int index;
                 private R queuedNext;
 
@@ -1094,8 +1101,8 @@ final class InstrumentationHandler {
 
                 private R queueNext() {
                     int localIndex = index;
+                    AtomicReferenceArray<T> array = values;
                     while (true) {
-                        AtomicReferenceArray<T> array = values;
                         if (localIndex >= array.length()) {
                             return null;
                         }
