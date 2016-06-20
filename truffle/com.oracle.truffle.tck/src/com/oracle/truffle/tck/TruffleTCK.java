@@ -1518,6 +1518,59 @@ public abstract class TruffleTCK {
         assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
     }
 
+    private static class TimeOutOfExecution extends EventConsumer<SuspendedEvent> implements Runnable {
+        final CountDownLatch pause = new CountDownLatch(1);
+        PolyglotEngine engine;
+        Debugger debugger;
+        boolean pauseRequested;
+        boolean pauseResult;
+
+        TimeOutOfExecution() {
+            super(SuspendedEvent.class);
+        }
+
+        @Override
+        public void run() {
+            // wait a while before doing kill
+            try {
+                pause.await();
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException(ex);
+            }
+            pauseRequested = true;
+            // request pause to generate SuspendedEvent
+            pauseResult = getDebugger().pause();
+        }
+
+        @Override
+        protected void on(SuspendedEvent event) {
+            // when execution stops either debug or kill it:
+            event.prepareKill();
+        }
+
+        private void assertExecutionTimeOut(PolyglotEngine.Value counting, CountAndKill obj, int index) {
+            Throwable caught = null;
+            try {
+                // execute with timer on
+                counting.execute(obj);
+            } catch (Throwable t) {
+                caught = t;
+            }
+
+            assertTrue("Pause requested", pauseRequested);
+            assertTrue("Pause performed successfully", pauseResult);
+            assertNotNull("Execution ended with throwable", caught);
+            assertEquals("It is our kill exception", "com.oracle.truffle.api.debug.KillException", caught.getClass().getName());
+        }
+
+        private Debugger getDebugger() {
+            if (debugger == null) {
+                debugger = Debugger.find(engine);
+            }
+            return debugger;
+        }
+    }
+
     /**
      * Tests whether execution can be suspended in debugger.
      * 
@@ -1525,60 +1578,22 @@ public abstract class TruffleTCK {
      */
     @Test
     public void timeOutTest() throws Exception {
-        class TimeOutOfExecution extends EventConsumer<SuspendedEvent> implements Runnable {
-            final CountDownLatch pause = new CountDownLatch(1);
-            Debugger debugger;
-            boolean pauseRequested;
-            boolean pauseResult;
-
-            TimeOutOfExecution(Class<SuspendedEvent> eventType) {
-                super(eventType);
-            }
-
-            @Override
-            public void run() {
-                // wait a while before doing kill
-                try {
-                    pause.await();
-                } catch (InterruptedException ex) {
-                    throw new IllegalStateException(ex);
-                }
-                pauseRequested = true;
-                // request pause to generate SuspendedEvent
-                pauseResult = debugger.pause();
-            }
-
-            @Override
-            protected void on(SuspendedEvent event) {
-                // when execution stops either debug or kill it:
-                event.prepareKill();
-            }
-        }
-        final TimeOutOfExecution timeOutExecution = new TimeOutOfExecution(SuspendedEvent.class);
+        final TimeOutOfExecution timeOutExecution = new TimeOutOfExecution();
         Thread timeOutExecutionThread = new Thread(timeOutExecution, "Time out execution");
         timeOutExecutionThread.start();
 
         Builder builder = PolyglotEngine.newBuilder().onEvent(timeOutExecution);
-        PolyglotEngine vm = prepareVM(builder);
-        timeOutExecution.debugger = Debugger.find(vm);
-
-        PolyglotEngine.Value counting = vm.findGlobalSymbol(countUpWhile());
+        timeOutExecution.engine = prepareVM(builder);
+        timeOutExecution.getDebugger(); // pre-initialize debugger
+        PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
 
         int index = RANDOM.nextInt(50) + 50;
         CountAndKill obj = new CountAndKill(index, timeOutExecution.pause);
 
-        Throwable caught = null;
-        try {
-            counting.execute(obj);
-        } catch (Throwable t) {
-            caught = t;
-        }
+        timeOutExecution.assertExecutionTimeOut(counting, obj, index);
         assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
-        assertTrue("Pause requested", timeOutExecution.pauseRequested);
-        assertTrue("Pause performed successfully", timeOutExecution.pauseResult);
-        assertNotNull("Execution ended with throwable", caught);
-        assertEquals("It is our kill exception", "com.oracle.truffle.api.debug.KillException", caught.getClass().getName());
         assertTrue("Last number bigger than requested", index <= obj.lastParameter);
+
         timeOutExecutionThread.join(5000);
     }
 
