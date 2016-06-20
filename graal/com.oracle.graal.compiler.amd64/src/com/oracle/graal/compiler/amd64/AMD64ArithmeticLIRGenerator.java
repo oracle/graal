@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -407,7 +407,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return getLIRGen().append(new AMD64MulDivOp(AMD64MOp.DIV, size, kind, rdx, rax, getLIRGen().asAllocatable(b), state));
     }
 
-    public Value[] emitIntegerDivRem(Value a, Value b, LIRFrameState state) {
+    public Value[] emitSignedDivRem(Value a, Value b, LIRFrameState state) {
         AMD64MulDivOp op;
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -415,6 +415,21 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 break;
             case QWORD:
                 op = emitIDIV(QWORD, a, b, state);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        return new Value[]{getLIRGen().emitMove(op.getQuotient()), getLIRGen().emitMove(op.getRemainder())};
+    }
+
+    public Value[] emitUnsignedDivRem(Value a, Value b, LIRFrameState state) {
+        AMD64MulDivOp op;
+        switch ((AMD64Kind) a.getPlatformKind()) {
+            case DWORD:
+                op = emitDIV(DWORD, a, b, state);
+                break;
+            case QWORD:
+                op = emitDIV(QWORD, a, b, state);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();

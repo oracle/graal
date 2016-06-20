@@ -36,12 +36,12 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.AndNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
 import com.oracle.graal.nodes.calc.LeftShiftNode;
 import com.oracle.graal.nodes.calc.MulNode;
 import com.oracle.graal.nodes.calc.OrNode;
 import com.oracle.graal.nodes.calc.RightShiftNode;
+import com.oracle.graal.nodes.calc.SignedDivNode;
+import com.oracle.graal.nodes.calc.SignedRemNode;
 import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
@@ -288,18 +288,18 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
 
     @Override
-    @Operation(node = IntegerDivNode.class)
+    @Operation(node = SignedDivNode.class)
     public Word signedDivide(Signed val) {
         return signedDivide((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerDivNode.class)
+    @Operation(node = SignedDivNode.class)
     public Word signedDivide(int val) {
         return signedDivide(intParam(val));
     }
 
-    @Operation(node = IntegerDivNode.class)
+    @Operation(node = SignedDivNode.class)
     public Word signedDivide(Word val) {
         return box(unbox() / val.unbox());
     }
@@ -322,18 +322,18 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
 
     @Override
-    @Operation(node = IntegerRemNode.class)
+    @Operation(node = SignedRemNode.class)
     public Word signedRemainder(Signed val) {
         return signedRemainder((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerRemNode.class)
+    @Operation(node = SignedRemNode.class)
     public Word signedRemainder(int val) {
         return signedRemainder(intParam(val));
     }
 
-    @Operation(node = IntegerRemNode.class)
+    @Operation(node = SignedRemNode.class)
     public Word signedRemainder(Word val) {
         return box(unbox() % val.unbox());
     }

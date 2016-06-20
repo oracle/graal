@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,22 +30,21 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = "/")
-public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
-    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.create(IntegerDivNode.class);
+public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
-    public IntegerDivNode(ValueNode x, ValueNode y) {
+    public static final NodeClass<SignedDivNode> TYPE = NodeClass.create(SignedDivNode.class);
+
+    public SignedDivNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
-    protected IntegerDivNode(NodeClass<? extends IntegerDivNode> c, ValueNode x, ValueNode y) {
-        super(c, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
+    protected SignedDivNode(NodeClass<? extends SignedDivNode> c, ValueNode x, ValueNode y) {
+        super(c, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), Op.DIV, Type.SIGNED, x, y);
     }
 
     @Override
@@ -93,16 +92,16 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
         // Convert the expression ((a - a % b) / b) into (a / b).
         if (forX instanceof SubNode) {
             SubNode integerSubNode = (SubNode) forX;
-            if (integerSubNode.getY() instanceof IntegerRemNode) {
-                IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
+            if (integerSubNode.getY() instanceof SignedRemNode) {
+                SignedRemNode integerRemNode = (SignedRemNode) integerSubNode.getY();
                 if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.getX() &&
                                 forY == integerRemNode.getY()) {
-                    return new IntegerDivNode(integerSubNode.getX(), forY);
+                    return new SignedDivNode(integerSubNode.getX(), forY);
                 }
             }
         }
 
-        if (next() instanceof IntegerDivNode) {
+        if (next() instanceof SignedDivNode) {
             NodeClass<?> nodeClass = getNodeClass();
             if (next().getClass() == this.getClass() && nodeClass.equalInputs(this, next()) && valueEquals(next())) {
                 return next();
@@ -113,17 +112,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitDiv(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 }
