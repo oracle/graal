@@ -52,6 +52,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -258,7 +259,7 @@ final class InstrumentationHandler {
         }
     }
 
-    EventChainNode installBindings(ProbeNode probeNodeImpl) {
+    EventChainNode createBindings(ProbeNode probeNodeImpl) {
         EventContext context = probeNodeImpl.getContext();
         SourceSection sourceSection = context.getInstrumentedSourceSection();
         if (TRACE) {
@@ -370,8 +371,8 @@ final class InstrumentationHandler {
 
     @SuppressWarnings("unchecked")
     private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
-        Node node = instrumentableNode;
-        Node parent = node.getParent();
+        final Node node = instrumentableNode;
+        final Node parent = node.getParent();
         if (parent instanceof WrapperNode) {
             // already wrapped, need to invalidate the wrapper something changed
             invalidateWrapperImpl((WrapperNode) parent, node);
@@ -412,7 +413,7 @@ final class InstrumentationHandler {
             throw new IllegalStateException(String.format("Implementation of %s must be a subclass of %s.", WrapperNode.class.getSimpleName(), Node.class.getSimpleName()));
         }
 
-        Node wrapperNode = (Node) wrapper;
+        final Node wrapperNode = (Node) wrapper;
         if (wrapperNode.getParent() != null) {
             throw new IllegalStateException(String.format("Instance of provided %s is already adopted by another parent.", WrapperNode.class.getSimpleName()));
         }
@@ -420,14 +421,12 @@ final class InstrumentationHandler {
             throw new IllegalStateException(String.format("Instance of instrumentable %s is not adopted by a parent.", Node.class.getSimpleName()));
         }
 
-        if (!node.isSafelyReplaceableBy(wrapperNode)) {
-            throw new IllegalStateException(String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(),
-                            parent.getClass().getName()));
+        if (!NodeUtil.isReplacementSafe(parent, node, wrapperNode)) {
+            throw new IllegalStateException(
+                            String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
         }
-        node.replace(wrapperNode);
-        if (node.getParent() != wrapperNode) {
-            throw new IllegalStateException("InstrumentableNode must have a WrapperNode as parent after createInstrumentationWrappwer is invoked.");
-        }
+
+        node.replace(wrapperNode, "Insert instrumentation wrapper node.");
     }
 
     private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, SourceSectionFilter filter, T factory) {
