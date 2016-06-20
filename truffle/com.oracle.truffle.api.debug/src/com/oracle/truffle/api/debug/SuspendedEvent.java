@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.Debugger.HaltPosition;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -253,7 +254,7 @@ public final class SuspendedEvent {
      * Generates a (potentially language-specific) description of an execution value in a part of
      * the current execution context, for example the value stored in a frame slot. The description
      * is intended to be useful to a guest language programmer.
-     * 
+     *
      * @param value an object presumed to represent a <em>value</em> managed by the language of the
      *            AST where execution is halted.
      * @param frameInstance the frame in which to evaluate the code;
@@ -266,7 +267,16 @@ public final class SuspendedEvent {
         if (!stack.contains(frameInstance)) {
             throw new IllegalArgumentException();
         }
-        final RootNode rootNode = frameInstance == stack.get(0) ? haltedNode.getRootNode() : frameInstance.getCallNode().getRootNode();
+        RootNode rootNode = null;
+        if (frameInstance == stack.get(0)) {
+            rootNode = haltedNode.getRootNode();
+        } else if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+            rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+        }
+        if (rootNode == null) {
+            // Unknown language
+            return value.toString();
+        }
         return Debugger.ACCESSOR.toStringInContext(rootNode, value);
     }
 
