@@ -242,8 +242,11 @@ public final class NodeUtil {
                         }
                     }
                 }
+            } else if (clazz.nodeFieldsOrderedByKind()) {
+                break;
             }
         }
+
     }
 
     static boolean replaceChild(Node parent, Node oldChild, Node newChild, boolean adopt) {
