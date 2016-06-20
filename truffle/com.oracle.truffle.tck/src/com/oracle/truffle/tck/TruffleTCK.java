@@ -1548,11 +1548,11 @@ public abstract class TruffleTCK {
             event.prepareKill();
         }
 
-        private void assertExecutionTimeOut(PolyglotEngine.Value counting, CountAndKill obj, int index) {
+        private void assertExecutionTimeOut(PolyglotEngine.Value whileLoopFunction, CountAndKill obj) {
             Throwable caught = null;
             try {
                 // execute with timer on
-                counting.execute(obj);
+                whileLoopFunction.execute(obj);
             } catch (Throwable t) {
                 caught = t;
             }
@@ -1590,7 +1590,7 @@ public abstract class TruffleTCK {
         int index = RANDOM.nextInt(50) + 50;
         CountAndKill obj = new CountAndKill(index, timeOutExecution.pause);
 
-        timeOutExecution.assertExecutionTimeOut(counting, obj, index);
+        timeOutExecution.assertExecutionTimeOut(counting, obj);
         assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
         assertTrue("Last number bigger than requested", index <= obj.lastParameter);
 
