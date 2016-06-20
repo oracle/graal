@@ -53,10 +53,9 @@ public interface LoadSourceSectionEventListener {
      * {@link Source source} as their root.
      * </p>
      *
-     * @param sourceSection the source section instance that triggered the notification
-     * @param node the node that triggered the instrumentation
+     * @param event an event with context information
      * @since 0.15
      */
-    void onLoad(SourceSection sourceSection, Node node);
+    void onLoad(LoadSourceSectionEvent event);
 
 }

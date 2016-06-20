@@ -37,9 +37,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class InstrumentationMultiThreadingTest {
@@ -61,7 +59,7 @@ public class InstrumentationMultiThreadingTest {
                     engineRef.set(engine);
                     while (!terminated.get()) {
                         try {
-                            engine.eval(Source.fromAppendableText("ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION))").withMimeType(InstrumentationTestLanguage.MIME_TYPE));
+                            engine.eval(Source.newBuilder("ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION))").mimeType(InstrumentationTestLanguage.MIME_TYPE).build());
                         } catch (Throwable e) {
                             throw new RuntimeException(e);
                         }
@@ -124,17 +122,20 @@ public class InstrumentationMultiThreadingTest {
         instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
         instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
         instrumenter.attachLoadSourceListener(SourceSectionFilter.newBuilder().build(), new LoadSourceEventListener() {
-            public void onLoad(Source source) {
+
+            public void onLoad(LoadSourceEvent event) {
+
             }
         }, true);
         instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new LoadSourceSectionEventListener() {
-            public void onLoad(SourceSection sourceSection, Node node) {
+
+            public void onLoad(LoadSourceSectionEvent event) {
 
             }
         }, true);
 
         instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new LoadSourceSectionEventListener() {
-            public void onLoad(SourceSection sourceSection, Node node) {
+            public void onLoad(LoadSourceSectionEvent event) {
 
             }
         }, true);

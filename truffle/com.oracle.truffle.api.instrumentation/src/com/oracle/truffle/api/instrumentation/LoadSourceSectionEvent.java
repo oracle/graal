@@ -24,35 +24,44 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
- * to listen to load source events.
+ * Represents a source section load event from a {@link LoadSourceSectionEventListener}.
  *
+ * Instances of {@link LoadSourceSectionEvent} should be neither stored, cached nor hashed. The
+ * equality and hashing behavior is undefined.
+ *
+ * @see LoadSourceSectionEventListener
  * @since 0.15
  */
-public interface LoadSourceEventListener {
+public final class LoadSourceSectionEvent {
+
+    private final SourceSection sourceSection;
+    private final Node node;
+
+    LoadSourceSectionEvent(SourceSection sourceSection, Node node) {
+        this.sourceSection = sourceSection;
+        this.node = node;
+    }
 
     /**
-     * Invoked whenever a new {@link Source source} is loaded.The order in which multiple source
-     * event listeners are notified matches the order they are
-     * {@link Instrumenter#attachLoadSourceListener(SourceSectionFilter, LoadSourceEventListener, boolean)
-     * attached}.
-     * <p>
-     * <b>Implementation Note:</b> Source load events are notified when the guest language
-     * implementation uses a new {@link Source source} by invoking
-     * {@link TruffleRuntime#createCallTarget(RootNode)} with a root node that uses a new source in
-     * {@link Node#getSourceSection()}. It assumes that all nodes of an AST have the same
-     * {@link Source source} as their root.
-     * </p>
+     * Returns the loaded source section that caused this event.
      *
-     * @param event an event with context information
      * @since 0.15
      */
-    void onLoad(LoadSourceEvent event);
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    /**
+     * Returns the instrumentable Truffle node that caused this event.
+     *
+     * @since 0.15
+     */
+    public Node getNode() {
+        return node;
+    }
 
 }

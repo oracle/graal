@@ -24,35 +24,32 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
- * to listen to load source events.
+ * Represents a source load event from a {@link LoadSourceEventListener}.
  *
+ * Instances of {@link LoadSourceEvent} should be neither stored, cached nor hashed. The equality
+ * and hashing behavior is undefined.
+ *
+ * @see LoadSourceEventListener
  * @since 0.15
  */
-public interface LoadSourceEventListener {
+public final class LoadSourceEvent {
+
+    private final Source source;
+
+    LoadSourceEvent(Source source) {
+        this.source = source;
+    }
 
     /**
-     * Invoked whenever a new {@link Source source} is loaded.The order in which multiple source
-     * event listeners are notified matches the order they are
-     * {@link Instrumenter#attachLoadSourceListener(SourceSectionFilter, LoadSourceEventListener, boolean)
-     * attached}.
-     * <p>
-     * <b>Implementation Note:</b> Source load events are notified when the guest language
-     * implementation uses a new {@link Source source} by invoking
-     * {@link TruffleRuntime#createCallTarget(RootNode)} with a root node that uses a new source in
-     * {@link Node#getSourceSection()}. It assumes that all nodes of an AST have the same
-     * {@link Source source} as their root.
-     * </p>
+     * Returns the loaded source that caused this event.
      *
-     * @param event an event with context information
      * @since 0.15
      */
-    void onLoad(LoadSourceEvent event);
+    public Source getSource() {
+        return source;
+    }
 
 }

@@ -32,7 +32,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
@@ -100,7 +99,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     }
 
     private static SourceSection[] sections(String code, String... match) {
-        Source source = Source.fromText(code, null).withMimeType(InstrumentationTestLanguage.MIME_TYPE);
+        Source source = Source.newBuilder(code).name("sourceSectionTest").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
 
         List<SourceSection> sections = new ArrayList<>();
         for (String matchExpression : match) {
@@ -127,34 +126,22 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         return newArray;
     }
 
-    private static void assertEvents(List<SourceSectionEvent> actualEvents, SourceSection... expectedSourceSections) {
+    private static void assertEvents(List<LoadSourceSectionEvent> actualEvents, SourceSection... expectedSourceSections) {
         Assert.assertEquals(expectedSourceSections.length, actualEvents.size());
         for (int i = 0; i < expectedSourceSections.length; i++) {
-            SourceSectionEvent actualEvent = actualEvents.get(i);
+            LoadSourceSectionEvent actualEvent = actualEvents.get(i);
             SourceSection expectedSourceSection = expectedSourceSections[i];
-            Assert.assertEquals("index " + i, expectedSourceSection, actualEvent.sourceSection);
-            Assert.assertSame("index " + i, actualEvent.node.getSourceSection(), actualEvent.sourceSection);
+            Assert.assertEquals("index " + i, expectedSourceSection, actualEvent.getSourceSection());
+            Assert.assertSame("index " + i, actualEvent.getNode().getSourceSection(), actualEvent.getSourceSection());
         }
-    }
-
-    private static class SourceSectionEvent {
-
-        final SourceSection sourceSection;
-        final Node node;
-
-        SourceSectionEvent(SourceSection sourceSection, Node node) {
-            this.sourceSection = sourceSection;
-            this.node = node;
-        }
-
     }
 
     @Registration(id = "testLoadSourceSection1")
     public static class TestLoadSourceSection1 extends TruffleInstrument {
-        List<SourceSectionEvent> onlyNewEvents = new ArrayList<>();
-        List<SourceSectionEvent> allEvents = new ArrayList<>();
-        List<SourceSectionEvent> onlyStatements = new ArrayList<>();
-        List<SourceSectionEvent> onlyExpressions = new ArrayList<>();
+        List<LoadSourceSectionEvent> onlyNewEvents = new ArrayList<>();
+        List<LoadSourceSectionEvent> allEvents = new ArrayList<>();
+        List<LoadSourceSectionEvent> onlyStatements = new ArrayList<>();
+        List<LoadSourceSectionEvent> onlyExpressions = new ArrayList<>();
 
         @Override
         protected void onCreate(Env env) {
@@ -171,14 +158,14 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
         private class SourceSectionListener implements LoadSourceSectionEventListener {
 
-            private final List<SourceSectionEvent> events;
+            private final List<LoadSourceSectionEvent> events;
 
-            SourceSectionListener(List<SourceSectionEvent> events) {
+            SourceSectionListener(List<LoadSourceSectionEvent> events) {
                 this.events = events;
             }
 
-            public void onLoad(SourceSection sourceSection, Node node) {
-                events.add(new SourceSectionEvent(sourceSection, node));
+            public void onLoad(LoadSourceSectionEvent event) {
+                events.add(event);
             }
         }
 
@@ -203,7 +190,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         @Override
         protected void onCreate(Env env) {
             env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().build(), new LoadSourceSectionEventListener() {
-                public void onLoad(SourceSection sourceSection, Node node) {
+                public void onLoad(LoadSourceSectionEvent event) {
                     throw new TestLoadSourceSectionExceptionClass();
                 }
             }, true);

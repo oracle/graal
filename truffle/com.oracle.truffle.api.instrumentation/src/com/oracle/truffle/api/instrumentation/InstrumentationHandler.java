@@ -306,7 +306,7 @@ final class InstrumentationHandler {
     private static void notifySourceBindingLoaded(EventBinding<?> binding, Source source) {
         if (!binding.isDisposed() && binding.isInstrumentedSource(source)) {
             try {
-                ((LoadSourceEventListener) binding.getElement()).onLoad(source);
+                ((LoadSourceEventListener) binding.getElement()).onLoad(new LoadSourceEvent(source));
             } catch (Throwable t) {
                 if (binding.isLanguageBinding()) {
                     throw t;
@@ -320,7 +320,7 @@ final class InstrumentationHandler {
     static void notifySourceSectionLoaded(EventBinding<?> binding, Node node, SourceSection section) {
         LoadSourceSectionEventListener listener = (LoadSourceSectionEventListener) binding.getElement();
         try {
-            listener.onLoad(section, node);
+            listener.onLoad(new LoadSourceSectionEvent(section, node));
         } catch (Throwable t) {
             if (binding.isLanguageBinding()) {
                 throw t;
