@@ -51,6 +51,22 @@ public abstract class LLVMAddressCompareNode extends LLVMI1Node {
             return val1 == val2;
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isCNull(val1)")
+        public boolean executeI1(LLVMAddress val1, TruffleObject val2) {
+            return false;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isCNull(val2)")
+
+        public boolean executeI1(TruffleObject val1, LLVMAddress val2) {
+            return false;
+        }
+
+        public static boolean isCNull(LLVMAddress val) {
+            return val.getVal() == 0;
+        }
     }
 
     public abstract static class LLVMAddressUltNode extends LLVMAddressCompareNode {
@@ -92,6 +108,17 @@ public abstract class LLVMAddressCompareNode extends LLVMI1Node {
             return val1 != val2;
         }
 
+        @SuppressWarnings("unused")
+        @Specialization
+        public boolean executeI1(LLVMAddress val1, TruffleObject val2) {
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public boolean executeI1(TruffleObject val1, LLVMAddress val2) {
+            return true;
+        }
     }
 
     public abstract static class LLVMAddressSleNode extends LLVMAddressCompareNode {
