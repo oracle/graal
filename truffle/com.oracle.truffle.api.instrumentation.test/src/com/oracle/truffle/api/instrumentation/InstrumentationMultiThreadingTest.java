@@ -48,45 +48,49 @@ public class InstrumentationMultiThreadingTest {
         int nEvals = 1;
         int nInstruments = 10;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(nEvals + nInstruments);
-        List<Future<?>> futures = new ArrayList<>();
-        final AtomicBoolean terminated = new AtomicBoolean(false);
-        final AtomicReference<PolyglotEngine> engineRef = new AtomicReference<>();
-        for (int i = 0; i < nEvals; i++) {
-            futures.add(executorService.submit(new Runnable() {
-                public void run() {
-                    final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-                    engineRef.set(engine);
-                    while (!terminated.get()) {
-                        try {
-                            engine.eval(Source.newBuilder("ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION))").mimeType(InstrumentationTestLanguage.MIME_TYPE).build());
-                        } catch (Throwable e) {
-                            throw new RuntimeException(e);
+        for (int j = 0; j < 5; j++) {
+            ExecutorService executorService = Executors.newFixedThreadPool(nEvals + nInstruments);
+            List<Future<?>> futures = new ArrayList<>();
+            final AtomicBoolean terminated = new AtomicBoolean(false);
+            final AtomicReference<PolyglotEngine> engineRef = new AtomicReference<>();
+            for (int i = 0; i < nEvals; i++) {
+                futures.add(executorService.submit(new Runnable() {
+                    public void run() {
+                        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+                        engineRef.set(engine);
+                        while (!terminated.get()) {
+                            try {
+                                engine.eval(Source.newBuilder("ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION)))").name("asyncTest").mimeType(
+                                                InstrumentationTestLanguage.MIME_TYPE).build());
+                            } catch (Throwable e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
-                }
-            }));
+                }));
+            }
+
+            for (int i = 0; i < nInstruments; i++) {
+                final int index = i;
+                futures.add(executorService.submit(new Runnable() {
+                    public void run() {
+                        while (!terminated.get()) {
+                            PolyglotEngine engine = engineRef.get();
+                            if (engine != null) {
+                                engine.getInstruments().get("testAsyncAttachement1").setEnabled(index % 2 == 0);
+                                engine.getInstruments().get("testAsyncAttachement2").setEnabled(index % 2 == 1);
+                            }
+                        }
+                    }
+                }));
+            }
+            Thread.sleep(1000);
+            terminated.set(true);
+            for (Future<?> future : futures) {
+                future.get();
+            }
         }
 
-        for (int i = 0; i < nInstruments; i++) {
-            final int index = i;
-            futures.add(executorService.submit(new Runnable() {
-                public void run() {
-                    while (!terminated.get()) {
-                        PolyglotEngine engine = engineRef.get();
-                        if (engine != null) {
-                            engine.getInstruments().get("testAsyncAttachement1").setEnabled(index % 2 == 0);
-                            engine.getInstruments().get("testAsyncAttachement2").setEnabled(index % 2 == 1);
-                        }
-                    }
-                }
-            }));
-        }
-        Thread.sleep(4000);
-        terminated.set(true);
-        for (Future<?> future : futures) {
-            future.get();
-        }
     }
 
     @Registration(id = "testAsyncAttachement1")
