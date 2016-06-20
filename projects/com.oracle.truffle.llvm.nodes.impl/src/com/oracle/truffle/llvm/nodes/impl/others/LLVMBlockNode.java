@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -59,7 +60,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         }
 
         @Override
-        @ExplodeLoop(merge = true)
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
         public Object executeGeneric(VirtualFrame frame) {
             CompilerAsserts.compilationConstant(bodyNodes.length);
             int bci = 0;
