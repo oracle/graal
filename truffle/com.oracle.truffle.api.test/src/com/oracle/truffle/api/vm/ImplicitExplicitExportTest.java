@@ -77,9 +77,8 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportFound() throws IOException {
         // @formatter:off
-        vm.eval(Source.fromText("explicit.ahoj=42", "Fourty two").withMimeType(L1));
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        vm.eval(Source.newBuilder("explicit.ahoj=42").name("Fourty two").mimeType(L1).build());
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("42", ret);
@@ -88,11 +87,9 @@ public class ImplicitExplicitExportTest {
     @Test
     public void implicitExportFound() throws IOException {
         // @formatter:off
-        vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("42", ret);
@@ -101,14 +98,11 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportPreferred2() throws IOException {
         // @formatter:off
-        vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
-        vm.eval(
-            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L2)
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
@@ -118,14 +112,11 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportPreferred1() throws IOException {
         // @formatter:off
-        vm.eval(
-            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L1)
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L1).build()
         );
-        vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L2)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L2).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
@@ -195,27 +186,6 @@ public class ImplicitExplicitExportTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
         }
 
         @Override

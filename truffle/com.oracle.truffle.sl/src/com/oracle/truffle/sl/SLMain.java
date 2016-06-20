@@ -97,6 +97,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
+import java.io.File;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -188,9 +189,14 @@ public final class SLMain {
     public static void main(String[] args) throws IOException {
         Source source;
         if (args.length == 0) {
-            source = Source.fromReader(new InputStreamReader(System.in), "<stdin>").withMimeType(SLLanguage.MIME_TYPE);
+            // @formatter:off
+            source = Source.newBuilder(new InputStreamReader(System.in)).
+                name("<stdin>").
+                mimeType(SLLanguage.MIME_TYPE).
+                build();
+            // @formatter:on
         } else {
-            source = Source.fromFileName(args[0]);
+            source = Source.newBuilder(new File(args[0])).build();
         }
 
         executeSource(source, System.in, System.out);
@@ -244,7 +250,7 @@ public final class SLMain {
         if (ex.getNode() != null && ex.getNode().getSourceSection() != null) {
             SourceSection ss = ex.getNode().getSourceSection();
             if (ss != null && ss.getSource() != null) {
-                result.append(" at ").append(ss.getSource().getShortName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
+                result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
         }
         result.append(": operation");

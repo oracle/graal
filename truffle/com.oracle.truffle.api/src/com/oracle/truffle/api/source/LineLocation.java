@@ -58,7 +58,7 @@ public final class LineLocation implements Comparable<LineLocation> {
 
     /** @since 0.8 or earlier */
     public String getShortDescription() {
-        return source.getShortName() + ":" + line;
+        return source.getName() + ":" + line;
     }
 
     /** @since 0.8 or earlier */

@@ -76,7 +76,7 @@ public class SLJavaInteropTest {
     @Test
     public void asFunction() throws Exception {
         String scriptText = "function test() {\n" + "    println(\"Called!\");\n" + "}\n";
-        Source script = Source.fromText(scriptText, "Test").withMimeType(SLLanguage.MIME_TYPE);
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType(SLLanguage.MIME_TYPE).build();
         engine.eval(script);
         PolyglotEngine.Value main = engine.findGlobalSymbol("test");
         final Object value = main.get();

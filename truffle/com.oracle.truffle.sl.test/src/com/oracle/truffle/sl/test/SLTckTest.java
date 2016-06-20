@@ -66,56 +66,53 @@ public class SLTckTest extends TruffleTCK {
     protected PolyglotEngine prepareVM(PolyglotEngine.Builder builder) throws Exception {
         PolyglotEngine vm = builder.build();
         // @formatter:off
-        vm.eval(
-            Source.fromText(
-                "function fourtyTwo() {\n" +
-                "  return 42;\n" + //
-                "}\n" +
-                "function plus(a, b) {\n" +
-                "  return a + b;\n" +
-                "}\n" +
-                "function identity(x) {\n" +
-                "  return x;\n" +
-                "}\n" +
-                "function apply(f) {\n" +
-                "  return f(18, 32) + 10;\n" +
-                "}\n" +
-                "function cnt() {\n" +
-                "  return 0;\n" +
-                "}\n" +
-                "function count() {\n" +
-                "  n = cnt() + 1;\n" +
-                "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
-                "  return n;\n" +
-                "}\n" +
-                "function returnsNull() {\n" +
-                "}\n" +
-                "function complexAdd(a, b) {\n" +
-                "  a.real = a.real + b.real;\n" +
-                "  a.imaginary = a.imaginary + b.imaginary;\n" +
-                "}\n" +
-                "function compoundObject() {\n" +
-                "  obj = new();\n" +
-                "  obj.fourtyTwo = fourtyTwo;\n" +
-                "  obj.plus = plus;\n" +
-                "  obj.returnsNull = returnsNull;\n" +
-                "  obj.returnsThis = obj;\n" +
-                "  return obj;\n" +
-                "}\n" +
-                "function valuesObject() {\n" +
-                "  obj = new();\n" +
-                "  obj.byteValue = 0;\n" +
-                "  obj.shortValue = 0;\n" +
-                "  obj.intValue = 0;\n" +
-                "  obj.longValue = 0;\n" +
-                "  obj.floatValue = 0;\n" +
-                "  obj.doubleValue = 0;\n" +
-                "  obj.charValue = \"0\";\n" +
-                "  obj.booleanValue = (1 == 0);\n" +
-                "  return obj;\n" +
-                "}\n",
-                "SL TCK"
-            ).withMimeType(SLLanguage.MIME_TYPE)
+        vm.eval(Source.newBuilder("function fourtyTwo() {\n" +
+                    "  return 42;\n" + //
+                    "}\n" +
+                    "function plus(a, b) {\n" +
+                    "  return a + b;\n" +
+                    "}\n" +
+                    "function identity(x) {\n" +
+                    "  return x;\n" +
+                    "}\n" +
+                    "function apply(f) {\n" +
+                    "  return f(18, 32) + 10;\n" +
+                    "}\n" +
+                    "function cnt() {\n" +
+                    "  return 0;\n" +
+                    "}\n" +
+                    "function count() {\n" +
+                    "  n = cnt() + 1;\n" +
+                    "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
+                    "  return n;\n" +
+                    "}\n" +
+                    "function returnsNull() {\n" +
+                    "}\n" +
+                    "function complexAdd(a, b) {\n" +
+                    "  a.real = a.real + b.real;\n" +
+                    "  a.imaginary = a.imaginary + b.imaginary;\n" +
+                    "}\n" +
+                    "function compoundObject() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.fourtyTwo = fourtyTwo;\n" +
+                    "  obj.plus = plus;\n" +
+                    "  obj.returnsNull = returnsNull;\n" +
+                    "  obj.returnsThis = obj;\n" +
+                    "  return obj;\n" +
+                    "}\n" +
+                    "function valuesObject() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.byteValue = 0;\n" +
+                    "  obj.shortValue = 0;\n" +
+                    "  obj.intValue = 0;\n" +
+                    "  obj.longValue = 0;\n" +
+                    "  obj.floatValue = 0;\n" +
+                    "  obj.doubleValue = 0;\n" +
+                    "  obj.charValue = \"0\";\n" +
+                    "  obj.booleanValue = (1 == 0);\n" +
+                    "  return obj;\n" +
+                    "}\n").name("SL TCK").mimeType(SLLanguage.MIME_TYPE
+            ).build()
         );
         // @formatter:on
         return vm;

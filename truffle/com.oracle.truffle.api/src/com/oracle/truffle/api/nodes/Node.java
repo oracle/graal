@@ -51,6 +51,7 @@ import com.oracle.truffle.api.utilities.JSONHelper;
  * @since 0.8 or earlier
  */
 public abstract class Node implements NodeInterface, Cloneable {
+
     private final NodeClass nodeClass;
     @CompilationFinal private Node parent;
 
@@ -187,10 +188,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        adoptHelper();
+        NodeUtil.adoptChildrenHelper(this);
     }
 
-    void adoptHelper(final Node newChild) {
+    final void adoptHelper(final Node newChild) {
         assert newChild != null;
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
@@ -199,18 +200,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (TruffleOptions.TraceASTJSON) {
             JSONHelper.dumpNewChild(this, newChild);
         }
-        newChild.adoptHelper();
-    }
-
-    private void adoptHelper() {
-        NodeUtil.forEachChild(this, new NodeVisitor() {
-            public boolean visit(Node child) {
-                if (child != null && child.getParent() != Node.this) {
-                    Node.this.adoptHelper(child);
-                }
-                return true;
-            }
-        });
+        NodeUtil.adoptChildrenHelper(newChild);
     }
 
     private void adoptUnadoptedHelper(final Node newChild) {
@@ -219,10 +209,6 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         newChild.parent = this;
-        newChild.adoptUnadoptedHelper();
-    }
-
-    private void adoptUnadoptedHelper() {
         NodeUtil.forEachChild(this, new NodeVisitor() {
             public boolean visit(Node child) {
                 if (child != null && child.getParent() == null) {
@@ -613,6 +599,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     // registers into Accessor.NODES
     static final AccessorNodes ACCESSOR = new AccessorNodes();
+
 }
 
 class NodeSnippets {
@@ -685,6 +672,7 @@ class NodeSnippets {
             return super.isTaggedWith(tag);
         }
     }
+
     // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
 
 }

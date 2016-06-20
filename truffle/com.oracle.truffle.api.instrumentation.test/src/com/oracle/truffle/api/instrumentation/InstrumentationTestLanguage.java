@@ -79,7 +79,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * )
  * </code>
  */
-@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "Test-language-for-instrumentation", version = "1.0")
+@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
@@ -115,7 +115,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     @Override
     protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
         SourceSection outer = code.createSection(null, 0, code.getLength());
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(outer, parse(code)));
+        BaseNode node;
+        try {
+            node = parse(code);
+        } catch (LanguageError e) {
+            throw new IOException(e);
+        }
+        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(outer, node));
     }
 
     public static BaseNode parse(Source code) {
@@ -155,7 +161,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             skipWhiteSpace();
             String tag = ident().trim().intern();
             if (!isValidTag(tag)) {
-                throw new RuntimeException(String.format("Illegal tag %s.", tag));
+                throw new LanguageError(String.format("Illegal tag \"%s\".", tag));
             }
 
             skipWhiteSpace();
@@ -192,7 +198,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             }
 
             if (isFirstParameterIdent && firstParameterIdent == null) {
-                throw new RuntimeException("parameter required for " + tag);
+                throw new LanguageError("parameter required for " + tag);
             }
 
             SourceSection sourceSection = source.createSection(null, startIndex, current - startIndex);
@@ -234,7 +240,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
 
         private void error(String message) {
-            throw new RuntimeException(String.format("error at %s. char %s: %s", current, current(), message));
+            throw new LanguageError(String.format("error at %s. char %s: %s", current, current(), message));
         }
 
         private String ident() {
@@ -460,6 +466,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         public abstract Object execute(VirtualFrame frame);
 
+    }
+
+    @SuppressWarnings("serial")
+    private static class LanguageError extends RuntimeException {
+
+        LanguageError(String format) {
+            super(format);
+        }
     }
 
     @Override

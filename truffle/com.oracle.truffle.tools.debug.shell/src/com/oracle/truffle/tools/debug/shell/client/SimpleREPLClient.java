@@ -40,6 +40,7 @@ import jline.console.ConsoleReader;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.debug.shell.server.REPLServer;
+import java.io.File;
 
 /**
  * A very simple line-oriented, language-agnostic debugging client shell: the first step toward a
@@ -290,11 +291,11 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
             if (message != null) {
                 final String sourceName = message.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
                 try {
-                    this.haltedSource = Source.fromFileName(sourceName);
+                    this.haltedSource = Source.newBuilder(new File(sourceName)).build();
                 } catch (IOException ex) {
                     final String code = message.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_TEXT);
                     if (code != null) {
-                        this.haltedSource = Source.fromText(code, sourceName);
+                        this.haltedSource = Source.newBuilder(code).name(sourceName).mimeType("content/unknown").build();
                     }
                 }
                 if (this.haltedSource != null) {
@@ -315,7 +316,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
 
         private void selectSource(String fileName) {
             try {
-                selectedSource = Source.fromFileName(fileName);
+                selectedSource = Source.newBuilder(new File(fileName)).build();
             } catch (IOException e1) {
                 selectedSource = null;
             }
@@ -454,7 +455,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
                 final String locationFileName = frame.locationFilePath();
                 if (locationFileName != null) {
                     try {
-                        whereSource = Source.fromFileName(locationFileName);
+                        whereSource = Source.newBuilder(new File(locationFileName)).build();
                     } catch (IOException e) {
                     }
                 }

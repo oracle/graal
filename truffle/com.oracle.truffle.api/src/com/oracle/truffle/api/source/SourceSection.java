@@ -248,7 +248,7 @@ public final class SourceSection {
         if (source == null) {
             return kind + ": " + identifier;
         }
-        return String.format("%s:%d", source.getShortName(), startLine);
+        return String.format("%s:%d", source.getName(), startLine);
     }
 
     /**
@@ -265,7 +265,7 @@ public final class SourceSection {
             return kind + ": " + identifier;
         } else {
 
-            return "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
+            return "source=" + source.getName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
                             (identifier != null ? " identifier=" + identifier : "") + " code=" + getCode().replaceAll("\\n", "\\\\n");
         }
     }
