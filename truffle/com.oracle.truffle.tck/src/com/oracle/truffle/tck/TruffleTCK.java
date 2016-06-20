@@ -1577,6 +1577,7 @@ public abstract class TruffleTCK {
         assertTrue("Pause requested", timeOutExecution.pauseRequested);
         assertTrue("Pause performed successfully", timeOutExecution.pauseResult);
         assertNotNull("Execution ended with throwable", caught);
+        assertEquals("It is our kill exception", "com.oracle.truffle.api.debug.KillException", caught.getClass().getName());
         assertTrue("Last number bigger than requested", index <= obj.lastParameter);
         timeOutExecutionThread.join(5000);
     }
