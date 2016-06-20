@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -43,12 +45,14 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.tck.Schema.Type;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
@@ -447,6 +451,33 @@ public abstract class TruffleTCK {
      */
     protected String valuesObject() {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
+    }
+
+    /**
+     * Create a <code>while-loop</code> execution in your language. Create a function that takes one
+     * parameter - another function and then repeatly counts from zero to infinity calling the
+     * provided function with a single argument - the value of the counter: 0, 1, 2, 3, etc. The
+     * execution is stopped while the value returned from the provided function isn't
+     * <code>true</code>. The code in JavaScript would look like:
+     * 
+     * <pre>
+     * function countUpWhile(fn) {
+     *   var counter = 0;
+     *   for (;;) {
+     *     if (!fn(counter)) {
+     *       break;
+     *     }
+     *     counter++;
+     *   }
+     * }
+     * </pre>
+     * 
+     * 
+     * @return the name of the function that implements the <code>while-loop</code> execution
+     * @since 0.15
+     */
+    protected String countUpWhile() {
+        throw new UnsupportedOperationException("countUpWhile() method not implemented");
     }
 
     /**
@@ -1485,6 +1516,69 @@ public abstract class TruffleTCK {
         assertNotNull("Non-null value expected at index " + index, valueAtIndex);
         assertNotNull("Non-null value expected at index " + (index + 1), valueAfterIndex);
         assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
+    }
+
+    /**
+     * Tests whether execution can be suspended in debugger.
+     * 
+     * @since 0.15
+     */
+    @Test
+    public void timeOutTest() throws Exception {
+        class TimeOutOfExecution extends EventConsumer<SuspendedEvent> implements Runnable {
+            final CountDownLatch pause = new CountDownLatch(1);
+            Debugger debugger;
+            boolean pauseRequested;
+            boolean pauseResult;
+
+            TimeOutOfExecution(Class<SuspendedEvent> eventType) {
+                super(eventType);
+            }
+
+            @Override
+            public void run() {
+                // wait a while before doing kill
+                try {
+                    pause.await();
+                } catch (InterruptedException ex) {
+                    throw new IllegalStateException(ex);
+                }
+                pauseRequested = true;
+                // request pause to generate SuspendedEvent
+                pauseResult = debugger.pause();
+            }
+
+            @Override
+            protected void on(SuspendedEvent event) {
+                // when execution stops either debug or kill it:
+                event.prepareKill();
+            }
+        }
+        final TimeOutOfExecution timeOutExecution = new TimeOutOfExecution(SuspendedEvent.class);
+        Thread timeOutExecutionThread = new Thread(timeOutExecution, "Time out execution");
+        timeOutExecutionThread.start();
+
+        Builder builder = PolyglotEngine.newBuilder().onEvent(timeOutExecution);
+        PolyglotEngine vm = prepareVM(builder);
+        timeOutExecution.debugger = Debugger.find(vm);
+
+        PolyglotEngine.Value counting = vm.findGlobalSymbol(countUpWhile());
+
+        int index = RANDOM.nextInt(50) + 50;
+        CountAndKill obj = new CountAndKill(index, timeOutExecution.pause);
+
+        Throwable caught = null;
+        try {
+            counting.execute(obj);
+        } catch (Throwable t) {
+            caught = t;
+        }
+        assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
+        assertTrue("Pause requested", timeOutExecution.pauseRequested);
+        assertTrue("Pause performed successfully", timeOutExecution.pauseResult);
+        assertNotNull("Execution ended with throwable", caught);
+        assertTrue("Last number bigger than requested", index <= obj.lastParameter);
+        timeOutExecutionThread.join(5000);
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
