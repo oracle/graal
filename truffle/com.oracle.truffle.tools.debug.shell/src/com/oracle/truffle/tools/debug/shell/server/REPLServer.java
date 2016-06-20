@@ -376,13 +376,23 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber);
-                    final Object result = event.eval(code, frame);
+                    FrameInstance frameInstance = frameNumber == 0 ? null : event.getStack().get(frameNumber);
+                    final Object result = event.eval(code, frameInstance);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
                     event.prepareContinue();
                 }
             }
+        }
+
+        public String displayValue(Integer frameNumber, Object value, int trim) {
+            if (frameNumber == null) {
+                throw new IllegalStateException("displayValue in halted context requires a frame number");
+            }
+            if (value == null) {
+                return "<empty>";
+            }
+            return trim(event.toString(value, event.getStack().get(frameNumber)), trim);
         }
 
         /**
@@ -768,29 +778,6 @@ public final class REPLServer {
         String displayIdentifier(FrameSlot slot) {
             return slot.getIdentifier().toString();
         }
-
-        /**
-         * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first
-         * line of test. Identity if {@code trim <= 0}.
-         */
-        protected String trim(String text, int trim) {
-            if (trim == 0) {
-                return text;
-            }
-            final String[] lines = text.split("\n");
-            String result = lines[0];
-            if (lines.length == 1) {
-                if (result.length() <= trim) {
-                    return result;
-                }
-                if (trim <= 3) {
-                    return result.substring(0, Math.min(result.length() - 1, trim - 1));
-                } else {
-                    return result.substring(0, trim - 4) + "...";
-                }
-            }
-            return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
-        }
     }
 
     private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
@@ -819,5 +806,28 @@ public final class REPLServer {
             }
             return "";
         }
+    }
+
+    /**
+     * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first line
+     * of test. Identity if {@code trim <= 0}.
+     */
+    protected static String trim(String text, int trim) {
+        if (trim == 0) {
+            return text;
+        }
+        final String[] lines = text.split("\n");
+        String result = lines[0];
+        if (lines.length == 1) {
+            if (result.length() <= trim) {
+                return result;
+            }
+            if (trim <= 3) {
+                return result.substring(0, Math.min(result.length() - 1, trim - 1));
+            } else {
+                return result.substring(0, trim - 4) + "...";
+            }
+        }
+        return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
     }
 }

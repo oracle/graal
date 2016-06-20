@@ -403,12 +403,11 @@ public abstract class REPLHandler {
             reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DEBUG_LEVEL, Integer.toString(serverContext.getLevel()));
 
             final String source = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE);
-            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
             final Integer frameNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER);
             final boolean stepInto = com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE.equals(request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO));
             try {
                 Object returnValue = serverContext.eval(source, frameNumber, stepInto);
-                return finishReplySucceeded(reply, visualizer.displayValue(returnValue, 0));
+                return finishReplySucceeded(reply, serverContext.displayValue(frameNumber, returnValue, 0));
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex);
             }
@@ -481,7 +480,7 @@ public abstract class REPLHandler {
                 final com.oracle.truffle.tools.debug.shell.REPLMessage slotMessage = createFrameInfoMessage(replServer, frameNumber, node);
                 slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_INDEX, Integer.toString(slot.getIndex()));
                 slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_ID, visualizer.displayIdentifier(slot));
-                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_VALUE, visualizer.displayValue(frame.getValue(slot), 0));
+                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_VALUE, currentContext.displayValue(frameNumber, frame.getValue(slot), 0));
                 slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
                 replies.add(slotMessage);
             }

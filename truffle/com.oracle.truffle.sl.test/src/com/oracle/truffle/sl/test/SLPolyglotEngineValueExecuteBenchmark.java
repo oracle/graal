@@ -67,7 +67,6 @@ public class SLPolyglotEngineValueExecuteBenchmark {
     private PolyglotEngine.Value plus;
     private SLFunction slFunction;
 
-    @SuppressWarnings("deprecation")
     @Setup
     public void prepare() throws IOException {
         vm = PolyglotEngine.newBuilder().build();

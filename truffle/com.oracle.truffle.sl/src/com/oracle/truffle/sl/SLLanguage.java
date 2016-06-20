@@ -61,6 +61,7 @@ import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 @TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
@@ -144,6 +145,17 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
         throw new IllegalStateException("evalInContext not supported in SL");
+    }
+
+    @Override
+    protected String toString(SLContext context, Object value) {
+        if (value == SLNull.SINGLETON) {
+            return "NULL";
+        }
+        if (value instanceof Long) {
+            return Long.toString((Long) value);
+        }
+        return super.toString(context, value);
     }
 
     public SLContext findContext() {

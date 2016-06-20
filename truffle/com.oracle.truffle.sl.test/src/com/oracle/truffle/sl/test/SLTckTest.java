@@ -62,7 +62,6 @@ public class SLTckTest extends TruffleTCK {
         vm.dispose();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     protected PolyglotEngine prepareVM(PolyglotEngine.Builder builder) throws Exception {
         PolyglotEngine vm = builder.build();
