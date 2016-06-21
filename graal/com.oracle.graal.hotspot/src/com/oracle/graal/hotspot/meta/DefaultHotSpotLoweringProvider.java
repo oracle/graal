@@ -368,7 +368,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                  */
                 return;
             }
-            if (method.getDeclaringClass().getName().equals("java.lang.Math") && method.getName().equals(math.getOperation().name().toLowerCase())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
                 /*
                  * A root compilation of the intrinsic method should emit the full assembly
                  * implementation.

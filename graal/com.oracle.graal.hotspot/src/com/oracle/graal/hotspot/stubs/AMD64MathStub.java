@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 
 /**
- * Stub called to support java.lang.Math.
+ * Stub called to support {@link Math}.
  */
 public class AMD64MathStub extends SnippetStub {
 
