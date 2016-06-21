@@ -147,8 +147,7 @@ public interface TruffleRuntime {
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
-     * {@link CallTarget}s. Iteration starts at the caller frame, i.e., it does not include the
-     * current frame.
+     * {@link CallTarget}s. Iteration starts at the current frame.
      *
      * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that

@@ -51,6 +51,7 @@ over the set of engines that share the code.
 * The Instrumentation Framework has been revised and has new APIs that are integrated into the PolyglotEngine.
 * Instrumentation support required of language implementations is specified as abstract methods on TruffleLanguage.
 * Clients access instrumentation services via an instance of Instrumenter, provided by the Polyglot framework.
+* `TruffleRuntime#iterateFrames` now starts at the current frame.
 
 ## Version 0.11
 28-Jan-2016
