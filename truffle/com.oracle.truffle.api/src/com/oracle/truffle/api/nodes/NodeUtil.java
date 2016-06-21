@@ -353,7 +353,8 @@ public final class NodeUtil {
                 }
             }
         }
-        return false;
+        // if a child was not found the replacement can be considered safe.
+        return true;
     }
 
     /**

@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
@@ -70,13 +71,13 @@ public final class ProbeNode extends Node {
     private final InstrumentationHandler handler;
     private final EventContext context;
 
-    @Child private ProbeNode.EventChainNode chain;
+    @Child private volatile ProbeNode.EventChainNode chain;
 
     /*
      * We cache to ensure that the instrumented tags and source sections are always compilation
      * final for listeners and factories.
      */
-    @CompilationFinal private Assumption version;
+    @CompilationFinal private volatile Assumption version;
 
     /** Instantiated by the instrumentation framework. */
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
@@ -91,8 +92,9 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onEnter(VirtualFrame frame) {
-        if (lazyUpdate(frame)) {
-            chain.onEnter(context, frame);
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            localChain.onEnter(context, frame);
         }
     }
 
@@ -104,8 +106,9 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
-        if (lazyUpdate(frame)) {
-            chain.onReturnValue(context, frame, result);
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            localChain.onReturnValue(context, frame, result);
         }
     }
 
@@ -120,8 +123,9 @@ public final class ProbeNode extends Node {
         if (exception instanceof ThreadDeath) {
             throw (ThreadDeath) exception;
         }
-        if (lazyUpdate(frame)) {
-            chain.onReturnExceptional(context, frame, exception);
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            localChain.onReturnExceptional(context, frame, exception);
         }
     }
 
@@ -141,38 +145,44 @@ public final class ProbeNode extends Node {
         return (WrapperNode) parent;
     }
 
-    void invalidate() {
-        if (version != null) {
-            version.invalidate();
-        } else {
-            assert chain == null;
+    synchronized void invalidate() {
+        Assumption localVersion = this.version;
+        if (localVersion != null) {
+            localVersion.invalidate();
         }
     }
 
-    private boolean lazyUpdate(VirtualFrame frame) {
-        if (version == null || !version.isValid()) {
+    private EventChainNode lazyUpdate(VirtualFrame frame) {
+        Assumption localVersion = this.version;
+        if (localVersion == null || !localVersion.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // Ok to pass in the virtual frame as its instances are always materialized
             return lazyUpdatedImpl(frame);
         }
-        return true;
+        return this.chain;
     }
 
-    private boolean lazyUpdatedImpl(VirtualFrame frame) {
-        Node nextChain = handler.installBindings(ProbeNode.this);
+    private EventChainNode lazyUpdatedImpl(VirtualFrame frame) {
+        EventChainNode nextChain = handler.createBindings(ProbeNode.this);
         if (nextChain == null) {
             // chain is null -> remove wrapper;
             // Note: never set child nodes to null, can cause races
             InstrumentationHandler.removeWrapper(ProbeNode.this);
-            return false;
+            return null;
         }
-        EventChainNode oldChain = this.chain;
+
+        EventChainNode oldChain;
+        synchronized (this) {
+            oldChain = this.chain;
+            this.chain = insert(nextChain);
+            this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+        }
+
         if (oldChain != null) {
             oldChain.onDispose(context, frame);
         }
-        this.chain = (EventChainNode) insert(nextChain);
-        this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
-        return true;
+
+        return nextChain;
     }
 
     ProbeNode.EventChainNode createEventChainCallback(EventBinding<?> binding) {
@@ -219,6 +229,7 @@ public final class ProbeNode extends Node {
      * Handles exceptions from non-language instrumentation code that must not be allowed to alter
      * guest language execution semantics. Normal response is to log and continue.
      */
+    @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
         if (t instanceof ThreadDeath) {
@@ -281,7 +292,6 @@ public final class ProbeNode extends Node {
                 if (binding.isLanguageBinding()) {
                     throw t;
                 } else {
-                    CompilerDirectives.transferToInterpreter();
                     exceptionEventForClientInstrument(binding, "onEnter", t);
                 }
             }

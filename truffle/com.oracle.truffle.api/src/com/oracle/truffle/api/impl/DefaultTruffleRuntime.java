@@ -79,6 +79,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public RootCallTarget createCallTarget(RootNode rootNode) {
         DefaultCallTarget target = new DefaultCallTarget(rootNode);
         rootNode.setCallTarget(target);
+        getTvmci().onLoad(target);
         callTargets.put(target, null);
         return target;
     }
@@ -146,6 +147,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Collection<RootCallTarget> getCallTargets() {
         return Collections.unmodifiableSet(callTargets.keySet());

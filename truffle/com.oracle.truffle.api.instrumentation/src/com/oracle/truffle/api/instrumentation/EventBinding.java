@@ -31,6 +31,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractIns
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -55,22 +56,16 @@ public final class EventBinding<T> {
     private final AbstractInstrumenter instrumenter;
     private final SourceSectionFilter filter;
     private final T element;
+    private final boolean isExecutionEvent;
 
     /* language bindings needs special treatment. */
-    private boolean disposed;
+    private volatile boolean disposed;
 
-    EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element) {
+    EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element, boolean isExecutionEvent) {
         this.instrumenter = instrumenter;
         this.filter = query;
         this.element = element;
-    }
-
-    boolean isLanguageBinding() {
-        return instrumenter instanceof LanguageClientInstrumenter;
-    }
-
-    AbstractInstrumenter getInstrumenter() {
-        return instrumenter;
+        this.isExecutionEvent = isExecutionEvent;
     }
 
     /**
@@ -108,13 +103,12 @@ public final class EventBinding<T> {
      *
      * @since 0.12
      */
-    public void dispose() throws IllegalStateException {
+    public synchronized void dispose() throws IllegalStateException {
         CompilerAsserts.neverPartOfCompilation();
-        if (disposed) {
-            throw new IllegalStateException("Bindings can only be disposed once");
+        if (!disposed) {
+            instrumenter.disposeBinding(this);
+            disposed = true;
         }
-        instrumenter.disposeBinding(this);
-        this.disposed = true;
     }
 
     boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
@@ -133,6 +127,26 @@ public final class EventBinding<T> {
 
     boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
         return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+    }
+
+    boolean isInstrumentedSource(Source source) {
+        return getFilter().isInstrumentedSource(source);
+    }
+
+    boolean isExecutionEvent() {
+        return isExecutionEvent;
+    }
+
+    boolean isLanguageBinding() {
+        return instrumenter instanceof LanguageClientInstrumenter;
+    }
+
+    AbstractInstrumenter getInstrumenter() {
+        return instrumenter;
+    }
+
+    synchronized void disposeBulk() {
+        disposed = true;
     }
 
 }

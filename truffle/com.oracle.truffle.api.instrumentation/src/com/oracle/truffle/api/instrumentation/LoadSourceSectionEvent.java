@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
-final class DefaultTVMCI extends TVMCI {
+/**
+ * Represents a source section load event from a {@link LoadSourceSectionEventListener}.
+ *
+ * Instances of {@link LoadSourceSectionEvent} should be neither stored, cached nor hashed. The
+ * equality and hashing behavior is undefined.
+ *
+ * @see LoadSourceSectionEventListener
+ * @since 0.15
+ */
+public final class LoadSourceSectionEvent {
 
-    @Override
-    protected void onLoopCount(Node source, int count) {
-        // do nothing
+    private final SourceSection sourceSection;
+    private final Node node;
+
+    LoadSourceSectionEvent(SourceSection sourceSection, Node node) {
+        this.sourceSection = sourceSection;
+        this.node = node;
     }
 
-    @SuppressWarnings("rawtypes")
-    Class<? extends TruffleLanguage> findLanguage(RootNode root) {
-        return super.findLanguageClass(root);
+    /**
+     * Returns the loaded source section that caused this event.
+     *
+     * @since 0.15
+     */
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
-    void onFirstExecution(DefaultCallTarget callTarget) {
-        super.onFirstExecution(callTarget.getRootNode());
-    }
-
-    void onLoad(DefaultCallTarget callTarget) {
-        super.onLoad(callTarget.getRootNode());
+    /**
+     * Returns the instrumentable Truffle node that caused this event.
+     *
+     * @since 0.15
+     */
+    public Node getNode() {
+        return node;
     }
 
 }
