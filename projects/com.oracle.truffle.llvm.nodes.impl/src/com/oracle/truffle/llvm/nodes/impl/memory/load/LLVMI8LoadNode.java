@@ -31,14 +31,36 @@ package com.oracle.truffle.llvm.nodes.impl.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 @NodeChild(type = LLVMAddressNode.class)
 public abstract class LLVMI8LoadNode extends LLVMI8Node {
+    @Child protected Node foreignRead = Message.READ.createNode();
+    @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
+    protected static final Class<?> type = byte.class;
+
+    protected byte doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+        try {
+            int index = (int) (addr.getOffset());
+            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
+            return (byte) toLLVM.convert(frame, value, type);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     public abstract static class LLVMI8DirectLoadNode extends LLVMI8LoadNode {
 
@@ -46,6 +68,17 @@ public abstract class LLVMI8LoadNode extends LLVMI8Node {
         public byte executeI8(LLVMAddress addr) {
             return LLVMMemory.getI8(addr);
         }
+
+        @Specialization
+        public byte executeI8(VirtualFrame frame, LLVMTruffleObject addr) {
+            return doForeignAccess(frame, addr);
+        }
+
+        @Specialization
+        public byte executeI8(VirtualFrame frame, TruffleObject addr) {
+            return executeI8(frame, new LLVMTruffleObject(addr));
+        }
+
     }
 
     public abstract static class LLVMI8ProfilingLoadNode extends LLVMI8LoadNode {
@@ -58,6 +91,15 @@ public abstract class LLVMI8LoadNode extends LLVMI8Node {
             return profile.profile(val);
         }
 
+        @Specialization
+        public byte executeI8(VirtualFrame frame, LLVMTruffleObject addr) {
+            return doForeignAccess(frame, addr);
+        }
+
+        @Specialization
+        public byte executeI8(VirtualFrame frame, TruffleObject addr) {
+            return executeI8(frame, new LLVMTruffleObject(addr));
+        }
     }
 
 }

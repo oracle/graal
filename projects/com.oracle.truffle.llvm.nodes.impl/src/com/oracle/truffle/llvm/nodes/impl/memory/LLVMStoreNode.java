@@ -101,6 +101,15 @@ public abstract class LLVMStoreNode extends LLVMNode {
             LLVMMemory.putI8(address, value);
         }
 
+        @Specialization
+        public void execute(VirtualFrame frame, LLVMTruffleObject address, byte value) {
+            doForeignAccess(frame, address, 1, value);
+        }
+
+        @Specialization
+        public void execute(VirtualFrame frame, TruffleObject address, byte value) {
+            execute(frame, new LLVMTruffleObject(address), value);
+        }
     }
 
     @NodeChild(type = LLVMI16Node.class, value = "valueNode")
