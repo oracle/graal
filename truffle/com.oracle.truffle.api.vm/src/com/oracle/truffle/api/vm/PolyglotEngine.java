@@ -1331,6 +1331,13 @@ public class PolyglotEngine {
             public <C> FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
                 return new FindContextNodeImpl<>(lang);
             }
+
+            @Override
+            public void registerDebugger(Object vm, Object debugger) {
+                PolyglotEngine engine = (PolyglotEngine) vm;
+                assert engine.debugger()[0] == null || engine.debugger()[0] == debugger;
+                engine.debugger()[0] = debugger;
+            }
         }
 
     } // end of SPIAccessor

@@ -91,6 +91,8 @@ public abstract class Accessor {
         public abstract void dispatchEvent(Object vm, Object event, int type);
 
         public abstract boolean isMimeTypeSupported(Object vm, String mimeType);
+
+        public abstract void registerDebugger(Object vm, Object debugger);
     }
 
     public abstract static class LanguageSupport {

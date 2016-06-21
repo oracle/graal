@@ -132,7 +132,9 @@ public final class Debugger {
     private static final DebuggerInstrument.Factory FACTORY = new DebuggerInstrument.Factory() {
         @Override
         public Debugger create(PolyglotEngine engine, Instrumenter instrumenter) {
-            return new Debugger(engine, instrumenter);
+            Debugger newDebugger = new Debugger(engine, instrumenter);
+            AccessorDebug.engineAccess().registerDebugger(engine, newDebugger);
+            return newDebugger;
         }
     };
 

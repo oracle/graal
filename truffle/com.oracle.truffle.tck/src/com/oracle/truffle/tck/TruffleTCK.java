@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,9 +47,11 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.tck.Schema.Type;
+import com.oracle.truffle.tck.TckSnippets.ExecWithTimeOut;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -447,6 +449,33 @@ public abstract class TruffleTCK {
      */
     protected String valuesObject() {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
+    }
+
+    /**
+     * Create a <code>while-loop</code> execution in your language. Create a function that takes one
+     * parameter - another function and then repeatly counts from zero to infinity calling the
+     * provided function with a single argument - the value of the counter: 0, 1, 2, 3, etc. The
+     * execution is stopped while the value returned from the provided function isn't
+     * <code>true</code>. The code in JavaScript would look like:
+     * 
+     * <pre>
+     * function countUpWhile(fn) {
+     *   var counter = 0;
+     *   for (;;) {
+     *     if (!fn(counter)) {
+     *       break;
+     *     }
+     *     counter++;
+     *   }
+     * }
+     * </pre>
+     * 
+     * 
+     * @return the name of the function that implements the <code>while-loop</code> execution
+     * @since 0.15
+     */
+    protected String countUpWhile() {
+        throw new UnsupportedOperationException("countUpWhile() method not implemented");
     }
 
     /**
@@ -1485,6 +1514,30 @@ public abstract class TruffleTCK {
         assertNotNull("Non-null value expected at index " + index, valueAtIndex);
         assertNotNull("Non-null value expected at index " + (index + 1), valueAfterIndex);
         assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
+    }
+
+    /**
+     * Tests whether execution can be suspended in debugger.
+     * 
+     * @since 0.15
+     */
+    @Test
+    public void timeOutTest() throws Exception {
+        final ExecWithTimeOut timeOutExecution = new TckSnippets().new ExecWithTimeOut();
+        ScheduledExecutorService executor = new MockExecutorService();
+
+        Builder builder = PolyglotEngine.newBuilder().onEvent(timeOutExecution);
+        timeOutExecution.engine = prepareVM(builder);
+        timeOutExecution.getDebugger(); // pre-initialize foundDebugger
+        PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
+
+        int index = RANDOM.nextInt(50) + 50;
+        CountAndKill obj = new CountAndKill(index, executor);
+
+        timeOutExecution.executeWithTimeOut(executor, counting, obj);
+        assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
+        assertTrue("Last number bigger than requested", index <= obj.lastParameter);
+        assertTrue("All tasks processed", executor.isShutdown());
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {

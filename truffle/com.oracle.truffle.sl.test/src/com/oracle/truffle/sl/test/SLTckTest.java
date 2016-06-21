@@ -100,6 +100,12 @@ public class SLTckTest extends TruffleTCK {
                     "  obj.returnsThis = obj;\n" +
                     "  return obj;\n" +
                     "}\n" +
+                    "function whileLoop(fn) {\n" +
+                    "  cnt = 0;\n" +
+                    "  while (fn(cnt)) {\n" +
+                    "    cnt = cnt + 1;\n" +
+                    "  }\n" +
+                    "}\n" +
                     "function valuesObject() {\n" +
                     "  obj = new();\n" +
                     "  obj.byteValue = 0;\n" +
@@ -220,6 +226,11 @@ public class SLTckTest extends TruffleTCK {
     protected String addToArray() {
         // skip these tests; SL doesn't have arrays
         return null;
+    }
+
+    @Override
+    protected String countUpWhile() {
+        return "whileLoop";
     }
 
     @Override
