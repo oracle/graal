@@ -92,6 +92,19 @@ bench-specjbb2015-x52: ${commonLinux} ${bench-specjbb2015} ${x52.default} {
   ]
 }
 
+# JMH micros graal
+
+bench-micros-graal-x52: ${bench-common-8} ${x52.default} {
+  capabilities: [linux, x52, weekly]
+  name: "bench-jmh-micros-graal-x52"
+  run: [
+    ${bench-jvmci.mx-micros-graal} [
+      "--machine-name", "x52", "--",
+      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+    ]
+  ]
+}
+
 # Build targets
 
 builds += [
@@ -102,4 +115,5 @@ builds += [
   ${bench-specjbb2015-x52}
   ${bench-dacapo-timing-x52}
   ${bench-scala-dacapo-timing-x52}
+  ${bench-micros-graal-x52}
 ]
