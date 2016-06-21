@@ -128,7 +128,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNull;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
@@ -137,6 +137,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.impl.LLVMLifeTimeAnalysisVisitor.LifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter.DataSpecConverter;
@@ -479,7 +480,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         isGlobalScope = false;
         frameDescriptor = new FrameDescriptor();
         isGlobalScope = false;
-        retSlot = frameDescriptor.addFrameSlot(FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+        if (!resolve(def.getHeader().getRettype()).isVoid()) {
+            retSlot = frameDescriptor.addFrameSlot(FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+        }
         stackPointerSlot = frameDescriptor.addFrameSlot(STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
         functionEpilogue = new ArrayList<>();
         LLVMAttributeVisitor.visitFunctionHeader(def.getHeader());
@@ -510,14 +513,25 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             currentIndex++;
             allFunctionNodes.add(statementNodes);
         }
-        LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[currentIndex][];
-        i = 0;
+
+        Map<BasicBlock, FrameSlot[]> deadSlotsAtBeginBlock;
         Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
         if (LLVMBaseOptionFacade.lifeTimeAnalysisEnabled()) {
-            deadSlotsAfterBlock = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
+            LifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
+            deadSlotsAtBeginBlock = analysisResult.getBeginDead();
+            deadSlotsAfterBlock = analysisResult.getEndDead();
         } else {
             deadSlotsAfterBlock = new HashMap<>();
+            deadSlotsAtBeginBlock = new HashMap<>();
         }
+        LLVMStackFrameNuller[][] slotNullerBeginNodes = getSlotNuller(def, currentIndex, basicBlockIndices, deadSlotsAtBeginBlock);
+        LLVMStackFrameNuller[][] slotNullerAfterNodes = getSlotNuller(def, currentIndex, basicBlockIndices, deadSlotsAfterBlock);
+        return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, slotNullerBeginNodes, slotNullerAfterNodes);
+    }
+
+    private static LLVMStackFrameNuller[][] getSlotNuller(FunctionDef def, int size, int[] basicBlockIndices, Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock) {
+        LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[size][];
+        int i = 0;
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
             FrameSlot[] deadSlots = deadSlotsAfterBlock.get(basicBlock);
             if (deadSlots != null) {
@@ -525,7 +539,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 indexToSlotNuller[basicBlockIndices[i++]] = getSlotNullerNode(deadSlots);
             }
         }
-        return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, indexToSlotNuller);
+        return indexToSlotNuller;
     }
 
     private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
@@ -554,7 +568,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             case Float:
                 return new LLVMFloatNuller(slot);
             case Double:
-                return new LLVMDoubleNull(slot);
+                return new LLVMDoubleNuller(slot);
             case Object:
                 return new LLVMObjectNuller(slot);
             case Illegal:

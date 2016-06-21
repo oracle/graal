@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNull;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
@@ -170,7 +170,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
                     nodes[i++] = new LLVMFloatNuller(slot);
                     break;
                 case Double:
-                    nodes[i++] = new LLVMDoubleNull(slot);
+                    nodes[i++] = new LLVMDoubleNuller(slot);
                     break;
                 case Object:
                     nodes[i++] = new LLVMObjectNuller(slot);

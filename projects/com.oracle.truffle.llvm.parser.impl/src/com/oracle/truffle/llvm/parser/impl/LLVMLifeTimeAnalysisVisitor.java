@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.impl;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.EList;
@@ -51,14 +53,19 @@ import com.intel.llvm.ireditor.lLVM_IR.Instruction_unreachable;
 import com.intel.llvm.ireditor.lLVM_IR.MiddleInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.NamedMiddleInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.NamedTerminatorInstruction;
+import com.intel.llvm.ireditor.lLVM_IR.StartingInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.TerminatorInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
+import com.intel.llvm.ireditor.lLVM_IR.impl.LocalValueRefImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
- * This class determines which variables are dead after each basic block.
+ * This class determines which variables are dead after each basic block. It applies an iterative
+ * data-flow analysis to determine the lifetimes.
+ *
  */
 public final class LLVMLifeTimeAnalysisVisitor {
 
@@ -67,22 +74,265 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     private final FrameDescriptor frameDescriptor;
     private final EList<BasicBlock> basicBlocks;
-    private final BasicBlock entryBlock;
-    private final Map<BasicBlock, List<FrameSlot>> writtenFrameSlotsPerBlock;
+    private final Map<BasicBlock, List<Phi>> phiRefs;
 
     private LLVMLifeTimeAnalysisVisitor(FunctionDef function, FrameDescriptor frameDescriptor) {
         this.frameDescriptor = frameDescriptor;
         basicBlocks = function.getBasicBlocks();
-        entryBlock = basicBlocks.get(0);
-        writtenFrameSlotsPerBlock = getWrittenFrameSlotsPerBlock(basicBlocks);
+        phiRefs = LLVMPhiVisitor.visit(function);
     }
 
-    public static Map<BasicBlock, FrameSlot[]> visit(FunctionDef function, FrameDescriptor frameDescriptor) {
-        Map<BasicBlock, FrameSlot[]> mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
+    public static class LifeTimeAnalysisResult {
+
+        public LifeTimeAnalysisResult(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
+            this.beginDead = beginDead;
+            this.endDead = endDead;
+        }
+
+        public Map<BasicBlock, FrameSlot[]> getBeginDead() {
+            return beginDead;
+        }
+
+        public Map<BasicBlock, FrameSlot[]> getEndDead() {
+            return endDead;
+        }
+
+        private final Map<BasicBlock, FrameSlot[]> beginDead;
+        private final Map<BasicBlock, FrameSlot[]> endDead;
+
+    }
+
+    public static LifeTimeAnalysisResult visit(FunctionDef function, FrameDescriptor frameDescriptor) {
+        LifeTimeAnalysisResult mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
         if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
-            printAnalysisResults(function, mapping);
+            printAnalysisResults(function, mapping.getEndDead());
         }
         return mapping;
+    }
+
+    /**
+     * The variable definitions per instruction (the last instruction can have several.
+     */
+    private final Map<Instruction, Set<FrameSlot>> defs = new HashMap<>();
+    /**
+     * The (transitive) inputs of each instruction.
+     */
+    private final Map<Instruction, Set<FrameSlot>> in = new HashMap<>();
+    /**
+     * The (transitive) outputs of each instruction.
+     */
+    private final Map<Instruction, Set<FrameSlot>> out = new HashMap<>();
+
+    /**
+     * Instruction visitor that skips phi nodes (StartingInstruction) since we replace phi nodes by
+     * writes at the basic blocks that the phi nodes reference.
+     */
+    static final class LLVMInstructionIterator implements Iterator<Instruction> {
+
+        private int cur;
+        private final EList<Instruction> instructions;
+
+        LLVMInstructionIterator(BasicBlock block) {
+            this.instructions = block.getInstructions();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return cur < instructions.size();
+        }
+
+        @Override
+        public Instruction next() {
+            Instruction nextInstr;
+            do {
+                nextInstr = instructions.get(cur++);
+            } while (nextInstr instanceof StartingInstruction);
+            return nextInstr;
+        }
+
+        public Instruction peek() {
+            Instruction peekInstr;
+            int i = cur;
+            do {
+                peekInstr = instructions.get(i++);
+            } while (peekInstr instanceof StartingInstruction);
+            return peekInstr;
+        }
+
+    }
+
+    private LifeTimeAnalysisResult visit() {
+        initializeInstructionReads();
+        initializeInstructionInOuts();
+        initializeVariableDefinitions();
+        findFixpoint();
+        getInstructionKills(bbEndKills);
+        Map<BasicBlock, FrameSlot[]> endKills = convertInstructionKillsToBasicBlockKills();
+        Map<BasicBlock, FrameSlot[]> beginKills = new HashMap<>();
+        for (BasicBlock block : basicBlocks) {
+            Set<FrameSlot> bbBegin = bbBeginKills.get(block);
+            beginKills.put(block, bbBegin.toArray(new FrameSlot[bbBegin.size()]));
+        }
+        return new LifeTimeAnalysisResult(beginKills, endKills);
+    }
+
+    private Map<Instruction, List<FrameSlot>> instructionReads = new HashMap<>();
+    private Map<TerminatorInstruction, List<BasicBlock>> successorBlocks = new HashMap<>();
+    private Map<Instruction, Set<FrameSlot>> bbEndKills;
+    private Map<BasicBlock, Set<FrameSlot>> bbBeginKills;
+
+    private void initializeInstructionReads() {
+        for (BasicBlock bb : basicBlocks) {
+            LLVMInstructionIterator it = new LLVMInstructionIterator(bb);
+            while (it.hasNext()) {
+                Instruction instr = it.next();
+                if (instr instanceof TerminatorInstruction) {
+                    successorBlocks.put((TerminatorInstruction) instr, getSuccessorBlocks((TerminatorInstruction) instr));
+                }
+                List<FrameSlot> currentInstructionReads = new LLVMReadVisitor().getReads(instr, frameDescriptor, false);
+                instructionReads.put(instr, currentInstructionReads);
+            }
+        }
+    }
+
+    private void initializeInstructionInOuts() {
+        bbEndKills = new HashMap<>();
+        bbBeginKills = new HashMap<>();
+        for (BasicBlock bb : basicBlocks) {
+            bbBeginKills.put(bb, new HashSet<>());
+            List<Phi> bbPhis = phiRefs.get(bb);
+            EList<Instruction> bbInstructions = bb.getInstructions();
+            for (Instruction instr : bbInstructions) {
+                bbEndKills.put(instr, new HashSet<>());
+            }
+            LLVMInstructionIterator it = new LLVMInstructionIterator(bb);
+            while (it.hasNext()) {
+                Instruction instr = it.next();
+                // in[n] = use[n]
+                // variables inside phi instructions do not have usages since they are actually
+                // written before
+                Set<FrameSlot> uses = new HashSet<>(instructionReads.get(instr));
+                // so we have to add the usage of the phi instructions were they are written (at the
+                // last instruction of a block)
+                if (!it.hasNext()) {
+                    for (Phi phi : bbPhis) {
+                        LocalValueRefImpl localVariablesInPhi = phi.getLocalVariablesInPhi(bb);
+                        if (localVariablesInPhi != null) {
+                            uses.add(frameDescriptor.findOrAddFrameSlot(localVariablesInPhi.getRef().getName()));
+                        }
+                    }
+                }
+                in.put(instr, uses);
+                out.put(instr, new HashSet<>());
+            }
+        }
+    }
+
+    private void initializeVariableDefinitions() {
+        // update def
+        for (BasicBlock bb : basicBlocks) {
+            LLVMInstructionIterator it = new LLVMInstructionIterator(bb);
+            while (it.hasNext()) {
+                Instruction instr = it.next();
+                Set<FrameSlot> instructionDefs = new HashSet<>();
+                if (instr instanceof MiddleInstruction) {
+                    if (((MiddleInstruction) instr).getInstruction() instanceof NamedMiddleInstruction) {
+                        NamedMiddleInstruction namedMiddleInstruction = (NamedMiddleInstruction) ((MiddleInstruction) instr).getInstruction();
+                        assert !(namedMiddleInstruction instanceof StartingInstruction) : "do not handle phis here!";
+                        FrameSlot defFrameSlot = frameDescriptor.findOrAddFrameSlot(namedMiddleInstruction.getName());
+                        instructionDefs.add(defFrameSlot);
+                    }
+                } else if (instr instanceof StartingInstruction) {
+                    StartingInstruction startInstr = (StartingInstruction) instr;
+                    instructionDefs.add(frameDescriptor.findOrAddFrameSlot(startInstr.getName()));
+                }
+                defs.put(instr, instructionDefs);
+            }
+        }
+    }
+
+    private Map<BasicBlock, FrameSlot[]> convertInstructionKillsToBasicBlockKills() {
+        Map<BasicBlock, FrameSlot[]> convertedMap = new HashMap<>();
+        for (BasicBlock bb : basicBlocks) {
+            List<FrameSlot> blockKills = new ArrayList<>();
+            LLVMInstructionIterator it = new LLVMInstructionIterator(bb);
+            while (it.hasNext()) {
+                blockKills.addAll(bbEndKills.get(it.next()));
+            }
+            convertedMap.put(bb, blockKills.toArray(new FrameSlot[blockKills.size()]));
+        }
+        return convertedMap;
+    }
+
+    private void getInstructionKills(Map<Instruction, Set<FrameSlot>> kills) {
+        for (BasicBlock bb : basicBlocks) {
+            LLVMInstructionIterator it = new LLVMInstructionIterator(bb);
+            while (it.hasNext()) {
+                Instruction instr = it.next();
+                Set<FrameSlot> inSlots = in.get(instr);
+                Set<FrameSlot> outSlots = out.get(instr);
+                Set<FrameSlot> instructionKills = new HashSet<>(inSlots);
+                instructionKills.removeAll(outSlots);
+                if (instr instanceof TerminatorInstruction) {
+                    for (BasicBlock bas : successorBlocks.get(instr)) {
+                        Instruction firstInstruction = new LLVMInstructionIterator(bas).next();
+                        Set<FrameSlot> deadAtBegin = new HashSet<>(out.get(instr));
+                        deadAtBegin.removeAll(in.get(firstInstruction));
+                        bbBeginKills.put(bas, deadAtBegin);
+                    }
+                    EObject instruction = ((TerminatorInstruction) instr).getInstruction();
+                    if (instruction instanceof Instruction_ret || instruction instanceof Instruction_unreachable) {
+                        kills.put(instr, new HashSet<>(frameDescriptor.getSlots()));
+                    }
+                }
+                kills.put(instr, instructionKills);
+            }
+        }
+    }
+
+    /**
+     * Applies an iterative data-flow analysis for analyzing the lifetimes.
+     */
+    private void findFixpoint() {
+        boolean changed;
+        List<BasicBlock> reversedBlocks = new ArrayList<>(basicBlocks);
+        Collections.reverse(reversedBlocks);
+        do {
+            changed = false;
+            for (BasicBlock block : reversedBlocks) {
+                LLVMInstructionIterator it = new LLVMInstructionIterator(block);
+                while (it.hasNext()) {
+                    Instruction instr = it.next();
+                    // update out
+                    if (instr instanceof TerminatorInstruction) {
+                        // non sequential successor
+                        // out[n] = in[n+1, n+2, ...]
+                        List<BasicBlock> nextInstructions = successorBlocks.get(instr);
+                        for (BasicBlock nextBlock : nextInstructions) {
+                            Instruction nextInstr = new LLVMInstructionIterator(nextBlock).next();
+                            Set<FrameSlot> nextIn = in.get(nextInstr);
+                            Set<FrameSlot> addTo = out.get(instr);
+                            changed |= addFrameSlots(addTo, nextIn);
+                        }
+                    } else {
+                        // out[n] = in[n + 1]
+                        Instruction nextInstr = it.peek();
+                        Set<FrameSlot> nextIn = in.get(nextInstr);
+                        Set<FrameSlot> addTo = out.get(instr);
+                        changed |= addFrameSlots(addTo, nextIn);
+                    }
+                    // update in
+                    Set<FrameSlot> outWithoutDefs = new HashSet<>(out.get(instr));
+                    List<FrameSlot> realDefs = new ArrayList<>(defs.get(instr));
+                    outWithoutDefs.removeAll(realDefs);
+                    changed |= addFrameSlots(in.get(instr), outWithoutDefs);
+                }
+            }
+        } while (changed);
+    }
+
+    private static boolean addFrameSlots(Set<FrameSlot> addTo, Set<FrameSlot> add) {
+        return addTo.addAll(add);
     }
 
     private static void printAnalysisResults(FunctionDef analyzedFunction, Map<BasicBlock, FrameSlot[]> mapping) {
@@ -103,133 +353,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
         }
     }
 
-    private Map<BasicBlock, FrameSlot[]> visit() {
-        Map<BasicBlock, FrameSlot[]> map = new HashMap<>();
-        for (BasicBlock block : basicBlocks) {
-            List<BasicBlock> transitiveSuccessors = getTransitiveSuccessors(block);
-            List<BasicBlock> successors = getSuccessors(block);
-            Deque<BasicBlock> currentQueue = new ArrayDeque<>();
-            currentQueue.push(block);
-            List<BasicBlock> processed = new ArrayList<>();
-            List<FrameSlot> frameSlots = new ArrayList<>();
-            List<FrameSlot> writtenFrameSlots = writtenFrameSlotsPerBlock.get(block);
-            if (!transitiveSuccessors.contains(block)) {
-                outer: for (FrameSlot slot : writtenFrameSlots) {
-                    for (BasicBlock successor : transitiveSuccessors) {
-                        if (successor != block && reads(successor, slot)) {
-                            continue outer;
-                        }
-                    }
-                    frameSlots.add(slot);
-                }
-            }
-            while (!currentQueue.isEmpty()) {
-                BasicBlock currentBlock = currentQueue.pop();
-                processed.add(currentBlock);
-                boolean dominatesASuccessor = false;
-                for (BasicBlock succ : successors) {
-                    if (dominates(currentBlock, succ)) {
-                        dominatesASuccessor = true;
-                    }
-                }
-                if (!dominatesASuccessor) {
-                    frameSlots.addAll(writtenFrameSlotsPerBlock.get(currentBlock));
-                    List<BasicBlock> predecessors = getPredecessors(currentBlock);
-                    for (BasicBlock pred : predecessors) {
-                        if (!processed.contains(pred)) {
-                            currentQueue.push(pred);
-                        }
-                    }
-                }
-            }
-            map.put(block, frameSlots.toArray(new FrameSlot[frameSlots.size()]));
-        }
-        return map;
-    }
-
-    private boolean reads(BasicBlock successor, FrameSlot slot) {
-        return new LLVMReadVisitor().getReads(successor, frameDescriptor).contains(slot);
-    }
-
-    private List<BasicBlock> getPredecessors(BasicBlock block) {
-        List<BasicBlock> blocks = new ArrayList<>();
-        for (BasicBlock cur : basicBlocks) {
-            if (getSuccessors(cur).contains(block)) {
-                blocks.add(cur);
-            }
-        }
-        return blocks;
-    }
-
-    private boolean dominates(BasicBlock dominator, BasicBlock n) {
-        if (dominator.equals(n)) {
-            return true;
-        }
-        List<BasicBlock> notDominatedBlocks = notDominatedBlocks(dominator);
-        boolean dominates = !notDominatedBlocks.contains(n);
-        return dominates;
-    }
-
-    private List<BasicBlock> notDominatedBlocks(BasicBlock dominator) {
-        List<BasicBlock> notDominatedBlocks = new ArrayList<>();
-        if (!dominator.equals(entryBlock)) {
-            notDominatedBlocks(dominator, entryBlock, notDominatedBlocks);
-        }
-        return notDominatedBlocks;
-    }
-
-    private void notDominatedBlocks(BasicBlock dominator, BasicBlock currentBlock, List<BasicBlock> notDominatedBlocks) {
-        List<BasicBlock> successors = getSuccessors(currentBlock);
-        for (BasicBlock d : successors) {
-            if (!notDominatedBlocks.contains(d) && !dominator.equals(d)) {
-                notDominatedBlocks.add(d);
-                notDominatedBlocks(dominator, d, notDominatedBlocks);
-            }
-        }
-    }
-
-    private Map<BasicBlock, List<BasicBlock>> succesors = new HashMap<>();
-
-    private List<BasicBlock> getSuccessors(BasicBlock block) {
-        if (succesors.containsKey(block)) {
-            return succesors.get(block);
-        } else {
-            List<BasicBlock> successors = new ArrayList<>();
-            EList<Instruction> instructions = block.getInstructions();
-            List<TerminatorInstruction> terminatorInstructions = instructions.stream().filter(i -> i instanceof TerminatorInstruction).map(i -> (TerminatorInstruction) i).collect(Collectors.toList());
-            for (TerminatorInstruction termInstr : terminatorInstructions) {
-                List<BasicBlock> successorBlocks = getSuccessors(termInstr);
-                successors.addAll(successorBlocks);
-            }
-            succesors.put(block, successors);
-            return successors;
-        }
-
-    }
-
-    private List<BasicBlock> getTransitiveSuccessors(BasicBlock block) {
-        List<BasicBlock> processed = new ArrayList<>();
-        List<BasicBlock> successors = new ArrayList<>();
-        Deque<BasicBlock> toProcess = new ArrayDeque<>();
-        toProcess.push(block);
-        while (!toProcess.isEmpty()) {
-            BasicBlock currentBlock = toProcess.pop();
-            processed.add(currentBlock);
-            List<BasicBlock> currentBlockSuccessors = getSuccessors(currentBlock);
-            for (BasicBlock currentBlockSuccessor : currentBlockSuccessors) {
-                if (!successors.contains(currentBlockSuccessor)) {
-                    successors.add(currentBlockSuccessor);
-                }
-                successors.add(currentBlockSuccessor);
-                if (!processed.contains(currentBlockSuccessor) && !toProcess.contains(currentBlockSuccessor)) {
-                    toProcess.add(currentBlockSuccessor);
-                }
-            }
-        }
-        return successors;
-    }
-
-    private static List<BasicBlock> getSuccessors(TerminatorInstruction termInstr) {
+    private static List<BasicBlock> getSuccessorBlocks(TerminatorInstruction termInstr) {
         List<BasicBlock> bbs = new ArrayList<>();
         EObject realTermInstr = termInstr.getInstruction();
         if (realTermInstr instanceof Instruction_br) {
@@ -260,49 +384,6 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     private static boolean hasBasicBlockSuccessor(EObject realTermInstr) {
         return realTermInstr instanceof Instruction_ret || realTermInstr instanceof Instruction_unreachable;
-    }
-
-    private Map<BasicBlock, List<FrameSlot>> getWrittenFrameSlotsPerBlock(EList<BasicBlock> bbs) {
-        Map<BasicBlock, List<FrameSlot>> writes = new HashMap<>();
-        for (BasicBlock bb : bbs) {
-            List<FrameSlot> slots = getWrittenVariables(bb);
-            writes.put(bb, slots);
-        }
-        return writes;
-    }
-
-    private List<FrameSlot> getWrittenVariables(BasicBlock block) {
-        List<FrameSlot> slots = new ArrayList<>();
-        for (Instruction instr : block.getInstructions()) {
-            FrameSlot slot = getWrites(instr);
-            if (slot != null) {
-                slots.add(slot);
-            }
-        }
-        return slots;
-    }
-
-    private FrameSlot getWrites(Instruction instr) {
-        if (instr instanceof MiddleInstruction) {
-            return getWrites((MiddleInstruction) instr);
-        } else {
-            return null;
-        }
-    }
-
-    private FrameSlot getWrites(MiddleInstruction instr) {
-        EObject realInstr = instr.getInstruction();
-        if (realInstr instanceof NamedMiddleInstruction) {
-            return getWrites((NamedMiddleInstruction) realInstr);
-        } else {
-            return null;
-        }
-    }
-
-    private FrameSlot getWrites(NamedMiddleInstruction namedMiddleInstr) {
-        String name = namedMiddleInstr.getName();
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
-        return frameSlot;
     }
 
 }

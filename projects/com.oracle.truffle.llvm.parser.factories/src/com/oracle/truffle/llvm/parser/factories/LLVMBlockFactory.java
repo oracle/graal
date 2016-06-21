@@ -43,8 +43,9 @@ public class LLVMBlockFactory {
         return new LLVMBasicBlockNode(statementNodes, terminatorNode, blockId);
     }
 
-    public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] indexToSlotNuller) {
-        return new LLVMBlockControlFlowNode(bbs, indexToSlotNuller, returnSlot);
+    public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
+                    LLVMStackFrameNuller[][] afterSlotNullerNodes) {
+        return new LLVMBlockControlFlowNode(bbs, beforeSlotNullerNodes, afterSlotNullerNodes, returnSlot);
     }
 
 }

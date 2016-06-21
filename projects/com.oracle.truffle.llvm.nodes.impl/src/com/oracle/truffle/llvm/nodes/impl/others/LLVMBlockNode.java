@@ -49,13 +49,15 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
     public static class LLVMBlockControlFlowNode extends LLVMBlockNode {
 
         @Children private final LLVMBasicBlockNode[] bodyNodes;
-        @CompilationFinal private final LLVMStackFrameNuller[][] indexToSlotNuller;
+        @CompilationFinal private final LLVMStackFrameNuller[][] beforeSlotNullerNodes;
+        @CompilationFinal private final LLVMStackFrameNuller[][] afterSlotNullerNodes;
         private final FrameSlot returnSlot;
         private final boolean injectBranchProbabilities = LLVMBaseOptionFacade.injectBranchProbabilities();
 
-        public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] indexToSlotNuller, FrameSlot returnSlot) {
+        public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes, LLVMStackFrameNuller[][] afterSlotNullerNodes, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
-            this.indexToSlotNuller = indexToSlotNuller;
+            this.beforeSlotNullerNodes = beforeSlotNullerNodes;
+            this.afterSlotNullerNodes = afterSlotNullerNodes;
             this.returnSlot = returnSlot;
         }
 
@@ -71,13 +73,9 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
                 }
                 CompilerAsserts.partialEvaluationConstant(bci);
                 LLVMBasicBlockNode bb = bodyNodes[bci];
+                nullDeadSlots(frame, bci, beforeSlotNullerNodes);
                 int successorSelection = bb.executeGetSuccessorIndex(frame);
-                LLVMStackFrameNuller[] stackNuller = indexToSlotNuller[bci];
-                if (stackNuller != null) {
-                    for (int j = 0; j < stackNuller.length; j++) {
-                        stackNuller[j].nullifySlot(frame);
-                    }
-                }
+                nullDeadSlots(frame, bci, afterSlotNullerNodes);
                 int[] successors = bb.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
                     if (injectBranchProbabilities) {
@@ -102,8 +100,23 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
                 throw new Error("No matching successor found");
             }
             LoopNode.reportLoopCount(this, loopCount);
-            return frame.getValue(returnSlot);
+            if (returnSlot == null) {
+                return null;
+            } else {
+                return frame.getValue(returnSlot);
+            }
         }
+
+        @ExplodeLoop
+        private static void nullDeadSlots(VirtualFrame frame, int bci, LLVMStackFrameNuller[][] nuller) {
+            LLVMStackFrameNuller[] afterStackNuller = nuller[bci];
+            if (afterStackNuller != null) {
+                for (int j = 0; j < afterStackNuller.length; j++) {
+                    afterStackNuller[j].nullifySlot(frame);
+                }
+            }
+        }
+
     }
 
     public static class LLVMBlockNoControlFlowNode extends LLVMBlockNode {

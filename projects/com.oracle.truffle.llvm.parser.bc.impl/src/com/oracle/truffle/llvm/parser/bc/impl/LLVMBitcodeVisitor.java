@@ -156,7 +156,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return LLVMBlockFactory.createFunctionBlock(
                         visitor.getReturnSlot(),
                         visitor.getBlocks(),
-                        visitor.getNullers());
+                        null, visitor.getNullers());
     }
 
     private static List<LLVMNode> createParameters(FrameDescriptor frame, List<FunctionParameter> parameters) {
