@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.amd64;
+package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
@@ -29,45 +29,47 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo
-public final class AMD64MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
+public final class UnaryMathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable, Lowerable {
 
-    public static final NodeClass<AMD64MathIntrinsicNode> TYPE = NodeClass.create(AMD64MathIntrinsicNode.class);
-    protected final Operation operation;
+    public static final NodeClass<UnaryMathIntrinsicNode> TYPE = NodeClass.create(UnaryMathIntrinsicNode.class);
+    protected final UnaryOperation operation;
 
-    public enum Operation {
+    public enum UnaryOperation {
         LOG,
         LOG10,
         SIN,
         COS,
-        TAN
+        TAN,
+        EXP
     }
 
-    public Operation operation() {
+    public UnaryOperation getOperation() {
         return operation;
     }
 
-    public static ValueNode create(ValueNode value, Operation op) {
+    public static ValueNode create(ValueNode value, UnaryOperation op) {
         ValueNode c = tryConstantFold(value, op);
         if (c != null) {
             return c;
         }
-        return new AMD64MathIntrinsicNode(value, op);
+        return new UnaryMathIntrinsicNode(value, op);
     }
 
-    protected static ValueNode tryConstantFold(ValueNode value, Operation op) {
+    protected static ValueNode tryConstantFold(ValueNode value, UnaryOperation op) {
         if (value.isConstant()) {
             double ret = doCompute(value.asJavaConstant().asDouble(), op);
             return ConstantNode.forDouble(ret);
@@ -75,7 +77,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
         return null;
     }
 
-    protected AMD64MathIntrinsicNode(ValueNode value, Operation op) {
+    protected UnaryMathIntrinsicNode(ValueNode value, UnaryOperation op) {
         super(TYPE, StampFactory.forKind(JavaKind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
@@ -85,7 +87,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     public Stamp foldStamp(Stamp newStamp) {
         if (newStamp instanceof FloatStamp) {
             FloatStamp floatStamp = (FloatStamp) newStamp;
-            switch (operation()) {
+            switch (getOperation()) {
                 case COS:
                 case SIN:
                     boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY;
@@ -96,16 +98,23 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool lirGen) {
-        AMD64ArithmeticLIRGeneratorTool gen = (AMD64ArithmeticLIRGeneratorTool) lirGen;
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         Value input = nodeValueMap.operand(getValue());
         Value result;
-        switch (operation()) {
+        switch (getOperation()) {
             case LOG:
                 result = gen.emitMathLog(input, false);
                 break;
             case LOG10:
                 result = gen.emitMathLog(input, true);
+                break;
+            case EXP:
+                result = gen.emitMathExp(input);
                 break;
             case SIN:
                 result = gen.emitMathSin(input);
@@ -124,7 +133,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode c = tryConstantFold(forValue, operation());
+        ValueNode c = tryConstantFold(forValue, getOperation());
         if (c != null) {
             return c;
         }
@@ -132,14 +141,16 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     @NodeIntrinsic
-    public static native double compute(double value, @ConstantNodeParameter Operation op);
+    public static native double compute(double value, @ConstantNodeParameter UnaryOperation op);
 
-    private static double doCompute(double value, Operation op) {
+    private static double doCompute(double value, UnaryOperation op) {
         switch (op) {
             case LOG:
                 return Math.log(value);
             case LOG10:
                 return Math.log10(value);
+            case EXP:
+                return Math.exp(value);
             case SIN:
                 return Math.sin(value);
             case COS:

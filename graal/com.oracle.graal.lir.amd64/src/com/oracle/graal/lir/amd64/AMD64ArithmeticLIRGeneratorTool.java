@@ -33,14 +33,6 @@ import jdk.vm.ci.meta.Value;
  */
 public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
 
-    Value emitMathLog(Value input, boolean base10);
-
-    Value emitMathCos(Value input);
-
-    Value emitMathSin(Value input);
-
-    Value emitMathTan(Value input);
-
     Value emitCountLeadingZeros(Value value);
 
     Value emitCountTrailingZeros(Value value);

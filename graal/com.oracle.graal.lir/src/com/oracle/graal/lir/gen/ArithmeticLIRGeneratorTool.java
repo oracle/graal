@@ -24,6 +24,7 @@ package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 
@@ -98,5 +99,35 @@ public interface ArithmeticLIRGeneratorTool {
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
+
+    @SuppressWarnings("unused")
+    default Value emitMathLog(Value input, boolean base10) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathCos(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathSin(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathTan(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathExp(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathPow(Value x, Value y) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
 
 }
