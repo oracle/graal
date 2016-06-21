@@ -30,15 +30,15 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.impl.TckLanguage;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
 
 @MessageResolution(language = TckLanguage.class, receiverType = CountAndKill.class)
 final class CountAndKill implements TruffleObject {
-    final CountDownLatch onZero;
+    final ScheduledExecutorService onZero;
     int countDown;
     int lastParameter;
 
-    CountAndKill(int counter, CountDownLatch onZero) {
+    CountAndKill(int counter, ScheduledExecutorService onZero) {
         this.onZero = onZero;
         this.countDown = counter;
     }
@@ -56,8 +56,7 @@ final class CountAndKill implements TruffleObject {
     abstract static class AddOne extends Node {
         protected boolean access(CountAndKill counter, Object... arguments) {
             if (counter.countDown == 0) {
-                counter.onZero.countDown();
-                Thread.yield();
+                counter.onZero.shutdownNow();
             } else {
                 counter.countDown--;
             }

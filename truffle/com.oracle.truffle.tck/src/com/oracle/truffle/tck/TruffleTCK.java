@@ -36,8 +36,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -45,15 +43,15 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.tck.Schema.Type;
+import com.oracle.truffle.tck.TckSnippets.ExecWithTimeOut;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -1518,59 +1516,6 @@ public abstract class TruffleTCK {
         assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
     }
 
-    private static class TimeOutOfExecution extends EventConsumer<SuspendedEvent> implements Runnable {
-        final CountDownLatch pause = new CountDownLatch(1);
-        PolyglotEngine engine;
-        Debugger debugger;
-        boolean pauseRequested;
-        boolean pauseResult;
-
-        TimeOutOfExecution() {
-            super(SuspendedEvent.class);
-        }
-
-        @Override
-        public void run() {
-            // wait a while before doing kill
-            try {
-                pause.await();
-            } catch (InterruptedException ex) {
-                throw new IllegalStateException(ex);
-            }
-            pauseRequested = true;
-            // request pause to generate SuspendedEvent
-            pauseResult = getDebugger().pause();
-        }
-
-        @Override
-        protected void on(SuspendedEvent event) {
-            // when execution stops either debug or kill it:
-            event.prepareKill();
-        }
-
-        private void assertExecutionTimeOut(PolyglotEngine.Value whileLoopFunction, CountAndKill obj) {
-            Throwable caught = null;
-            try {
-                // execute with timer on
-                whileLoopFunction.execute(obj);
-            } catch (Throwable t) {
-                caught = t;
-            }
-
-            assertTrue("Pause requested", pauseRequested);
-            assertTrue("Pause performed successfully", pauseResult);
-            assertNotNull("Execution ended with throwable", caught);
-            assertEquals("It is our kill exception", "com.oracle.truffle.api.debug.KillException", caught.getClass().getName());
-        }
-
-        private Debugger getDebugger() {
-            if (debugger == null) {
-                debugger = Debugger.find(engine);
-            }
-            return debugger;
-        }
-    }
-
     /**
      * Tests whether execution can be suspended in debugger.
      * 
@@ -1578,23 +1523,21 @@ public abstract class TruffleTCK {
      */
     @Test
     public void timeOutTest() throws Exception {
-        final TimeOutOfExecution timeOutExecution = new TimeOutOfExecution();
-        Thread timeOutExecutionThread = new Thread(timeOutExecution, "Time out execution");
-        timeOutExecutionThread.start();
+        final ExecWithTimeOut timeOutExecution = new TckSnippets().new ExecWithTimeOut();
+        ScheduledExecutorService executor = new MockExecutorService();
 
         Builder builder = PolyglotEngine.newBuilder().onEvent(timeOutExecution);
         timeOutExecution.engine = prepareVM(builder);
-        timeOutExecution.getDebugger(); // pre-initialize debugger
+        timeOutExecution.getDebugger(); // pre-initialize foundDebugger
         PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
 
         int index = RANDOM.nextInt(50) + 50;
-        CountAndKill obj = new CountAndKill(index, timeOutExecution.pause);
+        CountAndKill obj = new CountAndKill(index, executor);
 
-        timeOutExecution.assertExecutionTimeOut(counting, obj);
+        timeOutExecution.executeWithTimeOut(executor, counting, obj);
         assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
         assertTrue("Last number bigger than requested", index <= obj.lastParameter);
-
-        timeOutExecutionThread.join(5000);
+        assertTrue("All tasks processed", executor.isShutdown());
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
