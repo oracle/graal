@@ -35,6 +35,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.object.LayoutFactory;
 
 public class TruffleRuntimeTest {
 
@@ -71,5 +72,15 @@ public class TruffleRuntimeTest {
     public void testGetCapabilityObjectClass() {
         Object object = Truffle.getRuntime().getCapability(Object.class);
         assertNull("Expected null return value for Object.class", object);
+    }
+
+    @Test
+    public void testGetLayoutFactory() {
+        TruffleRuntime runtime = Truffle.getRuntime();
+        LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
+        assertNotNull("LayoutFactory not found", layoutFactory);
+
+        // Bootstrap class loader or JVMCI class loader
+        assertTrue(layoutFactory.getClass().getClassLoader() == null || layoutFactory.getClass().getClassLoader() == runtime.getClass().getClassLoader());
     }
 }
