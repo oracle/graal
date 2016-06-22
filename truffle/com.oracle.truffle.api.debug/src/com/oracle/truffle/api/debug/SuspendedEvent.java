@@ -325,7 +325,7 @@ public final class SuspendedEvent {
      * Prepare to terminate the suspended execution represented by this event. One use-case for this
      * method is to shield an execution of an unknown code with a timeout:
      *
-     * {@link com.oracle.truffle.tck.TckSnippets.ExecWithTimeOut}
+     * {@link com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets}
      *
      * @since 0.12
      */
