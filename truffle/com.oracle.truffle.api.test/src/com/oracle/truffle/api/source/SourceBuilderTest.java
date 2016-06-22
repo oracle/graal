@@ -89,7 +89,7 @@ public class SourceBuilderTest {
 
     @Test
     public void assignMimeTypeAndIdentityForFile() throws IOException {
-        File file = File.createTempFile("Hello", ".java");
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
         String text;
@@ -120,7 +120,7 @@ public class SourceBuilderTest {
 
     @Test
     public void assignMimeTypeAndIdentityForVirtualFile() throws Exception {
-        File file = File.createTempFile("Hello", ".java");
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
         String text = "// Hello";
@@ -350,8 +350,8 @@ public class SourceBuilderTest {
 
     @Test
     public void subSourceFromTwoFiles() throws Exception {
-        File f1 = File.createTempFile("subSource", ".js");
-        File f2 = File.createTempFile("subSource", ".js");
+        File f1 = File.createTempFile("subSource", ".js").getCanonicalFile();
+        File f2 = File.createTempFile("subSource", ".js").getCanonicalFile();
 
         try (FileWriter w = new FileWriter(f1)) {
             w.write("function test() {\n" + "  return 1;\n" + "}\n");

@@ -93,7 +93,7 @@ final class TestSource {
                         "  ),\n" +
                         "  CALL(foo)\n" +
                         ")\n";
-        File file = File.createTempFile("Loop3", FILENAME_EXTENSION);
+        File file = File.createTempFile("Loop3", FILENAME_EXTENSION).getCanonicalFile();
         try (Writer w = new FileWriter(file)) {
             w.write(code);
         }
