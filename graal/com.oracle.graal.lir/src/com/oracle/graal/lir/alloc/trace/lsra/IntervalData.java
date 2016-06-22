@@ -400,14 +400,14 @@ public final class IntervalData implements IntervalDumper {
     }
 
     private static boolean verifyIntervalsEquals(TraceInterval a, TraceInterval b) {
-        for (int i = 0; i < Math.max(a.usePosList().size(), b.usePosList().size()); i++) {
-            assert i < a.usePosList().size() : "missing a usepos: " + i + " b: " + b;
-            assert i < b.usePosList().size() : "missing b usepos: " + i + " a: " + a;
-            int aPos = a.usePosList().usePos(i);
-            int bPos = b.usePosList().usePos(i);
+        for (int i = 0; i < Math.max(UsePosList.size(a.usePosList()), UsePosList.size(b.usePosList())); i++) {
+            assert i < UsePosList.size(a.usePosList()) : "missing a usepos: " + i + " b: " + b;
+            assert i < UsePosList.size(b.usePosList()) : "missing b usepos: " + i + " a: " + a;
+            int aPos = UsePosList.usePos(a.usePosList(), i);
+            int bPos = UsePosList.usePos(b.usePosList(), i);
             assert aPos == bPos : "Use Positions differ: " + aPos + " vs. " + bPos;
-            RegisterPriority aReg = a.usePosList().registerPriority(i);
-            RegisterPriority bReg = b.usePosList().registerPriority(i);
+            RegisterPriority aReg = UsePosList.registerPriority(a.usePosList(), i);
+            RegisterPriority bReg = UsePosList.registerPriority(b.usePosList(), i);
             assert aReg == bReg : "Register priority differ: " + aReg + " vs. " + bReg;
         }
         return true;
@@ -504,10 +504,10 @@ public final class IntervalData implements IntervalDumper {
         // print use positions
         int prev = -1;
         UsePosList usePosList = interval.usePosList();
-        for (int i = usePosList.size() - 1; i >= 0; --i) {
-            assert prev < usePosList.usePos(i) : "use positions not sorted";
-            visitor.visitUsePos(usePosList.usePos(i), usePosList.registerPriority(i));
-            prev = usePosList.usePos(i);
+        for (int i = UsePosList.size(usePosList) - 1; i >= 0; --i) {
+            assert prev < UsePosList.usePos(usePosList, i) : "use positions not sorted";
+            visitor.visitUsePos(UsePosList.usePos(usePosList, i), UsePosList.registerPriority(usePosList, i));
+            prev = UsePosList.usePos(usePosList, i);
         }
 
         visitor.visitIntervalEnd(interval.spillState());

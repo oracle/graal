@@ -466,9 +466,9 @@ public final class IntervalBuilderUtil {
                      * load, even if the value is not needed in a register.
                      */
                     UsePosList usePosList = interval.usePosList();
-                    int numUsePos = usePosList.size();
+                    int numUsePos = UsePosList.size(usePosList);
                     for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                        TraceInterval.RegisterPriority priority = usePosList.registerPriority(useIdx);
+                        TraceInterval.RegisterPriority priority = UsePosList.registerPriority(usePosList, useIdx);
                         if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
                             return null;
                         }

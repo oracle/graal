@@ -236,12 +236,12 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                                 op.visitEachState(stateProc);
                             }
 
-                        } // end of instruction iteration
+                        }   // end of instruction iteration
                     }
                     if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
                         intervalData.printIntervals("After Block " + block);
                     }
-                } // end of block iteration
+                }   // end of block iteration
                 assert instructionIndex == 0 : "not at start?" + instructionIndex;
 
                 // fix spill state for phi/sigma intervals
