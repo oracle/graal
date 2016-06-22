@@ -109,11 +109,15 @@ def travis1(args=None):
 
 def travis2(args=None):
     tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('TestGCC', tasks) as t:
         if t: runGCCTestCases()
 
 def travisJRuby(args=None):
     tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('TestJRuby', tasks) as t:
         if t: runTestJRuby()
 
