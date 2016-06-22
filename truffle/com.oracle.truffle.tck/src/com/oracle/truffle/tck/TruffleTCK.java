@@ -1525,7 +1525,8 @@ public abstract class TruffleTCK {
         final ExecWithTimeOut timeOutExecution = new ExecWithTimeOut();
         ScheduledExecutorService executor = new MockExecutorService();
 
-        Builder builder = PolyglotEngine.newBuilder().onEvent(timeOutExecution);
+        Builder builder = PolyglotEngine.newBuilder();
+        timeOutExecution.registerEventHandler(builder);
         timeOutExecution.engine = prepareVM(builder);
         timeOutExecution.getDebugger(); // pre-initialize foundDebugger
         PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
