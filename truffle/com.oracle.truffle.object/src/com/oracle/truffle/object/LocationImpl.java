@@ -43,6 +43,8 @@ public abstract class LocationImpl extends Location {
 
     public interface InternalLongLocation extends LongLocation {
         void setLongInternal(DynamicObject store, long value);
+
+        String getWhereString();
     }
 
     public interface LocationVisitor {

@@ -551,7 +551,7 @@ public abstract class ShapeImpl extends Shape {
             Property p = iterator.next();
             sb.append(p);
             if (iterator.hasNext()) {
-                sb.append(", ");
+                sb.append(",");
             }
             if (sb.length() >= limit) {
                 sb.append("...");
