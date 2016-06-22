@@ -303,7 +303,9 @@ public abstract class Source {
      * @param name name for the newly created source
      * @return a newly created, non-indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
+    @Deprecated
     public static Source fromAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
         Content content = new AppendableLiteralSourceImpl(name);
@@ -457,7 +459,10 @@ public abstract class Source {
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
+     * @deprecated Use {@link #newBuilder(java.lang.String)} where you construct the string via its
+     *             {@link String#String(byte[], java.nio.charset.Charset)} constructor
      */
+    @Deprecated
     public static Source fromBytes(byte[] bytes, String name, Charset charset) {
         return fromBytes(bytes, 0, bytes.length, name, charset);
     }
@@ -477,7 +482,10 @@ public abstract class Source {
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
+     * @deprecated Use {@link #newBuilder(java.lang.String)} where you construct the string via its
+     *             {@link String#String(byte[], int, int, java.nio.charset.Charset)} constructor
      */
+    @Deprecated
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
         Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
@@ -739,7 +747,9 @@ public abstract class Source {
      * @param chars the text to append
      * @throws UnsupportedOperationException by concrete subclasses that do not support appending
      * @since 0.8 or earlier
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
+    @Deprecated
     public void appendCode(CharSequence chars) {
         content().appendCode(chars);
         clearTextMap();
