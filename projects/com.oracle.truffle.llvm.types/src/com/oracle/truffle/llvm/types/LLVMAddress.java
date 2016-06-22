@@ -115,4 +115,8 @@ public final class LLVMAddress {
         return val > val2.getVal();
     }
 
+    public LLVMAddress copy() {
+        return new LLVMAddress(val);
+    }
+
 }
