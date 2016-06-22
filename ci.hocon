@@ -47,6 +47,21 @@ solaris : {
   timelimit : "30:00"
 }
 
+darwin : {
+  packages : {
+    "git" : ""
+  }
+
+  downloads : {
+    JAVA_HOME : ${java8}
+  }
+
+  environment : ${common.environment} {
+    PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
+  }
+}
+
+
 deploy-dry-run : ${common} {
   capabilities : [linux, amd64, gate]
   name : gate-deploy-dry-run
@@ -67,8 +82,17 @@ builds = [
   ${solaris} {run : [
       ["mx", "build" ],
       ["mx", "unittest", "--verbose" ]
-    ], 
-    capabilities : [solaris, sparcv9, gate],
+    ],
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
     name: "gate-solaris-lite"
+  }
+  ${darwin} {run : [
+      ["mx", "build" ],
+      ["mx", "unittest", "--verbose" ]
+    ],
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite"
   }
 ]
