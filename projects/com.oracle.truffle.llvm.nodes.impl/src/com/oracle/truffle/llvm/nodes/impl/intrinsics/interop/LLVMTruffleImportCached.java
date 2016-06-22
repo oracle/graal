@@ -34,13 +34,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.internal.SuppressFBWarnings;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleImportCachedFactory.ImportCacheNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-@NodeChild(type = LLVMAddressNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleImportCached extends LLVMAddressIntrinsic {
 
     @Child private ImportCache cache = ImportCacheNodeGen.create();

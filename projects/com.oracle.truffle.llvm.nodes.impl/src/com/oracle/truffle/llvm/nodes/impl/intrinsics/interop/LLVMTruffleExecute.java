@@ -41,7 +41,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
@@ -91,7 +91,7 @@ public final class LLVMTruffleExecute {
         return frame.getArguments().length - LLVMCallNode.ARG_START_INDEX - NAMED_ARGS;
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteP extends LLVMAddressIntrinsic {
 
         @Child private Node foreignExecute;
@@ -118,7 +118,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteI extends LLVMI32Intrinsic {
 
         @Child private Node foreignExecute;
@@ -145,7 +145,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteL extends LLVMI64Intrinsic {
 
         @Child private Node foreignExecute;
@@ -172,7 +172,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteC extends LLVMI8Intrinsic {
 
         @Child private Node foreignExecute;
@@ -199,7 +199,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteF extends LLVMFloatIntrinsic {
 
         @Child private Node foreignExecute;
@@ -226,7 +226,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteD extends LLVMDoubleIntrinsic {
 
         @Child private Node foreignExecute;
@@ -253,7 +253,7 @@ public final class LLVMTruffleExecute {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleExecuteB extends LLVMBooleanIntrinsic {
 
         @Child private Node foreignExecute;

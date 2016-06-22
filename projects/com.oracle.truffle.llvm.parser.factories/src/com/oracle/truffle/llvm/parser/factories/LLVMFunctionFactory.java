@@ -296,6 +296,8 @@ public final class LLVMFunctionFactory {
             argNode = LLVMArgNodeFactory.LLVMI8ArgNodeGen.create(realIndex);
         } else if (clazz.equals(LLVMI1Node.class)) {
             argNode = LLVMArgNodeFactory.LLVMI1ArgNodeGen.create(realIndex);
+        } else if (clazz.equals(LLVMExpressionNode.class)) {
+            argNode = LLVMArgNodeFactory.LLVMAddressArgNodeGen.create(realIndex);
         } else {
             throw new AssertionError(clazz);
         }

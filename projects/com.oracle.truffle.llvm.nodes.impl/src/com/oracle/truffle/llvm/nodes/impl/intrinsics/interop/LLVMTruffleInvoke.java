@@ -42,7 +42,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
@@ -84,7 +84,7 @@ public final class LLVMTruffleInvoke {
         return frame.getArguments().length - LLVMCallNode.ARG_START_INDEX - NAMED_ARGS;
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeP extends LLVMAddressIntrinsic {
 
         @Child private Node foreignInvoke;
@@ -111,7 +111,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeI extends LLVMI32Intrinsic {
 
         @Child private Node foreignInvoke;
@@ -138,7 +138,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeL extends LLVMI64Intrinsic {
 
         @Child private Node foreignInvoke;
@@ -165,7 +165,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeC extends LLVMI8Intrinsic {
 
         @Child private Node foreignInvoke;
@@ -192,7 +192,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeF extends LLVMFloatIntrinsic {
 
         @Child private Node foreignInvoke;
@@ -219,7 +219,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeD extends LLVMDoubleIntrinsic {
 
         @Child private Node foreignInvoke;
@@ -246,7 +246,7 @@ public final class LLVMTruffleInvoke {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleInvokeB extends LLVMBooleanIntrinsic {
 
         @Child private Node foreignInvoke;

@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-@NodeChild(type = LLVMAddressNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleImport extends LLVMAddressIntrinsic {
 
     @Specialization

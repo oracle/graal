@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
@@ -182,14 +182,18 @@ public class LLVMArgNode {
     }
 
     @NodeField(name = "index", type = int.class)
-    public abstract static class LLVMAddressArgNode extends LLVMAddressNode {
+    public abstract static class LLVMAddressArgNode extends LLVMExpressionNode {
 
         public abstract int getIndex();
 
-        @Specialization
-        @Override
-        public LLVMAddress executePointee(VirtualFrame frame) {
+        @Specialization(rewriteOn = ClassCastException.class)
+        public Object executePointee(VirtualFrame frame) {
             return ((LLVMAddress) frame.getArguments()[getIndex()]).copy();
+        }
+
+        @Specialization
+        public Object executeObject(VirtualFrame frame) {
+            return frame.getArguments()[getIndex()];
         }
     }
 
