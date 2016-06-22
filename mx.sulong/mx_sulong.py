@@ -666,7 +666,7 @@ def compileWithClangPP(args=None):
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
-    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr)) for distr in sulongDistributions])]
+    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])]
 
 def printOptions(args=None):
     """prints the Sulong Java property options"""
