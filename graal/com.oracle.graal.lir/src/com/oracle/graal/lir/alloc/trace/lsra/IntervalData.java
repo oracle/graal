@@ -101,7 +101,7 @@ public final class IntervalData implements IntervalDumper {
      */
     private AbstractBlockBase<?>[] opIdToBlockMap;
 
-    IntervalData(TargetDescription target, LIRGenerationResult res, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace) {
+    public IntervalData(TargetDescription target, LIRGenerationResult res, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace) {
         this.ir = res.getLIR();
         this.sortedBlocks = trace.getBlocks();
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();

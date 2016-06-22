@@ -71,7 +71,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
+public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
@@ -82,7 +82,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                         allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters()).analyze();
     }
 
-    static final class Analyser {
+    public static final class Analyser {
         private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
         private final IntervalData intervalData;
         private final TraceBuilderResult<?> traceBuilderResult;
@@ -93,7 +93,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private final MoveFactory spillMoveFactory;
         private final RegisterArray callerSaveRegisters;
 
-        private Analyser(IntervalData intervalData, TraceBuilderResult<?> traceBuilderResult, List<? extends AbstractBlockBase<?>> sortedBlocks, LIR lir, boolean neverSpillConstants,
+        public Analyser(IntervalData intervalData, TraceBuilderResult<?> traceBuilderResult, List<? extends AbstractBlockBase<?>> sortedBlocks, LIR lir, boolean neverSpillConstants,
                         MoveFactory moveFactory, RegisterArray callerSaveRegisters) {
             this.intervalData = intervalData;
             this.traceBuilderResult = traceBuilderResult;
@@ -116,7 +116,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             return callerSaveRegisters;
         }
 
-        private void analyze() {
+        public void analyze() {
             countInstructions();
             buildIntervals();
         }
