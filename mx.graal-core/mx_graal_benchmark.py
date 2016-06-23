@@ -31,6 +31,7 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
+import os
 
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(mx.suite('graal-core'), {
@@ -864,12 +865,12 @@ class JMHJsonRule(object):
 
                 pm = result["primaryMetric"]
                 unit = pm["scoreUnit"]
+                unit_parts = unit.split("/")
 
                 if mode == "thrpt":
                     # Throughput, ops/time
                     metricName = "throughput"
                     better = "higher"
-                    unit_parts = unit.split("/")
                     if len(unit_parts) == 2:
                         metricUnit = "op/" + unit_parts[1]
                     else:
@@ -920,38 +921,24 @@ class JMHJsonRule(object):
         return r
 
 
-class JMHBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class JMHBenchmarkSuiteBase(mx_benchmark.JavaBenchmarkSuite):
     jmh_result_file = "jmh_result.json"
 
-    def name(self):
-        return "jmh-graal-core-whitebox"
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "graal-compiler"
-
     def extraRunArgs(self):
-        return ["-rff", JMHBenchmarkSuite.jmh_result_file, "-rf", "json"]
+        return ["-rff", JMHBenchmarkSuiteBase.jmh_result_file, "-rf", "json"]
 
     def extraVmArgs(self):
-        # find all projects with a direct JMH dependency
-        jmhProjects = []
-        for p in mx.projects_opt_limit_to_suites():
-            if 'JMH' in [x.name for x in p.deps]:
-                jmhProjects.append(p)
-        cp = mx.classpath([p.name for p in jmhProjects], jdk=mx.get_jdk())
+        return []
 
-        # execute JMH runner
-        return ['-XX:-UseJVMCIClassLoader', '-cp', cp]
+    def getJMHEntry(self):
+        raise NotImplementedError()
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite. (Use JMH specific filtering instead.)")
         vmArgs = self.vmArgs(bmSuiteArgs) + self.extraVmArgs()
         runArgs = self.runArgs(bmSuiteArgs) + self.extraRunArgs()
-        return vmArgs + ["org.openjdk.jmh.Main"] + ['--jvmArgsPrepend', ' '.join(vmArgs)] + runArgs
+        return vmArgs + self.getJMHEntry() + ['--jvmArgsPrepend', ' '.join(vmArgs)] + runArgs
 
     def benchmarks(self):
         return ["default"]
@@ -970,7 +957,75 @@ class JMHBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        return [JMHJsonRule(JMHBenchmarkSuite.jmh_result_file)]
+        return [JMHJsonRule(JMHBenchmarkSuiteBase.jmh_result_file)]
+
+
+class JMHBenchmarkSuite(JMHBenchmarkSuiteBase):
+    def name(self):
+        return "jmh-graal-core-whitebox"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def extraVmArgs(self):
+        # find all projects with a direct JMH dependency
+        jmhProjects = []
+        for p in mx.projects_opt_limit_to_suites():
+            if 'JMH' in [x.name for x in p.deps]:
+                jmhProjects.append(p)
+        cp = mx.classpath([p.name for p in jmhProjects], jdk=mx.get_jdk())
+
+        return ['-XX:-UseJVMCIClassLoader', '-cp', cp]
+
+    def getJMHEntry(self):
+        return ["org.openjdk.jmh.Main"]
 
 
 mx_benchmark.add_bm_suite(JMHBenchmarkSuite())
+
+
+class JMHBenchmarkJARSuite(JMHBenchmarkSuiteBase):
+
+    def name(self):
+        return "jmh-jar"
+
+    def getBechmarkName(self):
+        return "jmh-" + self.jmhName()
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(JMHBenchmarkJARSuite, self).vmArgs(bmSuiteArgs)
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("--jmh-jar", default=None)
+        parser.add_argument("--jmh-name", default=None)
+        args, remaining = parser.parse_known_args(vmArgs)
+        self.jmh_jar = args.jmh_jar
+        self.jmh_name = args.jmh_name
+        return remaining
+
+    def getJMHEntry(self):
+        return ["-jar", self.jmhJAR()]
+
+    def jmhName(self):
+        if self.jmh_name is None:
+            mx.abort("Please use the --jmh-name benchmark suite argument to set the name of the JMH suite.")
+        return self.jmh_name
+
+    def jmhJAR(self):
+        if self.jmh_jar is None:
+            mx.abort("Please use the --jmh-jar benchmark suite argument to set the JMH jar file.")
+        jmh_jar = os.path.expanduser(self.jmh_jar)
+        if not exists(jmh_jar):
+            mx.abort("The --jmh-jar argument points to a non-existing file: " + jmh_jar)
+        return jmh_jar
+
+
+mx_benchmark.add_bm_suite(JMHBenchmarkJARSuite())
