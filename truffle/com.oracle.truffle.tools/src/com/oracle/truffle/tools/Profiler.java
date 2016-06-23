@@ -47,21 +47,57 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.TruffleProfiler.Counter.TimeKind;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
 
-@Registration(id = TruffleProfiler.ID)
-public class TruffleProfiler extends TruffleInstrument {
-
-    public static final String ID = "truffle_profiler";
+/**
+ * Access to Truffle profiling services.
+ *
+ * @since 0.15
+ */
+public final class Profiler {
 
     private static final int MAX_CODE_LENGTH = 30;
 
-    private Instrumenter instrumenter;
+    /**
+     * Finds profiler associated with given engine. There is at most one profiler associated with
+     * any {@link PolyglotEngine}. One can access it by calling this static method.
+     *
+     *
+     * @param engine the engine to find profiler for
+     * @return an instance of associated profiler, never <code>null</code>
+     * @since 0.15
+     */
+    public static Profiler find(PolyglotEngine engine) {
+        return find(engine, true);
+    }
+
+    private static final ProfilerInstrument.Factory FACTORY = new ProfilerInstrument.Factory() {
+        @Override
+        public Profiler create(Instrumenter instrumenter) {
+            return new Profiler(instrumenter);
+        }
+    };
+
+    static Profiler find(PolyglotEngine engine, boolean create) {
+        PolyglotEngine.Instrument instrument = engine.getInstruments().get(ProfilerInstrument.ID);
+        if (instrument == null) {
+            throw new IllegalStateException();
+        }
+        if (create) {
+            instrument.setEnabled(true);
+        }
+        final ProfilerInstrument profilerInstrument = instrument.lookup(ProfilerInstrument.class);
+        if (profilerInstrument == null) {
+            return null;
+        }
+        return profilerInstrument.getProfiler(create ? FACTORY : null);
+    }
+
+    private final Instrumenter instrumenter;
 
     private boolean isCollecting;
 
@@ -71,8 +107,6 @@ public class TruffleProfiler extends TruffleInstrument {
 
     @SuppressWarnings("rawtypes") private EventBinding binding;
 
-    private Profiler profiler;  // API service to clients; null when disposed
-
     private final Map<SourceSection, Counter> counters = new HashMap<>();
 
     // TODO temporary solution until TruffleRuntime#getCallerFrame() is fast
@@ -81,45 +115,150 @@ public class TruffleProfiler extends TruffleInstrument {
 
     private boolean disposed;
 
-    @Override
-    protected void onCreate(final Env env) {
-        this.instrumenter = env.getInstrumenter();
-
-        assert profiler == null;
-        this.profiler = new Profiler();
-        env.registerService(profiler);
-
-        /*
-         * ensure even if the runtime is not disposed that instruments are disposed shouldn't
-         * PolylgotEngine ensure that instruments are always disposed
-         */
-        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-            public void run() {
-                onDispose(env);
-            }
-        }));
+    Profiler(Instrumenter instrumenter) {
+        this.instrumenter = instrumenter;
     }
 
-    @Override
-    protected void onDispose(Env env) {
+    void dispose() {
         if (!disposed) {
             counters.clear();
-            if (binding != null) {
-                binding.dispose();
-                binding = null;
-            }
-            instrumenter = null;
-            profiler = null;
+            binding = null;
             disposed = true;
         }
     }
 
+    /**
+     * Controls whether profile data is being collected, {@code false} by default.
+     * <p>
+     * Any collected data remains available while collecting is turned off. Unless explicitly
+     * {@linkplain #clearData() cleared}, previously collected data will be included when collection
+     * resumes.
+     *
+     * @since 0.15
+     */
+    public void setCollecting(boolean isCollecting) {
+        assert !disposed;
+        if (this.isCollecting != isCollecting) {
+            this.isCollecting = isCollecting;
+            reset();
+        }
+    }
+
+    /**
+     * Is data currently being collected (default {@code false})?
+     * <p>
+     * If data is not being collected, any previously collected data remains. Unless explicitly
+     * {@linkplain #clearData() cleared}, previously collected data will be included when collection
+     * resumes.
+     *
+     * @since 0.15
+     */
+    public boolean isCollecting() {
+        assert !disposed;
+        return isCollecting;
+    }
+
+    /**
+     * Controls whether profile data being collected includes timing, {@code false} by default.
+     * <p>
+     * If data is not currently being {@linkplain #isCollecting() collected}, this setting remains
+     * and takes effect when collection resumes.
+     * <p>
+     * While timing data is not being collected, any previously collected timing data remains.
+     * Unless explicitly {@linkplain #clearData() cleared}, previously collected timing data will be
+     * included in data collected when collection resumes.
+     *
+     * @since 0.15
+     */
+    public void setTiming(boolean isTiming) {
+        assert !disposed;
+        if (this.isTiming != isTiming) {
+            this.isTiming = isTiming;
+            reset();
+        }
+    }
+
+    /**
+     * Does data being {@linkplain #isCollecting() collected} include timing (default {@code false}
+     * )?
+     *
+     * @since 0.15
+     */
+    public boolean isTiming() {
+        assert !disposed;
+        return isTiming;
+    }
+
+    /**
+     * Replaces the list of MIME types for which data is being collected, {@code null} for
+     * <strong>ANY</strong>.
+     *
+     * @param newTypes new list of MIME types, {@code null} or an empty list matches any MIME type.
+     *
+     * @since 0.15
+     */
+    public void setMimeTypes(String[] newTypes) {
+        assert !disposed;
+        mimeTypes = newTypes != null && newTypes.length > 0 ? newTypes : null;
+        reset();
+    }
+
+    /**
+     * Gets MIME types for which data is being {@linkplain #isCollecting() collected}.
+     *
+     * @return MIME types matching sources being profiled; {@code null} matches <strong>ANY</strong>
+     *         MIME type.
+     * @since 0.15
+     */
+    public String[] getMimeTypes() {
+        assert !disposed;
+        return mimeTypes == null ? null : Arrays.copyOf(mimeTypes, mimeTypes.length);
+    }
+
+    /**
+     * Is any data currently collected?
+     *
+     * @since 0.15
+     */
+    public boolean hasData() {
+        assert !disposed;
+        for (Counter counter : counters.values()) {
+            if (counter.getInvocations(TimeKind.INTERPRETED_AND_COMPILED) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Resets all collected data to zero.
+     *
+     * @since 0.15
+     */
+    public void clearData() {
+        assert !disposed;
+        for (Counter counter : counters.values()) {
+            counter.clear();
+        }
+    }
+
+    /**
+     * Gets an unmodifiable map of all counters.
+     *
+     * @since 0.15
+     */
+    public Map<SourceSection, Counter> getCounters() {
+        assert !disposed;
+        return Collections.unmodifiableMap(counters);
+    }
+
     // Reconfigure what's being collected; does not affect collected data
     private void reset() {
+        if (binding != null) {
+            binding.dispose();
+            binding = null;
+        }
         if (isCollecting) {
-            if (binding != null) {
-                binding.dispose();
-            }
             final Builder filterBuilder = SourceSectionFilter.newBuilder();
             if (mimeTypes != null) {
                 filterBuilder.mimeTypeIs(mimeTypes);
@@ -130,11 +269,6 @@ public class TruffleProfiler extends TruffleInstrument {
                     return createCountingNode(context);
                 }
             });
-        } else {
-            if (binding != null) {
-                binding.dispose();
-                binding = null;
-            }
         }
     }
 
@@ -152,7 +286,14 @@ public class TruffleProfiler extends TruffleInstrument {
         }
     }
 
-    private void printHistograms(PrintStream out) {
+    /**
+     * Prints a simple, default textual summary of currently collected data, format subject to
+     * change. Use {@linkplain #getCounters() counters} explicitly for reliable access.
+     *
+     * @since 0.15
+     */
+    public void printHistograms(PrintStream out) {
+        assert !disposed;
         final List<Counter> sortedCounters = new ArrayList<>(counters.values());
 
         boolean hasCompiled = false;
@@ -253,44 +394,6 @@ public class TruffleProfiler extends TruffleInstrument {
         }
     }
 
-    private void setCollecting(boolean isCollecting) {
-        if (this.isCollecting != isCollecting) {
-            this.isCollecting = isCollecting;
-            reset();
-        }
-    }
-
-    private void setTiming(boolean isTiming) {
-        if (this.isTiming != isTiming) {
-            this.isTiming = isTiming;
-            reset();
-        }
-    }
-
-    private void setMimeTypes(String[] newTypes) {
-        mimeTypes = newTypes != null && newTypes.length > 0 ? newTypes : null;
-        reset();
-    }
-
-    private boolean hasData() {
-        for (Counter counter : counters.values()) {
-            if (counter.getInvocations(TimeKind.INTERPRETED_AND_COMPILED) > 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void clearData() {
-        for (Counter counter : counters.values()) {
-            counter.clear();
-        }
-    }
-
-    private Map<SourceSection, Counter> getCounters() {
-        return Collections.unmodifiableMap(counters);
-    }
-
     private static class TimedCounterNode extends CounterNode {
 
         private final EventContext context;
@@ -301,8 +404,8 @@ public class TruffleProfiler extends TruffleInstrument {
         private static final Object KEY_TIME_STARTED = new Object();
         private static final Object KEY_PARENT_COUNTER = new Object();
 
-        TimedCounterNode(TruffleProfiler truffleProfiler, Counter counter, EventContext context) {
-            super(truffleProfiler, counter);
+        TimedCounterNode(Profiler profiler, Counter counter, EventContext context) {
+            super(profiler, counter);
             this.context = context;
             FrameDescriptor frameDescriptor = context.getInstrumentedNode().getRootNode().getFrameDescriptor();
             this.timeStartedSlot = frameDescriptor.findOrAddFrameSlot(KEY_TIME_STARTED, "profiler:timeStarted", FrameSlotKind.Long);
@@ -324,8 +427,8 @@ public class TruffleProfiler extends TruffleInstrument {
         protected void onEnter(VirtualFrame frame) {
             frame.setLong(timeStartedSlot, System.nanoTime());
             super.onEnter(frame);
-            frame.setObject(parentCounterSlot, truffleProfiler.activeCounter);
-            truffleProfiler.activeCounter = counter;
+            frame.setObject(parentCounterSlot, profiler.activeCounter);
+            profiler.activeCounter = counter;
             if (CompilerDirectives.inInterpreter()) {
                 counter.compiled = false;
             } else {
@@ -366,12 +469,12 @@ public class TruffleProfiler extends TruffleInstrument {
                     parentCounter.interpretedChildTime += timeNano;
                 }
             }
-            truffleProfiler.activeCounter = parentCounter;
+            profiler.activeCounter = parentCounter;
 
         }
 
         /* Static factory required for lazy class loading */
-        static CounterNode create(TruffleProfiler profiler, Counter counter, EventContext context) {
+        static CounterNode create(Profiler profiler, Counter counter, EventContext context) {
             return new TimedCounterNode(profiler, counter, context);
         }
 
@@ -379,11 +482,11 @@ public class TruffleProfiler extends TruffleInstrument {
 
     private static class CounterNode extends ExecutionEventNode {
 
-        protected final TruffleProfiler truffleProfiler;
+        protected final Profiler profiler;
         protected final Counter counter;
 
-        CounterNode(TruffleProfiler truffleProfiler, Counter counter) {
-            this.truffleProfiler = truffleProfiler;
+        CounterNode(Profiler profiler, Counter counter) {
+            this.profiler = profiler;
             this.counter = counter;
         }
 
@@ -399,140 +502,6 @@ public class TruffleProfiler extends TruffleInstrument {
         @Override
         public NodeCost getCost() {
             return NodeCost.NONE;
-        }
-    }
-
-    /**
-     * Access to Truffle profiling services.
-     *
-     * @since 0.15
-     */
-    public final class Profiler {
-
-        private Profiler() {
-        }
-
-        /**
-         * Controls whether profile data is being collected, {@code false} by default.
-         * <p>
-         * Any collected data remains available while collecting is turned off. Unless explicitly
-         * {@linkplain #clearData() cleared}, previously collected data will be included when
-         * collection resumes.
-         *
-         * @since 0.15
-         */
-        public void setCollecting(boolean collecting) {
-            assert !disposed;
-            TruffleProfiler.this.setCollecting(collecting);
-        }
-
-        /**
-         * Is data currently being collected (default {@code false})?
-         * <p>
-         * If data is not being collected, any previously collected data remains. Unless explicitly
-         * {@linkplain #clearData() cleared}, previously collected data will be included when
-         * collection resumes.
-         *
-         * @since 0.15
-         */
-        public boolean isCollecting() {
-            assert !disposed;
-            return TruffleProfiler.this.isCollecting;
-        }
-
-        /**
-         * Controls whether profile data being collected includes timing, {@code false} by default.
-         * <p>
-         * If data is not currently being {@linkplain #isCollecting() collected}, this setting
-         * remains and takes effect when collection resumes.
-         * <p>
-         * While timing data is not being collected, any previously collected timing data remains.
-         * Unless explicitly {@linkplain #clearData() cleared}, previously collected timing data
-         * will be included in data collected when collection resumes.
-         *
-         * @since 0.15
-         */
-        public void setTiming(boolean timing) {
-            assert !disposed;
-            TruffleProfiler.this.setTiming(timing);
-        }
-
-        /**
-         * Does data being {@linkplain #isCollecting() collected} include timing (default
-         * {@code false})?
-         *
-         * @since 0.15
-         */
-        public boolean isTiming() {
-            assert !disposed;
-            return isTiming;
-        }
-
-        /**
-         * Replaces the list of MIME types for which data is being collected, {@code null} for
-         * <strong>ANY</strong>.
-         *
-         * @param newMimeTypes new list of MIME types, {@code null} or an empty list matches any
-         *            MIME type.
-         *
-         * @since 0.15
-         */
-        public void setMimeTypes(String[] newMimeTypes) {
-            assert !disposed;
-            TruffleProfiler.this.setMimeTypes(newMimeTypes);
-        }
-
-        /**
-         * Gets MIME types for which data is being {@linkplain #isCollecting() collected}.
-         *
-         * @return MIME types matching sources being profiled; {@code null} matches
-         *         <strong>ANY</strong> MIME type.
-         * @since 0.15
-         */
-        public String[] getMimeTypes() {
-            assert !disposed;
-            return mimeTypes == null ? null : Arrays.copyOf(mimeTypes, mimeTypes.length);
-        }
-
-        /**
-         * Is any data currently collected?
-         *
-         * @since 0.15
-         */
-        public boolean hasData() {
-            assert !disposed;
-            return TruffleProfiler.this.hasData();
-        }
-
-        /**
-         * Resets all collected data to zero.
-         *
-         * @since 0.15
-         */
-        public void clearData() {
-            assert !disposed;
-            TruffleProfiler.this.clearData();
-        }
-
-        /**
-         * Gets an unmodifiable map of all counters.
-         *
-         * @since 0.15
-         */
-        public Map<SourceSection, Counter> getCounters() {
-            assert !disposed;
-            return TruffleProfiler.this.getCounters();
-        }
-
-        /**
-         * Prints a simple, default textual summary of currently collected data, format subject to
-         * change. Use {@linkplain #getCounters() counters} explicitly for reliable access.
-         *
-         * @since 0.15
-         */
-        public void printHistograms(PrintStream out) {
-            assert !disposed;
-            TruffleProfiler.this.printHistograms(out);
         }
     }
 

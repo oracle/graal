@@ -36,9 +36,7 @@ import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
-import com.oracle.truffle.tools.TruffleProfiler.Counter;
-import com.oracle.truffle.tools.TruffleProfiler.Profiler;
+import com.oracle.truffle.tools.Profiler.Counter;
 
 public class TruffleProfilerTest extends AbstractInstrumentationTest {
 
@@ -54,11 +52,8 @@ public class TruffleProfilerTest extends AbstractInstrumentationTest {
     // Checkstyle: resume
 
     @Before
-    public void setupProfiler() throws IOException {
-        final Instrument profilerInstrument = engine.getInstruments().get(TruffleProfiler.ID);
-        profilerInstrument.setEnabled(true);
-        profiler = profilerInstrument.lookup(Profiler.class);
-        assertEvalOut("", ""); // ensure profiler gets loaded
+    public void setupProfiler() {
+        profiler = Profiler.find(engine);
         Assert.assertNotNull(profiler);
     }
 
