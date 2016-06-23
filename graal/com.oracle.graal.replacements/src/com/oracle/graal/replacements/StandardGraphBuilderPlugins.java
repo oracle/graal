@@ -36,6 +36,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.UnsignedMath;
@@ -781,31 +782,10 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("instrumentationBegin", int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
-                b.add(new InstrumentationBeginNode(offset));
-                return true;
-            }
-        });
-        r.register0("instrumentationEnd", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new InstrumentationEndNode());
-                return true;
-            }
-        });
         r.register0("isMethodInlined", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, new IsMethodInlinedNode(b.getDepth()));
-                return true;
-            }
-        });
-        r.register0("controlFlowPath", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Int, new ControlFlowPathNode());
                 return true;
             }
         });
@@ -816,6 +796,29 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        if (GraalOptions.UseGraalInstrumentation.getValue()) {
+            r.register1("instrumentationBegin", int.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
+                    b.add(new InstrumentationBeginNode(offset));
+                    return true;
+                }
+            });
+            r.register0("instrumentationEnd", new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.add(new InstrumentationEndNode());
+                    return true;
+                }
+            });
+            r.register0("controlFlowPath", new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.addPush(JavaKind.Int, new ControlFlowPathNode());
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins) {
