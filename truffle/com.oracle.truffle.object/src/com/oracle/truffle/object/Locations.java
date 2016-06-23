@@ -82,19 +82,19 @@ public abstract class Locations {
 
         @Override
         public final void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-            if (!canStoreFinal(store, value)) {
+            if (!canStore(value)) {
                 throw finalLocation();
             }
         }
 
         @Override
-        protected boolean canStoreFinal(DynamicObject store, Object val) {
+        public boolean canStore(Object val) {
             return valueEquals(this.value, val);
         }
 
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
-            if (!canStoreFinal(store, value)) {
+            if (!canStore(value)) {
                 CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException();
             }

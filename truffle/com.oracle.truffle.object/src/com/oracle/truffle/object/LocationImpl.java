@@ -73,12 +73,12 @@ public abstract class LocationImpl extends Location {
     protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
 
     @Override
-    public final boolean canSet(DynamicObject store, Object value) {
+    public boolean canSet(DynamicObject store, Object value) {
         return canStore(value) && canStoreFinal(store, value);
     }
 
     @Override
-    public final boolean canSet(Object value) {
+    public boolean canSet(Object value) {
         return canSet(null, value);
     }
 
