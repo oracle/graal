@@ -190,12 +190,12 @@ public class GraalCompiler {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
-                if (UseGraalInstrumentation.getValue()) {
-                    new ExtractInstrumentationPhase().apply(graph, highTierContext);
-                }
                 new DeadCodeEliminationPhase(Optional).apply(graph);
             } else {
                 Debug.dump(Debug.INFO_LOG_LEVEL, graph, "initial state");
+            }
+            if (UseGraalInstrumentation.getValue()) {
+                new ExtractInstrumentationPhase().apply(graph, highTierContext);
             }
 
             suites.getHighTier().apply(graph, highTierContext);

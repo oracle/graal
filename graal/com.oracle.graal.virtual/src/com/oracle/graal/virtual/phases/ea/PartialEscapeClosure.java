@@ -181,6 +181,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return true;
             }
         }
+        if (UseGraalInstrumentation.getValue() && (node instanceof InstrumentationNode)) {
+            // InstrumentationNode will be adapted according to existing effects
+            processVirtualizable((ValueNode) node, nextFixedNode, state, effects);
+            return false;
+        }
         if (hasVirtualInputs.isMarked(node) && node instanceof ValueNode) {
             if (node instanceof Virtualizable) {
                 if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects) == false) {
@@ -190,10 +195,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     VirtualUtil.trace("deleted virtualizable node %s", node);
                     return true;
                 }
-            }
-            if (UseGraalInstrumentation.getValue() && (node instanceof InstrumentationNode)) {
-                // ignore inputs for InstrumentationNode
-                return false;
             }
             processNodeInputs((ValueNode) node, nextFixedNode, state, effects);
         }

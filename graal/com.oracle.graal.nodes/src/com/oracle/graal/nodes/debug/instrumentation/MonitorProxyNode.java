@@ -28,28 +28,47 @@ import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 
+/**
+ * The {@code MonitorProxyNode} represents the InstrumentationNode's target when the original
+ * MonitorEnterNode is invalid. Such situation occurs when the escape analysis removes the
+ * MonitorEnterNode and aggregates the monitor logic in a CommitAllocationNode.
+ */
 @NodeInfo
 public class MonitorProxyNode extends ValueNode {
 
     public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode target;
+    @OptionalInput(value = InputType.Association) protected ValueNode object;
     @OptionalInput(value = InputType.Association) protected MonitorIdNode monitorId;
 
-    public MonitorProxyNode(ValueNode target, MonitorIdNode monitorId) {
+    public MonitorProxyNode(ValueNode object, MonitorIdNode monitorId) {
         super(TYPE, StampFactory.forVoid());
 
-        this.target = target;
+        this.object = object;
         this.monitorId = monitorId;
     }
 
-    public ValueNode target() {
-        return target;
+    public ValueNode object() {
+        return object;
     }
 
     public MonitorIdNode getMonitorId() {
         return monitorId;
+    }
+
+    /**
+     * @return the first RawMonitorEnterNode that shares the same MonitorIdNode and the same lock
+     *         object with this MonitorProxyNode.
+     */
+    public RawMonitorEnterNode findFirstMatch() {
+        for (RawMonitorEnterNode monitorEnter : monitorId.usages().filter(RawMonitorEnterNode.class)) {
+            if (monitorEnter.object() == object) {
+                return monitorEnter;
+            }
+        }
+        return null;
     }
 
 }

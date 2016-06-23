@@ -186,7 +186,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
-    protected NewStringSnippets.Templates runtimeStringSnippets;
+    protected NewStringSnippets.Templates newStringSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -210,7 +210,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
         assertionSnippets = new AssertionSnippets.Templates(providers, target);
         arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
-        runtimeStringSnippets = new NewStringSnippets.Templates(providers, target);
+        newStringSnippets = new NewStringSnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
@@ -321,7 +321,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof AssertionNode) {
             assertionSnippets.lower((AssertionNode) n, tool);
         } else if (n instanceof NewStringNode) {
-            runtimeStringSnippets.lower((NewStringNode) n, tool);
+            if (graph.getGuardsStage().areDeoptsFixed()) {
+                newStringSnippets.lower((NewStringNode) n, tool);
+            }
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.

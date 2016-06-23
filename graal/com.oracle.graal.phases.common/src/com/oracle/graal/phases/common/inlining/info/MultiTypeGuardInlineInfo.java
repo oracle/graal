@@ -246,7 +246,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         invoke.setNext(null);
         returnMerge.setNext(continuation);
         if (UseGraalInstrumentation.getValue()) {
-            InliningUtil.removeAttachedInstrumentation(invoke);
+            InliningUtil.detachInstrumentation(invoke);
         }
         if (returnValuePhi != null) {
             invoke.asNode().replaceAtUsages(returnValuePhi);

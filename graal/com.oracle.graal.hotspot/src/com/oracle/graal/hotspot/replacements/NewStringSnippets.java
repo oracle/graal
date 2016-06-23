@@ -25,11 +25,16 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import java.lang.reflect.Field;
+
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.nodes.FieldLocationIdentity;
+import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.debug.NewStringNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.nodes.java.NewInstanceNode;
@@ -45,7 +50,12 @@ import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * The {@code NewStringSnippets} reconstructs a compilation-time String in the compiled code.
+ */
 public class NewStringSnippets implements Snippets {
 
     @Fold
@@ -71,11 +81,16 @@ public class NewStringSnippets implements Snippets {
         return UNSAFE.arrayBaseOffset(char[].class);
     }
 
+    @Fold
+    static int hashOf(String value) {
+        return value.hashCode();
+    }
+
     @Snippet
-    public static String create(@ConstantParameter String compilationTimeString) {
-        int i = compilationTimeString.length();
+    public static String create(@ConstantParameter String value) {
+        int i = value.length();
         char[] array = (char[]) NewArrayNode.newUninitializedArray(char.class, i);
-        Word cArray = CStringConstant.cstring(compilationTimeString);
+        Word cArray = CStringConstant.cstring(value);
         while (i-- > 0) {
             // assuming it is ASCII string
             // array[i] = (char) cArray.readByte(i);
@@ -83,7 +98,7 @@ public class NewStringSnippets implements Snippets {
         }
         String newString = (String) newInstance(String.class, false);
         UNSAFE.putObject(newString, valueOffset(), array);
-        UNSAFE.putInt(newString, hashOffset(), 0);
+        UNSAFE.putInt(newString, hashOffset(), hashOf(value));
         return newString;
     }
 
@@ -92,17 +107,35 @@ public class NewStringSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo create = snippet(NewStringSnippets.class, "create");
+        private static final Field STRING_VALUE_FIELD;
+        private static final Field STRING_HASH_FIELD;
+
+        static {
+            try {
+                STRING_VALUE_FIELD = String.class.getDeclaredField("value");
+                STRING_HASH_FIELD = String.class.getDeclaredField("hash");
+            } catch (NoSuchFieldException e) {
+                throw new GraalError(e);
+            }
+        }
+
+        private final SnippetInfo create;
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
+
+            MetaAccessProvider metaAccess = providers.getMetaAccess();
+            LocationIdentity valueLocation = new FieldLocationIdentity(metaAccess.lookupJavaField(STRING_VALUE_FIELD));
+            LocationIdentity hashLocation = new FieldLocationIdentity(metaAccess.lookupJavaField(STRING_HASH_FIELD));
+
+            create = snippet(NewStringSnippets.class, "create", NamedLocationIdentity.getArrayLocation(JavaKind.Char), valueLocation, hashLocation);
         }
 
-        public void lower(NewStringNode runtimeStringNode, LoweringTool tool) {
-            Arguments args = new Arguments(create, runtimeStringNode.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("value", runtimeStringNode.getValue());
+        public void lower(NewStringNode newStringNode, LoweringTool tool) {
+            Arguments args = new Arguments(create, newStringNode.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("value", newStringNode.getValue());
             SnippetTemplate template = template(args);
-            template.instantiate(providers.getMetaAccess(), runtimeStringNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), newStringNode, DEFAULT_REPLACER, args);
         }
 
     }

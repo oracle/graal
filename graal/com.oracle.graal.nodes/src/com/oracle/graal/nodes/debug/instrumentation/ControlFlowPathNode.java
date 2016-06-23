@@ -31,13 +31,20 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * The {@code ControlFlowPathNode} represents an integer indicating which control flow path is taken
+ * at a MergeNode. The MergeNode is targeted by the InstrumentationNode that this node belongs. Such
+ * situation occurs when the InstrumentationNode originally targets a node that is substituted by a
+ * snippet.
+ */
 @NodeInfo
-public final class ControlFlowPathNode extends InstrumentationInliningCallback {
+public final class ControlFlowPathNode extends FixedWithNextNode implements InstrumentationInliningCallback {
 
     public static final NodeClass<ControlFlowPathNode> TYPE = NodeClass.create(ControlFlowPathNode.class);
 
@@ -45,6 +52,9 @@ public final class ControlFlowPathNode extends InstrumentationInliningCallback {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
     }
 
+    /**
+     * @return true if there is a control flow path between {@code from} and {@code to}.
+     */
     private static boolean isCFGAccessible(FixedNode from, FixedNode to) {
         NodeFlood flood = from.graph().createNodeFlood();
         flood.add(from);
@@ -61,11 +71,16 @@ public final class ControlFlowPathNode extends InstrumentationInliningCallback {
     }
 
     @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
+    public void preInlineInstrumentation(InstrumentationNode instrumentation) {
+    }
+
+    @Override
+    public void postInlineInstrumentation(InstrumentationNode instrumentation) {
         if (instrumentation.target() instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) instrumentation.target();
-
-            if (isCFGAccessible(merge, position)) {
+            if (isCFGAccessible(merge, instrumentation)) { // ensure the scheduling
+                // create a ValuePhiNode selecting between constant integers that represent the
+                // control flow paths
                 ValuePhiNode phi = graph().addWithoutUnique(new ValuePhiNode(StampFactory.intValue(), merge));
                 for (int i = 0; i < merge.cfgPredecessors().count(); i++) {
                     phi.addInput(ConstantNode.forInt(i, merge.graph()));

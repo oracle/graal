@@ -29,6 +29,9 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
+/**
+ * The {@code NewStringNode} embeds a compilation-time String into the compiled code.
+ */
 @NodeInfo
 public final class NewStringNode extends FixedWithNextNode implements Lowerable {
 

@@ -27,6 +27,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 
+/**
+ * The {@code InstrumentationEndNode} represents the boundary of the instrumentation.
+ */
 @NodeInfo
 public final class InstrumentationEndNode extends FixedWithNextNode {
 

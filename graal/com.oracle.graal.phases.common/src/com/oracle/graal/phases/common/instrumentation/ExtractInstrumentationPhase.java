@@ -34,88 +34,68 @@ import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractLocalNode;
-import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationInliningCallback;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
-import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
-import com.oracle.graal.nodes.java.MonitorEnterNode;
-import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
+/**
+ * The {@code ExtractInstrumentationPhase} extracts the instrumentation (whose boundary are
+ * indicated by instrumentationBegin and instrumentationEnd), and insert an
+ * {@link InstrumentationNode} in the graph to take place of the instrumentation.
+ */
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         for (InstrumentationBeginNode begin : graph.getNodes().filter(InstrumentationBeginNode.class)) {
             Instrumentation instrumentation = new Instrumentation(begin);
-            if (!instrumentation.inspectingIntrinsic()) {
-                InstrumentationNode instrumentationNode = instrumentation.createInstrumentationNode();
+            if (begin.offset() == 0 || begin.target() != null) {
+                // we create InstrumentationNode when the instrumentation is anchored (when 0 is
+                // passed to instrumentationBegin), or when the instrumentation is associated with
+                // some target.
+                InstrumentationNode instrumentationNode = graph.addWithoutUnique(new InstrumentationNode(begin.target(), begin.offset()));
                 graph.addBeforeFixed(begin, instrumentationNode);
-                Debug.dump(Debug.INFO_LOG_LEVEL, instrumentationNode.instrumentationGraph(), "After extracted instrumentation at %s", instrumentation);
+
+                StructuredGraph instrumentationGraph = instrumentation.genInstrumentationGraph(graph, instrumentationNode);
+                new DeadCodeEliminationPhase().apply(instrumentationGraph, false);
+                instrumentationNode.setInstrumentationGraph(instrumentationGraph);
+                Debug.dump(Debug.INFO_LOG_LEVEL, instrumentationGraph, "After extracted instrumentation at %s", instrumentation);
             }
             instrumentation.unlink();
         }
-
-        for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            for (InstrumentationInliningCallback query : instrumentationNode.instrumentationGraph().getNodes().filter(InstrumentationInliningCallback.class)) {
-                query.onExtractInstrumentation(instrumentationNode);
-            }
-        }
     }
 
-    static class Instrumentation {
+    /**
+     * This class denotes the instrumentation code being detached from the graph.
+     */
+    private static class Instrumentation {
 
-        protected InstrumentationBeginNode begin;
-        protected InstrumentationEndNode end;
-        protected ValueNode target;
-        protected NodeBitMap nodes;
+        private InstrumentationBeginNode begin;
+        private InstrumentationEndNode end;
+        private NodeBitMap nodes;
 
         Instrumentation(InstrumentationBeginNode begin) {
             this.begin = begin;
 
-            resolveInstrumentationNodes();
-            resolveTarget();
-        }
-
-        private static boolean shouldIncludeInput(Node node, NodeBitMap cfgNodes) {
-            if (node instanceof FloatingNode && !(node instanceof AbstractLocalNode)) {
-                for (Position pos : node.inputPositions()) {
-                    if (pos.getInputType() == InputType.Value) {
-                        continue;
-                    }
-                    if (!cfgNodes.isMarked(pos.get(node))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            if (node instanceof CallTargetNode || node instanceof MonitorIdNode || node instanceof FrameState) {
-                return true;
-            }
-            return false;
-        }
-
-        private void resolveInstrumentationNodes() {
+            // travel along the control flow for the paired InstrumentationEndNode
             NodeFlood cfgFlood = begin.graph().createNodeFlood();
             cfgFlood.add(begin.next());
             for (Node current : cfgFlood) {
                 if (current instanceof InstrumentationEndNode) {
-                    end = (InstrumentationEndNode) current;
+                    this.end = (InstrumentationEndNode) current;
                 } else if (current instanceof LoopEndNode) {
                     // do nothing
                 } else if (current instanceof AbstractEndNode) {
@@ -125,96 +105,96 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                 }
             }
 
+            if (this.end == null) {
+                // this may be caused by DeoptimizationReason.Unresolved
+                throw GraalError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
+            }
+
+            // all FloatingNodes (except AbstractLocalNodes), which the FixedNodes in the
+            // instrumentation depend on, are included in the instrumentation if they are not used
+            // by other nodes in the graph
             NodeBitMap cfgNodes = cfgFlood.getVisited();
             NodeFlood dfgFlood = begin.graph().createNodeFlood();
             dfgFlood.addAll(cfgNodes);
             for (Node current : dfgFlood) {
-                if (current instanceof FrameState) {
-                    continue;
-                }
-                for (Node input : current.inputs()) {
-                    if (shouldIncludeInput(input, cfgNodes)) {
-                        dfgFlood.add(input);
-                    }
-                }
-            }
-            nodes = dfgFlood.getVisited();
-
-            if (end == null) {
-                // this may be caused by DeoptimizationReason.Unresolved
-                throw GraalError.shouldNotReachHere("could not find invocation to instrumentationEnd()");
-            }
-        }
-
-        private void resolveTarget() {
-            int offset = begin.getOffset();
-            if (offset < 0) {
-                Node pred = begin;
-                while (offset < 0) {
-                    pred = pred.predecessor();
-                    if (pred == null || !(pred instanceof FixedNode)) {
-                        target = null;
-                        return;
-                    }
-                    offset++;
-                }
-                target = (FixedNode) pred;
-            } else if (offset > 0) {
-                FixedNode next = end;
-                while (offset > 0) {
-                    next = ((FixedWithNextNode) next).next();
-                    if (next == null || !(next instanceof FixedWithNextNode)) {
-                        target = null;
-                        return;
-                    }
-                    offset--;
-                }
-                target = next;
-            }
-        }
-
-        public boolean inspectingIntrinsic() {
-            return begin.inspectInvocation() && !(target instanceof Invoke);
-        }
-
-        public InstrumentationNode createInstrumentationNode() {
-            ValueNode newTarget = target;
-            // MonitorEnterNode may be deleted during PEA
-            if (newTarget instanceof MonitorEnterNode) {
-                newTarget = new MonitorProxyNode(newTarget, ((MonitorEnterNode) newTarget).getMonitorId());
-                begin.graph().addWithoutUnique(newTarget);
-            }
-            InstrumentationNode instrumentationNode = new InstrumentationNode(newTarget, begin.getOffset());
-            begin.graph().addWithoutUnique(instrumentationNode);
-            // copy instrumentation nodes to the InstrumentationNode instance
-            StructuredGraph instrumentationGraph = instrumentationNode.instrumentationGraph();
-            Map<Node, Node> replacements = Node.newMap();
-            int index = 0;
-            for (Node current : nodes) {
-                if (current instanceof FrameState) {
-                    continue;
-                }
-                for (Node input : current.inputs()) {
-                    if (input instanceof ValueNode) {
-                        ValueNode valueNode = (ValueNode) input;
-                        if (!nodes.isMarked(input) && !replacements.containsKey(input)) {
-                            ParameterNode parameter = new ParameterNode(index++, StampPair.createSingle(valueNode.stamp()));
-                            instrumentationGraph.addWithoutUnique(parameter);
-                            replacements.put(input, parameter);
-                            instrumentationNode.addInput(input);
+                for (Position pos : current.inputPositions()) {
+                    Node input = pos.get(current);
+                    if (pos.getInputType() == InputType.Value) {
+                        if (!(input instanceof FloatingNode)) {
+                            // we only consider FloatingNode for this input type
+                            continue;
+                        }
+                        if (input instanceof AbstractLocalNode) {
+                            // AbstractLocalNode is invalid in the instrumentation sub-graph
+                            continue;
+                        }
+                        if (shouldIncludeValueInput((FloatingNode) input, cfgNodes)) {
+                            dfgFlood.add(input);
+                        }
+                    } else {
+                        if (!(input instanceof FrameState)) {
+                            // FrameState will be reassigned upon inlining instrumentation
+                            dfgFlood.add(input);
                         }
                     }
                 }
             }
-            replacements = instrumentationGraph.addDuplicates(nodes, begin.graph(), nodes.count(), replacements);
-            instrumentationGraph.start().setNext((FixedNode) replacements.get(begin.next()));
-            replacements.get(end).replaceAtPredecessor(instrumentationGraph.addWithoutUnique(new ReturnNode(null)));
-
-            new DeadCodeEliminationPhase().apply(instrumentationGraph, false);
-            return instrumentationNode;
+            this.nodes = dfgFlood.getVisited();
         }
 
-        public void unlink() {
+        /**
+         * Copy the instrumentation nodes into a separate graph. During the copying, this method
+         * updates the input of the given InstrumentationNode. Hence, it is essential that the given
+         * InstrumentationNode is alive.
+         */
+        StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
+            StructuredGraph instrumentationGraph = new StructuredGraph(AllowAssumptions.YES);
+            Map<Node, Node> replacements = Node.newMap();
+            int index = 0; // for ParameterNode index
+            for (Node current : nodes) {
+                if (current instanceof FrameState) {
+                    // FrameState will be re-assigned by FrameStateAssignmentPhase upon inlining
+                    continue;
+                }
+                // mark any input that is not included in the instrumentation a weak dependency
+                for (Node input : current.inputs()) {
+                    if (input instanceof ValueNode) {
+                        ValueNode valueNode = (ValueNode) input;
+                        if (!nodes.isMarked(input) && !replacements.containsKey(input)) {
+                            // create a ParameterNode in case the input is not within the
+                            // instrumentation
+                            ParameterNode parameter = new ParameterNode(index++, StampPair.createSingle(valueNode.stamp()));
+                            instrumentationGraph.addWithoutUnique(parameter);
+                            instrumentationNode.addWeakDependency(valueNode);
+                            replacements.put(input, parameter);
+                        }
+                    }
+                }
+            }
+            replacements = instrumentationGraph.addDuplicates(nodes, oldGraph, nodes.count(), replacements);
+            instrumentationGraph.start().setNext((FixedNode) replacements.get(begin.next()));
+            replacements.get(end).replaceAtPredecessor(instrumentationGraph.addWithoutUnique(new ReturnNode(null)));
+            return instrumentationGraph;
+        }
+
+        /**
+         * @return true if the given FloatingNode does not contain any FixedNode input of types
+         *         other than InputType.Value.
+         */
+        private static boolean shouldIncludeValueInput(FloatingNode node, NodeBitMap cfgNodes) {
+            for (Position pos : node.inputPositions()) {
+                if (pos.getInputType() == InputType.Value) {
+                    continue;
+                }
+                Node input = pos.get(node);
+                if (input instanceof FixedNode && !cfgNodes.isMarked(input)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        void unlink() {
             FixedNode next = end.next();
             end.setNext(null);
             begin.replaceAtPredecessor(next);

@@ -22,25 +22,15 @@
  */
 package com.oracle.graal.nodes.debug.instrumentation;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
+/**
+ * Nodes implementing {@code InstrumentationInliningCallback} will be notify of the
+ * preInlineInstrumentation event and the postInlineInstrumentation event upon inlining
+ * instrumentation.
+ */
+public interface InstrumentationInliningCallback {
 
-@NodeInfo
-public abstract class InstrumentationInliningCallback extends FixedWithNextNode {
+    void preInlineInstrumentation(InstrumentationNode instrumentation);
 
-    public static final NodeClass<InstrumentationInliningCallback> TYPE = NodeClass.create(InstrumentationInliningCallback.class);
-
-    public InstrumentationInliningCallback(NodeClass<? extends FixedWithNextNode> c, Stamp stamp) {
-        super(c, stamp);
-    }
-
-    public void onExtractInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation) {
-    }
-
-    public void onInlineInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position) {
-    }
+    void postInlineInstrumentation(InstrumentationNode instrumentation);
 
 }

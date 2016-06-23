@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.debug.instrumentation;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -32,31 +33,43 @@ import com.oracle.graal.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * The {@code InstrumentationBeginNode} represents the boundary of the instrumentation. It also
+ * maintains the target of the instrumentation.
+ */
 @NodeInfo
 public final class InstrumentationBeginNode extends FixedWithNextNode {
 
     public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
+    @OptionalInput(value = InputType.Association) protected ValueNode target;
     private final int offset;
-    private final boolean inspectInvocation;
 
-    public InstrumentationBeginNode(ValueNode offset, boolean inspectInvocation) {
+    /**
+     * @param offset denotes the bytecode offset between the target and the instrumentation, and is
+     *            required to be a ConstantNode.
+     */
+    public InstrumentationBeginNode(ValueNode offset) {
         super(TYPE, StampFactory.forVoid());
-
+        // resolve the constant integer from the input
         if (!(offset instanceof ConstantNode)) {
             throw GraalError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
         }
         JavaConstant constant = ((ConstantNode) offset).asJavaConstant();
         this.offset = constant == null ? 0 : constant.asInt();
-        this.inspectInvocation = inspectInvocation;
+        this.target = null;
     }
 
-    public int getOffset() {
+    public int offset() {
         return offset;
     }
 
-    public boolean inspectInvocation() {
-        return inspectInvocation;
+    public ValueNode target() {
+        return target;
+    }
+
+    public void setTarget(ValueNode target) {
+        this.target = target;
     }
 
 }

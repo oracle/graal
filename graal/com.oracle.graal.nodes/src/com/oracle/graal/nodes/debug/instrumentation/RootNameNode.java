@@ -23,18 +23,21 @@
 package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.debug.NewStringNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * The {@code RootNameNode} represents the name of the compilation root.
+ */
 @NodeInfo
-public final class RootNameNode extends InstrumentationInliningCallback implements Lowerable {
+public final class RootNameNode extends FixedWithNextNode implements Lowerable, InstrumentationInliningCallback {
 
     public static final NodeClass<RootNameNode> TYPE = NodeClass.create(RootNameNode.class);
 
@@ -42,22 +45,31 @@ public final class RootNameNode extends InstrumentationInliningCallback implemen
         super(TYPE, stamp);
     }
 
-    public static String genRootName(ResolvedJavaMethod method) {
-        if (method == null) {
-            return "<unresolved method>";
-        }
-        return method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor();
+    /**
+     * resolve this node and replace with a NewStringNode that constructs the root method name in
+     * the compiled code. To ensure the correct result, this method should be invoked only after the
+     * InliningPhase.
+     */
+    private void resolve(StructuredGraph graph) {
+        ResolvedJavaMethod method = graph.method();
+        String rootName = method == null ? "<unresolved method>" : (method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor());
+        NewStringNode newString = graph().add(new NewStringNode(rootName, stamp()));
+        graph().replaceFixedWithFixed(this, newString);
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        NewStringNode runtimeString = graph().add(new NewStringNode(genRootName(graph().method()), stamp()));
-        graph().replaceFixedWithFixed(this, runtimeString);
+        resolve(graph());
     }
 
     @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        throw GraalError.shouldNotReachHere("RootNameNode must be replaced before inlining an instrumentation");
+    public void preInlineInstrumentation(InstrumentationNode instrumentation) {
+        // resolve to the method name of the original graph
+        resolve(instrumentation.graph());
+    }
+
+    @Override
+    public void postInlineInstrumentation(InstrumentationNode instrumentation) {
     }
 
 }
