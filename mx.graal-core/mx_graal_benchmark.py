@@ -924,7 +924,7 @@ class JMHBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     jmh_result_file = "jmh_result.json"
 
     def name(self):
-        return "jmh-micros-graal"
+        return "jmh-graal-core-whitebox"
 
     def group(self):
         return "Graal"

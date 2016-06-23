@@ -125,7 +125,7 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
-  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-micros-graal"]
+  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
