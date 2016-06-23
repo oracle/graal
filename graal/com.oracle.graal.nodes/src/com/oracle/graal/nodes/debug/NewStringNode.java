@@ -20,44 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.debug.RuntimeStringNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 @NodeInfo
-public final class RootNameNode extends InstrumentationContentNode implements Lowerable {
+public final class NewStringNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<RootNameNode> TYPE = NodeClass.create(RootNameNode.class);
+    public static final NodeClass<NewStringNode> TYPE = NodeClass.create(NewStringNode.class);
 
-    public RootNameNode(Stamp stamp) {
+    private final String value;
+
+    public NewStringNode(String value, Stamp stamp) {
         super(TYPE, stamp);
+        this.value = value;
     }
 
-    public static String genRootName(ResolvedJavaMethod method) {
-        if (method == null) {
-            return "<unresolved method>";
-        }
-        return method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor();
+    public String getValue() {
+        return value;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        RuntimeStringNode runtimeString = graph().add(new RuntimeStringNode(genRootName(graph().method()), stamp()));
-        graph().replaceFixedWithFixed(this, runtimeString);
-    }
-
-    @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        throw GraalError.shouldNotReachHere("RootNameNode must be replaced before inlining an instrumentation");
+        tool.getLowerer().lower(this, tool);
     }
 
 }

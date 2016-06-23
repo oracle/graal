@@ -45,16 +45,16 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationInliningCallback;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
+import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
 import com.oracle.graal.nodes.java.MonitorEnterNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationBeginNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationContentNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
@@ -72,7 +72,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
         }
 
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            for (InstrumentationContentNode query : instrumentationNode.instrumentationGraph().getNodes().filter(InstrumentationContentNode.class)) {
+            for (InstrumentationInliningCallback query : instrumentationNode.instrumentationGraph().getNodes().filter(InstrumentationInliningCallback.class)) {
                 query.onExtractInstrumentation(instrumentationNode);
             }
         }

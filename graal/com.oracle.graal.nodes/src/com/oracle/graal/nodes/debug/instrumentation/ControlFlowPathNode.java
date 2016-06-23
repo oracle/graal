@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
@@ -37,11 +37,11 @@ import com.oracle.graal.nodes.ValuePhiNode;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
-public final class RuntimePathNode extends InstrumentationContentNode {
+public final class ControlFlowPathNode extends InstrumentationInliningCallback {
 
-    public static final NodeClass<RuntimePathNode> TYPE = NodeClass.create(RuntimePathNode.class);
+    public static final NodeClass<ControlFlowPathNode> TYPE = NodeClass.create(ControlFlowPathNode.class);
 
-    public RuntimePathNode() {
+    public ControlFlowPathNode() {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
     }
 

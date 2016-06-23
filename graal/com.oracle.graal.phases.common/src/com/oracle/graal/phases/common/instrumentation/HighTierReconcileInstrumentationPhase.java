@@ -33,6 +33,8 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
+import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
 import com.oracle.graal.nodes.java.AccessMonitorNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -40,8 +42,6 @@ import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
 import com.oracle.graal.nodes.virtual.CommitAllocationNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 
 public class HighTierReconcileInstrumentationPhase extends Phase {
 

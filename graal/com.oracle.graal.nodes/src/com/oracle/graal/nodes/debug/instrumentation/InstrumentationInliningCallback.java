@@ -20,34 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.debug;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.LoweringTool;
 
 @NodeInfo
-public final class RuntimeStringNode extends FixedWithNextNode implements Lowerable {
+public abstract class InstrumentationInliningCallback extends FixedWithNextNode {
 
-    public static final NodeClass<RuntimeStringNode> TYPE = NodeClass.create(RuntimeStringNode.class);
+    public static final NodeClass<InstrumentationInliningCallback> TYPE = NodeClass.create(InstrumentationInliningCallback.class);
 
-    private final String value;
-
-    public RuntimeStringNode(String value, Stamp stamp) {
-        super(TYPE, stamp);
-        this.value = value;
+    public InstrumentationInliningCallback(NodeClass<? extends FixedWithNextNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
-    public String getValue() {
-        return value;
+    public void onExtractInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation) {
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    public void onInlineInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position) {
     }
 
 }

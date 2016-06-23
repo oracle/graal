@@ -30,7 +30,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.debug.RuntimeStringNode;
+import com.oracle.graal.nodes.debug.NewStringNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.nodes.java.NewInstanceNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
@@ -46,7 +46,7 @@ import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public class RuntimeStringSnippets implements Snippets {
+public class NewStringSnippets implements Snippets {
 
     @Fold
     static long valueOffset() {
@@ -92,13 +92,13 @@ public class RuntimeStringSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo create = snippet(RuntimeStringSnippets.class, "create");
+        private final SnippetInfo create = snippet(NewStringSnippets.class, "create");
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
         }
 
-        public void lower(RuntimeStringNode runtimeStringNode, LoweringTool tool) {
+        public void lower(NewStringNode runtimeStringNode, LoweringTool tool) {
             Arguments args = new Arguments(create, runtimeStringNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("value", runtimeStringNode.getValue());
             SnippetTemplate template = template(args);

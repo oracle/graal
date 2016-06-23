@@ -20,20 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.MonitorIdNode;
 
 @NodeInfo
-public final class InstrumentationEndNode extends FixedWithNextNode {
+public class MonitorProxyNode extends ValueNode {
 
-    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
+    public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
 
-    public InstrumentationEndNode() {
+    @OptionalInput(value = InputType.Association) protected ValueNode target;
+    @OptionalInput(value = InputType.Association) protected MonitorIdNode monitorId;
+
+    public MonitorProxyNode(ValueNode target, MonitorIdNode monitorId) {
         super(TYPE, StampFactory.forVoid());
+
+        this.target = target;
+        this.monitorId = monitorId;
+    }
+
+    public ValueNode target() {
+        return target;
+    }
+
+    public MonitorIdNode getMonitorId() {
+        return monitorId;
     }
 
 }

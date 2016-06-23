@@ -20,35 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedNode;
-
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.graal.nodes.FixedWithNextNode;
 
 @NodeInfo
-public final class IsMethodInlinedNode extends InstrumentationContentNode {
+public final class InstrumentationEndNode extends FixedWithNextNode {
 
-    public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);
+    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
 
-    protected int original;
-
-    public IsMethodInlinedNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
-    }
-
-    @Override
-    public void onExtractInstrumentation(InstrumentationNode instrumentation) {
-        original = System.identityHashCode(instrumentation.graph());
-    }
-
-    @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
+    public InstrumentationEndNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 
 }

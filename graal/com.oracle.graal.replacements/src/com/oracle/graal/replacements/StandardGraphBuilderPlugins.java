@@ -72,6 +72,11 @@ import com.oracle.graal.nodes.debug.BlackholeNode;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.debug.OpaqueNode;
 import com.oracle.graal.nodes.debug.SpillRegistersNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
+import com.oracle.graal.nodes.debug.instrumentation.IsMethodInlinedNode;
+import com.oracle.graal.nodes.debug.instrumentation.RootNameNode;
+import com.oracle.graal.nodes.debug.instrumentation.ControlFlowPathNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.GetClassNode;
@@ -94,11 +99,6 @@ import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.RegisterFinalizerNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationBeginNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationEndNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.IsMethodInlinedNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.RootNameNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.RuntimePathNode;
 import com.oracle.graal.replacements.nodes.DirectReadNode;
 import com.oracle.graal.replacements.nodes.ReverseBytesNode;
 import com.oracle.graal.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -822,7 +822,7 @@ public class StandardGraphBuilderPlugins {
             r.register0("runtimePath", new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    b.addPush(JavaKind.Int, new RuntimePathNode());
+                    b.addPush(JavaKind.Int, new ControlFlowPathNode());
                     return true;
                 }
             });

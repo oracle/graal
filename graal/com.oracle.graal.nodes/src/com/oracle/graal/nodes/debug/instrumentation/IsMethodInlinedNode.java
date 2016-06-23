@@ -20,43 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.FixedNode;
 
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
-public final class InstrumentationBeginNode extends FixedWithNextNode {
+public final class IsMethodInlinedNode extends InstrumentationInliningCallback {
 
-    public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
+    public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);
 
-    private final int offset;
-    private final boolean inspectInvocation;
+    protected int original;
 
-    public InstrumentationBeginNode(ValueNode offset, boolean inspectInvocation) {
-        super(TYPE, StampFactory.forVoid());
-
-        if (!(offset instanceof ConstantNode)) {
-            throw GraalError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
-        }
-        JavaConstant constant = ((ConstantNode) offset).asJavaConstant();
-        this.offset = constant == null ? 0 : constant.asInt();
-        this.inspectInvocation = inspectInvocation;
+    public IsMethodInlinedNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
     }
 
-    public int getOffset() {
-        return offset;
+    @Override
+    public void onExtractInstrumentation(InstrumentationNode instrumentation) {
+        original = System.identityHashCode(instrumentation.graph());
     }
 
-    public boolean inspectInvocation() {
-        return inspectInvocation;
+    @Override
+    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
+        graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
     }
 
 }

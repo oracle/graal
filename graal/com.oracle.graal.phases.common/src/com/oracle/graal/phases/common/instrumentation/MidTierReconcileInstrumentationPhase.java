@@ -24,12 +24,12 @@ package com.oracle.graal.phases.common.instrumentation;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
+import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
 import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 
 public class MidTierReconcileInstrumentationPhase extends Phase {
 

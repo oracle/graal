@@ -27,6 +27,8 @@ import java.util.Set;
 
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationInliningCallback;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
 import com.oracle.graal.nodes.memory.MemoryAnchorNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -36,8 +38,6 @@ import com.oracle.graal.phases.common.FloatingReadPhase;
 import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
 import com.oracle.graal.phases.common.GuardLoweringPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationContentNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.tiers.LowTierContext;
 
 public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
@@ -67,7 +67,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
             instrumentationNode.inlineAt(instrumentationNode);
 
-            for (InstrumentationContentNode query : graph.getNodes().filter(InstrumentationContentNode.class)) {
+            for (InstrumentationInliningCallback query : graph.getNodes().filter(InstrumentationInliningCallback.class)) {
                 query.onInlineInstrumentation(instrumentationNode, instrumentationNode);
             }
 

@@ -20,36 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.MonitorIdNode;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo
-public class MonitorProxyNode extends ValueNode {
+public final class InstrumentationBeginNode extends FixedWithNextNode {
 
-    public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
+    public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode target;
-    @OptionalInput(value = InputType.Association) protected MonitorIdNode monitorId;
+    private final int offset;
+    private final boolean inspectInvocation;
 
-    public MonitorProxyNode(ValueNode target, MonitorIdNode monitorId) {
+    public InstrumentationBeginNode(ValueNode offset, boolean inspectInvocation) {
         super(TYPE, StampFactory.forVoid());
 
-        this.target = target;
-        this.monitorId = monitorId;
+        if (!(offset instanceof ConstantNode)) {
+            throw GraalError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
+        }
+        JavaConstant constant = ((ConstantNode) offset).asJavaConstant();
+        this.offset = constant == null ? 0 : constant.asInt();
+        this.inspectInvocation = inspectInvocation;
     }
 
-    public ValueNode target() {
-        return target;
+    public int getOffset() {
+        return offset;
     }
 
-    public MonitorIdNode getMonitorId() {
-        return monitorId;
+    public boolean inspectInvocation() {
+        return inspectInvocation;
     }
 
 }

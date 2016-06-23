@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,7 +49,7 @@ import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.debug.RuntimeStringNode;
+import com.oracle.graal.nodes.debug.NewStringNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
@@ -122,7 +122,7 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
 
     public void onMidTierReconcileInstrumentation() {
         for (RootNameNode rootNameNode : instrumentationGraph.getNodes().filter(RootNameNode.class)) {
-            RuntimeStringNode runtimeString = new RuntimeStringNode(RootNameNode.genRootName(graph().method()), rootNameNode.stamp());
+            NewStringNode runtimeString = new NewStringNode(RootNameNode.genRootName(graph().method()), rootNameNode.stamp());
             instrumentationGraph.addWithoutUnique(runtimeString);
             instrumentationGraph.replaceFixedWithFixed(rootNameNode, runtimeString);
         }
