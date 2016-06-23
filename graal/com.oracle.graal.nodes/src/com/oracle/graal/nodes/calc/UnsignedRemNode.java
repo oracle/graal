@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,12 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = "|%|")
-public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
+public class UnsignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     public static final NodeClass<UnsignedRemNode> TYPE = NodeClass.create(UnsignedRemNode.class);
 
@@ -45,7 +43,7 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
     }
 
     protected UnsignedRemNode(NodeClass<? extends UnsignedRemNode> c, ValueNode x, ValueNode y) {
-        super(c, x.stamp().unrestricted(), x, y);
+        super(c, x.stamp().unrestricted(), Op.REM, Type.UNSIGNED, x, y);
     }
 
     @Override
@@ -69,18 +67,8 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitURem(gen.operand(getX()), gen.operand(getY()), gen.state(this)));
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return !(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0);
     }
 
     @NodeIntrinsic

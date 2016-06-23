@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,7 @@ import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.calc.BinaryNode;
 import com.oracle.graal.nodes.calc.ConvertNode;
 import com.oracle.graal.nodes.calc.DivNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.IntegerDivRemNode;
 import com.oracle.graal.nodes.calc.MulNode;
 import com.oracle.graal.nodes.calc.NotNode;
 import com.oracle.graal.nodes.calc.ReinterpretNode;
@@ -163,7 +162,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 2;
         } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof BinaryNode || node instanceof NotNode) {
             return 1;
-        } else if (node instanceof IntegerDivNode || node instanceof DivNode || node instanceof IntegerRemNode || node instanceof RemNode) {
+        } else if (node instanceof IntegerDivRemNode || node instanceof DivNode || node instanceof RemNode) {
             return 10;
         } else if (node instanceof MulNode) {
             return 3;

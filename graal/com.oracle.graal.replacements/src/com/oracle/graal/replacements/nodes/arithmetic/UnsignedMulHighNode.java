@@ -53,6 +53,18 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         super(TYPE, stamp, x, y);
     }
 
+    private static long[] getUnsignedExtremes(IntegerStamp stamp) {
+        if (stamp.lowerBound() < 0 && stamp.upperBound() >= 0) {
+            /*
+             * If -1 and 0 are both in the signed range, then we can't say anything about the
+             * unsigned range, so we have to return [0, MAX_UNSIGNED].
+             */
+            return new long[]{0, -1L};
+        } else {
+            return new long[]{stamp.lowerBound(), stamp.upperBound()};
+        }
+    }
+
     /**
      * Determines the minimum and maximum result of this node for the given inputs and returns the
      * result of the given BiFunction on the minimum and maximum values. Note that the minima and
@@ -65,8 +77,8 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
 
         JavaKind kind = getStackKind();
         assert kind == JavaKind.Int || kind == JavaKind.Long;
-        long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
-        long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
+        long[] xExtremes = getUnsignedExtremes(xStamp);
+        long[] yExtremes = getUnsignedExtremes(yStamp);
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (long a : xExtremes) {
