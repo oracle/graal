@@ -34,8 +34,8 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
@@ -144,7 +144,7 @@ public abstract class LLVMWriteNode extends LLVMNode {
         }
     }
 
-    @NodeChild(value = "valueNode", type = LLVMAddressNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteAddressNode extends LLVMWriteNode {
 
         @Specialization

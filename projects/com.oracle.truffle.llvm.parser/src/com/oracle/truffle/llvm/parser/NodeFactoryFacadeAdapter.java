@@ -282,7 +282,8 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionBlockNode(FrameSlot returnSlot, List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller) {
+    public LLVMExpressionNode createFunctionBlockNode(FrameSlot returnSlot, List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
+                    LLVMStackFrameNuller[][] afterSlotNullerNodes) {
         return null;
     }
 

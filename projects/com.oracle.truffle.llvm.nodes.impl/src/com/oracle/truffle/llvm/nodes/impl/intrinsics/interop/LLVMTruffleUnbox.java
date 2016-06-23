@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
@@ -62,7 +62,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxP extends LLVMAddressIntrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -81,7 +81,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxI extends LLVMI32Intrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -100,7 +100,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxL extends LLVMI64Intrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -119,7 +119,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxC extends LLVMI8Intrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -138,7 +138,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxF extends LLVMFloatIntrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -157,7 +157,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxD extends LLVMDoubleIntrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();
@@ -176,7 +176,7 @@ public final class LLVMTruffleUnbox {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleUnboxB extends LLVMBooleanIntrinsic {
 
         @Child private Node foreignUnbox = Message.UNBOX.createNode();

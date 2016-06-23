@@ -111,9 +111,9 @@ public abstract class LLVMStackFrameNuller {
 
     }
 
-    public static final class LLVMDoubleNull extends LLVMStackFrameNuller {
+    public static final class LLVMDoubleNuller extends LLVMStackFrameNuller {
 
-        public LLVMDoubleNull(FrameSlot slot) {
+        public LLVMDoubleNuller(FrameSlot slot) {
             super(slot);
         }
 

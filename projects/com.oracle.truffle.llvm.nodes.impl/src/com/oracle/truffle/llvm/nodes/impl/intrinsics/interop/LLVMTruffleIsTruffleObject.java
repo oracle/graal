@@ -34,10 +34,10 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
 
-@NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleIsTruffleObject extends LLVMBooleanIntrinsic {
 
     @SuppressWarnings("unused")

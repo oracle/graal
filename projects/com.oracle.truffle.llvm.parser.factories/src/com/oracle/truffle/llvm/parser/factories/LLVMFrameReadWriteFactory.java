@@ -34,7 +34,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
@@ -158,12 +157,12 @@ public final class LLVMFrameReadWriteFactory {
             case X86_FP80:
                 return LLVMWrite80BitFloatingNodeGen.create((LLVM80BitFloatNode) result, slot);
             case ADDRESS:
-                return LLVMWriteAddressNodeGen.create((LLVMAddressNode) result, slot);
+                return LLVMWriteAddressNodeGen.create(result, slot);
             case FUNCTION_ADDRESS:
                 return LLVMWriteFunctionNodeGen.create((LLVMFunctionNode) result, slot);
             case STRUCT:
             case ARRAY:
-                return LLVMWriteAddressNodeGen.create((LLVMAddressNode) result, slot);
+                return LLVMWriteAddressNodeGen.create(result, slot);
             default:
                 throw new AssertionError(llvmType);
         }

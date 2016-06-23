@@ -35,7 +35,6 @@ import java.util.List;
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.Argument;
-import com.intel.llvm.ireditor.lLVM_IR.BasicBlock;
 import com.intel.llvm.ireditor.lLVM_IR.BinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.ConversionInstruction;
@@ -74,16 +73,11 @@ public final class LLVMReadVisitor {
 
     private final List<FrameSlot> reads = new ArrayList<>();
     private FrameDescriptor frameDescriptor;
+    private boolean countPhiValues;
 
-    public List<FrameSlot> getReads(BasicBlock block, FrameDescriptor descriptor) {
-        this.frameDescriptor = descriptor;
-        for (Instruction instr : block.getInstructions()) {
-            getReads(instr);
-        }
-        return reads;
-    }
-
-    private void getReads(Instruction instr) {
+    public List<FrameSlot> getReads(Instruction instr, FrameDescriptor descriptor, boolean alsoCountPhiUsages) {
+        frameDescriptor = descriptor;
+        this.countPhiValues = alsoCountPhiUsages;
         if (instr instanceof TerminatorInstruction) {
             getTerminatorInstructionReads((TerminatorInstruction) instr);
         } else if (instr instanceof MiddleInstruction) {
@@ -93,11 +87,14 @@ public final class LLVMReadVisitor {
         } else {
             throw new AssertionError(instr);
         }
+        return reads;
     }
 
     private void getStartingInstructionReads(StartingInstruction instr) {
-        for (ValueRef value : instr.getInstruction().getValues()) {
-            visitValueRef(value);
+        if (countPhiValues) {
+            for (ValueRef value : instr.getInstruction().getValues()) {
+                visitValueRef(value);
+            }
         }
     }
 
