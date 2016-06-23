@@ -319,7 +319,7 @@ class GraalTags:
     fulltest = 'fulltest'
 
 def _noneAsEmptyList(a):
-    if a is None:
+    if not a or not any(a):
         return []
     return a
 

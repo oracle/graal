@@ -73,7 +73,7 @@ java9Downloads : {
 
 gateTest : {
   environment : {
-    EXTRA_VM_ARGS : "-Dmx.gate.dummy.prop=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,test"]
@@ -82,7 +82,7 @@ gateTest : {
 
 gateBootstrap : {
   environment : {
-    EXTRA_VM_ARGS : "-Dmx.gate.dummy.prop=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,bootstrap"]
@@ -102,7 +102,7 @@ gateStyle : ${java8Downloads} {
   }
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
-    EXTRA_VM_ARGS : "-Dmx.gate.dummy.prop=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["style,fullbuild"]
