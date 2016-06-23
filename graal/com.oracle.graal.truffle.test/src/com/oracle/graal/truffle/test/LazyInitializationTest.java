@@ -232,6 +232,11 @@ public class LazyInitializationTest {
             return true;
         }
 
+        if (cls.equals(Util.class)) {
+            // Provider of the Java runtime check utility used during Graal initialization.
+            return true;
+        }
+
         if (cls.equals(jvmciVersionCheck)) {
             // The Graal initialization needs to check the JVMCI version.
             return true;

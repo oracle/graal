@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 public class JLRModule {
 
     static {
-        if (GraalTest.JDK8OrEarlier) {
+        if (GraalTest.Java8OrEarlier) {
             throw new AssertionError("Use of " + JLRModule.class + " only allowed if " + GraalTest.class.getName() + ".JDK8OrEarlier is false");
         }
     }

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
 import static jdk.vm.ci.common.InitTimer.timer;
 
@@ -126,9 +127,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
         if (!optionsInitialized) {
             try (InitTimer t = timer("InitializeOptions")) {
                 ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
-
-                boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-                Properties savedProps = getSavedProperties(jdk8OrEarlier);
+                Properties savedProps = getSavedProperties(Java8OrEarlier);
                 String optionsFile = savedProps.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
                 if (optionsFile != null) {

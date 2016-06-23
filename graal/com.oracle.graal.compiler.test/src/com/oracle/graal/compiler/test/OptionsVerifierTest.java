@@ -82,7 +82,7 @@ public class OptionsVerifierTest {
 
         Classpath() throws IOException {
             List<String> names = new ArrayList<>(Arrays.asList(System.getProperty("java.class.path").split(File.pathSeparator)));
-            if (GraalTest.JDK8OrEarlier) {
+            if (GraalTest.Java8OrEarlier) {
                 names.addAll(Arrays.asList(System.getProperty("sun.boot.class.path").split(File.pathSeparator)));
             } else {
                 names.addAll(Arrays.asList(System.getProperty("jdk.module.path").split(File.pathSeparator)));
