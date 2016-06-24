@@ -340,4 +340,12 @@ public class TruffleProfilerTest extends AbstractInstrumentationTest {
 
         Assert.assertTrue(profiler.hasData());
     }
+
+    @Test(expected = IllegalStateException.class)
+    public void testDisposeError() {
+
+        profiler.setCollecting(true);
+        profiler.dispose();
+        profiler.setCollecting(false);
+    }
 }

@@ -134,10 +134,13 @@ public final class Profiler {
      * {@linkplain #clearData() cleared}, previously collected data will be included when collection
      * resumes.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public void setCollecting(boolean isCollecting) {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         if (this.isCollecting != isCollecting) {
             this.isCollecting = isCollecting;
             reset();
@@ -151,10 +154,13 @@ public final class Profiler {
      * {@linkplain #clearData() cleared}, previously collected data will be included when collection
      * resumes.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public boolean isCollecting() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         return isCollecting;
     }
 
@@ -168,10 +174,13 @@ public final class Profiler {
      * Unless explicitly {@linkplain #clearData() cleared}, previously collected timing data will be
      * included in data collected when collection resumes.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public void setTiming(boolean isTiming) {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         if (this.isTiming != isTiming) {
             this.isTiming = isTiming;
             reset();
@@ -179,13 +188,16 @@ public final class Profiler {
     }
 
     /**
-     * Does data being {@linkplain #isCollecting() collected} include timing (default {@code false}
-     * )?
+     * Does data being {@linkplain #isCollecting() collected} include timing}? Default is
+     * {@code false}.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public boolean isTiming() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         return isTiming;
     }
 
@@ -195,10 +207,13 @@ public final class Profiler {
      *
      * @param newTypes new list of MIME types, {@code null} or an empty list matches any MIME type.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public void setMimeTypes(String[] newTypes) {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         mimeTypes = newTypes != null && newTypes.length > 0 ? newTypes : null;
         reset();
     }
@@ -208,20 +223,26 @@ public final class Profiler {
      *
      * @return MIME types matching sources being profiled; {@code null} matches <strong>ANY</strong>
      *         MIME type.
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public String[] getMimeTypes() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         return mimeTypes == null ? null : Arrays.copyOf(mimeTypes, mimeTypes.length);
     }
 
     /**
      * Is any data currently collected?
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public boolean hasData() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         for (Counter counter : counters.values()) {
             if (counter.getInvocations(TimeKind.INTERPRETED_AND_COMPILED) > 0) {
                 return true;
@@ -233,10 +254,13 @@ public final class Profiler {
     /**
      * Resets all collected data to zero.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public void clearData() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         for (Counter counter : counters.values()) {
             counter.clear();
         }
@@ -245,10 +269,13 @@ public final class Profiler {
     /**
      * Gets an unmodifiable map of all counters.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public Map<SourceSection, Counter> getCounters() {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         return Collections.unmodifiableMap(counters);
     }
 
@@ -290,10 +317,13 @@ public final class Profiler {
      * Prints a simple, default textual summary of currently collected data, format subject to
      * change. Use {@linkplain #getCounters() counters} explicitly for reliable access.
      *
+     * @throws IllegalStateException if disposed
      * @since 0.15
      */
     public void printHistograms(PrintStream out) {
-        assert !disposed;
+        if (disposed) {
+            throw new IllegalStateException("disposed profiler");
+        }
         final List<Counter> sortedCounters = new ArrayList<>(counters.values());
 
         boolean hasCompiled = false;
