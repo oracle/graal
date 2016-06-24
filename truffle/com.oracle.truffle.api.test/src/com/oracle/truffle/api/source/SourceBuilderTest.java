@@ -321,13 +321,13 @@ public class SourceBuilderTest {
 
     public void subSourceHashAndEquals() {
         Source src = Source.newBuilder("One Two Three").name("counting.en").mimeType("content/unknown").build();
-        Source one = Source.subSource(src, 0, 3);
-        Source two = Source.subSource(src, 4, 3);
-        Source three = Source.subSource(src, 8);
+        Source one = src.subSource(0, 3);
+        Source two = src.subSource(4, 3);
+        Source three = src.subSource(8, src.getLength() - 8);
 
-        Source oneSnd = Source.subSource(src, 0, 3);
-        Source twoSnd = Source.subSource(src, 4, 3);
-        Source threeSnd = Source.subSource(src, 8);
+        Source oneSnd = src.subSource(0, 3);
+        Source twoSnd = src.subSource(4, 3);
+        Source threeSnd = src.subSource(8, src.getLength() - 8);
 
         assertNotEquals("One: " + one.getCode() + " two: " + two.getCode(), one, two);
         assertNotEquals(three, two);
@@ -367,8 +367,8 @@ public class SourceBuilderTest {
         assertNotEquals("Different sources", s1, s2);
         assertEquals("But same content", s1.getCode(), s2.getCode());
 
-        Source sub1 = Source.subSource(s1, 0, 8);
-        Source sub2 = Source.subSource(s2, 0, 8);
+        Source sub1 = s1.subSource(0, 8);
+        Source sub2 = s2.subSource(0, 8);
 
         assertNotEquals("Different sub sources", sub1, sub2);
         assertEquals("with the same content", sub1.getCode(), sub2.getCode());
