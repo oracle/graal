@@ -844,8 +844,9 @@ class JMHJsonRule(object):
         "measurementBatchSize",
         ]
 
-    def __init__(self, filename):
+    def __init__(self, filename, suiteName):
         self.filename = filename
+        self.suiteName = suiteName
 
     def shortenPackageName(self, benchmark):
         s = benchmark.split(".")
@@ -853,6 +854,9 @@ class JMHJsonRule(object):
         clazz = s[-2:]
         package = [str(x[0]) for x in s[:-2]]
         return ".".join(package + clazz)
+
+    def benchSuiteName(self):
+        return self.suiteName
 
     def parse(self, text):
         import json
@@ -888,6 +892,7 @@ class JMHJsonRule(object):
 
 
                 d = {
+                    "bench-suite" : self.benchSuiteName(),
                     "benchmark" : self.shortenPackageName(benchmark),
                     # full name
                     "extra.jmh.benchmark" : benchmark,
@@ -950,6 +955,9 @@ class JMHBenchmarkSuiteBase(mx_benchmark.JavaBenchmarkSuite):
                 re.MULTILINE)
         ]
 
+    def benchSuiteName(self):
+        return self.name()
+
     def failurePatterns(self):
         return [re.compile(r"<failure>")]
 
@@ -957,7 +965,7 @@ class JMHBenchmarkSuiteBase(mx_benchmark.JavaBenchmarkSuite):
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        return [JMHJsonRule(JMHBenchmarkSuiteBase.jmh_result_file)]
+        return [JMHJsonRule(JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName())]
 
 
 class JMHBenchmarkSuite(JMHBenchmarkSuiteBase):
@@ -992,7 +1000,7 @@ class JMHBenchmarkJARSuite(JMHBenchmarkSuiteBase):
     def name(self):
         return "jmh-jar"
 
-    def getBechmarkName(self):
+    def benchSuiteName(self):
         return "jmh-" + self.jmhName()
 
     def group(self):
