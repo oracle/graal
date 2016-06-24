@@ -41,7 +41,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         config.dumpHandlers().add(new NodeDumper());
         if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
             if (Options.PrintBinaryGraphs.getValue() && Options.PrintCFG.getValue()) {
-                TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
+                TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -Dgraal.PrintCFG=false to disable it");
             }
             config.dumpHandlers().add(new CFGPrinterObserver(Options.PrintCFG.getValue()));
         }

@@ -144,18 +144,27 @@ public class OptionsParser {
             } else {
                 throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + valueString + "\"");
             }
-        } else if (optionType == Float.class) {
-            value = Float.parseFloat(valueString);
-        } else if (optionType == Double.class) {
-            value = Double.parseDouble(valueString);
-        } else if (optionType == Integer.class) {
-            value = Integer.valueOf((int) parseLong(valueString));
-        } else if (optionType == Long.class) {
-            value = Long.valueOf(parseLong(valueString));
         } else if (optionType == String.class) {
             value = valueString;
         } else {
-            throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+            if (valueString.isEmpty()) {
+                throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
+            }
+            try {
+                if (optionType == Float.class) {
+                    value = Float.parseFloat(valueString);
+                } else if (optionType == Double.class) {
+                    value = Double.parseDouble(valueString);
+                } else if (optionType == Integer.class) {
+                    value = Integer.valueOf((int) parseLong(valueString));
+                } else if (optionType == Long.class) {
+                    value = Long.valueOf(parseLong(valueString));
+                } else {
+                    throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+                }
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Value for option '" + name + "' has invalid number format: " + valueString);
+            }
         }
         if (setter == null) {
             desc.getOptionValue().setValue(value);

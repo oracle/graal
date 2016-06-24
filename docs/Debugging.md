@@ -3,9 +3,11 @@ This pages covers the various mechanisms currently available for debugging Graal
 
 ## IDE Support
 
-All the parts of Graal written in Java can be debugged with a standard Java debugger. While debugging with Eclipse is described here, it should not be too hard to adapt these instructions for another debugger.
+All the parts of Graal written in Java can be debugged with a standard Java debugger.
+While debugging with Eclipse is described here, it should not be too hard to adapt these instructions for another debugger.
 
-The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an Eclipse launch configuration (in `mx.graal-core/eclipse-launches/graal-core-attach-localhost-8000.launch`) that can be used to debug all Graal code running in the VM. This launch configuration requires you to start the VM with the `-d` global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
+The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an Eclipse launch configuration (in `mx.graal-core/eclipse-launches/graal-core-attach-localhost-8000.launch`) that can be used to debug all Graal code running in the VM.
+This launch configuration requires you to start the VM with the `-d` global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
 
 ```
 mx -d vm -XX:+UseJVMCICompiler -version
@@ -29,9 +31,11 @@ At this point you can set breakpoints and perform all other normal Java debuggin
 
 ## Logging
 
-In addition to IDE debugging, Graal includes support for *printf* style debugging. The simplest is to place temporary usages of `System.out` whereever you need them.
+In addition to IDE debugging, Graal includes support for *printf* style debugging.
+The simplest is to place temporary usages of `System.out` where ever you need them.
 
-For more permanent logging statements, use the `Debug.log()` method that is part of debug scope mechanism. A (nested) debug scope is entered via [`Debug.scope(...)`](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/Debug.java#L265). For example:
+For more permanent logging statements, use the `Debug.log()` method that is part of debug scope mechanism.
+A (nested) debug scope is entered via [`Debug.scope(...)`](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/Debug.java#L265). For example:
 
 ```java
 InstalledCode code = null;
@@ -43,12 +47,11 @@ try (Scope s = Debug.scope("CodeInstall", method)) {
 }
 ```
 
-The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `-G:Log` GraalVM option. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `-G:Dump`, `-G:Time` and `-G:Count` options.
+The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `graal.Log` system property. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `graal.Dump`, `graal.Time` and `-Dgraal.Count` system properties.
 
-## Graal specific VM options
+## Graal specific options
 
-Note that a listing of all Graal specific VM options (i.e., those with a "-G:" prefix) can be listed along with a brief description of each option by specifying the `-G:+PrintFlags` option.
-Also note that the "-G:" prefix is a [short-cut](https://github.com/graalvm/graal-core/blob/3e5b6a39007ef68a720d62170e16577a240f3616/mx.graal-core/mx_graal_8.py#L338-L352) for use of system properties.
+Graal options occupy the `graal.*` namespace in the system properties. These options must be specified on the JVM command line. Modifications to these properties by application code are invisible to Graal. A listing of all Graal options can be obtained by specifying `-Dgraal.PrintFlags=true`.
 
 ## Debug Metrics
 Graal supports several types of *debug metrics* to record compiler related metrics.
@@ -150,8 +153,8 @@ public class MyCompilerPhase{
 Assuming you have a Java program `P1` where you know there is one method `M1`
 very frequently called and thus gets marked for compilation and is compiled by Graal.
 You want to know if your novel optimization is applied on `M1` and also how often,
-thus you invoke the VM and enable debug counters with `-G:Count=MyCompilerPhase`
-and to filter for the specific method you enable method filtering with `-G:MethodFilter=P1.M1`.
+thus you invoke the VM and enable debug counters with `-Dgraal.Count=MyCompilerPhase`
+and to filter for the specific method you enable method filtering with `-Dgraal.MethodFilter=P1.M1`.
 Assuming you get a counter value of `5` then you do not know if `M1` was compiled
 once and the optimization triggered `5` times or if `M1` was compiled 5 times and
 the optimization always triggered just once (depending on your optimization and
@@ -185,10 +188,10 @@ And we will then see that e.g. we have 5 compilations where in each compilation
 the counter named `Compilations` has a value of `1`  and the value of `MyOptCounter` is `1`.
 
 
-Method metrics are enabled with the `-G:MethodMeter=` and follow the same debugging scope matching rules as e.g. `-G:Time=`.
-There are two different ways on how to dump method metris (that can be enabled both):
-* ASCII Command Line Dump: The option `-G:MethodMeterPrintAscii=true` dumps method metrics after the global metrics in a human readable ASCII format.
-* File Dump: The option `-G:MethodMeterFile=filename` will create a file on VM shutdown named `filename.csv` that contains the method compilation metrics in a long data format. The format is:
+Method metrics are enabled with `-Dgraal.MethodMeter=` and follow the same debugging scope matching rules as e.g. `-Dgraal.Time=`.
+There are two different ways to dump method metrics (that can both be enabled):
+* ASCII Command Line Dump: The option `-Dgraal.MethodMeterPrintAscii=true` dumps method metrics after the global metrics in a human readable ASCII format.
+* File Dump: The option `-Dgraal.MethodMeterFile=filename` will create a file on VM shutdown named `filename.csv` that contains the method compilation metrics in a long data format. The format is:
 ```
 {methodname,compilationListIndex,counterName,counterValue\n}
 ```
@@ -197,7 +200,7 @@ This file can easily be post processed for more elaborate analysis scenarios.
 #### Global Metric Interception
 Graal uses global metrics in a lot of places, e.g. to measure time and memory of compiler phases (or compilations).
 Assuming you are interested in those global metrics on  a per-method-compilation basis there is the option
-`-G:GlobalMetricsInterceptedByMethodMetrics` to enable an interception of the global metrics for method metrics.
+`-Dgraal.GlobalMetricsInterceptedByMethodMetrics` to enable an interception of the global metrics for method metrics.
 If a global metric (`DebugTimer`, `DebugCounter` or `DebugMemUseTracker`)
 is enabled in the same scope as method metrics, this option will enable Graal
 to use the global metric to update the method metrics for the current compilation
@@ -209,11 +212,11 @@ Assuming you are interested in the phase times during the compilation of a certa
 ```
 mx dacapo
   -XX:+UseJVMCICompiler
-  -G:MethodMeter=FrontEnd
-  -G:Time=FrontEnd
-  -G:GlobalMetricsInterceptedByMethodMetrics=Timers
-  -G:MethodMeterPrintAscii=true
-  -G:MethodFilter=Long.bitCount fop -n 10
+  -Dgraal.MethodMeter=FrontEnd
+  -Dgraal.Time=FrontEnd
+  -Dgraal.GlobalMetricsInterceptedByMethodMetrics=Timers
+  -Dgraal.MethodMeterPrintAscii=true
+  -Dgraal.MethodFilter=Long.bitCount fop -n 10
  // Output
  ==========================================================================
 HotSpotMethod<Long.bitCount(long)>
@@ -235,12 +238,12 @@ However when using the interception there are several non-trivial things to reme
 * Time Reporting: Time is collected in nanoseconds with the most accurate timer on the given platform, however a certain phase might be so fast that rounding to milliseconds will generate a 0 value for the reported time. Zero values are ignored during dumping.
 * Compilation Policy: Timing is heavily influenced by several factors including:
     * TieredCompilation: If Graal is run in tiered mode and compiled by C1 the first compilations will be slower due to the fact that Graal still runs in the interpreter.
-    * Type Profile: Certain debugging options of Graal might result in scenarios where a certain non-Graal method is hot and enqueued for Graal compilation as Graal itself heavily calls it e.g. enabling the flag `-G:PrintAfterCompilation` will format method names with `String.format` which can result in a compilation request to Graal to compile `String.format` although the application itself never calls `String.format`.
+    * Type Profile: Certain debugging options of Graal might result in scenarios where a certain non-Graal method is hot and enqueued for Graal compilation as Graal itself heavily calls it e.g. specifying `-Dgraal.PrintAfterCompilation=true` will format method names with `String.format` which can result in a compilation request to Graal to compile `String.format` although the application itself never calls `String.format`.
 
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-G:Log`, `-G:Dump`, `-G:Count`, or `-G:Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-G:MethodFilter` option to specifying a method filter. The matching logic for this option is described in [MethodFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/MethodFilter.java#L33-L92).
+Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, or `-Dgraal.Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/MethodFilter.java#L33-L92).
 
 ## Dumping
 
@@ -249,9 +252,9 @@ In addition to logging, Graal provides support for generating (or dumping) more 
 * HIR graphs (i.e., instances of [Graph](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.graph/src/com/oracle/graal/graph/Graph.java)) to the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
 * LIR  register allocation and generated code to the [C1Visualizer](https://java.net/projects/c1visualizer/)
 
-Dumping is enabled via the `-G:Dump` option. The dump handler for generating C1Visualizer output will also generate output for HIR graphs if the `-G:+PrintCFG` option is specified (in addition to the `-G:Dump` option).
+Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer output will also generate output for HIR graphs if the `-Dgraal.PrintCFG=true` option is specified (in addition to the `-Dgraal.Dump` option).
 
-By default, `-G:Dump` output is sent to the IGV over a network socket (localhost:4445). If the IGV is not running, you will see connection error messages like:
+By default, `-Dgraal.Dump` output is sent to the IGV over a network socket (localhost:4445). If the IGV is not running, you will see connection error messages like:
 ```
 "Could not connect to the IGV on 127.0.0.1:4445 : java.net.ConnectException: Connection refused"
 ```
@@ -265,7 +268,7 @@ The IGV can be launched with the command `mx igv`. The C1Visualizer can also be 
 
 Various other VM options are of interest to see activity related to compilation:
 
-- `-XX:+PrintCompilation` or `-G:+PrintCompilation` for notification and brief info about each compilation
+- `-XX:+PrintCompilation` or `-Dgraal.PrintCompilation=true` for notification and brief info about each compilation
 - `-XX:+TraceDeoptimization` can be useful to see if excessive compilation is occurring
 
 ## Examples
@@ -273,7 +276,7 @@ Various other VM options are of interest to see activity related to compilation:
 
 To see the compiler data structures used while compiling `Node.updateUsages`, use the following command:
 ```
-mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -G:Dump= -G:MethodFilter=Node.updateUsages -version
+mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -Dgraal.Dump= -Dgraal.MethodFilter=Node.updateUsages -version
 Bootstrapping JVMCI....Connected to the IGV on 127.0.0.1:4445
 CFGPrinter: Output to file /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
 CFGPrinter: Dumping method HotSpotMethod<Node.updateUsages(Node, Node)> to /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
@@ -284,9 +287,9 @@ Java HotSpot(TM) 64-Bit JVMCI VM (build 25.66-b00-internal-jvmci-0.9-dev, mixed 
 ```
 The `*.cfg` files mentioned in the lines starting with `CFGPrinter:` can be opened in the [C1Visualizer](https://java.net/projects/c1visualizer/) (which can be launched with `mx c1v`).
 
-As you become familiar with the scope names used in Graal, you can refine the `-G:Dump` option to limit the amount of dump output generated. For example, the `"CodeGen"` and  `"CodeInstall"` scopes are active during code generation and installation respectively. To see the machine code (in the C1Visualizer) produced during these scopes:
+As you become familiar with the scope names used in Graal, you can refine the `-Dgraal.Dump` option to limit the amount of dump output generated. For example, the `"CodeGen"` and  `"CodeInstall"` scopes are active during code generation and installation respectively. To see the machine code (in the C1Visualizer) produced during these scopes:
 ```
-mx vm -G:Dump=CodeGen,CodeInstall -G:MethodFilter=NodeClass.get -version
+mx vm -Dgraal.Dump=CodeGen,CodeInstall -Dgraal.MethodFilter=NodeClass.get -version
 ```
 You'll notice that no output is sent to the IGV by this command.
 

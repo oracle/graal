@@ -133,19 +133,14 @@ public final class CompileTheWorld {
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
          * @param options a space separated set of option value settings with each option setting in
-         *            a -G:<value> format but without the leading "-G:". Ignored if null.
+         *            a {@code -Dgraal.<name>=<value>} format but without the leading
+         *            {@code -Dgraal.}. Ignored if null.
          */
         public Config(String options) {
             if (options != null) {
                 Map<String, String> optionSettings = new HashMap<>();
                 for (String optionSetting : options.split("\\s+|#")) {
-                    if (optionSetting.charAt(0) == '-') {
-                        optionSettings.put(optionSetting.substring(1), "false");
-                    } else if (optionSetting.charAt(0) == '+') {
-                        optionSettings.put(optionSetting.substring(1), "true");
-                    } else {
-                        OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
-                    }
+                    OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                 }
                 OptionsParser.parseOptions(optionSettings, this, ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader()));
             }

@@ -119,7 +119,7 @@ public class Fingerprint implements AutoCloseable {
      * only be called if {@link #ENABLED} is {@code true}.
      */
     public static void submit(String format, Object... args) {
-        assert ENABLED : "fingerprinting must be enabled (-G:+" + Options.UseFingerprinting.getName() + ")";
+        assert ENABLED : "fingerprinting must be enabled (-Dgraal." + Options.UseFingerprinting.getName() + "=true)";
         Fingerprint fingerprint = current.get();
         if (fingerprint != null) {
             int eventId = fingerprint.nextEventId();
