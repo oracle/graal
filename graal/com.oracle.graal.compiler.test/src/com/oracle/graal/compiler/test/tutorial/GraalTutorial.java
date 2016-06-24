@@ -33,11 +33,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Examples for the Graal tutorial. Run them using the unittest harness of the mx script. To look at
- * the examples in IGV (the graph visualization tool), use the options -G:Dump and -G:MethodFilter.
- * For example, run the first test case using
+ * the examples in IGV (the graph visualization tool), use the {@code -Dgraal.Dump} and
+ * {@code -Dgraal.MethodFilter} options. For example, run the first test case using
  *
  * <pre>
- * mx unittest -G:Dump= -G:MethodFilter=String.hashCode GraalTutorial#testStringHashCode
+ * mx unittest -Dgraal.Dump= -Dgraal.MethodFilter=String.hashCode GraalTutorial#testStringHashCode
  * </pre>
  */
 public class GraalTutorial extends InvokeGraal {
