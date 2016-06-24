@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.GraalTruffleRuntime;
@@ -70,7 +69,6 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         assertTrue(target.isValid());
     }
 
-    @Ignore
     @Test
     public void simpleIfTest() {
         FrameDescriptor descriptor = new FrameDescriptor();
@@ -89,7 +87,8 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue(filterFlag);
         }
-        Assert.assertEquals(InstrumentBranchesPhase.instrumentation.accessTableToList().get(0),
-                        "com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java:54) [bci: 4]\n[0] state = ELSE");
+        String output = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
+        Assert.assertTrue(output.contains("com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(output.contains("[bci: 4]\n[0] state = ELSE(if=0#, else=1#)"));
     }
 }
