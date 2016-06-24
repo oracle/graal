@@ -38,7 +38,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.Profiler.Counter;
 
-public class TruffleProfilerTest extends AbstractInstrumentationTest {
+public class ProfilerTest extends AbstractInstrumentationTest {
 
     private Profiler profiler;
 
