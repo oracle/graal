@@ -58,6 +58,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Marks array fields that are children of this node.
      *
+     * This annotation implies the semantics of @{@link CompilationFinal}(dimensions = 1).
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -67,6 +69,8 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Marks fields that represent child nodes of this node.
+     *
+     * This annotation implies the semantics of {@link CompilationFinal}.
      *
      * @since 0.8 or earlier
      */
