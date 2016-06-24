@@ -1,7 +1,7 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u92-jvmci-0.15", platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.16", platformspecific: true}
 java9 : {name : oraclejdk, version : "9",    platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u92-jvmci-0.15-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u92-jvmci-0.16-fastdebug", platformspecific: true}
 
 common : {
   timelimit : "30:00"
