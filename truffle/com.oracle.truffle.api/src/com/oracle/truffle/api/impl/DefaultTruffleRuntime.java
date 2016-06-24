@@ -26,7 +26,6 @@ package com.oracle.truffle.api.impl;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -59,7 +58,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultTruffleRuntime implements TruffleRuntime {
 
-    private final ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
+    private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
@@ -128,20 +127,22 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
         T result = null;
-        for (FrameInstance frameInstance : getThreadLocalStackTrace()) {
+        DefaultFrameInstance frameInstance = getThreadLocalStackTrace();
+        while (frameInstance != null) {
             result = visitor.visitFrame(frameInstance);
             if (result != null) {
                 return result;
             }
+            frameInstance = frameInstance.callerFrame;
         }
         return result;
     }
 
     @Override
     public FrameInstance getCallerFrame() {
-        LinkedList<FrameInstance> result = getThreadLocalStackTrace();
-        if (result.size() > 1) {
-            return result.get(1);
+        DefaultFrameInstance currentFrame = getThreadLocalStackTrace();
+        if (currentFrame != null) {
+            return currentFrame.callerFrame;
         } else {
             return null;
         }
@@ -155,41 +156,37 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public FrameInstance getCurrentFrame() {
-        return getThreadLocalStackTrace().peekFirst();
+        return getThreadLocalStackTrace();
     }
 
-    private LinkedList<FrameInstance> getThreadLocalStackTrace() {
-        LinkedList<FrameInstance> result = stackTraces.get();
-        if (result == null) {
-            result = new LinkedList<>();
-            stackTraces.set(result);
-        }
-        return result;
+    private DefaultFrameInstance getThreadLocalStackTrace() {
+        return stackTraces.get();
+    }
+
+    private void setThreadLocalStackTrace(DefaultFrameInstance topFrame) {
+        stackTraces.set(topFrame);
     }
 
     void pushFrame(VirtualFrame frame, CallTarget target) {
-        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
-        threadLocalStackTrace.addFirst(new DefaultFrameInstance(frame, target, null));
+        setThreadLocalStackTrace(new DefaultFrameInstance(frame, target, null, getThreadLocalStackTrace()));
     }
 
     void pushFrame(VirtualFrame frame, CallTarget target, Node parentCallNode) {
-        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
+        DefaultFrameInstance currentFrame = getThreadLocalStackTrace();
         // we need to ensure that frame instances are immutable so we need to recreate the parent
         // frame
-        if (threadLocalStackTrace.size() > 0) {
-            DefaultFrameInstance oldInstance = (DefaultFrameInstance) threadLocalStackTrace.removeFirst();
-            threadLocalStackTrace.addFirst(new DefaultFrameInstance(oldInstance.getFrame(), oldInstance.getCallTarget(), parentCallNode));
+        if (currentFrame != null) {
+            currentFrame = new DefaultFrameInstance(currentFrame.frame, currentFrame.target, parentCallNode, currentFrame.callerFrame);
         }
-        threadLocalStackTrace.addFirst(new DefaultFrameInstance(frame, target, null));
+        setThreadLocalStackTrace(new DefaultFrameInstance(frame, target, null, currentFrame));
     }
 
     void popFrame() {
-        LinkedList<FrameInstance> threadLocalStackTrace = getThreadLocalStackTrace();
-        threadLocalStackTrace.removeFirst();
-
-        if (threadLocalStackTrace.size() > 0) {
-            DefaultFrameInstance parent = (DefaultFrameInstance) threadLocalStackTrace.removeFirst();
-            threadLocalStackTrace.addFirst(new DefaultFrameInstance(parent.getFrame(), parent.getCallTarget(), null));
+        DefaultFrameInstance callerFrame = getThreadLocalStackTrace().callerFrame;
+        if (callerFrame != null) {
+            setThreadLocalStackTrace(new DefaultFrameInstance(callerFrame.frame, callerFrame.target, null, callerFrame.callerFrame));
+        } else {
+            setThreadLocalStackTrace(null);
         }
     }
 
@@ -216,11 +213,13 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         private final CallTarget target;
         private final VirtualFrame frame;
         private final Node callNode;
+        private final DefaultFrameInstance callerFrame;
 
-        DefaultFrameInstance(VirtualFrame frame, CallTarget target, Node callNode) {
+        DefaultFrameInstance(VirtualFrame frame, CallTarget target, Node callNode, DefaultFrameInstance callerFrame) {
             this.target = target;
             this.frame = frame;
             this.callNode = callNode;
+            this.callerFrame = callerFrame;
         }
 
         public final Frame getFrame(FrameAccess access, boolean slowPath) {
@@ -230,10 +229,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             if (access == FrameAccess.MATERIALIZE) {
                 return frame.materialize();
             }
-            return frame;
-        }
-
-        final VirtualFrame getFrame() {
             return frame;
         }
 
