@@ -57,16 +57,16 @@ public class NodeUtilTest {
         rootNode.child0 = null;
 
         TestNode test1 = new TestNode();
-        TestNode test1_1 = new TestNode();
-        TestNode test1_1_1 = new TestNode();
+        TestNode test11 = new TestNode();
+        TestNode test111 = new TestNode();
 
-        test1_1.child1 = test1_1_1;
-        test1.child1 = test1_1;
+        test11.child1 = test111;
+        test1.child1 = test11;
         replacedNode.replace(test1);
 
         Assert.assertSame(rootNode, test1.getParent());
-        Assert.assertSame(test1, test1_1.getParent());
-        Assert.assertSame(test1_1, test1_1_1.getParent());
+        Assert.assertSame(test1, test11.getParent());
+        Assert.assertSame(test11, test111.getParent());
     }
 
     private static int iterate(Iterator<Node> iterator) {
