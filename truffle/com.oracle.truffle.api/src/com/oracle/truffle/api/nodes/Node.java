@@ -213,10 +213,10 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         newChild.parent = this;
-        NodeUtil.forEachChild(this, new NodeVisitor() {
+        NodeUtil.forEachChild(newChild, new NodeVisitor() {
             public boolean visit(Node child) {
                 if (child != null && child.getParent() == null) {
-                    Node.this.adoptUnadoptedHelper(child);
+                    newChild.adoptUnadoptedHelper(child);
                 }
                 return true;
             }
