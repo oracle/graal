@@ -42,7 +42,7 @@ public class JDTCompiler extends AbstractCompiler {
 
     public static boolean isValidElement(Element currentElement) {
         try {
-            Class<?> elementClass = Class.forName("org.eclipse.jdt.internal.compiler.apt.model.ElementImpl");
+            Class<?> elementClass = currentElement.getClass().getClassLoader().loadClass("org.eclipse.jdt.internal.compiler.apt.model.ElementImpl");
             return elementClass.isAssignableFrom(currentElement.getClass());
         } catch (ClassNotFoundException e) {
             return false;
@@ -145,8 +145,9 @@ public class JDTCompiler extends AbstractCompiler {
         List<Object> declarationOrder;
         try {
             Object binding = field(type, "_binding");
-            Class<?> sourceTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
-            Class<?> binaryTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding");
+            ClassLoader classLoader = binding.getClass().getClassLoader();
+            Class<?> sourceTypeBinding = classLoader.loadClass("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
+            Class<?> binaryTypeBinding = classLoader.loadClass("org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding");
 
             declarationOrder = null;
             if (sourceTypeBinding.isAssignableFrom(binding.getClass())) {
@@ -190,9 +191,10 @@ public class JDTCompiler extends AbstractCompiler {
             }
         });
 
-        Class<?> binaryMethod = Class.forName("org.eclipse.jdt.internal.compiler.env.IBinaryMethod");
-        Class<?> binaryField = Class.forName("org.eclipse.jdt.internal.compiler.env.IBinaryField");
-        Class<?> nestedType = Class.forName("org.eclipse.jdt.internal.compiler.env.IBinaryNestedType");
+        ClassLoader classLoader = binding.getClass().getClassLoader();
+        Class<?> binaryMethod = classLoader.loadClass("org.eclipse.jdt.internal.compiler.env.IBinaryMethod");
+        Class<?> binaryField = classLoader.loadClass("org.eclipse.jdt.internal.compiler.env.IBinaryField");
+        Class<?> nestedType = classLoader.loadClass("org.eclipse.jdt.internal.compiler.env.IBinaryNestedType");
 
         List<Object> bindings = new ArrayList<>();
         for (Object sortedElement : sortedElements) {
@@ -304,8 +306,9 @@ public class JDTCompiler extends AbstractCompiler {
          */
 
         Object binding = field(element, "_binding");
-        Class<?> methodBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.MethodBinding");
-        Class<?> referenceBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
+        ClassLoader classLoader = binding.getClass().getClassLoader();
+        Class<?> methodBindingClass = classLoader.loadClass("org.eclipse.jdt.internal.compiler.lookup.MethodBinding");
+        Class<?> referenceBindingClass = classLoader.loadClass("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
 
         char[] source = null;
         if (methodBindingClass.isAssignableFrom(binding.getClass())) {
