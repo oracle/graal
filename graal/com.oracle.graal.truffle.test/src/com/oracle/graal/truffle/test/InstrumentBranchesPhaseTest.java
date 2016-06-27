@@ -59,6 +59,29 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
+    public static class TwoIfsTestNode extends AbstractTestNode {
+        private int x;
+        private int y;
+
+        public TwoIfsTestNode(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            if (x < 0) {
+                return -1 * x;
+            } else {
+                if (y < 0) {
+                    return -1 * y;
+                } else {
+                    return x * y;
+                }
+            }
+        }
+    }
+
     private static void assertCompiled(OptimizedCallTarget target) {
         assertNotNull(target);
         try {
@@ -90,5 +113,33 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         String output = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
         Assert.assertTrue(output.contains("com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(output.contains("[bci: 4]\n[0] state = ELSE(if=0#, else=1#)"));
+    }
+
+    @Test
+    public void twoIfsTest() {
+        FrameDescriptor descriptor = new FrameDescriptor();
+        TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
+        RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
+        boolean instrumentFlag = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
+        String filterFlag = TruffleCompilerOptions.TruffleInstrumentBranchesFilter.getValue();
+        try {
+            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+            TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue("*.*.execute");
+            OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
+            target.compile();
+            assertCompiled(target);
+            // We run this twice to make sure that it comes first in the sorted access list.
+            target.call();
+            target.call();
+        } finally {
+            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
+            TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue(filterFlag);
+        }
+        String output1 = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
+        Assert.assertTrue(output1.contains("com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(output1.contains("[bci: 4]\n[1] state = ELSE(if=0#, else=2#)"));
+        String output2 = InstrumentBranchesPhase.instrumentation.accessTableToList().get(1);
+        Assert.assertTrue(output2.contains("com.oracle.graal.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(output2.contains("[bci: 18]\n[2] state = IF(if=2#, else=0#)"));
     }
 }
