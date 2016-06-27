@@ -84,10 +84,11 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.extra_args + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        if mx.get_jdk_option().tag != mx_graal_core._JVMCI_JDK_TAG:
-            mx.abort("To use '{0}' VM, specify '--jdk={1}'".format(
-                self.name(), mx_graal_core._JVMCI_JDK_TAG))
-        mx.get_jdk().run_java(
+        tag = mx.get_jdk_option().tag
+        if tag and tag != mx_graal_core._JVMCI_JDK_TAG:
+            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
+                self.name(), self.config_name(), mx_graal_core._JVMCI_JDK_TAG))
+        mx.get_jdk(tag=mx_graal_core._JVMCI_JDK_TAG).run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
