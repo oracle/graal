@@ -36,30 +36,45 @@ import os
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(mx.suite('graal-core'), {
     'dacapo': [
-      lambda args: mx_benchmark.benchmark(["dacapo:" + args[0]] + args[1:]),
-      '<benchmarks>|* [-- [VM options] [-- [DaCapo options]]]'
+      lambda args: createBenchmarkShortcut("dacapo", args),
+      '[<benchmarks>|*] [-- [VM options] [-- [DaCapo options]]]'
     ],
     'scaladacapo': [
-      lambda args: mx_benchmark.benchmark(["scaladacapo:" + args[1]] + args[1:]),
-      '<benchmarks>|* [-- [VM options] [-- [Scala DaCapo options]]]'
+      lambda args: createBenchmarkShortcut("scala-dacapo", args),
+      '[<benchmarks>|*] [-- [VM options] [-- [Scala DaCapo options]]]'
     ],
     'specjvm2008': [
-      lambda args: mx_benchmark.benchmark(["specjvm2008:" + args[1]] + args[1:]),
-      '<benchmarks>|* [-- [VM options] [-- [SPECjvm2008 options]]]'
+      lambda args: createBenchmarkShortcut("specjvm2008", args),
+      '[<benchmarks>|*] [-- [VM options] [-- [SPECjvm2008 options]]]'
     ],
     'specjbb2005': [
-      lambda args: mx_benchmark.benchmark(["specjbb2005"] + args[1:]),
+      lambda args: mx_benchmark.benchmark(["specjbb2005"] + args),
       '[-- [VM options] [-- [SPECjbb2005 options]]]'
     ],
     'specjbb2013': [
-      lambda args: mx_benchmark.benchmark(["specjbb2013"] + args[1:]),
+      lambda args: mx_benchmark.benchmark(["specjbb2013"] + args),
       '[-- [VM options] [-- [SPECjbb2013 options]]]'
     ],
     'specjbb2015': [
-      lambda args: mx_benchmark.benchmark(["specjbb2015"] + args[1:]),
+      lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
       '[-- [VM options] [-- [SPECjbb2015 options]]]'
     ],
 })
+
+
+def createBenchmarkShortcut(benchSuite, args):
+    if not args:
+        benchname = "*"
+        remaining_args = []
+    elif args[0] == "--":
+        # not a benchmark name
+        benchname = "*"
+        remaining_args = args
+    else:
+        benchname = args[0]
+        remaining_args = args[1:]
+    return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
+
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
