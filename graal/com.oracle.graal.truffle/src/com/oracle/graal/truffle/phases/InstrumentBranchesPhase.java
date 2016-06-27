@@ -28,6 +28,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentB
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -117,6 +118,19 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     public static class BranchInstrumentation {
 
+        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<Map.Entry<String, Point>>() {
+            @Override
+            public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
+                long diff = y.getValue().getHotness() - x.getValue().getHotness();
+                if (diff < 0) {
+                    return -1;
+                } else if (diff == 0) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        };
         public Map<String, Point> pointMap = new LinkedHashMap<>();
         public int tableCount = 0;
 
@@ -152,26 +166,26 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         }
 
         public synchronized ArrayList<String> accessTableToList() {
-            Comparator<Map.Entry<String, Point>> comparator = new Comparator<Map.Entry<String, Point>>() {
-                @Override
-                public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
-                    long diff = y.getValue().getHotness() - x.getValue().getHotness();
-                    if (diff < 0) {
-                        return -1;
-                    } else if (diff == 0) {
-                        return 0;
-                    } else {
-                        return 1;
-                    }
-                }
-            };
-            return pointMap.entrySet().stream().sorted(comparator).map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        public synchronized ArrayList<String> accessTableToHistogram() {
+            long totalExecutions = pointMap.values().stream().mapToLong(v -> v.getHotness()).sum();
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> {
+                int length = (int) ((1.0 * entry.getValue().getHotness() / totalExecutions) * 80);
+                String bar = String.join("", Collections.nCopies(length, "*"));
+                return String.format("%3d: %s", entry.getValue().getIndex(), bar);
+            }).collect(Collectors.toCollection(ArrayList::new));
         }
 
         public synchronized void dumpAccessTable() {
             // Dump accumulated profiling information.
             TTY.println("Branch execution profile (sorted by hotness)");
             TTY.println("============================================");
+            for (String line : accessTableToHistogram()) {
+                TTY.println(line);
+            }
+            TTY.println();
             for (String line : accessTableToList()) {
                 TTY.println(line);
                 TTY.println();
@@ -244,6 +258,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
             public long getHotness() {
                 return ifVisits() + elseVisits();
+            }
+
+            public int getIndex() {
+                return index;
             }
 
             public int getRawIndex(boolean isTrue) {
