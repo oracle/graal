@@ -59,9 +59,21 @@ def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    name = 'com.oracle.graal.hotspot.JVMCIVersionCheck'
+    simplename = 'JVMCIVersionCheck'
+    name = 'com.oracle.graal.hotspot.' + simplename
     binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
-    javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
+    if isinstance(_suite, mx.BinarySuite):
+        javaSource = join(binDir, simplename + '.java')
+        if not exists(javaSource):
+            dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
+            assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
+            d = dists[0]
+            assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+            with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
+                with open(javaSource, 'w') as fp:
+                    fp.write(zf.read(name.replace('.', '/') + '.java'))
+    else:
+        javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
     javaClass = join(binDir, name.replace('.', '/') + '.class')
     if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
         mx.run([jdk.javac, '-d', binDir, javaSource])
