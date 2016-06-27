@@ -1208,7 +1208,8 @@ public abstract class Source {
 
         private Content buildURL() throws IOException {
             final URL url = (URL) origin;
-            URLSourceImpl ret = new URLSourceImpl(url, content, null);
+            String computedName = url.getPath().substring(url.getPath().lastIndexOf('/') + 1);
+            URLSourceImpl ret = new URLSourceImpl(url, content, computedName);
             return ret;
         }
 

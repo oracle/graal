@@ -28,10 +28,13 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URL;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipEntry;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -236,6 +239,26 @@ public class SourceBuilderTest {
         URL resource = SourceSnippets.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
         SourceSnippets.fromURL();
+    }
+
+    @Test
+    public void jarURLGetsAName() throws IOException {
+        File sample = File.createTempFile("sample", ".jar");
+        sample.deleteOnExit();
+        JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
+        os.putNextEntry(new ZipEntry("x.js"));
+        os.write("Hi!".getBytes("UTF-8"));
+        os.closeEntry();
+        os.close();
+
+        URL resource = new URL("jar:" + sample.toURI() + "!/x.js");
+        assertNotNull("Resource found", resource);
+        assertEquals("JAR protocol", "jar", resource.getProtocol());
+        Source s = Source.newBuilder(resource).build();
+        assertEquals("Hi!", s.getCode());
+        assertEquals("x.js", s.getName());
+
+        sample.delete();
     }
 
     @Test
