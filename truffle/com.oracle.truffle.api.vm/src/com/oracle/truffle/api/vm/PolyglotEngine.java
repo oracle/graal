@@ -490,10 +490,13 @@ public class PolyglotEngine {
                 for (Language language : getLanguages().values()) {
                     TruffleLanguage<?> impl = language.getImpl(false);
                     if (impl != null) {
-                        try {
-                            Access.LANGS.dispose(impl, language.getEnv(true));
-                        } catch (Exception | Error ex) {
-                            LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
+                        final Env env = language.getEnv(false, true);
+                        if (env != null) {
+                            try {
+                                Access.LANGS.dispose(impl, env);
+                            } catch (Exception | Error ex) {
+                                LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
+                            }
                         }
                     }
                 }
@@ -1168,10 +1171,18 @@ public class PolyglotEngine {
         }
 
         TruffleLanguage.Env getEnv(boolean create) {
-            if (env == null && create) {
-                env = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
+            return getEnv(create, false);
+        }
+
+        TruffleLanguage.Env getEnv(boolean create, boolean clear) {
+            TruffleLanguage.Env tmp = env;
+            if (tmp == null && create) {
+                env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
             }
-            return env;
+            if (clear) {
+                env = null;
+            }
+            return tmp;
         }
 
         /** @since 0.9 */

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import static org.junit.Assert.assertFalse;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -135,6 +136,7 @@ public class ImplicitExplicitExportTest {
         }
 
         void dispose() {
+            assertFalse("No prior dispose", disposed.contains(this));
             disposed.add(this);
         }
 
@@ -294,7 +296,7 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = L3, name = "ImportExport3", version = "0")
+    @TruffleLanguage.Registration(mimeType = {L3, L3 + "alt"}, name = "ImportExport3", version = "0")
     public static final class ExportImportLanguage3 extends AbstractExportImportLanguage {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage3();
 
