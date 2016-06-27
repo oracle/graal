@@ -54,7 +54,20 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
 
 /**
- * Access to Truffle profiling services.
+ * Access to Truffle polyglot profiling.
+ * <p>
+ * Truffle profiling is <em>language-agnostic</em> and depends only on correct
+ * {@linkplain StandardTags.RootTag tagging} of {@linkplain RootNode root nodes} by each
+ * {@linkplain TruffleLanguage guest language implementation}. Results are indexed by the
+ * {@link SourceSection} associated with each tagged node.
+ * <p>
+ * Profiling results are provided in two forms:
+ * <ul>
+ * <li>A {@linkplain #getCounters() map} of counts/timings indexed by {@link SourceSection}; and
+ * </li>
+ * <li>A {@linkplain #printHistograms(PrintStream) textual display}, intended for demonstrations or
+ * simple command line tools, whose format is subject to change at any time.</li>
+ * </ul>
  *
  * @since 0.15
  */
@@ -65,7 +78,6 @@ public final class Profiler {
     /**
      * Finds profiler associated with given engine. There is at most one profiler associated with
      * any {@link PolyglotEngine}. One can access it by calling this static method.
-     *
      *
      * @param engine the engine to find profiler for
      * @return an instance of associated profiler, never <code>null</code>
