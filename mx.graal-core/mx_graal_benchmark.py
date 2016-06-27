@@ -316,7 +316,7 @@ _daCapoIterations = {
     "lusearch"   : 40,
     "pmd"        : 30,
     "sunflow"    : 30,
-    "tomcat"     : 50,
+    "tomcat"     : -1, # Stopped working as of 8u92
     "tradebeans" : -1,
     "tradesoap"  : -1,
     "xalan"      : 20,
