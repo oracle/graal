@@ -32,12 +32,12 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.util.IntList;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
@@ -1077,96 +1077,142 @@ final class TraceInterval extends IntervalHint {
         }
     }
 
-    // UsePos
-
-    /**
+    /*
+     * UsePos
+     *
      * List of use positions. Each entry in the list records the use position and register priority
      * associated with the use position. The entries in the list are in descending order of use
      * position.
      *
      */
-    private static final class UsePosList {
 
-        /**
-         * Gets the use position at a specified index in this list.
-         *
-         * @param index the index of the entry for which the use position is returned
-         * @return the use position of entry {@code index} in this list
-         */
-        public static int usePos(IntList ul, int index) {
-            return ul.get(index << 1);
-        }
-
-        /**
-         * Gets the register priority for the use position at a specified index in this list.
-         *
-         * @param index the index of the entry for which the register priority is returned
-         * @return the register priority of entry {@code index} in this list
-         */
-        public static RegisterPriority registerPriority(IntList ul, int index) {
-            return RegisterPriority.VALUES[ul.get((index << 1) + 1)];
-        }
-
-        public static void add(IntList ul, int usePos, RegisterPriority registerPriority) {
-            assert ul.size() == 0 || usePos(ul, size(ul) - 1) > usePos;
-            ul.add(usePos);
-            ul.add(registerPriority.ordinal());
-        }
-
-        public static int size(IntList ul) {
-            return ul.size() >> 1;
-        }
-
-        public static void removeLowestUsePos(IntList ul) {
-            ul.setSize(ul.size() - 2);
-        }
-
-        public static void setRegisterPriority(IntList ul, int index, RegisterPriority registerPriority) {
-            ul.set((index << 1) + 1, registerPriority.ordinal());
-        }
-
-    }
-
-    int getUsePos(int i) {
-        return UsePosList.usePos(usePosList, i);
+    /**
+     * Gets the use position at a specified index in this list.
+     *
+     * @param index the index of the entry for which the use position is returned
+     * @return the use position of entry {@code index} in this list
+     */
+    int getUsePos(int index) {
+        return rawUsePosGet(index << 1);
     }
 
     int numUsePos() {
-        return UsePosList.size(usePosList);
+        return rawUsePosSize() >> 1;
     }
 
-    RegisterPriority getUsePosRegisterPriority(int i) {
-        return UsePosList.registerPriority(usePosList, i);
+    /**
+     * Gets the register priority for the use position at a specified index in this list.
+     *
+     * @param index the index of the entry for which the register priority is returned
+     * @return the register priority of entry {@code index} in this list
+     */
+    RegisterPriority getUsePosRegisterPriority(int index) {
+        int index2 = (index << 1) + 1;
+        return RegisterPriority.VALUES[rawUsePosGet(index2)];
     }
 
     void removeFirstUsePos() {
-        UsePosList.removeLowestUsePos(usePosList);
+        rawUsePosSetSize(rawUsePosSize() - 2);
     }
 
     // internal
 
     private void setUsePosRegisterPriority(int pos, RegisterPriority registerPriority) {
-        UsePosList.setRegisterPriority(usePosList, pos, registerPriority);
+        int index = (pos << 1) + 1;
+        int value = registerPriority.ordinal();
+        rawUsePosSet(index, value);
     }
 
     private void usePosAdd(int pos, RegisterPriority registerPriority) {
-        UsePosList.add(usePosList, pos, registerPriority);
+        assert rawUsePosSize() == 0 || getUsePos(numUsePos() - 1) > pos;
+        rawUsePosAdd(pos);
+        rawUsePosAdd(registerPriority.ordinal());
     }
 
     private void splitUsePosAt(TraceInterval result, int splitPos) {
-        int i = UsePosList.size(usePosList) - 1;
+        int i = numUsePos() - 1;
         int len = 0;
-        while (i >= 0 && UsePosList.usePos(usePosList, i) < splitPos) {
+        while (i >= 0 && getUsePos(i) < splitPos) {
             --i;
             len += 2;
         }
         int listSplitIndex = (i + 1) * 2;
-        IntList updatedList = IntList.copy(usePosList, listSplitIndex, len);
-        // ul is now the child list
-        usePosList.setSize(listSplitIndex);
+        assert len >= len : "initialCapacity < length";
+        int[] array = new int[len];
+        System.arraycopy(usePosList.array, listSplitIndex, array, 0, len);
+        IntList updatedList = new IntList(array, len);
+        rawUsePosSetSize(listSplitIndex);
         IntList newUsePosList = updatedList;
         result.usePosList = usePosList;
         usePosList = newUsePosList;
+    }
+
+    // IntList
+
+    /**
+     * An expandable and indexable list of {@code int}s.
+     *
+     * This class avoids the boxing/unboxing incurred by {@code ArrayList<Integer>}.
+     */
+    private static final class IntList {
+
+        private int[] array;
+        private int size;
+
+        /**
+         * Creates an int list with a specified initial capacity.
+         *
+         * @param initialCapacity
+         */
+        public IntList(int initialCapacity) {
+            array = new int[initialCapacity];
+        }
+
+        /**
+         * Creates an int list with a specified initial array.
+         *
+         * @param array the initial array used for the list (no copy is made)
+         */
+        public IntList(int[] array, int initialSize) {
+            assert initialSize <= array.length;
+            this.array = array;
+            this.size = initialSize;
+        }
+
+    }
+
+    private int rawUsePosGet(int index) {
+        if (index >= usePosList.size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosList.size);
+        }
+        return usePosList.array[index];
+    }
+
+    private void rawUsePosSet(int index, int value) {
+        if (index >= usePosList.size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosList.size);
+        }
+        usePosList.array[index] = value;
+    }
+
+    private void rawUsePosAdd(int pos) {
+        if (usePosList.size == usePosList.array.length) {
+            int newSize = (usePosList.size * 3) / 2 + 1;
+            usePosList.array = Arrays.copyOf(usePosList.array, newSize);
+        }
+        usePosList.array[usePosList.size++] = pos;
+    }
+
+    private void rawUsePosSetSize(int newSize) {
+        if (newSize < usePosList.size) {
+            usePosList.size = newSize;
+        } else if (newSize > usePosList.size) {
+            usePosList.array = Arrays.copyOf(usePosList.array, newSize);
+        }
+    }
+
+    private int rawUsePosSize() {
+        return usePosList.size;
     }
 
 }
