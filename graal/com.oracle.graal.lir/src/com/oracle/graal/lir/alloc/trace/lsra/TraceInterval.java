@@ -327,7 +327,8 @@ final class TraceInterval extends IntervalHint {
     /**
      * List of (use-positions, register-priorities) pairs, sorted by use-positions.
      */
-    private IntList usePosList;
+    private int[] usePosListArray;
+    private int usePosListSize;
 
     /**
      * Link to next interval in a sorted list of intervals that ends with {@link #EndMarker}.
@@ -570,7 +571,7 @@ final class TraceInterval extends IntervalHint {
         this.kind = LIRKind.Illegal;
         this.intFrom = Integer.MAX_VALUE;
         this.intTo = Integer.MAX_VALUE;
-        this.usePosList = new IntList(4 * 2);
+        this.usePosListArray = new int[4 * 2];
         this.next = EndMarker;
         this.spillState = SpillState.NoDefinitionFound;
         this.spillDefinitionPos = -1;
@@ -1097,7 +1098,7 @@ final class TraceInterval extends IntervalHint {
     }
 
     int numUsePos() {
-        return rawUsePosSize() >> 1;
+        return usePosListSize >> 1;
     }
 
     /**
@@ -1107,12 +1108,11 @@ final class TraceInterval extends IntervalHint {
      * @return the register priority of entry {@code index} in this list
      */
     RegisterPriority getUsePosRegisterPriority(int index) {
-        int index2 = (index << 1) + 1;
-        return RegisterPriority.VALUES[rawUsePosGet(index2)];
+        return RegisterPriority.VALUES[rawUsePosGet((index << 1) + 1)];
     }
 
     void removeFirstUsePos() {
-        rawUsePosSetSize(rawUsePosSize() - 2);
+        rawUsePosSetSize(usePosListSize - 2);
     }
 
     // internal
@@ -1124,7 +1124,7 @@ final class TraceInterval extends IntervalHint {
     }
 
     private void usePosAdd(int pos, RegisterPriority registerPriority) {
-        assert rawUsePosSize() == 0 || getUsePos(numUsePos() - 1) > pos;
+        assert usePosListSize == 0 || getUsePos(numUsePos() - 1) > pos;
         rawUsePosAdd(pos);
         rawUsePosAdd(registerPriority.ordinal());
     }
@@ -1139,80 +1139,44 @@ final class TraceInterval extends IntervalHint {
         int listSplitIndex = (i + 1) * 2;
         assert len >= len : "initialCapacity < length";
         int[] array = new int[len];
-        System.arraycopy(usePosList.array, listSplitIndex, array, 0, len);
-        IntList updatedList = new IntList(array, len);
+        System.arraycopy(usePosListArray, listSplitIndex, array, 0, len);
         rawUsePosSetSize(listSplitIndex);
-        IntList newUsePosList = updatedList;
-        result.usePosList = usePosList;
-        usePosList = newUsePosList;
+        result.usePosListArray = usePosListArray;
+        result.usePosListSize = usePosListSize;
+        usePosListArray = array;
+        usePosListSize = len;
     }
 
     // IntList
 
-    /**
-     * An expandable and indexable list of {@code int}s.
-     *
-     * This class avoids the boxing/unboxing incurred by {@code ArrayList<Integer>}.
-     */
-    private static final class IntList {
-
-        private int[] array;
-        private int size;
-
-        /**
-         * Creates an int list with a specified initial capacity.
-         *
-         * @param initialCapacity
-         */
-        public IntList(int initialCapacity) {
-            array = new int[initialCapacity];
-        }
-
-        /**
-         * Creates an int list with a specified initial array.
-         *
-         * @param array the initial array used for the list (no copy is made)
-         */
-        public IntList(int[] array, int initialSize) {
-            assert initialSize <= array.length;
-            this.array = array;
-            this.size = initialSize;
-        }
-
-    }
-
     private int rawUsePosGet(int index) {
-        if (index >= usePosList.size) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosList.size);
+        if (index >= usePosListSize) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosListSize);
         }
-        return usePosList.array[index];
+        return usePosListArray[index];
     }
 
     private void rawUsePosSet(int index, int value) {
-        if (index >= usePosList.size) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosList.size);
+        if (index >= usePosListSize) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosListSize);
         }
-        usePosList.array[index] = value;
+        usePosListArray[index] = value;
     }
 
     private void rawUsePosAdd(int pos) {
-        if (usePosList.size == usePosList.array.length) {
-            int newSize = (usePosList.size * 3) / 2 + 1;
-            usePosList.array = Arrays.copyOf(usePosList.array, newSize);
+        if (usePosListSize == usePosListArray.length) {
+            int newSize = (usePosListSize * 3) / 2 + 1;
+            usePosListArray = Arrays.copyOf(usePosListArray, newSize);
         }
-        usePosList.array[usePosList.size++] = pos;
+        usePosListArray[usePosListSize++] = pos;
     }
 
     private void rawUsePosSetSize(int newSize) {
-        if (newSize < usePosList.size) {
-            usePosList.size = newSize;
-        } else if (newSize > usePosList.size) {
-            usePosList.array = Arrays.copyOf(usePosList.array, newSize);
+        if (newSize < usePosListSize) {
+            usePosListSize = newSize;
+        } else if (newSize > usePosListSize) {
+            usePosListArray = Arrays.copyOf(usePosListArray, newSize);
         }
-    }
-
-    private int rawUsePosSize() {
-        return usePosList.size;
     }
 
 }
