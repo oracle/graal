@@ -47,6 +47,7 @@ import com.oracle.graal.lir.Variable;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
@@ -412,6 +413,9 @@ final class TraceInterval extends IntervalHint {
     }
 
     public ValueKind<?> kind() {
+        if (!kind.equals(LIRKind.Illegal) && !operand.getValueKind().equals(kind)) {
+            throw JVMCIError.shouldNotReachHere();
+        }
         return kind;
     }
 

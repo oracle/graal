@@ -94,14 +94,14 @@ public final class IntervalBuilderUtil {
     protected static void visitOutput(IntervalData intervalData, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
-            addDef(intervalData, (AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getValueKind(), neverSpillConstants, spillMoveFactory);
+            addDef(intervalData, (AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), neverSpillConstants, spillMoveFactory);
             addRegisterHint(intervalData, op, operand, mode, flags, true);
         }
     }
 
     protected static void visitTemp(IntervalData intervalData, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
-            addTemp(intervalData, (AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getValueKind());
+            addTemp(intervalData, (AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister);
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -111,7 +111,7 @@ public final class IntervalBuilderUtil {
             RegisterPriority p = registerPriorityOfInputOperand(flags);
             int opId = op.id();
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, p, operand.getValueKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, p);
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -121,7 +121,7 @@ public final class IntervalBuilderUtil {
             int opId = op.id();
             RegisterPriority p = registerPriorityOfInputOperand(flags);
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId, p, operand.getValueKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId, p);
             addRegisterHint(intervalData, op, operand, mode, flags, false);
         }
     }
@@ -130,14 +130,14 @@ public final class IntervalBuilderUtil {
         if (TraceLinearScan.isVariableOrRegister(operand)) {
             int opId = op.id();
             int blockFrom = 0;
-            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getValueKind());
+            addUse(intervalData, (AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None);
         }
     }
 
     protected static void visitCallerSavedRegisters(IntervalData intervalData, RegisterArray callerSaveRegs, final int opId) {
         for (Register r : callerSaveRegs) {
             if (intervalData.attributes(r).isAllocatable()) {
-                addTemp(intervalData, r.asValue(), opId, RegisterPriority.None, LIRKind.Illegal);
+                addTemp(intervalData, r.asValue(), opId, RegisterPriority.None);
             }
         }
         if (Debug.isLogEnabled()) {
@@ -145,7 +145,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addUse(IntervalData intervalData, AllocatableValue operand, int from, int to, RegisterPriority registerPriority, ValueKind<?> kind) {
+    private static void addUse(IntervalData intervalData, AllocatableValue operand, int from, int to, RegisterPriority registerPriority) {
         if (!intervalData.isProcessed(operand)) {
             return;
         }
@@ -153,7 +153,7 @@ public final class IntervalBuilderUtil {
             addFixedUse(intervalData, asRegisterValue(operand), from, to);
         } else {
             assert isVariable(operand) : operand;
-            addVariableUse(intervalData, asVariable(operand), from, to, registerPriority, kind);
+            addVariableUse(intervalData, asVariable(operand), from, to, registerPriority);
         }
     }
 
@@ -165,8 +165,9 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableUse(IntervalData intervalData, Variable operand, int from, int to, RegisterPriority registerPriority, ValueKind<?> kind) {
+    private static void addVariableUse(IntervalData intervalData, Variable operand, int from, int to, RegisterPriority registerPriority) {
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
+        ValueKind<?> kind = operand.getValueKind();
 
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
@@ -182,7 +183,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addTemp(IntervalData intervalData, AllocatableValue operand, int tempPos, RegisterPriority registerPriority, ValueKind<?> kind) {
+    private static void addTemp(IntervalData intervalData, AllocatableValue operand, int tempPos, RegisterPriority registerPriority) {
         if (!intervalData.isProcessed(operand)) {
             return;
         }
@@ -190,7 +191,7 @@ public final class IntervalBuilderUtil {
             addFixedTemp(intervalData, asRegisterValue(operand), tempPos);
         } else {
             assert isVariable(operand) : operand;
-            addVariableTemp(intervalData, asVariable(operand), tempPos, registerPriority, kind);
+            addVariableTemp(intervalData, asVariable(operand), tempPos, registerPriority);
         }
     }
 
@@ -202,7 +203,9 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableTemp(IntervalData intervalData, Variable operand, int tempPos, RegisterPriority registerPriority, ValueKind<?> kind) {
+    private static void addVariableTemp(IntervalData intervalData, Variable operand, int tempPos, RegisterPriority registerPriority) {
+        ValueKind<?> kind = operand.getValueKind();
+
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
 
         if (!kind.equals(LIRKind.Illegal)) {
@@ -223,7 +226,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addDef(IntervalData intervalData, AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, ValueKind<?> kind, boolean neverSpillConstants,
+    private static void addDef(IntervalData intervalData, AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
         if (!intervalData.isProcessed(operand)) {
             return;
@@ -232,7 +235,7 @@ public final class IntervalBuilderUtil {
             addFixedDef(intervalData, asRegisterValue(operand), op);
         } else {
             assert isVariable(operand) : operand;
-            addVariableDef(intervalData, asVariable(operand), op, registerPriority, kind, neverSpillConstants, spillMoveFactory);
+            addVariableDef(intervalData, asVariable(operand), op, registerPriority, neverSpillConstants, spillMoveFactory);
         }
     }
 
@@ -260,8 +263,10 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    private static void addVariableDef(IntervalData intervalData, Variable operand, LIRInstruction op, RegisterPriority registerPriority, ValueKind<?> kind, boolean neverSpillConstants,
+    private static void addVariableDef(IntervalData intervalData, Variable operand, LIRInstruction op, RegisterPriority registerPriority, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
+        ValueKind<?> kind = operand.getValueKind();
+
         int defPos = op.id();
 
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
