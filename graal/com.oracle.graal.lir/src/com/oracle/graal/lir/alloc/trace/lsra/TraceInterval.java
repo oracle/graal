@@ -1137,7 +1137,6 @@ final class TraceInterval extends IntervalHint {
             len += 2;
         }
         int listSplitIndex = (i + 1) * 2;
-        assert len >= len : "initialCapacity < length";
         int[] array = new int[len];
         System.arraycopy(usePosListArray, listSplitIndex, array, 0, len);
         if (listSplitIndex < usePosListSize) {
