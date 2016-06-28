@@ -48,7 +48,7 @@ public final class RootNameNode extends FixedWithNextNode implements Lowerable, 
     /**
      * resolve this node and replace with a {@link StringToBytesNode} that constructs the root
      * method name in the compiled code. To ensure the correct result, this method should be invoked
-     * only after the InliningPhase.
+     * after inlining.
      */
     private void resolve(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
