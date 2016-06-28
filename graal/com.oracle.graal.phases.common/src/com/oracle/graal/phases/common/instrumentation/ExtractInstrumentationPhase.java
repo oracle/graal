@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common.instrumentation;
 
+import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.type.StampPair;
@@ -47,6 +48,7 @@ import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -68,6 +70,11 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                 // some target.
                 InstrumentationNode instrumentationNode = graph.addWithoutUnique(new InstrumentationNode(begin.getTarget(), begin.getOffset()));
                 graph.addBeforeFixed(begin, instrumentationNode);
+                FrameState currentState = begin.stateAfter();
+                FrameState newState = graph.addWithoutUnique(new FrameState(currentState.outerFrameState(), currentState.method(), currentState.bci, 0, 0,
+                                0, currentState.rethrowException(), currentState.duringCall(), null,
+                                Collections.<EscapeObjectState> emptyList()));
+                instrumentationNode.setStateBefore(newState);
 
                 StructuredGraph instrumentationGraph = instrumentation.genInstrumentationGraph(graph, instrumentationNode);
                 new DeadCodeEliminationPhase().apply(instrumentationGraph, false);
@@ -120,6 +127,10 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                 for (Position pos : current.inputPositions()) {
                     Node input = pos.get(current);
                     if (pos.getInputType() == InputType.Value) {
+                        if (current instanceof FrameState) {
+                            // don't include value input for the FrameState
+                            continue;
+                        }
                         if (!(input instanceof FloatingNode)) {
                             // we only consider FloatingNode for this input type
                             continue;
@@ -132,10 +143,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                             dfgFlood.add(input);
                         }
                     } else {
-                        if (!(input instanceof FrameState)) {
-                            // FrameState will be reassigned upon inlining instrumentation
-                            dfgFlood.add(input);
-                        }
+                        dfgFlood.add(input);
                     }
                 }
             }
@@ -152,10 +160,6 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
             Map<Node, Node> replacements = Node.newMap();
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
-                if (current instanceof FrameState) {
-                    // FrameState will be re-assigned by FrameStateAssignmentPhase upon inlining
-                    continue;
-                }
                 // mark any input that is not included in the instrumentation a weak dependency
                 for (Node input : current.inputs()) {
                     if (input instanceof ValueNode) {

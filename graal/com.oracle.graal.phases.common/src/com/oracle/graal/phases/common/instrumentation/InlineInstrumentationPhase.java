@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.instrumentation;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -34,11 +33,9 @@ import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -49,7 +46,6 @@ import com.oracle.graal.nodes.debug.instrumentation.InstrumentationInliningCallb
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
 import com.oracle.graal.nodes.memory.MemoryAnchorNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -172,38 +168,15 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
                 }
             }
 
-            // invalidate FrameStates in the instrumentation
-            for (Node replacee : duplicates.values()) {
-                if (replacee instanceof FrameState) {
-                    FrameState oldState = (FrameState) replacee;
-                    FrameState newState = new FrameState(null, oldState.method(), oldState.bci, 0, 0, 0, oldState.rethrowException(), oldState.duringCall(), null,
-                                    Collections.<EscapeObjectState> emptyList());
-                    graph.addWithoutUnique(newState);
-                    oldState.replaceAtUsages(newState);
-                }
-            }
-            // update FrameStates of the DeoptimizingNodes in the instrumentation
-            FrameState state = instrumentationNode.stateBefore();
-            for (Node replacee : duplicates.values()) {
-                if (replacee instanceof DeoptimizingNode && !(replacee instanceof Invoke)) {
-                    DeoptimizingNode deoptDup = (DeoptimizingNode) replacee;
-                    if (deoptDup.canDeoptimize()) {
-                        if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
-                            ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(state);
-                        }
-                        if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
-                            DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
-                            assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
-                            deoptDupDuring.setStateDuring(state);
-                        }
-                        if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
-                            DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
-                            assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
-                            deoptDupAfter.setStateAfter(state);
-                        }
+            FrameState outerFrameState = instrumentationNode.stateBefore().outerFrameState();
+            if (outerFrameState != null) {
+                for (Node replacee : duplicates.values()) {
+                    if (replacee instanceof FrameState) {
+                        ((FrameState) replacee).setOuterFrameState(outerFrameState);
                     }
                 }
             }
+
             // notify instrumentation nodes of the postInlineInstrumentation event
             for (Node replacee : duplicates.values()) {
                 if (replacee instanceof InstrumentationInliningCallback) {

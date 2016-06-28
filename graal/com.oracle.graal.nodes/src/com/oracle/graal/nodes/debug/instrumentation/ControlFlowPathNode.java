@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeFlood;
@@ -34,6 +35,8 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.ValuePhiNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -44,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
  * snippet.
  */
 @NodeInfo
-public final class ControlFlowPathNode extends FixedWithNextNode implements InstrumentationInliningCallback {
+public final class ControlFlowPathNode extends FixedWithNextNode implements InstrumentationInliningCallback, LIRLowerable {
 
     public static final NodeClass<ControlFlowPathNode> TYPE = NodeClass.create(ControlFlowPathNode.class);
 
@@ -90,6 +93,11 @@ public final class ControlFlowPathNode extends FixedWithNextNode implements Inst
             }
         }
         graph().replaceFixedWithFloating(this, ConstantNode.forInt(-1, graph()));
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        GraalError.shouldNotReachHere("GraalDirectives.controlFlowPath() should be enclosed in an instrumentation");
     }
 
 }

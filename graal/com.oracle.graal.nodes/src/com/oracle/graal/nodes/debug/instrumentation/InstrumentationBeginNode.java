@@ -27,9 +27,11 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.AbstractStateSplit;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -38,7 +40,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * maintains the target of the instrumentation.
  */
 @NodeInfo
-public final class InstrumentationBeginNode extends FixedWithNextNode {
+public final class InstrumentationBeginNode extends AbstractStateSplit implements LIRLowerable {
 
     public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
@@ -70,6 +72,11 @@ public final class InstrumentationBeginNode extends FixedWithNextNode {
 
     public void setTarget(ValueNode target) {
         this.target = target;
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        // do nothing
     }
 
 }

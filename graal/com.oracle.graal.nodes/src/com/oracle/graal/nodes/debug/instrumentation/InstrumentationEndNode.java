@@ -26,17 +26,24 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code InstrumentationEndNode} represents the boundary of the instrumentation.
  */
 @NodeInfo
-public final class InstrumentationEndNode extends FixedWithNextNode {
+public final class InstrumentationEndNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
 
     public InstrumentationEndNode() {
         super(TYPE, StampFactory.forVoid());
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        // do nothing
     }
 
 }
