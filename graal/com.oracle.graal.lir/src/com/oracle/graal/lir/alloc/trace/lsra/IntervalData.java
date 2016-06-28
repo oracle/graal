@@ -400,14 +400,14 @@ public final class IntervalData implements IntervalDumper {
     }
 
     private static boolean verifyIntervalsEquals(TraceInterval a, TraceInterval b) {
-        for (int i = 0; i < Math.max(a.usePosListSize(), b.usePosListSize()); i++) {
-            assert i < a.usePosListSize() : "missing a usepos: " + i + " b: " + b;
-            assert i < b.usePosListSize() : "missing b usepos: " + i + " a: " + a;
-            int aPos = a.usePosListGet(i);
-            int bPos = b.usePosListGet(i);
+        for (int i = 0; i < Math.max(a.numUsePos(), b.numUsePos()); i++) {
+            assert i < a.numUsePos() : "missing a usepos: " + i + " b: " + b;
+            assert i < b.numUsePos() : "missing b usepos: " + i + " a: " + a;
+            int aPos = a.getUsePos(i);
+            int bPos = b.getUsePos(i);
             assert aPos == bPos : "Use Positions differ: " + aPos + " vs. " + bPos;
-            RegisterPriority aReg = a.usePosListRegisterPriority(i);
-            RegisterPriority bReg = b.usePosListRegisterPriority(i);
+            RegisterPriority aReg = a.getUsePosRegisterPriority(i);
+            RegisterPriority bReg = b.getUsePosRegisterPriority(i);
             assert aReg == bReg : "Register priority differ: " + aReg + " vs. " + bReg;
         }
         return true;
@@ -503,10 +503,10 @@ public final class IntervalData implements IntervalDumper {
 
         // print use positions
         int prev = -1;
-        for (int i = interval.usePosListSize() - 1; i >= 0; --i) {
-            assert prev < interval.usePosListGet(i) : "use positions not sorted";
-            visitor.visitUsePos(interval.usePosListGet(i), interval.usePosListRegisterPriority(i));
-            prev = interval.usePosListGet(i);
+        for (int i = interval.numUsePos() - 1; i >= 0; --i) {
+            assert prev < interval.getUsePos(i) : "use positions not sorted";
+            visitor.visitUsePos(interval.getUsePos(i), interval.getUsePosRegisterPriority(i));
+            prev = interval.getUsePos(i);
         }
 
         visitor.visitIntervalEnd(interval.spillState());

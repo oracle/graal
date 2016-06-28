@@ -486,7 +486,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             if (minSplitPos == interval.from()) {
                 // the whole interval is never used, so spill it entirely to memory
 
-                try (Indent indent2 = Debug.logAndIndent("spilling entire interval because split pos is at beginning of interval (use positions: %d)", interval.usePosListSize())) {
+                try (Indent indent2 = Debug.logAndIndent("spilling entire interval because split pos is at beginning of interval (use positions: %d)", interval.numUsePos())) {
 
                     assert interval.firstUsage(RegisterPriority.MustHaveRegister) > currentPosition : String.format("interval %s must not have use position before currentPosition %d", interval,
                                     currentPosition);
