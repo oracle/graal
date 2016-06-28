@@ -76,8 +76,8 @@ public final class ControlFlowPathNode extends FixedWithNextNode implements Inst
 
     @Override
     public void postInlineInstrumentation(InstrumentationNode instrumentation) {
-        if (instrumentation.target() instanceof AbstractMergeNode) {
-            AbstractMergeNode merge = (AbstractMergeNode) instrumentation.target();
+        if (instrumentation.getTarget() instanceof AbstractMergeNode) {
+            AbstractMergeNode merge = (AbstractMergeNode) instrumentation.getTarget();
             if (isCFGAccessible(merge, instrumentation)) { // ensure the scheduling
                 // create a ValuePhiNode selecting between constant integers that represent the
                 // control flow paths

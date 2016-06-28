@@ -789,8 +789,8 @@ public class InliningUtil {
     public static void detachInstrumentation(Invoke invoke) {
         FixedNode invokeNode = invoke.asNode();
         for (InstrumentationNode instrumentation : invokeNode.usages().filter(InstrumentationNode.class).snapshot()) {
-            if (instrumentation.target() == invoke) {
-                instrumentation.replaceFirstInput(instrumentation.target(), null);
+            if (instrumentation.getTarget() == invoke) {
+                instrumentation.replaceFirstInput(instrumentation.getTarget(), null);
             }
         }
     }

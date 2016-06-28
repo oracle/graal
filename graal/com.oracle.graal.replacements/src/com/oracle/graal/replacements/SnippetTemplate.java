@@ -1350,8 +1350,8 @@ public class SnippetTemplate {
 
             if (UseGraalInstrumentation.getValue()) {
                 for (InstrumentationNode instrumentation : replaceeGraph.getNodes().filter(InstrumentationNode.class)) {
-                    if (instrumentation.target() == replacee) {
-                        if (instrumentation.offset() < 0) {
+                    if (instrumentation.getTarget() == replacee) {
+                        if (instrumentation.getOffset() < 0) {
                             ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                             FixedWithNextNode pred = (FixedWithNextNode) returnDuplicate.predecessor();
                             instrumentation.replaceFirstInput(replacee, pred);

@@ -60,11 +60,11 @@ public final class InstrumentationBeginNode extends FixedWithNextNode {
         this.target = null;
     }
 
-    public int offset() {
+    public int getOffset() {
         return offset;
     }
 
-    public ValueNode target() {
+    public ValueNode getTarget() {
         return target;
     }
 

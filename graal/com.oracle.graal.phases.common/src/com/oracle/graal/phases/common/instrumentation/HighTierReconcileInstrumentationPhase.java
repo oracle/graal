@@ -60,7 +60,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
             // InstrumentationNode targets one of these VirtualObjectNodes
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                aggr.cloneInstrumentationIf(in -> in.target() == virtual,
+                aggr.cloneInstrumentationIf(in -> in.getTarget() == virtual,
                                 () -> getAllocatedObject(graph, commit, virtual));
             }
             // iterate through all MonitorIdNodes held by the CommitAllocationNode, clone if any
@@ -68,14 +68,14 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 for (MonitorIdNode monitorId : commit.getLocks(objIndex)) {
-                    aggr.cloneInstrumentationIf(in -> in.target() instanceof MonitorProxyNode && ((MonitorProxyNode) in.target()).getMonitorId() == monitorId,
+                    aggr.cloneInstrumentationIf(in -> in.getTarget() instanceof MonitorProxyNode && ((MonitorProxyNode) in.getTarget()).getMonitorId() == monitorId,
                                     () -> new MonitorProxyNode(getAllocatedObject(graph, commit, virtual), monitorId));
                 }
             }
         }
         // remove InstrumentationNodes that still target virtual nodes
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            ValueNode target = instrumentationNode.target();
+            ValueNode target = instrumentationNode.getTarget();
             if (target instanceof VirtualObjectNode) {
                 graph.removeFixed(instrumentationNode);
             } else if (target instanceof MonitorProxyNode) {
@@ -120,7 +120,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
                 if (!newTarget.isAlive()) {
                     graph.addWithoutUnique(newTarget);
                 }
-                clone.replaceFirstInput(clone.target(), newTarget);
+                clone.replaceFirstInput(clone.getTarget(), newTarget);
                 // update weak dependencies of the clone instrumentation node where the dependency
                 // is also a VirtualObjectNode. This is common when one allocation in the
                 // CommitAllocationNode depends on another allocation.

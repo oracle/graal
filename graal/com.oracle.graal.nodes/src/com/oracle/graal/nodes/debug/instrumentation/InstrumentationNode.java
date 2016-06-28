@@ -62,15 +62,15 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
         this.weakDependencies = new NodeInputList<>(this);
     }
 
-    public ValueNode target() {
+    public ValueNode getTarget() {
         return target;
     }
 
-    public int offset() {
+    public int getOffset() {
         return offset;
     }
 
-    public StructuredGraph instrumentationGraph() {
+    public StructuredGraph getInstrumentationGraph() {
         return instrumentationGraph;
     }
 

@@ -391,8 +391,8 @@ public final class GraalDirectives {
      *
      * @param offset the length of a sequential path from a target bytecode to the invocation to
      *            this API (if negative, excluding the bytecode loading this parameter), or from the
-     *            invocation to {@link #instrumentationEnd()} to a target node (if positive). Pass 0
-     *            to anchor the instrumentation.
+     *            invocation to {@link #instrumentationEnd()} to a target bytecode (if positive).
+     *            Pass 0 to anchor the instrumentation.
      */
     public static void instrumentationBegin(int offset) {
     }
@@ -406,12 +406,13 @@ public final class GraalDirectives {
     }
 
     /**
-     * @return an integer representing a control flow path taken for a @Snippet. This API is valid
-     *         only if invoked within an instrumentation (see {@link #instrumentationBegin(int)} and
-     *         {@link #instrumentationEnd()} , and the associated target node of the instrumentation
-     *         is a preceding node that will be substituted by a @Snippet with multiple control flow
-     *         paths. It will be replaced with a ValuePhiNode with constant integer inputs [0, N-1],
-     *         where N denotes the number of control flow paths of the snippet.
+     * @return an integer representing a control flow path taken for a @Snippet. This method is
+     *         valid only if invoked within an instrumentation (see
+     *         {@link #instrumentationBegin(int)} and {@link #instrumentationEnd()} , and the
+     *         associated target node of the instrumentation is a preceding node that will be
+     *         substituted by a @Snippet with multiple control flow paths. It will be replaced with
+     *         a ValuePhiNode with constant integer inputs [0, N-1], where N denotes the number of
+     *         control flow paths of the snippet.
      */
     public static int controlFlowPath() {
         return -1;

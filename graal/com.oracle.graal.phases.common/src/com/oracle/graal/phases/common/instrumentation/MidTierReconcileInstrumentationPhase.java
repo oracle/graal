@@ -41,7 +41,7 @@ public class MidTierReconcileInstrumentationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            ValueNode target = instrumentationNode.target();
+            ValueNode target = instrumentationNode.getTarget();
             if (target instanceof MonitorProxyNode) {
                 RawMonitorEnterNode monitorEnter = ((MonitorProxyNode) target).findFirstMatch();
                 if (monitorEnter != null) {

@@ -75,12 +75,12 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
             // if the target of the instrumentationNode is null while the offset is non-zero, the
             // instrumentation is invalid.
-            if (instrumentationNode.target() == null && instrumentationNode.offset() != 0) {
+            if (instrumentationNode.getTarget() == null && instrumentationNode.getOffset() != 0) {
                 graph.removeFixed(instrumentationNode);
                 continue;
             }
             // Clone the instrumentation in case it is shared amongst multiple InstrumentationNodes.
-            StructuredGraph instrumentationGraph = instrumentationNode.instrumentationGraph();
+            StructuredGraph instrumentationGraph = instrumentationNode.getInstrumentationGraph();
             if (visited.contains(instrumentationGraph)) {
                 instrumentationGraph = (StructuredGraph) instrumentationGraph.copy();
                 instrumentationNode.setInstrumentationGraph(instrumentationGraph);
@@ -90,7 +90,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
         // at this point, instrumentation graphs are not shared and can apply changes according to
         // the context of the InstrumentationNode
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            StructuredGraph instrumentationGraph = instrumentationNode.instrumentationGraph();
+            StructuredGraph instrumentationGraph = instrumentationNode.getInstrumentationGraph();
             // notify instrumentation nodes of the preInlineInstrumentation event
             for (Node node : instrumentationGraph.getNodes()) {
                 if (node instanceof InstrumentationInliningCallback) {

@@ -815,14 +815,14 @@ public class BytecodeParser implements GraphBuilderContext {
         bciNodeMap.forEach(node -> {
             if (node instanceof InstrumentationBeginNode) {
                 InstrumentationBeginNode begin = (InstrumentationBeginNode) node;
-                if (begin.offset() == 0) {
+                if (begin.getOffset() == 0) {
                     // no further action for 0 offset
                     return;
                 }
                 int targetIdx = -1;
-                int offset = begin.offset();
+                int offset = begin.getOffset();
                 if (offset < 0) {
-                    // for a negative offset, we substrate the target index by 1 due to the input to
+                    // for a negative offset, we subtract the target index by 1 due to the input to
                     // instrumentationBegin(int)
                     targetIdx = bciNodeMap.indexOf(begin) + offset - 1;
                 } else {

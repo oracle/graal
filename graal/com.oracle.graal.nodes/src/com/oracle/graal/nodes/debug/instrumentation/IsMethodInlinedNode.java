@@ -56,7 +56,7 @@ public final class IsMethodInlinedNode extends FixedWithNextNode implements Lowe
     @Override
     protected void afterClone(Node other) {
         if (other instanceof IsMethodInlinedNode) {
-            // keep trace of the original graph
+            // keep track of the original graph
             IsMethodInlinedNode that = (IsMethodInlinedNode) other;
             this.originalGraph = that.originalGraph == null ? that.graph() : that.originalGraph;
         }
@@ -64,8 +64,8 @@ public final class IsMethodInlinedNode extends FixedWithNextNode implements Lowe
 
     private void resolve(StructuredGraph target) {
         // if parsingDepth is greater than 0, then inlined
-        // if the origianl graph is null, which means this node is never cloned, then not inlined
-        // if the origianl graph does not match the current graph, then inlined
+        // if the original graph is null, which means this node is never cloned, then not inlined
+        // if the original graph does not match the current graph, then inlined
         replaceAtUsages(ConstantNode.forBoolean(parsingDepth > 0 || (originalGraph != null && originalGraph != target), graph()));
         graph().removeFixed(this);
     }
