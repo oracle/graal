@@ -45,7 +45,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * The {@code StringToBytesSnippets} contains the snippet for lowering {@link StringToBytesNode}.
+ * The {@code StringToBytesSnippets} contains a snippet for lowering {@link StringToBytesNode}.
  */
 public class StringToBytesSnippets implements Snippets {
 
