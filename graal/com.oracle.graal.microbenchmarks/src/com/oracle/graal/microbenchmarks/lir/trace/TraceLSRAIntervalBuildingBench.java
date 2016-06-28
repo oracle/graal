@@ -67,7 +67,7 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             TraceBuilderResult<B> resultTraces = getTraces(context);
 
             for (Trace<B> trace : resultTraces.getTraces()) {
-                intervalData = new IntervalData(target, lirGenRes, registerAllocationConfig, trace);
+                intervalData = new IntervalData(target, lirGenRes, registerAllocationConfig);
                 Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(intervalData, resultTraces, trace.getBlocks(), lirGenRes.getLIR(), true, spillMoveFactory,
                                 registerAllocationConfig.getRegisterConfig().getCallerSaveRegisters());
                 a.analyze();
