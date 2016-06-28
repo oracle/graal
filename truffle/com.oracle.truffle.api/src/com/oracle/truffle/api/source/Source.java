@@ -148,7 +148,10 @@ public abstract class Source {
      * @param name the {@link #getName() name} of a source to seek for
      * @return found source or <code>null</code> if no source with name is known
      * @since 0.8 or earlier
+     * @deprecated centralized caching will be removed, if needed cache your {@link Source} objects
+     *             yourself
      */
+    @Deprecated
     public static Source find(String name) {
         return SourceImpl.findSource(name);
     }
