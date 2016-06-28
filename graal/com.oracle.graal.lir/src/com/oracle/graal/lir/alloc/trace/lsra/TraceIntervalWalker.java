@@ -24,7 +24,6 @@ package com.oracle.graal.lir.alloc.trace.lsra;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.alloc.trace.lsra.FixedInterval.FixedList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.AnyList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
@@ -125,13 +124,7 @@ class TraceIntervalWalker {
     }
 
     protected void removeFromList(TraceInterval interval) {
-        if (interval.state() == State.Active) {
-            activeAnyList.removeAny(interval);
-        } else {
-            assert interval.state() == State.Inactive : "invalid state";
-            // inactiveAnyLists.removeAny(interval);
-            throw GraalError.shouldNotReachHere();
-        }
+        activeAnyList.removeAny(interval);
     }
 
     /**
@@ -270,8 +263,7 @@ class TraceIntervalWalker {
      * Walk up to {@code toOpId}.
      *
      * @postcondition {@link #currentPosition} is set to {@code toOpId}, {@link #activeFixedList}
-     *                and {@link #inactiveFixedList} are populated and {@link TraceInterval#state}s
-     *                are up to date.
+     *                and {@link #inactiveFixedList} are populated.
      */
     @SuppressWarnings("try")
     protected void walkTo(int toOpId) {
@@ -291,7 +283,6 @@ class TraceIntervalWalker {
             walkToAny(opId);
 
             try (Indent indent = Debug.logAndIndent("walk to op %d", opId)) {
-                currentInterval.setState(State.Active);
                 if (activateCurrent(currentInterval)) {
                     activeAnyList.addToListSortedByFromPositions(currentInterval);
                     intervalMoved(currentInterval, State.Unhandled, State.Active);

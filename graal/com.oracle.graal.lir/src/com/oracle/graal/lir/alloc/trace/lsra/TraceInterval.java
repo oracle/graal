@@ -336,11 +336,6 @@ final class TraceInterval extends IntervalHint {
     TraceInterval next;
 
     /**
-     * The linear-scan state of this interval.
-     */
-    private State state;
-
-    /**
      * The interval from which this one is derived. If this is a {@linkplain #isSplitParent() split
      * parent}, it points to itself.
      */
@@ -388,14 +383,6 @@ final class TraceInterval extends IntervalHint {
      * The number of times {@link #addMaterializationValue(JavaConstant)} is called.
      */
     private int numMaterializationValuesAdded;
-
-    State state() {
-        return state;
-    }
-
-    void setState(State state) {
-        this.state = state;
-    }
 
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {

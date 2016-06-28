@@ -38,7 +38,6 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -46,7 +45,6 @@ import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.OutOfRegistersException;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -477,7 +475,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
 
         try (Indent indent = Debug.logAndIndent("splitting and spilling interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
 
-            assert interval.state() == State.Active : "why spill interval that is not active?";
             assert interval.from() <= minSplitPos : "cannot split before start of interval";
             assert minSplitPos <= maxSplitPos : "invalid order";
             assert maxSplitPos < interval.to() : "cannot split at end end of interval";
@@ -703,32 +700,23 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     }
 
     private void splitAndSpillInterval(TraceInterval interval) {
-        assert interval.state() == State.Active || interval.state() == State.Inactive : "other states not allowed";
-
         int currentPos = currentPosition;
-        if (interval.state() == State.Inactive) {
-            // the interval is currently inactive, so no spill slot is needed for now.
-            // when the split part is activated, the interval has a new chance to get a register,
-            // so in the best case no stack slot is necessary
-            throw GraalError.shouldNotReachHere("TraceIntervals can not be inactive!");
+        /*
+         * Search the position where the interval must have a register and split at the optimal
+         * position before. The new created part is added to the unhandled list and will get a
+         * register when it is activated.
+         */
+        int minSplitPos = currentPos + 1;
+        int maxSplitPos = interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos);
 
+        if (maxSplitPos <= interval.to()) {
+            splitBeforeUsage(interval, minSplitPos, maxSplitPos);
         } else {
-            // search the position where the interval must have a register and split
-            // at the optimal position before.
-            // The new created part is added to the unhandled list and will get a register
-            // when it is activated
-            int minSplitPos = currentPos + 1;
-            int maxSplitPos = interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos);
-
-            if (maxSplitPos <= interval.to()) {
-                splitBeforeUsage(interval, minSplitPos, maxSplitPos);
-            } else {
-                Debug.log("No more usage, no need to split: %s", interval);
-            }
-
-            assert interval.nextUsage(RegisterPriority.MustHaveRegister, currentPos) == Integer.MAX_VALUE : "the remaining part is spilled to stack and therefore has no register";
-            splitForSpilling(interval);
+            Debug.log("No more usage, no need to split: %s", interval);
         }
+
+        assert interval.nextUsage(RegisterPriority.MustHaveRegister, currentPos) == Integer.MAX_VALUE : "the remaining part is spilled to stack and therefore has no register";
+        splitForSpilling(interval);
     }
 
     @SuppressWarnings("try")
