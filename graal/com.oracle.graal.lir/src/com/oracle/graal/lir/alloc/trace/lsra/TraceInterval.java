@@ -983,13 +983,6 @@ final class TraceInterval extends IntervalHint {
     }
 
     /**
-     * Gets the use position information for this interval.
-     */
-    public UsePosList usePosList() {
-        return usePosList;
-    }
-
-    /**
      * Gets a single line string for logging the details of this interval to a log stream.
      */
     @Override
@@ -1085,5 +1078,19 @@ final class TraceInterval extends IntervalHint {
             }
             return from;
         }
+    }
+
+    // UsePos
+    RegisterPriority usePosListRegisterPriority(int i) {
+        return UsePosList.registerPriority(usePosList, i);
+    }
+
+    int usePosListSize() {
+        int numUsePos = UsePosList.size(usePosList);
+        return numUsePos;
+    }
+
+    int usePosListGet(int i) {
+        return UsePosList.usePos(usePosList, i);
     }
 }

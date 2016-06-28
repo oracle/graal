@@ -465,10 +465,9 @@ public final class IntervalBuilderUtil {
                      * result in a degradation, because rematerialization always inserts a constant
                      * load, even if the value is not needed in a register.
                      */
-                    UsePosList usePosList = interval.usePosList();
-                    int numUsePos = UsePosList.size(usePosList);
+                    int numUsePos = interval.usePosListSize();
                     for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                        TraceInterval.RegisterPriority priority = UsePosList.registerPriority(usePosList, useIdx);
+                        TraceInterval.RegisterPriority priority = interval.usePosListRegisterPriority(useIdx);
                         if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
                             return null;
                         }
