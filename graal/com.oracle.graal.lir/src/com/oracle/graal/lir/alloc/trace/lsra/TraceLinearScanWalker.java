@@ -477,7 +477,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
 
         try (Indent indent = Debug.logAndIndent("splitting and spilling interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
 
-            assert interval.state == State.Active : "why spill interval that is not active?";
+            assert interval.state() == State.Active : "why spill interval that is not active?";
             assert interval.from() <= minSplitPos : "cannot split before start of interval";
             assert minSplitPos <= maxSplitPos : "invalid order";
             assert maxSplitPos < interval.to() : "cannot split at end end of interval";
@@ -703,10 +703,10 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     }
 
     private void splitAndSpillInterval(TraceInterval interval) {
-        assert interval.state == State.Active || interval.state == State.Inactive : "other states not allowed";
+        assert interval.state() == State.Active || interval.state() == State.Inactive : "other states not allowed";
 
         int currentPos = currentPosition;
-        if (interval.state == State.Inactive) {
+        if (interval.state() == State.Inactive) {
             // the interval is currently inactive, so no spill slot is needed for now.
             // when the split part is activated, the interval has a new chance to get a register,
             // so in the best case no stack slot is necessary

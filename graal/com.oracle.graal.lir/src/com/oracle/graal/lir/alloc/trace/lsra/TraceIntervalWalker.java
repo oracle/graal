@@ -125,10 +125,10 @@ class TraceIntervalWalker {
     }
 
     protected void removeFromList(TraceInterval interval) {
-        if (interval.state == State.Active) {
+        if (interval.state() == State.Active) {
             activeAnyList.removeAny(interval);
         } else {
-            assert interval.state == State.Inactive : "invalid state";
+            assert interval.state() == State.Inactive : "invalid state";
             // inactiveAnyLists.removeAny(interval);
             throw GraalError.shouldNotReachHere();
         }
@@ -291,7 +291,7 @@ class TraceIntervalWalker {
             walkToAny(opId);
 
             try (Indent indent = Debug.logAndIndent("walk to op %d", opId)) {
-                currentInterval.state = State.Active;
+                currentInterval.setState(State.Active);
                 if (activateCurrent(currentInterval)) {
                     activeAnyList.addToListSortedByFromPositions(currentInterval);
                     intervalMoved(currentInterval, State.Unhandled, State.Active);
