@@ -28,7 +28,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.NamedLocationIdentity;
-import com.oracle.graal.nodes.debug.NewStringNode;
+import com.oracle.graal.nodes.debug.StringToBytesNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.Snippet;
@@ -45,9 +45,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * The {@code NewStringSnippets} reconstructs a compilation-time String in the compiled code.
+ * The {@code StringToBytesSnippets} contains the snippet for lowering {@link StringToBytesNode}.
  */
-public class NewStringSnippets implements Snippets {
+public class StringToBytesSnippets implements Snippets {
 
     @Fold
     static long arrayBaseOffset() {
@@ -55,10 +55,10 @@ public class NewStringSnippets implements Snippets {
     }
 
     @Snippet
-    public static byte[] create(@ConstantParameter String value) {
-        int i = value.length();
+    public static byte[] transform(@ConstantParameter String compilationTimeString) {
+        int i = compilationTimeString.length();
         byte[] array = (byte[]) NewArrayNode.newUninitializedArray(byte.class, i);
-        Word cArray = CStringConstant.cstring(value);
+        Word cArray = CStringConstant.cstring(compilationTimeString);
         while (i-- > 0) {
             // array[i] = cArray.readByte(i);
             UNSAFE.putByte(array, arrayBaseOffset() + i, cArray.readByte(i));
@@ -72,14 +72,14 @@ public class NewStringSnippets implements Snippets {
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
-            create = snippet(NewStringSnippets.class, "create", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+            create = snippet(StringToBytesSnippets.class, "transform", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         }
 
-        public void lower(NewStringNode newStringNode, LoweringTool tool) {
-            Arguments args = new Arguments(create, newStringNode.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("value", newStringNode.getValue());
+        public void lower(StringToBytesNode stringToBytesNode, LoweringTool tool) {
+            Arguments args = new Arguments(create, stringToBytesNode.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("compilationTimeString", stringToBytesNode.getValue());
             SnippetTemplate template = template(args);
-            template.instantiate(providers.getMetaAccess(), newStringNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), stringToBytesNode, DEFAULT_REPLACER, args);
         }
 
     }

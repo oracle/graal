@@ -83,7 +83,7 @@ import com.oracle.graal.hotspot.replacements.KlassLayoutHelperNode;
 import com.oracle.graal.hotspot.replacements.LoadExceptionObjectSnippets;
 import com.oracle.graal.hotspot.replacements.MonitorSnippets;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
-import com.oracle.graal.hotspot.replacements.NewStringSnippets;
+import com.oracle.graal.hotspot.replacements.StringToBytesSnippets;
 import com.oracle.graal.hotspot.replacements.UnsafeLoadSnippets;
 import com.oracle.graal.hotspot.replacements.WriteBarrierSnippets;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyNode;
@@ -114,7 +114,7 @@ import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
-import com.oracle.graal.nodes.debug.NewStringNode;
+import com.oracle.graal.nodes.debug.StringToBytesNode;
 import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
@@ -186,7 +186,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
-    protected NewStringSnippets.Templates newStringSnippets;
+    protected StringToBytesSnippets.Templates stringToBytesSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -210,7 +210,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
         assertionSnippets = new AssertionSnippets.Templates(providers, target);
         arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
-        newStringSnippets = new NewStringSnippets.Templates(providers, target);
+        stringToBytesSnippets = new StringToBytesSnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
@@ -320,9 +320,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             exceptionObjectSnippets.lower((LoadExceptionObjectNode) n, registers, tool);
         } else if (n instanceof AssertionNode) {
             assertionSnippets.lower((AssertionNode) n, tool);
-        } else if (n instanceof NewStringNode) {
+        } else if (n instanceof StringToBytesNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
-                newStringSnippets.lower((NewStringNode) n, tool);
+                stringToBytesSnippets.lower((StringToBytesNode) n, tool);
             }
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by

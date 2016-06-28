@@ -30,16 +30,17 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 /**
- * The {@code NewStringNode} embeds a compilation-time String into the compiled code.
+ * The {@code StringToBytesNode} transforms a compilation-time String into a byte array in the
+ * compiled code.
  */
 @NodeInfo
-public final class NewStringNode extends FixedWithNextNode implements Lowerable {
+public final class StringToBytesNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<NewStringNode> TYPE = NodeClass.create(NewStringNode.class);
+    public static final NodeClass<StringToBytesNode> TYPE = NodeClass.create(StringToBytesNode.class);
 
     private final String value;
 
-    public NewStringNode(String value, Stamp stamp) {
+    public StringToBytesNode(String value, Stamp stamp) {
         super(TYPE, stamp);
         this.value = value;
     }

@@ -27,7 +27,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.debug.NewStringNode;
+import com.oracle.graal.nodes.debug.StringToBytesNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
@@ -53,8 +53,8 @@ public final class RootNameNode extends FixedWithNextNode implements Lowerable, 
     private void resolve(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         String rootName = method == null ? "<unresolved method>" : (method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor());
-        NewStringNode newString = graph().add(new NewStringNode(rootName, stamp()));
-        graph().replaceFixedWithFixed(this, newString);
+        StringToBytesNode stringToByteNode = graph().add(new StringToBytesNode(rootName, stamp()));
+        graph().replaceFixedWithFixed(this, stringToByteNode);
     }
 
     @Override
