@@ -1079,6 +1079,54 @@ final class TraceInterval extends IntervalHint {
 
     // UsePos
 
+    /**
+     * List of use positions. Each entry in the list records the use position and register priority
+     * associated with the use position. The entries in the list are in descending order of use
+     * position.
+     *
+     */
+    private static final class UsePosList {
+
+        /**
+         * Gets the use position at a specified index in this list.
+         *
+         * @param index the index of the entry for which the use position is returned
+         * @return the use position of entry {@code index} in this list
+         */
+        public static int usePos(IntList ul, int index) {
+            return ul.get(index << 1);
+        }
+
+        /**
+         * Gets the register priority for the use position at a specified index in this list.
+         *
+         * @param index the index of the entry for which the register priority is returned
+         * @return the register priority of entry {@code index} in this list
+         */
+        public static RegisterPriority registerPriority(IntList ul, int index) {
+            return RegisterPriority.VALUES[ul.get((index << 1) + 1)];
+        }
+
+        public static void add(IntList ul, int usePos, RegisterPriority registerPriority) {
+            assert ul.size() == 0 || usePos(ul, size(ul) - 1) > usePos;
+            ul.add(usePos);
+            ul.add(registerPriority.ordinal());
+        }
+
+        public static int size(IntList ul) {
+            return ul.size() >> 1;
+        }
+
+        public static void removeLowestUsePos(IntList ul) {
+            ul.setSize(ul.size() - 2);
+        }
+
+        public static void setRegisterPriority(IntList ul, int index, RegisterPriority registerPriority) {
+            ul.set((index << 1) + 1, registerPriority.ordinal());
+        }
+
+    }
+
     int getUsePos(int i) {
         return UsePosList.usePos(usePosList, i);
     }
@@ -1105,32 +1153,18 @@ final class TraceInterval extends IntervalHint {
         UsePosList.add(usePosList, pos, registerPriority);
     }
 
-    /**
-     * Splits this list around a given position. All entries in this list with a use position
-     * greater or equal than {@code splitPos} are removed from this list and added to the returned
-     * list.
-     *
-     * @param splitPos The position for the split. After the method is executed the list contains
-     *            all entries that gave a use position greater or equal to {@code splitPos}.
-     * @return a Use position list containing all entries that remain in this list that have a use
-     *         position less than {@code splitPos}
-     */
-    private static IntList splitAt(IntList ul, int splitPos) {
-        int i = UsePosList.size(ul) - 1;
+    private void splitUsePosAt(TraceInterval result, int splitPos) {
+        int i = UsePosList.size(usePosList) - 1;
         int len = 0;
-        while (i >= 0 && UsePosList.usePos(ul, i) < splitPos) {
+        while (i >= 0 && UsePosList.usePos(usePosList, i) < splitPos) {
             --i;
             len += 2;
         }
         int listSplitIndex = (i + 1) * 2;
-        IntList updatedList = IntList.copy(ul, listSplitIndex, len);
+        IntList updatedList = IntList.copy(usePosList, listSplitIndex, len);
         // ul is now the child list
-        ul.setSize(listSplitIndex);
-        return updatedList;
-    }
-
-    private void splitUsePosAt(TraceInterval result, int splitPos) {
-        IntList newUsePosList = splitAt(usePosList, splitPos);
+        usePosList.setSize(listSplitIndex);
+        IntList newUsePosList = updatedList;
         result.usePosList = usePosList;
         usePosList = newUsePosList;
     }
