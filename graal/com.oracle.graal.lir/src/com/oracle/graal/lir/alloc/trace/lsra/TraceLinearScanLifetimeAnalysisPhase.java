@@ -239,7 +239,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                         }   // end of instruction iteration
                     }
                     if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
-                        intervalData.printIntervals("After Block " + block);
+                        intervalData.printIntervals("After Block " + block, sortedBlocks());
                     }
                 }   // end of block iteration
                 assert instructionIndex == 0 : "not at start?" + instructionIndex;

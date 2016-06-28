@@ -100,7 +100,7 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
         for (Trace<?> trace : traceBuilderResult.getTraces()) {
             if (process(trace)) {
                 IntervalData intervalData = getIntervalData(trace);
-                Debug.dump(INTERVAL_DUMP_LEVEL, intervalData.getBlocks(), "SSI building Trace%d %s", trace.getId(), trace);
+                Debug.dump(INTERVAL_DUMP_LEVEL, trace.getBlocks(), "SSI building Trace%d %s", trace.getId(), trace);
                 Debug.dump(INTERVAL_DUMP_LEVEL, intervalData, "SSI building Trace%d %s",
                                 trace.getId(), trace);
             }
@@ -110,9 +110,9 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
     private void numberTraces() {
         for (Trace<?> trace : traceBuilderResult.getTraces()) {
             if (process(trace)) {
-                IntervalData intervalData = new IntervalData(target, res, regAllocConfig, trace);
+                IntervalData intervalData = new IntervalData(target, res, regAllocConfig);
                 traceMap.put(trace, intervalData);
-                numberInstructions(intervalData);
+                numberInstructions(intervalData, trace.getBlocks());
             }
         }
 
@@ -122,9 +122,7 @@ final class SSIAndIntervalBuilder extends SSIBuilder {
      * Count instructions in all blocks. The numbering follows the
      * {@linkplain TraceLinearScan#sortedBlocks() register allocation order}.
      */
-    private void numberInstructions(IntervalData intervalData) {
-        List<? extends AbstractBlockBase<?>> blocks = intervalData.getBlocks();
-
+    private void numberInstructions(IntervalData intervalData, List<? extends AbstractBlockBase<?>> blocks) {
         intervalData.initIntervals();
 
         int numberInstructions = 0;

@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -60,11 +59,6 @@ public final class IntervalData implements IntervalDumper {
     private final LIR ir;
     private final RegisterAttributes[] registerAttributes;
     private final RegisterArray registers;
-
-    /**
-     * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
-     */
-    private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /**
      * The index of the first entry in {@link #intervals} for a
@@ -101,9 +95,8 @@ public final class IntervalData implements IntervalDumper {
      */
     private AbstractBlockBase<?>[] opIdToBlockMap;
 
-    public IntervalData(TargetDescription target, LIRGenerationResult res, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace) {
+    public IntervalData(TargetDescription target, LIRGenerationResult res, RegisterAllocationConfig regAllocConfig) {
         this.ir = res.getLIR();
-        this.sortedBlocks = trace.getBlocks();
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
 
         this.registers = target.arch.getRegisters();
@@ -245,19 +238,6 @@ public final class IntervalData implements IntervalDumper {
         return intervalsSize;
     }
 
-    // access to block list (sorted in linear scan order)
-    private int blockCount() {
-        return sortedBlocks.size();
-    }
-
-    private AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks.get(index);
-    }
-
-    public List<? extends AbstractBlockBase<?>> getBlocks() {
-        return sortedBlocks;
-    }
-
     FixedInterval fixedIntervalFor(RegisterValue reg) {
         return fixedIntervals[reg.getRegister().number];
     }
@@ -338,7 +318,7 @@ public final class IntervalData implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public void printIntervals(String label) {
+    public void printIntervals(String label, List<? extends AbstractBlockBase<?>> sortedBlocks) {
         if (Debug.isDumpEnabled(TraceBuilderPhase.TRACE_DUMP_LEVEL)) {
             if (Debug.isLogEnabled()) {
                 try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
@@ -355,8 +335,8 @@ public final class IntervalData implements IntervalDumper {
                     }
 
                     try (Indent indent2 = Debug.logAndIndent("Basic Blocks")) {
-                        for (int i = 0; i < blockCount(); i++) {
-                            AbstractBlockBase<?> block = blockAt(i);
+                        for (int i = 0; i < sortedBlocks.size(); i++) {
+                            AbstractBlockBase<?> block = sortedBlocks.get(i);
                             Debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                         }
                     }

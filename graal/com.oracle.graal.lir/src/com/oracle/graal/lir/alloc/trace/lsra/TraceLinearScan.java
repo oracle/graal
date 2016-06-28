@@ -131,7 +131,6 @@ public final class TraceLinearScan {
 
     private IntervalData intervalData = null;
     private final LIRGenerationResult res;
-    private final Trace<? extends AbstractBlockBase<?>> trace;
 
     public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
                     TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
@@ -142,7 +141,6 @@ public final class TraceLinearScan {
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
         this.regAllocConfig = regAllocConfig;
 
-        this.trace = trace;
         this.registers = target.arch.getRegisters();
         this.traceBuilderResult = traceBuilderResult;
         this.neverSpillConstants = neverSpillConstants;
@@ -647,7 +645,7 @@ public final class TraceLinearScan {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
             if (intervals == null) {
-                intervalData = new IntervalData(target, res, regAllocConfig, trace);
+                intervalData = new IntervalData(target, res, regAllocConfig);
                 TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
             } else {
                 intervalData = intervals;
@@ -686,7 +684,7 @@ public final class TraceLinearScan {
     }
 
     public void printIntervals(String label) {
-        getIntervalData().printIntervals(label);
+        getIntervalData().printIntervals(label, sortedBlocks);
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
