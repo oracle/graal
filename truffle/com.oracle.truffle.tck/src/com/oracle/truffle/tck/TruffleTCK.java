@@ -1547,16 +1547,19 @@ public abstract class TruffleTCK {
     @Test
     public void testRootNodeName() throws Exception {
         final String name = applyNumbers();
+        final boolean[] eventHappened = new boolean[2];
         final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
                 event.prepareStepInto();
+                eventHappened[0] = true;
             }
         };
         final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
             @Override
             protected void on(SuspendedEvent ev) {
                 assertEquals(name, ev.getNode().getRootNode().getName());
+                eventHappened[1] = true;
             }
         };
         final Builder builder = PolyglotEngine.newBuilder().onEvent(onExec).onEvent(onHalted);
@@ -1565,6 +1568,8 @@ public abstract class TruffleTCK {
         final int value = RANDOM.nextInt(100);
         final TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
         apply.execute(fn).as(Number.class);
+        assertTrue(eventHappened[0]);
+        assertTrue(eventHappened[1]);
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
