@@ -37,6 +37,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.util.IntList;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
@@ -326,7 +327,7 @@ final class TraceInterval extends IntervalHint {
     /**
      * List of (use-positions, register-priorities) pairs, sorted by use-positions.
      */
-    private UsePosList usePosList;
+    private IntList usePosList;
 
     /**
      * Link to next interval in a sorted list of intervals that ends with {@link #EndMarker}.
@@ -573,7 +574,7 @@ final class TraceInterval extends IntervalHint {
         this.kind = LIRKind.Illegal;
         this.intFrom = Integer.MAX_VALUE;
         this.intTo = Integer.MAX_VALUE;
-        this.usePosList = new UsePosList(4);
+        this.usePosList = new IntList(4 * 2);
         this.next = EndMarker;
         this.spillState = SpillState.NoDefinitionFound;
         this.spillDefinitionPos = -1;
@@ -949,7 +950,7 @@ final class TraceInterval extends IntervalHint {
         intTo = splitPos;
 
         // split list of use positions
-        result.usePosList = UsePosList.splitAt(usePosList, splitPos);
+        splitUsePosAt(result, splitPos);
 
         if (DetailedAsserts.getValue()) {
             for (int i = 0; i < UsePosList.size(usePosList); i++) {
@@ -1093,4 +1094,37 @@ final class TraceInterval extends IntervalHint {
     int usePosListGet(int i) {
         return UsePosList.usePos(usePosList, i);
     }
+
+    // internal
+
+    /**
+     * Splits this list around a given position. All entries in this list with a use position
+     * greater or equal than {@code splitPos} are removed from this list and added to the returned
+     * list.
+     *
+     * @param splitPos The position for the split. After the method is executed the list contains
+     *            all entries that gave a use position greater or equal to {@code splitPos}.
+     * @return a Use position list containing all entries that remain in this list that have a use
+     *         position less than {@code splitPos}
+     */
+    private static IntList splitAt(IntList ul, int splitPos) {
+        int i = UsePosList.size(ul) - 1;
+        int len = 0;
+        while (i >= 0 && UsePosList.usePos(ul, i) < splitPos) {
+            --i;
+            len += 2;
+        }
+        int listSplitIndex = (i + 1) * 2;
+        IntList updatedList = IntList.copy(ul, listSplitIndex, len);
+        // ul is now the child list
+        ul.setSize(listSplitIndex);
+        return updatedList;
+    }
+
+    private void splitUsePosAt(TraceInterval result, int splitPos) {
+        IntList newUsePosList = splitAt(usePosList, splitPos);
+        result.usePosList = usePosList;
+        usePosList = newUsePosList;
+    }
+
 }
