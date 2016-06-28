@@ -1094,7 +1094,7 @@ final class TraceInterval extends IntervalHint {
      * @return the use position of entry {@code index} in this list
      */
     int getUsePos(int index) {
-        return rawUsePosGet(index << 1);
+        return intListGet(index << 1);
     }
 
     int numUsePos() {
@@ -1108,11 +1108,11 @@ final class TraceInterval extends IntervalHint {
      * @return the register priority of entry {@code index} in this list
      */
     RegisterPriority getUsePosRegisterPriority(int index) {
-        return RegisterPriority.VALUES[rawUsePosGet((index << 1) + 1)];
+        return RegisterPriority.VALUES[intListGet((index << 1) + 1)];
     }
 
     void removeFirstUsePos() {
-        rawUsePosSetSize(usePosListSize - 2);
+        intListSetSize(usePosListSize - 2);
     }
 
     // internal
@@ -1120,13 +1120,13 @@ final class TraceInterval extends IntervalHint {
     private void setUsePosRegisterPriority(int pos, RegisterPriority registerPriority) {
         int index = (pos << 1) + 1;
         int value = registerPriority.ordinal();
-        rawUsePosSet(index, value);
+        intListSet(index, value);
     }
 
     private void usePosAdd(int pos, RegisterPriority registerPriority) {
         assert usePosListSize == 0 || getUsePos(numUsePos() - 1) > pos;
-        rawUsePosAdd(pos);
-        rawUsePosAdd(registerPriority.ordinal());
+        intListAdd(pos);
+        intListAdd(registerPriority.ordinal());
     }
 
     private void splitUsePosAt(TraceInterval result, int splitPos) {
@@ -1140,7 +1140,11 @@ final class TraceInterval extends IntervalHint {
         assert len >= len : "initialCapacity < length";
         int[] array = new int[len];
         System.arraycopy(usePosListArray, listSplitIndex, array, 0, len);
-        rawUsePosSetSize(listSplitIndex);
+        if (listSplitIndex < usePosListSize) {
+            usePosListSize = listSplitIndex;
+        } else {
+            assert listSplitIndex == usePosListSize : "splitting cannot grow the use position array!";
+        }
         result.usePosListArray = usePosListArray;
         result.usePosListSize = usePosListSize;
         usePosListArray = array;
@@ -1149,21 +1153,21 @@ final class TraceInterval extends IntervalHint {
 
     // IntList
 
-    private int rawUsePosGet(int index) {
+    private int intListGet(int index) {
         if (index >= usePosListSize) {
             throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosListSize);
         }
         return usePosListArray[index];
     }
 
-    private void rawUsePosSet(int index, int value) {
+    private void intListSet(int index, int value) {
         if (index >= usePosListSize) {
             throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + usePosListSize);
         }
         usePosListArray[index] = value;
     }
 
-    private void rawUsePosAdd(int pos) {
+    private void intListAdd(int pos) {
         if (usePosListSize == usePosListArray.length) {
             int newSize = (usePosListSize * 3) / 2 + 1;
             usePosListArray = Arrays.copyOf(usePosListArray, newSize);
@@ -1171,7 +1175,7 @@ final class TraceInterval extends IntervalHint {
         usePosListArray[usePosListSize++] = pos;
     }
 
-    private void rawUsePosSetSize(int newSize) {
+    private void intListSetSize(int newSize) {
         if (newSize < usePosListSize) {
             usePosListSize = newSize;
         } else if (newSize > usePosListSize) {
