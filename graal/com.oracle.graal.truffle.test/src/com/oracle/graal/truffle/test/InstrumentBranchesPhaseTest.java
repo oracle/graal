@@ -22,21 +22,15 @@
  */
 package com.oracle.graal.truffle.test;
 
-import static org.junit.Assert.assertNotNull;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.phases.InstrumentBranchesPhase;
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
 import com.oracle.graal.truffle.test.nodes.RootTestNode;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -82,14 +76,15 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
-    private static void assertCompiled(OptimizedCallTarget target) {
-        assertNotNull(target);
-        try {
-            ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, 100000);
-        } catch (ExecutionException | TimeoutException e) {
-            fail("timeout");
-        }
-        assertTrue(target.isValid());
+    @Override
+    protected void beforeInitialization() {
+        Assert.assertFalse(TruffleCompilerOptions.TruffleInstrumentBranches.getValue());
+        TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+    }
+
+    @After
+    public void disableInstrumentAfterTests() {
+        TruffleCompilerOptions.TruffleInstrumentBranches.setValue(false);
     }
 
     @Test
@@ -103,8 +98,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue("*.*.execute");
             OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
-            target.compile();
-            assertCompiled(target);
+            Assert.assertTrue(target.isValid());
             target.call();
         } finally {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
@@ -128,8 +122,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue("*.*.execute");
             OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
-            target.compile();
-            assertCompiled(target);
+            Assert.assertTrue(target.isValid());
             // We run this twice to make sure that it comes first in the sorted access list.
             target.call();
             target.call();

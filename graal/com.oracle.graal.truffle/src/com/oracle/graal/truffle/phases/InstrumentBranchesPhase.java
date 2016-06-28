@@ -60,7 +60,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    private static final MethodFilter[] METHOD_FILTER;
     private static final Field ACCESS_TABLE_JAVA_FIELD;
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
@@ -74,12 +73,16 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             throw new RuntimeException(e);
         }
         ACCESS_TABLE_JAVA_FIELD = javaField;
+    }
 
+    private final MethodFilter[] methodFilter;
+
+    public InstrumentBranchesPhase() {
         String filterValue = TruffleInstrumentBranchesFilter.getValue();
         if (filterValue != null) {
-            METHOD_FILTER = MethodFilter.parse(filterValue);
+            methodFilter = MethodFilter.parse(filterValue);
         } else {
-            METHOD_FILTER = new MethodFilter[0];
+            methodFilter = new MethodFilter[0];
         }
     }
 
@@ -89,7 +92,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
         try {
             for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
+                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(methodFilter, n);
                 if (p != null) {
                     insertCounter(graph, tableField, tableConstant, n, p, true);
                     insertCounter(graph, tableField, tableConstant, n, p, false);
@@ -139,10 +142,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
          * we discriminate nodes by their inlining site, or only by the method in which they were
          * defined.
          */
-        private static String filterAndEncode(Node ifNode) {
+        private static String filterAndEncode(MethodFilter[] methodFilter, Node ifNode) {
             NodeSourcePosition pos = ifNode.getNodeSourcePosition();
             if (pos != null) {
-                if (!MethodFilter.matches(METHOD_FILTER, pos.getMethod())) {
+                if (!MethodFilter.matches(methodFilter, pos.getMethod())) {
                     return null;
                 }
                 if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
@@ -192,8 +195,8 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        public synchronized Point getOrCreatePoint(IfNode n) {
-            String key = filterAndEncode(n);
+        public synchronized Point getOrCreatePoint(MethodFilter[] methodFilter, IfNode n) {
+            String key = filterAndEncode(methodFilter, n);
             if (key == null) {
                 return null;
             }

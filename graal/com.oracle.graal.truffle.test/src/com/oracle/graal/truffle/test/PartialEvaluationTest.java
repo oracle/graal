@@ -50,10 +50,17 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     private final TruffleCompiler truffleCompiler;
 
     public PartialEvaluationTest() {
+        beforeInitialization();
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
         DebugEnvironment.initialize(System.out);
+    }
+
+    /**
+     * Executed before initialization. This hook can be used to override specific flags.
+     */
+    protected void beforeInitialization() {
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
