@@ -456,7 +456,7 @@ def runGCCTestCases(args=None):
     ensureGCCSuiteExists()
     ensureDragonEggExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.TestGCCSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuite'])
 
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
@@ -502,7 +502,7 @@ def runAsmTestCases(args=None):
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
 
 def runTestJRuby(args=None):
     """tests that JRuby can use this version of Sulong to compile and run C extensions"""

@@ -44,11 +44,11 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 @RunWith(Parameterized.class)
-public class TestGCCSuiteCompile extends TestSuiteBase {
+public class TestGCCCompileSuite extends TestSuiteBase {
 
     private TestCaseFiles tuple;
 
-    public TestGCCSuiteCompile(TestCaseFiles tuple) {
+    public TestGCCCompileSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
     }
 
