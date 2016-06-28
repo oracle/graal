@@ -53,7 +53,6 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 public final class IntervalBuilderUtil {
 
@@ -167,12 +166,6 @@ public final class IntervalBuilderUtil {
 
     private static void addVariableUse(IntervalData intervalData, Variable operand, int from, int to, RegisterPriority registerPriority) {
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
-        ValueKind<?> kind = operand.getValueKind();
-
-        if (!kind.equals(LIRKind.Illegal)) {
-            interval.setKind(kind);
-        }
-
         interval.addRange(from, to);
 
         // Register use position at even instruction id.
@@ -204,13 +197,7 @@ public final class IntervalBuilderUtil {
     }
 
     private static void addVariableTemp(IntervalData intervalData, Variable operand, int tempPos, RegisterPriority registerPriority) {
-        ValueKind<?> kind = operand.getValueKind();
-
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
-
-        if (!kind.equals(LIRKind.Illegal)) {
-            interval.setKind(kind);
-        }
 
         if (interval.isEmpty()) {
             interval.addRange(tempPos, tempPos + 1);
@@ -265,15 +252,9 @@ public final class IntervalBuilderUtil {
 
     private static void addVariableDef(IntervalData intervalData, Variable operand, LIRInstruction op, RegisterPriority registerPriority, boolean neverSpillConstants,
                     MoveFactory spillMoveFactory) {
-        ValueKind<?> kind = operand.getValueKind();
-
         int defPos = op.id();
 
         TraceInterval interval = intervalData.getOrCreateInterval(operand);
-
-        if (!kind.equals(LIRKind.Illegal)) {
-            interval.setKind(kind);
-        }
 
         if (interval.isEmpty()) {
             /*

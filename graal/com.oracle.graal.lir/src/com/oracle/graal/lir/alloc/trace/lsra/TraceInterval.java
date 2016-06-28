@@ -47,7 +47,6 @@ import com.oracle.graal.lir.Variable;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
@@ -311,11 +310,6 @@ final class TraceInterval extends IntervalHint {
     private AllocatableValue spillSlot;
 
     /**
-     * The kind of this interval.
-     */
-    private ValueKind<?> kind;
-
-    /**
      * The start of the range, inclusive.
      */
     private int intFrom;
@@ -388,8 +382,8 @@ final class TraceInterval extends IntervalHint {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getValueKind().equals(LIRKind.Illegal) && !kind.equals(LIRKind.Illegal)) {
-                this.location = asRegister(newLocation).asValue(kind);
+            if (newLocation.getValueKind().equals(LIRKind.Illegal) && !kind().equals(LIRKind.Illegal)) {
+                this.location = asRegister(newLocation).asValue(kind());
                 return;
             }
         } else if (isIllegal(newLocation)) {
@@ -398,7 +392,7 @@ final class TraceInterval extends IntervalHint {
             assert this.location == null || isRegister(this.location) || (isVirtualStackSlot(this.location) && isStackSlot(newLocation)) : "cannot re-assign location for " + this;
             assert isStackSlotValue(newLocation);
             assert !newLocation.getValueKind().equals(LIRKind.Illegal);
-            assert newLocation.getValueKind().equals(this.kind);
+            assert newLocation.getValueKind().equals(this.kind());
         }
         this.location = newLocation;
     }
@@ -413,15 +407,7 @@ final class TraceInterval extends IntervalHint {
     }
 
     public ValueKind<?> kind() {
-        if (!kind.equals(LIRKind.Illegal) && !operand.getValueKind().equals(kind)) {
-            throw JVMCIError.shouldNotReachHere();
-        }
-        return kind;
-    }
-
-    public void setKind(ValueKind<?> kind) {
-        assert this.kind().equals(LIRKind.Illegal) || this.kind().equals(kind) : "overwriting existing type";
-        this.kind = kind;
+        return operand.getValueKind();
     }
 
     public boolean isEmpty() {
@@ -567,7 +553,6 @@ final class TraceInterval extends IntervalHint {
         } else {
             assert isIllegal(operand) || isVariable(operand);
         }
-        this.kind = LIRKind.Illegal;
         this.intFrom = Integer.MAX_VALUE;
         this.intTo = Integer.MAX_VALUE;
         this.usePosListArray = new int[4 * 2];
@@ -902,7 +887,6 @@ final class TraceInterval extends IntervalHint {
         // allocate new interval
         TraceInterval parent = splitParent();
         TraceInterval result = allocator.createDerivedInterval(parent);
-        result.setKind(kind());
 
         result.splitParent = parent;
         result.setLocationHint(parent);
