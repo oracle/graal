@@ -123,6 +123,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
             NodeBitMap cfgNodes = cfgFlood.getVisited();
             NodeFlood dfgFlood = begin.graph().createNodeFlood();
             dfgFlood.addAll(cfgNodes);
+            dfgFlood.add(begin.stateAfter());
             for (Node current : dfgFlood) {
                 for (Position pos : current.inputPositions()) {
                     Node input = pos.get(current);
@@ -177,6 +178,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
             }
             replacements = instrumentationGraph.addDuplicates(nodes, oldGraph, nodes.count(), replacements);
             instrumentationGraph.start().setNext((FixedNode) replacements.get(begin.next()));
+            instrumentationGraph.start().setStateAfter((FrameState) replacements.get(begin.stateAfter()));
             replacements.get(end).replaceAtPredecessor(instrumentationGraph.addWithoutUnique(new ReturnNode(null)));
             return instrumentationGraph;
         }

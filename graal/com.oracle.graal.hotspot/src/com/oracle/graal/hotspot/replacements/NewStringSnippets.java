@@ -25,19 +25,11 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import java.lang.reflect.Field;
-
 import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.debug.NewStringNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
-import com.oracle.graal.nodes.java.NewInstanceNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -51,7 +43,6 @@ import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * The {@code NewStringSnippets} reconstructs a compilation-time String in the compiled code.
@@ -59,76 +50,29 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class NewStringSnippets implements Snippets {
 
     @Fold
-    static long valueOffset() {
-        try {
-            return UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-        } catch (Exception e) {
-            throw new GraalError(e);
-        }
-    }
-
-    @Fold
-    static long hashOffset() {
-        try {
-            return UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-        } catch (Exception e) {
-            throw new GraalError(e);
-        }
-    }
-
-    @Fold
     static long arrayBaseOffset() {
         return UNSAFE.arrayBaseOffset(char[].class);
     }
 
-    @Fold
-    static int hashOf(String value) {
-        return value.hashCode();
-    }
-
     @Snippet
-    public static String create(@ConstantParameter String value) {
+    public static byte[] create(@ConstantParameter String value) {
         int i = value.length();
-        char[] array = (char[]) NewArrayNode.newUninitializedArray(char.class, i);
+        byte[] array = (byte[]) NewArrayNode.newUninitializedArray(byte.class, i);
         Word cArray = CStringConstant.cstring(value);
         while (i-- > 0) {
-            // assuming it is ASCII string
-            // array[i] = (char) cArray.readByte(i);
-            UNSAFE.putChar(array, arrayBaseOffset() + i * 2, (char) cArray.readByte(i));
+            // array[i] = cArray.readByte(i);
+            UNSAFE.putByte(array, arrayBaseOffset() + i, cArray.readByte(i));
         }
-        String newString = (String) newInstance(String.class, false);
-        UNSAFE.putObject(newString, valueOffset(), array);
-        UNSAFE.putInt(newString, hashOffset(), hashOf(value));
-        return newString;
+        return array;
     }
 
-    @NodeIntrinsic(NewInstanceNode.class)
-    public static native Object newInstance(@ConstantNodeParameter Class<?> type, @ConstantNodeParameter boolean fillContent);
-
     public static class Templates extends AbstractTemplates {
-
-        private static final Field STRING_VALUE_FIELD;
-        private static final Field STRING_HASH_FIELD;
-
-        static {
-            try {
-                STRING_VALUE_FIELD = String.class.getDeclaredField("value");
-                STRING_HASH_FIELD = String.class.getDeclaredField("hash");
-            } catch (NoSuchFieldException e) {
-                throw new GraalError(e);
-            }
-        }
 
         private final SnippetInfo create;
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
-
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            LocationIdentity valueLocation = new FieldLocationIdentity(metaAccess.lookupJavaField(STRING_VALUE_FIELD));
-            LocationIdentity hashLocation = new FieldLocationIdentity(metaAccess.lookupJavaField(STRING_HASH_FIELD));
-
-            create = snippet(NewStringSnippets.class, "create", NamedLocationIdentity.getArrayLocation(JavaKind.Char), valueLocation, hashLocation);
+            create = snippet(NewStringSnippets.class, "create", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         }
 
         public void lower(NewStringNode newStringNode, LoweringTool tool) {

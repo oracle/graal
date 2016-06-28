@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives;
 
+import java.nio.charset.Charset;
+
 // JaCoCo Exclude
 
 /**
@@ -425,12 +427,18 @@ public final class GraalDirectives {
         return false;
     }
 
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
     /**
      * @return the name of the root method for the current compilation task. If the enclosing method
      *         is inlined, it returns the name of the method into which it is inlined.
      */
     public static String rootName() {
-        return "unknown";
+        return new String(rawRootName(), UTF8);
+    }
+
+    public static byte[] rawRootName() {
+        return new byte[0];
     }
 
 }

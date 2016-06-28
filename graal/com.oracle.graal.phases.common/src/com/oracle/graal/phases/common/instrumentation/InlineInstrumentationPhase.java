@@ -33,9 +33,11 @@ import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -168,11 +170,39 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
                 }
             }
 
-            FrameState outerFrameState = instrumentationNode.stateBefore().outerFrameState();
+            // The InstrumentationNode may be inlined. In such case, update the outerFrameState of
+            // the FrameStates in the instrumentation
+            FrameState currentState = instrumentationNode.stateBefore();
+            FrameState outerFrameState = currentState.outerFrameState();
             if (outerFrameState != null) {
                 for (Node replacee : duplicates.values()) {
                     if (replacee instanceof FrameState) {
-                        ((FrameState) replacee).setOuterFrameState(outerFrameState);
+                        FrameState innerFrameState = (FrameState) replacee;
+                        if (innerFrameState.outerFrameState() == null) {
+                            innerFrameState.setOuterFrameState(outerFrameState);
+                        }
+                    }
+                }
+            }
+
+            // assign FrameStates for DeoptimizingNodes
+            for (Node replacee : duplicates.values()) {
+                if (replacee instanceof DeoptimizingNode && !(replacee instanceof Invoke)) {
+                    DeoptimizingNode deoptDup = (DeoptimizingNode) replacee;
+                    if (deoptDup.canDeoptimize()) {
+                        if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                            ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(currentState);
+                        }
+                        if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                            DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
+                            assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                            deoptDupDuring.setStateDuring(currentState);
+                        }
+                        if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
+                            DeoptimizingNode.DeoptAfter deoptDupAfter = (DeoptimizingNode.DeoptAfter) deoptDup;
+                            assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                            deoptDupAfter.setStateAfter(currentState);
+                        }
                     }
                 }
             }
