@@ -151,7 +151,7 @@ class TimingBenchmarkMixin(object):
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
-              "extra.value.path": ("<scope>", str),
+              "extra.value.path": ("<scope>", mx_benchmark.Rule.crop_front("<...>")),
               "extra.value.name": ("<name>", str),
               "metric.name": ("compile-time", str),
               "metric.value": ("<value>", int),
