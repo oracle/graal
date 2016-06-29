@@ -344,7 +344,7 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
-     * @deprecated use {@link #fromAppendableText(java.lang.String)}
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
     @Deprecated
     public static Source fromNamedAppendableText(String name) {
