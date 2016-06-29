@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -40,5 +39,4 @@ public class TestLanguageTest extends AbstractDebugTest {
         getEngine().eval(block);
         assertExecutedOK();
     }
-
 }
