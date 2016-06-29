@@ -2,6 +2,23 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.15
+1-Jul-2016
+* [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) shall be
+constructed via its `newBuilder` methods. The other ways to construct or modify
+source objects are now deprecated.
+* [RootNode.getName](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/RootNode.html#getName--)
+to provide name of a method or function it represents.
+* Instruments can now observe loaded sources via
+[LoadSourceEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/LoadSourceEvent.html)
+and co.
+* Control the way loops are exploded with a new [LoopExplosionKind](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html)
+enum.
+* [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html#toString-java.lang.Object-com.oracle.truffle.api.frame.FrameInstance-)
+provides a way to convert any value on stack to its string representation.
+* [TruffleTCK](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/tck/TruffleTCK.html) checks
+whether properly languages support being interrupted after a time out
+
 ## Version 0.14
 2-Jun-2016
 * [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) has been
