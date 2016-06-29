@@ -71,7 +71,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
     }
 
     static void instrumentation() {
-        GraalDirectives.instrumentationBegin(-1);
+        GraalDirectives.instrumentationBeginForPredecessor();
         flag = checkpoint;
         GraalDirectives.instrumentationEnd();
     }

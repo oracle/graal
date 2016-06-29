@@ -66,7 +66,7 @@ public class ControlFlowPathDirectiveTest extends GraalCompilerTest {
     }
 
     static void instrumentation() {
-        GraalDirectives.instrumentationBegin(-1);
+        GraalDirectives.instrumentationBeginForPredecessor();
         path = GraalDirectives.controlFlowPath();
         GraalDirectives.instrumentationEnd();
     }

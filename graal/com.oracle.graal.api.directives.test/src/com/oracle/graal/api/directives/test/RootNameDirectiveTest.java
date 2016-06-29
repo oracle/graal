@@ -95,7 +95,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     static String rootName2;
 
     public static void rootNameWithinInstrumentationSnippet() {
-        GraalDirectives.instrumentationBegin(0);
+        GraalDirectives.instrumentationBegin();
         rootName1 = GraalDirectives.rootName();
         GraalDirectives.instrumentationEnd();
     }
@@ -103,7 +103,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     public static void callerSnippet1() {
         rootNameWithinInstrumentationSnippet();
 
-        GraalDirectives.instrumentationBegin(0);
+        GraalDirectives.instrumentationBegin();
         rootName2 = GraalDirectives.rootName();
         GraalDirectives.instrumentationEnd();
     }

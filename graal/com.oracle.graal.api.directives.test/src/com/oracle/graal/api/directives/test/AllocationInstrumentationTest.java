@@ -66,7 +66,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
     }
 
     static void instrumentation() {
-        GraalDirectives.instrumentationBegin(-1);
+        GraalDirectives.instrumentationBeginForPredecessor();
         flag = true;
         GraalDirectives.instrumentationEnd();
     }

@@ -89,7 +89,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
     static boolean flag2;
 
     public static void calleeWithInstrumentationSnippet() {
-        GraalDirectives.instrumentationBegin(0);
+        GraalDirectives.instrumentationBegin();
         flag1 = GraalDirectives.isMethodInlined();
         GraalDirectives.instrumentationEnd();
     }
@@ -97,7 +97,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
     public static void callerSnippet1() {
         calleeWithInstrumentationSnippet();
 
-        GraalDirectives.instrumentationBegin(0);
+        GraalDirectives.instrumentationBegin();
         flag2 = GraalDirectives.isMethodInlined();
         GraalDirectives.instrumentationEnd();
     }

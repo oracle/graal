@@ -1351,12 +1351,12 @@ public class SnippetTemplate {
             if (UseGraalInstrumentation.getValue()) {
                 for (InstrumentationNode instrumentation : replaceeGraph.getNodes().filter(InstrumentationNode.class)) {
                     if (instrumentation.getTarget() == replacee) {
-                        if (instrumentation.getOffset() < 0) {
+                        if (instrumentation.isAnchored()) {
+                            instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
+                        } else {
                             ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                             FixedWithNextNode pred = (FixedWithNextNode) returnDuplicate.predecessor();
                             instrumentation.replaceFirstInput(replacee, pred);
-                        } else {
-                            instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
                         }
                     }
                 }

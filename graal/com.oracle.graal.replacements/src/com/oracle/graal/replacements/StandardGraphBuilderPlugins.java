@@ -795,10 +795,17 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("instrumentationBegin", int.class, new InvocationPlugin() {
+        r.register0("instrumentationBegin", new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode offset) {
-                b.add(new InstrumentationBeginNode(offset));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new InstrumentationBeginNode(true));
+                return true;
+            }
+        });
+        r.register0("instrumentationBeginForPredecessor", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new InstrumentationBeginNode(false));
                 return true;
             }
         });

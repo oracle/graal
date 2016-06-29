@@ -64,11 +64,11 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
     protected void run(StructuredGraph graph, HighTierContext context) {
         for (InstrumentationBeginNode begin : graph.getNodes().filter(InstrumentationBeginNode.class)) {
             Instrumentation instrumentation = new Instrumentation(begin);
-            if (begin.getOffset() == 0 || begin.getTarget() != null) {
+            if (begin.isAnchored() || begin.getTarget() != null) {
                 // we create InstrumentationNode when the instrumentation is anchored (when 0 is
                 // passed to instrumentationBegin), or when the instrumentation is associated with
                 // some target.
-                InstrumentationNode instrumentationNode = graph.addWithoutUnique(new InstrumentationNode(begin.getTarget(), begin.getOffset()));
+                InstrumentationNode instrumentationNode = graph.addWithoutUnique(new InstrumentationNode(begin.getTarget(), begin.isAnchored()));
                 graph.addBeforeFixed(begin, instrumentationNode);
                 FrameState currentState = begin.stateAfter();
                 FrameState newState = graph.addWithoutUnique(new FrameState(currentState.outerFrameState(), currentState.method(), currentState.bci, 0, 0,

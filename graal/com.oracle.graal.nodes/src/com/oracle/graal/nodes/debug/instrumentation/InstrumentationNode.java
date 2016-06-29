@@ -52,13 +52,13 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
     @OptionalInput protected NodeInputList<ValueNode> weakDependencies;
 
     protected StructuredGraph instrumentationGraph;
-    protected final int offset;
+    protected final boolean anchored;
 
-    public InstrumentationNode(ValueNode target, int offset) {
+    public InstrumentationNode(ValueNode target, boolean anchored) {
         super(TYPE, StampFactory.forVoid());
 
         this.target = target;
-        this.offset = offset;
+        this.anchored = anchored;
         this.weakDependencies = new NodeInputList<>(this);
     }
 
@@ -66,8 +66,8 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
         return target;
     }
 
-    public int getOffset() {
-        return offset;
+    public boolean isAnchored() {
+        return anchored;
     }
 
     public StructuredGraph getInstrumentationGraph() {

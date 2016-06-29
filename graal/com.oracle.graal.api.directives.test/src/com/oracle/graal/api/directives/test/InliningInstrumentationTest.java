@@ -65,7 +65,7 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
     }
 
     static void instrumentation() {
-        GraalDirectives.instrumentationBegin(-1);
+        GraalDirectives.instrumentationBeginForPredecessor();
         notInlineFlag = true;
         GraalDirectives.instrumentationEnd();
     }

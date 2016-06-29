@@ -23,17 +23,13 @@
 package com.oracle.graal.nodes.debug.instrumentation;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractStateSplit;
-import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code InstrumentationBeginNode} represents the boundary of the instrumentation. It also
@@ -45,25 +41,16 @@ public final class InstrumentationBeginNode extends AbstractStateSplit implement
     public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
     @OptionalInput(value = InputType.Association) protected ValueNode target;
-    private final int offset;
+    private final boolean anchored;
 
-    /**
-     * @param offset denotes the bytecode offset between the target and the instrumentation, and is
-     *            required to be a ConstantNode.
-     */
-    public InstrumentationBeginNode(ValueNode offset) {
+    public InstrumentationBeginNode(boolean anchored) {
         super(TYPE, StampFactory.forVoid());
-        // resolve the constant integer from the input
-        if (!(offset instanceof ConstantNode)) {
-            throw GraalError.shouldNotReachHere("should pass constant integer to instrumentationBegin(int)");
-        }
-        JavaConstant constant = ((ConstantNode) offset).asJavaConstant();
-        this.offset = constant == null ? 0 : constant.asInt();
+        this.anchored = anchored;
         this.target = null;
     }
 
-    public int getOffset() {
-        return offset;
+    public boolean isAnchored() {
+        return anchored;
     }
 
     public ValueNode getTarget() {

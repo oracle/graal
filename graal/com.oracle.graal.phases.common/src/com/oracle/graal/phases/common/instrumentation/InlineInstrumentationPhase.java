@@ -73,7 +73,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
             // if the target of the instrumentationNode is null while the offset is non-zero, the
             // instrumentation is invalid.
-            if (instrumentationNode.getTarget() == null && instrumentationNode.getOffset() != 0) {
+            if (!(instrumentationNode.isAnchored() || instrumentationNode.getTarget() != null)) {
                 graph.removeFixed(instrumentationNode);
                 continue;
             }
