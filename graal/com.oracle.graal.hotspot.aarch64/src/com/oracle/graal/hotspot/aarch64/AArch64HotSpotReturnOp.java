@@ -28,11 +28,11 @@ import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -46,7 +46,7 @@ public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp {
     @Use({REG, ILLEGAL}) private Value result;
     private final boolean isStub;
 
-    public AArch64HotSpotReturnOp(Value result, boolean isStub, HotSpotVMConfig config) {
+    public AArch64HotSpotReturnOp(Value result, boolean isStub, GraalHotSpotVMConfig config) {
         super(TYPE, config);
         assert validReturnValue(result);
         this.result = result;

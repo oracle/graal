@@ -172,7 +172,7 @@ final class TraceLocalMoveResolver {
         this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
-        this.registerBlocked = new int[allocator.getRegisters().length];
+        this.registerBlocked = new int[allocator.getRegisters().size()];
         FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.getFrameMapBuilder();
         FrameMap frameMap = frameMapBuilderTool.getFrameMap();
         this.stackBlocked = new int[frameMapBuilderTool.getNumberOfStackSlots()];
@@ -184,7 +184,7 @@ final class TraceLocalMoveResolver {
         for (int i = 0; i < stackBlocked.length; i++) {
             assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
         }
-        for (int i = 0; i < getAllocator().getRegisters().length; i++) {
+        for (int i = 0; i < getAllocator().getRegisters().size(); i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
         checkMultipleReads();

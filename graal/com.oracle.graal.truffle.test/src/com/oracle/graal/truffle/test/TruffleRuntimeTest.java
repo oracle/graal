@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -32,6 +34,8 @@ import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.object.LayoutFactory;
 
 public class TruffleRuntimeTest {
 
@@ -49,5 +53,34 @@ public class TruffleRuntimeTest {
     public void testRuntimeIsGraalRuntime() {
         TruffleRuntime runtime = Truffle.getRuntime();
         assertTrue(runtime.getClass() != DefaultTruffleRuntime.class);
+    }
+
+    @Test
+    public void testGetTVMCI() {
+        TruffleRuntime runtime = Truffle.getRuntime();
+        TVMCI tvmci = runtime.getCapability(TVMCI.class);
+        assertNotNull("Truffle Virtual Machine Compiler Interface not found", tvmci);
+        assertEquals("GraalTVMCI", tvmci.getClass().getSimpleName());
+
+        abstract class TVMCISubclass extends TVMCI {
+        }
+        TVMCISubclass subclass = runtime.getCapability(TVMCISubclass.class);
+        assertNull("Expected null return value for TVMCI subclass", subclass);
+    }
+
+    @Test
+    public void testGetCapabilityObjectClass() {
+        Object object = Truffle.getRuntime().getCapability(Object.class);
+        assertNull("Expected null return value for Object.class", object);
+    }
+
+    @Test
+    public void testGetLayoutFactory() {
+        TruffleRuntime runtime = Truffle.getRuntime();
+        LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
+        assertNotNull("LayoutFactory not found", layoutFactory);
+
+        // Bootstrap class loader or JVMCI class loader
+        assertTrue(layoutFactory.getClass().getClassLoader() == null || layoutFactory.getClass().getClassLoader() == runtime.getClass().getClassLoader());
     }
 }

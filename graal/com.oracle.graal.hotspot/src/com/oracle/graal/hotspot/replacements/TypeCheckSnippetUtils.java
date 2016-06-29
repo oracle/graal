@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
@@ -60,7 +61,7 @@ public class TypeCheckSnippetUtils {
 
     static boolean checkSecondarySubType(KlassPointer t, KlassPointer s) {
         // if (S.cache == T) return true
-        if (s.readKlassPointer(secondarySuperCacheOffset(), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
+        if (s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
             cacheHit.inc();
             return true;
         }
@@ -70,8 +71,8 @@ public class TypeCheckSnippetUtils {
 
     static boolean checkUnknownSubType(KlassPointer t, KlassPointer s) {
         // int off = T.offset
-        int superCheckOffset = t.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION);
-        boolean primary = superCheckOffset != secondarySuperCacheOffset();
+        int superCheckOffset = t.readInt(superCheckOffsetOffset(INJECTED_VMCONFIG), KLASS_SUPER_CHECK_OFFSET_LOCATION);
+        boolean primary = superCheckOffset != secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
         // if (T = S[off]) return true
         if (s.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
@@ -100,11 +101,11 @@ public class TypeCheckSnippetUtils {
         }
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
-        Word secondarySupers = s.readWord(secondarySupersOffset(), SECONDARY_SUPERS_LOCATION);
-        int length = secondarySupers.readInt(metaspaceArrayLengthOffset(), METASPACE_ARRAY_LENGTH_LOCATION);
+        Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
         for (int i = 0; i < length; i++) {
             if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
-                s.writeKlassPointer(secondarySuperCacheOffset(), t, SECONDARY_SUPER_CACHE_LOCATION);
+                s.writeKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), t, SECONDARY_SUPER_CACHE_LOCATION);
                 secondariesHit.inc();
                 return true;
             }
@@ -155,7 +156,7 @@ public class TypeCheckSnippetUtils {
     }
 
     static KlassPointer loadSecondarySupersElement(Word metaspaceArray, int index) {
-        return KlassPointer.fromWord(metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), SECONDARY_SUPERS_ELEMENT_LOCATION));
+        return KlassPointer.fromWord(metaspaceArray.readWord(metaspaceArrayBaseOffset(INJECTED_VMCONFIG) + index * wordSize(), SECONDARY_SUPERS_ELEMENT_LOCATION));
     }
 
     private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("TypeCheck") : null;

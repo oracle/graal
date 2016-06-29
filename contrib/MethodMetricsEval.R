@@ -73,7 +73,7 @@ prepareEnv  <- function(){
 
 readDataRaw <- function(path){
   print(paste("Reading raw data from file ",path,"..."))
-  data <- read.csv(path,sep = ",",fill = TRUE,header = FALSE)
+  data <- read.csv(path,sep = ";",fill = TRUE,header = FALSE)
   # register an id column for dcast
   data$id <- seq.int(nrow(data))
   return(data)

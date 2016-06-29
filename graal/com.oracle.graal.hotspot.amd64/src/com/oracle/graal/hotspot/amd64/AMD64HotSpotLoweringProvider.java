@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.DefaultHotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
@@ -34,7 +35,6 @@ import com.oracle.graal.replacements.amd64.AMD64ConvertSnippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
@@ -47,7 +47,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     }
 
     @Override
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+    public void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config) {
         convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
         super.initialize(providers, config);
     }

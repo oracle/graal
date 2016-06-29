@@ -48,6 +48,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -133,7 +134,7 @@ public final class IntervalBuilderUtil {
         }
     }
 
-    protected static void visitCallerSavedRegisters(IntervalData intervalData, Register[] callerSaveRegs, final int opId) {
+    protected static void visitCallerSavedRegisters(IntervalData intervalData, RegisterArray callerSaveRegs, final int opId) {
         for (Register r : callerSaveRegs) {
             if (intervalData.attributes(r).isAllocatable()) {
                 addTemp(intervalData, r.asValue(), opId, RegisterPriority.None, LIRKind.Illegal);

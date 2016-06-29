@@ -39,7 +39,7 @@ public final class GraalServices {
     private GraalServices() {
     }
 
-    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    public static final boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
@@ -49,7 +49,7 @@ public final class GraalServices {
      */
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        return JDK8OrEarlier ? Services.load(service) : ServiceLoader.load(service);
+        return Java8OrEarlier ? Services.load(service) : ServiceLoader.load(service);
     }
 
     /**
@@ -64,7 +64,7 @@ public final class GraalServices {
      */
     public static <S> S loadSingle(Class<S> service, boolean required) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        if (JDK8OrEarlier) {
+        if (Java8OrEarlier) {
             return Services.loadSingle(service, required);
         }
         Iterable<S> providers = ServiceLoader.load(service);

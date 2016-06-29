@@ -131,7 +131,9 @@ public final class DataSection implements Iterable<Data> {
 
         @Override
         protected void emit(ByteBuffer buffer, Patches patches) {
+            int position = buffer.position();
             constant.serialize(buffer);
+            assert buffer.position() - position == constant.getSerializedSize() : "wrong number of bytes written";
         }
     }
 

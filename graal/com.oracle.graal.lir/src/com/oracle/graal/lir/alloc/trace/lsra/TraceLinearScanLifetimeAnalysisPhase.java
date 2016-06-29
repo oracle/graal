@@ -50,8 +50,8 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -66,7 +66,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
-import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -91,10 +91,10 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private final LIR lir;
         private final boolean neverSpillConstants;
         private final MoveFactory spillMoveFactory;
-        private final Register[] callerSaveRegisters;
+        private final RegisterArray callerSaveRegisters;
 
         private Analyser(IntervalData intervalData, TraceBuilderResult<?> traceBuilderResult, List<? extends AbstractBlockBase<?>> sortedBlocks, LIR lir, boolean neverSpillConstants,
-                        MoveFactory moveFactory, Register[] callerSaveRegisters) {
+                        MoveFactory moveFactory, RegisterArray callerSaveRegisters) {
             this.intervalData = intervalData;
             this.traceBuilderResult = traceBuilderResult;
             this.sortedBlocks = sortedBlocks;
@@ -112,7 +112,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             return lir;
         }
 
-        private Register[] getCallerSavedRegisters() {
+        private RegisterArray getCallerSavedRegisters() {
             return callerSaveRegisters;
         }
 
@@ -188,7 +188,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             try (Indent indent = Debug.logAndIndent("build intervals")) {
 
                 // create a list with all caller-save registers (cpu, fpu, xmm)
-                Register[] callerSaveRegs = getCallerSavedRegisters();
+                RegisterArray callerSaveRegs = getCallerSavedRegisters();
                 int instructionIndex = numInstructions;
 
                 // iterate all blocks in reverse order

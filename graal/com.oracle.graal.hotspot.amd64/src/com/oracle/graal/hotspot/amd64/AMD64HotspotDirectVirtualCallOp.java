@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -31,7 +32,6 @@ import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -44,9 +44,9 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     public static final LIRInstructionClass<AMD64HotspotDirectVirtualCallOp> TYPE = LIRInstructionClass.create(AMD64HotspotDirectVirtualCallOp.class);
 
     private final InvokeKind invokeKind;
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
+    AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, GraalHotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
         this.config = config;

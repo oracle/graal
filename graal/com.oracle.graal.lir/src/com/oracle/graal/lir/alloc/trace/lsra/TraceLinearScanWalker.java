@@ -96,7 +96,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        int numRegs = allocator.getRegisters().length;
+        int numRegs = allocator.getRegisters().size();
         spillIntervals = Util.uncheckedCast(new List<?>[numRegs]);
         for (int i = 0; i < numRegs; i++) {
             spillIntervals[i] = EMPTY_LIST;

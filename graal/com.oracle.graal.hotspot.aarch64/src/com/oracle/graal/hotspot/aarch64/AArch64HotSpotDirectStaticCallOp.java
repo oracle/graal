@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.aarch64;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -32,7 +33,6 @@ import com.oracle.graal.lir.aarch64.AArch64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -46,9 +46,9 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
     public static final LIRInstructionClass<AArch64HotSpotDirectStaticCallOp> TYPE = LIRInstructionClass.create(AArch64HotSpotDirectStaticCallOp.class);
 
     private final InvokeKind invokeKind;
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    AArch64HotSpotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
+    AArch64HotSpotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, GraalHotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;

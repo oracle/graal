@@ -25,12 +25,11 @@ package com.oracle.graal.hotspot.aarch64;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.aarch64.AArch64Call;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
@@ -39,7 +38,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfig;
 public class AArch64HotSpotDeoptimizeCallerOp extends AArch64HotSpotEpilogueOp {
     public static final LIRInstructionClass<AArch64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AArch64HotSpotDeoptimizeCallerOp.class);
 
-    public AArch64HotSpotDeoptimizeCallerOp(HotSpotVMConfig config) {
+    public AArch64HotSpotDeoptimizeCallerOp(GraalHotSpotVMConfig config) {
         super(TYPE, config);
     }
 

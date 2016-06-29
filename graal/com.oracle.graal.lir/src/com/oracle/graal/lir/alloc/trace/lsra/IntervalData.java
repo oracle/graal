@@ -45,6 +45,7 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -58,7 +59,7 @@ public final class IntervalData implements IntervalDumper {
 
     private final LIR ir;
     private final RegisterAttributes[] registerAttributes;
-    private final Register[] registers;
+    private final RegisterArray registers;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -71,10 +72,14 @@ public final class IntervalData implements IntervalDumper {
      */
     private int firstDerivedIntervalIndex = -1;
 
-    /** @see #fixedIntervals() */
+    /**
+     * @see #fixedIntervals()
+     */
     private final FixedInterval[] fixedIntervals;
 
-    /** @see #intervals() */
+    /**
+     * @see #intervals()
+     */
     private TraceInterval[] intervals;
 
     /**
@@ -102,7 +107,7 @@ public final class IntervalData implements IntervalDumper {
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
 
         this.registers = target.arch.getRegisters();
-        this.fixedIntervals = new FixedInterval[registers.length];
+        this.fixedIntervals = new FixedInterval[registers.size()];
     }
 
     private int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -222,7 +227,7 @@ public final class IntervalData implements IntervalDumper {
 
     /**
      * Creates a new variable for a derived interval. Note that the variable is not
-     * {@linkplain LIR#nextVariable() managed} so it must not be inserted into the {@link LIR}.
+     * {@linkplain LIR#numVariables() managed} so it must not be inserted into the {@link LIR}.
      */
     private Variable createVariable(ValueKind<?> kind) {
         return new Variable(kind, intervalsSize++);
@@ -474,8 +479,7 @@ public final class IntervalData implements IntervalDumper {
         Value hint = null;
         AllocatableValue operand = interval.operand;
         String type = "fixed";
-        char typeChar = operand.getPlatformKind().getTypeChar();
-        visitor.visitIntervalStart(operand, operand, operand, hint, type, typeChar);
+        visitor.visitIntervalStart(operand, operand, operand, hint, type);
 
         // print ranges
         for (FixedRange range = interval.first(); range != FixedRange.EndMarker; range = range.next) {
@@ -492,8 +496,7 @@ public final class IntervalData implements IntervalDumper {
         Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
         AllocatableValue operand = interval.operand;
         String type = isRegister(operand) ? "fixed" : operand.getValueKind().getPlatformKind().toString();
-        char typeChar = operand.getPlatformKind().getTypeChar();
-        visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type, typeChar);
+        visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type);
 
         // print ranges
         visitor.visitRange(interval.from(), interval.to());

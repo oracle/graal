@@ -23,8 +23,11 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
@@ -41,8 +44,10 @@ import static jdk.vm.ci.meta.Value.ILLEGAL;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.AMD64MathStub;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -50,7 +55,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -67,7 +71,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     @Override
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        GraalHotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
 
@@ -83,6 +87,10 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         if (PreferGraalStubs.getValue()) {
             link(new AMD64DeoptimizationStub(providers, target, config, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
             link(new AMD64UncommonTrapStub(providers, target, config, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        }
+        if (GraalArithmeticStubs.getValue()) {
+            link(new AMD64MathStub(ARITHMETIC_LOG, providers, registerStubCall(ARITHMETIC_LOG, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+            link(new AMD64MathStub(ARITHMETIC_LOG10, providers, registerStubCall(ARITHMETIC_LOG10, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         }
 
         if (config.useCRC32Intrinsics) {

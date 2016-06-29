@@ -88,6 +88,13 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     }
 
     /**
+     * Return true if the descriptor has already been registered.
+     */
+    public boolean isRegistered(ForeignCallDescriptor descriptor) {
+        return foreignCalls.containsKey(descriptor);
+    }
+
+    /**
      * Creates and registers the details for linking a foreign call to a {@link Stub}.
      *
      * @param descriptor the signature of the call to the stub

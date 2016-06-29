@@ -64,7 +64,7 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testEquals() {
-        if (System.getProperty("java.specification.version").compareTo("1.9") >= 0) {
+        if (!Java8OrEarlier) {
             // StringSubstitutions are disabled in 1.9
             return;
         }

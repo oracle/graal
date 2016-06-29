@@ -46,6 +46,7 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -105,7 +106,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         Map<AbstractBlockBase<?>, BlockData> blockData = CollectionsFactory.newMap();
 
-        Register[] callerSaveRegs;
+        RegisterArray callerSaveRegs;
 
         /**
          * Contains the register number for registers which can be optimized and -1 for the others.

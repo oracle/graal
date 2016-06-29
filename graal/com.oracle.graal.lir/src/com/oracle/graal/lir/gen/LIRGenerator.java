@@ -170,9 +170,24 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return lirKindTool;
     }
 
+    /**
+     * Hide {@link #nextVariable()} from other users.
+     */
+    public abstract static class VariableProvider {
+        private int numVariables;
+
+        public int numVariables() {
+            return numVariables;
+        }
+
+        private int nextVariable() {
+            return numVariables++;
+        }
+    }
+
     @Override
     public Variable newVariable(ValueKind<?> valueKind) {
-        return new Variable(valueKind, res.getLIR().nextVariable());
+        return new Variable(valueKind, ((VariableProvider) res.getLIR()).nextVariable());
     }
 
     @Override

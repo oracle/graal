@@ -72,7 +72,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         }
 
         if (forX.isConstant() && !forY.isConstant()) {
-            return new MulNode(forY, forX);
+            return canonical(tool, forY, forX);
         }
         if (forY.isConstant()) {
             BinaryOp<Mul> op = getOp(forX, forY);
@@ -85,6 +85,9 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                 long i = ((PrimitiveConstant) c).asLong();
                 if (i > 0 && CodeUtil.isPowerOf2(i)) {
                     return new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+                }
+                if (i == 0) {
+                    return ConstantNode.forIntegerStamp(stamp, 0);
                 }
             }
 

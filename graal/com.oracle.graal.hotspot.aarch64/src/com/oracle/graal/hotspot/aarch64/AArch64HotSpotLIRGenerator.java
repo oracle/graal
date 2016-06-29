@@ -39,12 +39,14 @@ import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -59,6 +61,7 @@ import com.oracle.graal.lir.aarch64.AArch64Call;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
 import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
+import com.oracle.graal.lir.aarch64.AArch64PrefetchOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -68,7 +71,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -83,14 +85,14 @@ import jdk.vm.ci.meta.Value;
  */
 public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements HotSpotLIRGenerator {
 
-    final HotSpotVMConfig config;
+    final GraalHotSpotVMConfig config;
     private HotSpotDebugInfoBuilder debugInfoBuilder;
 
-    protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, LIRGenerationResult lirGenRes) {
+    protected AArch64HotSpotLIRGenerator(HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes) {
         this(new AArch64HotSpotLIRKindTool(), new AArch64ArithmeticLIRGenerator(), new AArch64HotSpotMoveFactory(), providers, config, lirGenRes);
     }
 
-    protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, HotSpotVMConfig config,
+    protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
         this.config = config;
@@ -177,7 +179,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public Value emitCompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AArch64Kind.QWORD;
         if (inputKind.isReference(0)) {
@@ -198,7 +200,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public Value emitUncompress(Value pointer, HotSpotVMConfig.CompressEncoding encoding, boolean nonNull) {
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         assert inputKind.getPlatformKind() == AArch64Kind.DWORD;
         if (inputKind.isReference(0)) {

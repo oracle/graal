@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.LogStream;
 import com.oracle.graal.debug.TTY;
@@ -48,8 +49,7 @@ import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
  * {@link DebugValueMap#getTopLevelMaps() threads}.
  */
 public class DebugValuesPrinter {
-    private static final char SEPARATOR = ';';
-    private static final String COMPUTER_READABLE_FMT = "%s" + SEPARATOR + "%s" + SEPARATOR + "%s" + SEPARATOR + "%s";
+    private static final String COMPUTER_READABLE_FMT = CSVUtil.buildFormatString("%s", "%s", "%s", "%s");
     private static final char SCOPE_DELIMITER = '.';
     private final MethodMetricsPrinter mmPrinter;
 
@@ -241,7 +241,7 @@ public class DebugValuesPrinter {
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
             if (l != 0 || !SuppressZeroDebugValues.getValue()) {
-                log.printf(COMPUTER_READABLE_FMT + "%n", scope.toRawString(), value.getName(), value.toRawString(l), value.rawUnit());
+                CSVUtil.Escape.println(log, COMPUTER_READABLE_FMT, scope.toRawString(), value.getName(), value.toRawString(l), value.rawUnit());
             }
         }
 

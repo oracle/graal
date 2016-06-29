@@ -21,15 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.AddressNode.Address;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -48,7 +45,7 @@ public final class PrefetchAllocateNode extends FixedWithNextNode implements LIR
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitPrefetchAllocate(gen.operand(address));
+        gen.getLIRGeneratorTool().emitPrefetchAllocate(gen.operand(address));
     }
 
     @NodeIntrinsic

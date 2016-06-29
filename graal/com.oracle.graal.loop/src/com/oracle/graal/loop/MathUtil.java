@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
+import com.oracle.graal.nodes.calc.SignedDivNode;
 
 /**
  * Utility methods to perform integer math with some obvious constant folding first.
@@ -72,7 +72,7 @@ public class MathUtil {
         if (isConstantOne(divisor)) {
             return dividend;
         }
-        IntegerDivNode div = graph.add(new IntegerDivNode(dividend, divisor));
+        SignedDivNode div = graph.add(new SignedDivNode(dividend, divisor));
         graph.addBeforeFixed(before, div);
         return div;
     }

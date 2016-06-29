@@ -35,6 +35,7 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
@@ -50,11 +51,12 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
     private int objectCount;
 
     private final int totalFrameSize;
+    private final int maxOopMapStackOffset;
 
-    public HotSpotReferenceMapBuilder(int totalFrameSize) {
+    public HotSpotReferenceMapBuilder(int totalFrameSize, int maxOopMapStackOffset) {
         this.objectValues = new ArrayList<>();
         this.objectCount = 0;
-
+        this.maxOopMapStackOffset = maxOopMapStackOffset;
         this.totalFrameSize = totalFrameSize;
     }
 
@@ -125,7 +127,11 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             return Location.subregister(asRegister(v), offset);
         } else {
             StackSlot s = asStackSlot(v);
-            return Location.stack(s.getOffset(totalFrameSize) + offset);
+            int totalOffset = s.getOffset(totalFrameSize) + offset;
+            if (totalOffset > maxOopMapStackOffset) {
+                throw new BailoutException("stack offset %d for oopmap is greater than encoding limit %d", totalOffset, maxOopMapStackOffset);
+            }
+            return Location.stack(totalOffset);
         }
     }
 }

@@ -27,6 +27,7 @@ import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
@@ -35,7 +36,6 @@ import com.oracle.graal.lir.aarch64.AArch64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -57,9 +57,10 @@ final class AArch64IndirectCallOp extends IndirectCallOp {
 
     @Use({REG}) private Value metaspaceMethod;
 
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state, HotSpotVMConfig config) {
+    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state,
+                    GraalHotSpotVMConfig config) {
         super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
         this.config = config;

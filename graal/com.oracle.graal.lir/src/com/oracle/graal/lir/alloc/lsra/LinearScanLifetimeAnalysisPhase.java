@@ -61,6 +61,7 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -724,7 +725,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
-            Register[] callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
+            RegisterArray callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
 
             // iterate all blocks in reverse order
             for (int i = allocator.blockCount() - 1; i >= 0; i--) {

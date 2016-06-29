@@ -330,10 +330,8 @@ import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.DivNode;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.calc.IntegerBelowNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
 import com.oracle.graal.nodes.calc.IntegerEqualsNode;
 import com.oracle.graal.nodes.calc.IntegerLessThanNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.LeftShiftNode;
 import com.oracle.graal.nodes.calc.MulNode;
@@ -345,6 +343,8 @@ import com.oracle.graal.nodes.calc.OrNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.calc.RightShiftNode;
 import com.oracle.graal.nodes.calc.SignExtendNode;
+import com.oracle.graal.nodes.calc.SignedDivNode;
+import com.oracle.graal.nodes.calc.SignedRemNode;
 import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.XorNode;
@@ -1037,11 +1037,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genIntegerDiv(ValueNode x, ValueNode y) {
-        return new IntegerDivNode(x, y);
+        return new SignedDivNode(x, y);
     }
 
     protected ValueNode genIntegerRem(ValueNode x, ValueNode y) {
-        return new IntegerRemNode(x, y);
+        return new SignedRemNode(x, y);
     }
 
     protected ValueNode genNegateOp(ValueNode x) {
@@ -2960,7 +2960,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private JavaField lookupField(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
-        JavaField result = constantPool.lookupField(cpi, opcode);
+        JavaField result = constantPool.lookupField(cpi, method, opcode);
         if (graphBuilderConfig.eagerResolving()) {
             assert result instanceof ResolvedJavaField : "Not resolved: " + result;
             ResolvedJavaType declaringClass = ((ResolvedJavaField) result).getDeclaringClass();

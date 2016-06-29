@@ -1,0 +1,56 @@
+x52.tracera: {
+  environment : {
+    JVM_CONFIG :  "graal-core-tracera"
+  }
+}
+
+
+# DaCapo-related targets
+
+bench-dacapo-x52-tracera: ${bench-dacapo-x52} ${x52.tracera} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-dacapo-linux-x52-tracera"
+}
+
+bench-dacapo-timing-x52-tracera: ${bench-dacapo-timing-x52} ${x52.tracera} {
+  capabilities: [linux, x52, daily]
+  name: "bench-dacapo-timing-linux-x52-tracera"
+}
+
+# Scala DaCapo-related targets
+
+bench-scala-dacapo-x52-tracera: ${bench-scala-dacapo-x52} ${x52.tracera} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-scala-dacapo-linux-x52-tracera"
+}
+
+bench-scala-dacapo-timing-x52-tracera: ${bench-scala-dacapo-timing-x52} ${x52.tracera} {
+  capabilities: [linux, x52, daily]
+  name: "bench-scala-dacapo-timing-linux-x52-tracera"
+}
+
+# SPECJvm2008-related targets
+
+bench-specjvm2008-x52-tracera: ${bench-specjvm2008-x52} ${x52.tracera} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-specjvm2008-linux-x52-tracera"
+}
+
+# SPECjbb2015-related targets
+
+bench-specjbb2015-x52-tracera: ${bench-specjbb2015-x52} ${x52.tracera} {
+  capabilities: [linux, x52, bench, daily]
+  name: "bench-specjbb2015-linux-x52-tracera"
+}
+
+
+# Build targets
+
+builds += [
+  ${bench-dacapo-x52-tracera}
+  ${bench-scala-dacapo-x52-tracera}
+  ${bench-specjvm2008-x52-tracera}
+  ${bench-specjbb2015-x52-tracera}
+  ${bench-dacapo-timing-x52-tracera}
+  ${bench-scala-dacapo-timing-x52-tracera}
+]

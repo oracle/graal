@@ -52,16 +52,16 @@ import com.oracle.graal.debug.DelegatingDebugConfig.Feature;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl.CompilationData;
 import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl.CompilationData;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.calc.BinaryNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
 import com.oracle.graal.nodes.calc.MulNode;
 import com.oracle.graal.nodes.calc.ShiftNode;
+import com.oracle.graal.nodes.calc.SignedDivNode;
 import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
@@ -169,7 +169,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         static class CountingDivPhase extends Phase {
             @Override
             protected void run(StructuredGraph graph) {
-                Debug.methodMetrics(graph.method()).addToMetric(graph.getNodes().filter(IntegerDivNode.class).count(), "Divs");
+                Debug.methodMetrics(graph.method()).addToMetric(graph.getNodes().filter(SignedDivNode.class).count(), "Divs");
             }
         }
 

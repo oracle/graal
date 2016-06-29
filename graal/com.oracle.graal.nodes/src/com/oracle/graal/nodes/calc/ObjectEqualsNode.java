@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.extended.GetClassNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
+import com.oracle.graal.nodes.virtual.VirtualBoxingNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.Constant;
@@ -88,19 +89,21 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     }
 
     private void virtualizeNonVirtualComparison(VirtualObjectNode virtual, ValueNode other, VirtualizerTool tool) {
-        if (!virtual.hasIdentity() && virtual.entryKind(0) == JavaKind.Boolean) {
-            if (other.isConstant()) {
+        if (virtual instanceof VirtualBoxingNode && other.isConstant()) {
+            VirtualBoxingNode virtualBoxingNode = (VirtualBoxingNode) virtual;
+            if (virtualBoxingNode.getBoxingKind() == JavaKind.Boolean) {
                 JavaConstant otherUnboxed = tool.getConstantReflectionProvider().unboxPrimitive(other.asJavaConstant());
                 if (otherUnboxed != null && otherUnboxed.getJavaKind() == JavaKind.Boolean) {
                     int expectedValue = otherUnboxed.asBoolean() ? 1 : 0;
-                    IntegerEqualsNode equals = new IntegerEqualsNode(tool.getEntry(virtual, 0), ConstantNode.forInt(expectedValue, graph()));
+                    IntegerEqualsNode equals = new IntegerEqualsNode(virtualBoxingNode.getBoxedValue(tool), ConstantNode.forInt(expectedValue, graph()));
                     tool.addNode(equals);
                     tool.replaceWithValue(equals);
                 } else {
                     tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
                 }
             }
-        } else {
+        }
+        if (virtual.hasIdentity()) {
             // one of them is virtual: they can never be the same objects
             tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
         }

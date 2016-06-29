@@ -19,6 +19,12 @@ Video recording: [Part 1](https://youtu.be/Af9T9kFk1lM), [Part 2](https://youtu.
 [Download Slides](http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf)
 
 ### Graal Papers
+* 	Doug Simon, Christian Wimmer, Bernhard Urban, Gilles Duboscq, Lukas Stadler, Thomas Würthinger:
+  	_Snippets: Taking the High Road to a Low Level_.<br>
+    In _Transactions on Architecture and Code Optimization (TACO)_, 2015
+
+    [Download paper](http://dx.doi.org/10.1145/2764907)<br>
+    Describes Graal Snippets.
 
 *   Gilles Duboscq, Thomas Würthinger, Hanspeter Mössenböck: _Speculation Without Regret: Reducing Deoptimization Meta-data in the Graal compiler_.<br>
 In _Proceedings of the Intl. Conf. on Principles and Practice of Programming in Java (PPPJ'14)_, 2014

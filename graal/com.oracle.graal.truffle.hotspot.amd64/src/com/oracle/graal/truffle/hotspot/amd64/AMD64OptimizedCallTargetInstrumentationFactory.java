@@ -56,7 +56,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCal
             protected void injectTailCallCode() {
                 @SuppressWarnings("hiding")
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) this.asm;
-                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object)[0];
+                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object).get(0);
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 Label doProlog = new Label();
                 int pos = asm.position();

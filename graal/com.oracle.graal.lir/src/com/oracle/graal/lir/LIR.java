@@ -29,12 +29,13 @@ import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.gen.LIRGenerator;
 
 /**
  * This class implements the overall container for the LIR graph and directs its construction,
  * optimization, and finalization.
  */
-public class LIR {
+public final class LIR extends LIRGenerator.VariableProvider {
 
     private final AbstractControlFlowGraph<?> cfg;
 
@@ -47,8 +48,6 @@ public class LIR {
      * The order in which the code is emitted.
      */
     private final List<? extends AbstractBlockBase<?>> codeEmittingOrder;
-
-    private int numVariables;
 
     private final BlockMap<List<LIRInstruction>> lirInstructions;
 
@@ -102,14 +101,6 @@ public class LIR {
 
     public List<? extends AbstractBlockBase<?>> codeEmittingOrder() {
         return codeEmittingOrder;
-    }
-
-    public int numVariables() {
-        return numVariables;
-    }
-
-    public int nextVariable() {
-        return numVariables++;
     }
 
     public void setHasArgInCallerFrame() {

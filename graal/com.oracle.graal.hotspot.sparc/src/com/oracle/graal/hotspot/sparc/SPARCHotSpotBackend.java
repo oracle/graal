@@ -31,7 +31,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
 import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g5;
 import static jdk.vm.ci.sparc.SPARC.i0;
@@ -66,6 +65,7 @@ import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -97,7 +97,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -109,7 +108,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     private static final SizeEstimateStatistics CONSTANT_ESTIMATED_STATS = new SizeEstimateStatistics("ESTIMATE");
     private static final SizeEstimateStatistics CONSTANT_ACTUAL_STATS = new SizeEstimateStatistics("ACTUAL");
 
-    public SPARCHotSpotBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+    public SPARCHotSpotBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(config, runtime, providers);
     }
 
@@ -142,7 +141,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new SPARCHotSpotLIRGenerator(getProviders(), config(), lirGenRes);
+        return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getVMConfig(), lirGenRes);
     }
 
     @Override
@@ -312,7 +311,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        HotSpotVMConfig config = config();
         Label unverifiedStub = installedCodeOwner == null || installedCodeOwner.isStatic() ? null : new Label();
         for (int i = 0; i < 2; i++) {
             if (i > 0) {
@@ -515,6 +513,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     private Register translateInputToOutputRegister(Register register) {
         assert i0.number <= register.number && register.number <= i7.number : "Not an input register " + register;
-        return getTarget().arch.getRegisters()[o0.number + register.number - i0.number];
+        return getTarget().arch.getRegisters().get(o0.number + register.number - i0.number);
     }
 }

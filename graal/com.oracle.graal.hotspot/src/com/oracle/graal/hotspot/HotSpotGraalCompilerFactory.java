@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
 import static jdk.vm.ci.common.InitTimer.timer;
 
@@ -32,10 +33,11 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.options.GraalJarsOptionDescriptorsProvider;
 import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
@@ -45,7 +47,6 @@ import com.oracle.graal.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.services.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 
@@ -78,6 +79,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
     @Override
     public void onSelection() {
         initializeOptions();
+        JVMCIVersionCheck.check(false);
     }
 
     static class Options {
@@ -124,10 +126,8 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
     private static synchronized void initializeOptions() {
         if (!optionsInitialized) {
             try (InitTimer t = timer("InitializeOptions")) {
-                boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-                GraalJarsOptionDescriptorsProvider odp = jdk8OrEarlier ? GraalJarsOptionDescriptorsProvider.create() : null;
-
-                Properties savedProps = getSavedProperties(jdk8OrEarlier);
+                ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+                Properties savedProps = getSavedProperties(Java8OrEarlier);
                 String optionsFile = savedProps.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
                 if (optionsFile != null) {
@@ -141,7 +141,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
                                 optionSettings.put((String) e.getKey(), (String) e.getValue());
                             }
                             try {
-                                OptionsParser.parseOptions(optionSettings, null, odp, null);
+                                OptionsParser.parseOptions(optionSettings, null, loader);
                             } catch (Throwable e) {
                                 throw new InternalError("Error parsing an option from " + graalOptions, e);
                             }
@@ -164,7 +164,7 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
                     }
                 }
 
-                OptionsParser.parseOptions(optionSettings, null, odp, null);
+                OptionsParser.parseOptions(optionSettings, null, loader);
             }
             optionsInitialized = true;
         }
@@ -209,24 +209,24 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
     }
 
     @Override
-    public int getCompilationLevelAdjustment(HotSpotVMConfig config) {
+    public CompilationLevelAdjustment getCompilationLevelAdjustment() {
         if (!Options.UseTrivialPrefixes.getValue()) {
             if (Options.CompileGraalWithC1Only.getValue()) {
                 // We only decide using the class declaring the method
                 // so no need to have the method name and signature
                 // symbols converted to a String.
-                return config.compLevelAdjustmentByHolder;
+                return CompilationLevelAdjustment.ByHolder;
             }
         }
-        return config.compLevelAdjustmentNone;
+        return CompilationLevelAdjustment.None;
     }
 
     @Override
-    public int adjustCompilationLevel(HotSpotVMConfig config, Class<?> declaringClass, String name, String signature, boolean isOsr, int level) {
-        if (level > config.compilationLevelSimple) {
+    public CompilationLevel adjustCompilationLevel(Class<?> declaringClass, String name, String signature, boolean isOsr, CompilationLevel level) {
+        if (level.ordinal() > CompilationLevel.Simple.ordinal()) {
             String declaringClassName = declaringClass.getName();
             if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("com.oracle.graal")) {
-                return config.compilationLevelSimple;
+                return CompilationLevel.Simple;
             }
         }
         return level;

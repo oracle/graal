@@ -26,8 +26,6 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
-
 /**
  * Options related to {@link CompileTheWorld}.
  *
@@ -52,7 +50,7 @@ public class CompileTheWorldOptions {
     public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
     @Option(help = "Option value overrides to use during compile the world. For example, " +
                    "to disable inlining and partial escape analysis specify '-PartialEscapeAnalysis -Inline'. " +
-                   "The format for each option is the same as on the command line just without the '-G:' prefix.", type = OptionType.Debug)
+                   "The format for each option is the same as on the command line just without the '-Dgraal.' prefix.", type = OptionType.Debug)
     public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
 
     @Option(help = "Run CTW using as many threads as there are processors on the system", type = OptionType.Debug)
@@ -65,7 +63,7 @@ public class CompileTheWorldOptions {
      * Overrides {@link #CompileTheWorldStartAt} and {@link #CompileTheWorldStopAt} from {@code -XX}
      * HotSpot options of the same name if the latter have non-default values.
      */
-    public static void overrideWithNativeOptions(HotSpotVMConfig c) {
+    public static void overrideWithNativeOptions(GraalHotSpotVMConfig c) {
         if (c.compileTheWorldStartAt != 1) {
             CompileTheWorldStartAt.setValue(c.compileTheWorldStartAt);
         }

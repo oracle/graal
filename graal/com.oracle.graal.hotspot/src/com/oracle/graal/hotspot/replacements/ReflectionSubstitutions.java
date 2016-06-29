@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.jvmAccWrittenFlags;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
@@ -46,7 +47,7 @@ public class ReflectionSubstitutions {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION) & jvmAccWrittenFlags();
+            return klass.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION) & jvmAccWrittenFlags(INJECTED_VMCONFIG);
         }
     }
 }

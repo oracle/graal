@@ -29,6 +29,7 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
 import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
 import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
@@ -54,7 +55,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.InitTimer;
@@ -62,7 +63,6 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
@@ -81,7 +81,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
 
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
-        HotSpotVMConfig config = jvmciRuntime.getConfig();
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         HotSpotProviders providers;
         HotSpotRegistersProvider registers;
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
@@ -137,7 +137,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         }
     }
 
-    protected Plugins createGraphBuilderPlugins(HotSpotVMConfig config, HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls,
+    protected Plugins createGraphBuilderPlugins(GraalHotSpotVMConfig config, HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls,
                     HotSpotMetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes,
                     HotSpotStampProvider stampProvider) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
@@ -145,7 +145,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         return plugins;
     }
 
-    protected AArch64HotSpotBackend createBackend(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
+    protected AArch64HotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         return new AArch64HotSpotBackend(config, runtime, providers);
     }
 
@@ -162,7 +162,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new AArch64HotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins) {
+    protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins) {
         return new HotSpotSuitesProvider(new AArch64SuitesProvider(compilerConfiguration, plugins), config, runtime, new AArch64AddressLowering());
     }
 
@@ -175,12 +175,13 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new AArch64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
     }
 
-    protected static Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") HotSpotVMConfig config, RegisterConfig regConfig) {
+    protected static Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
         AArch64HotSpotRegisterConfig conf = (AArch64HotSpotRegisterConfig) regConfig;
-        Register[] callerSavedRegisters = conf.getCallerSaveRegisters();
-        Value[] nativeABICallerSaveRegisters = new Value[callerSavedRegisters.length];
-        for (int i = 0; i < callerSavedRegisters.length; i++) {
-            nativeABICallerSaveRegisters[i] = callerSavedRegisters[i].asValue();
+        RegisterArray callerSavedRegisters = conf.getCallerSaveRegisters();
+        int size = callerSavedRegisters.size();
+        Value[] nativeABICallerSaveRegisters = new Value[size];
+        for (int i = 0; i < size; i++) {
+            nativeABICallerSaveRegisters[i] = callerSavedRegisters.get(i).asValue();
         }
         return nativeABICallerSaveRegisters;
     }

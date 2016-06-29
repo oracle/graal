@@ -24,21 +24,21 @@ package com.oracle.graal.hotspot.aarch64;
 
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.aarch64.AArch64BlockEndOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 
 /**
  * Superclass for operations that leave a method's frame.
  */
 abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
 
-    private final HotSpotVMConfig config;
+    private final GraalHotSpotVMConfig config;
 
-    protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, HotSpotVMConfig config) {
+    protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, GraalHotSpotVMConfig config) {
         super(c);
         this.config = config;
     }

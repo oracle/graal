@@ -29,6 +29,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FloatingGuardedNode;
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -53,13 +53,13 @@ public final class KlassLayoutHelperNode extends FloatingGuardedNode implements 
 
     public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.create(KlassLayoutHelperNode.class);
     @Input protected ValueNode klass;
-    protected final HotSpotVMConfig config;
+    protected final GraalHotSpotVMConfig config;
 
-    public KlassLayoutHelperNode(@InjectedNodeParameter HotSpotVMConfig config, ValueNode klass) {
+    public KlassLayoutHelperNode(@InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
         this(config, klass, null);
     }
 
-    public KlassLayoutHelperNode(@InjectedNodeParameter HotSpotVMConfig config, ValueNode klass, ValueNode guard) {
+    public KlassLayoutHelperNode(@InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass, ValueNode guard) {
         super(TYPE, StampFactory.forKind(JavaKind.Int), (GuardingNode) guard);
         this.klass = klass;
         this.config = config;

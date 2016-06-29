@@ -2,10 +2,15 @@
 overlay = cb733e564850cd37b685fcef6f3c16b59802b22c
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
-java9  : {name : oraclejdk, version : "9",    platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.16", platformspecific: true}
+java9 : {name : oraclejdk, version : "9",    platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u92-jvmci-0.16-fastdebug", platformspecific: true}
 
 common : {
+  timelimit : "30:00"
+}
+
+commonLinux : ${common} {
   packages : {
     git : ">=1.8.3"
     mercurial : ">=2.2"
@@ -14,19 +19,32 @@ common : {
     make : ">=3.83"
     gcc-build-essentials : ">=4.9.1" # GCC 4.9.0 fails on cluster
   }
-  environment : {
-    DEFAULT_VM : "jvmci"
-  }
-  timelimit : "30:00"
 }
 
-commonSolaris : {
+commonSolaris : ${common} {
   packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
     "solarisstudio" : "==12.3"
   }
 }
 
-gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+commonDarwin : ${common} {
+  packages : {
+    # Brew does not support versions
+    git : ""
+    mercurial : ""
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    # No need to specify "make" or "gcc" as Mac OS X has these
+    # available once Xcode has been installed.
+  }
+}
+
+gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 
 java8Downloads : {
   downloads : {
@@ -34,6 +52,15 @@ java8Downloads : {
       ${java7}
     ]}
     JAVA_HOME : ${java8}
+  }
+}
+
+java8DownloadsDebug : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8Debug}
   }
 }
 
@@ -47,39 +74,52 @@ java9Downloads : {
   }
 }
 
-gateTest : ${common} {
+gateTest : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
   run : [
     ${gateCmd} ["build,test"]
   ]
 }
 
-gateBootstrap : ${common} {
+gateBootstrap : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
   run : [
     ${gateCmd} ["build,bootstrap"]
   ]
 }
 
-gateTest8 : ${gateTest} ${java8Downloads}
-gateTest9  : ${gateTest} ${java9Downloads}
+gateTest8     : ${gateTest} ${java8Downloads}
+gateTest8Debug : ${gateTest} ${java8DownloadsDebug}
+gateTest9     : ${gateTest} ${java9Downloads}
 gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
-gateBootstrap9  : ${gateBootstrap} ${java9Downloads}
+gateBootstrap9 : ${gateBootstrap} ${java9Downloads}
 
-gateStyle : ${common} ${java8Downloads} {
+gateStyle : ${java8Downloads} {
   downloads : {
     JDT : {name: ecj, version: "4.5.1", platformspecific: false}
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
   }
-  environment : ${common.environment} {
+  environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["style,fullbuild"]
   ]
 }
 
+gateTraceRA : {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
+  }
+}
+
 bench-jvmci : {
-  mx-settings : ["mx", "--vm=server", "--vmbuild=product"]
-  mx-benchmark : ${bench-jvmci.mx-settings} ["--jdk=jvmci", "-Mjit", "benchmark", "--results-file", "bench-results.json"]
+  mx-benchmark : ["mx", "--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -88,63 +128,16 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
-bench-common-8 : ${common} ${java8Downloads} {
+bench-common-8 : ${java8Downloads} {
   setup: [
-    ${bench-jvmci.mx-settings} ["build"]
+    ["mx", "build"]
   ]
   teardown : [
     ${bench-jvmci.mx-teardown}
-  ]
-}
-
-# DaCapo-related targets
-
-bench-dacapo-x52: ${bench-common-8} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-bench-dacapo-timing-x52: ${bench-common-8} {
-  capabilities: [linux, x52, daily]
-  name: "bench-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-# Scala DaCapo-related targets
-
-bench-scala-dacapo-x52: ${bench-common-8} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-scala-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
-bench-scala-dacapo-timing-x52: ${bench-common-8} {
-  capabilities: [linux, x52, daily]
-  name: "bench-scala-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
   ]
 }
 
@@ -157,18 +150,6 @@ bench-specjvm2008: ${bench-common-8} {
   timelimit: "2:50:00"
 }
 
-bench-specjvm2008-x52: ${bench-specjvm2008} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjvm2008-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjvm2008} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--",
-      "-it", "240s", "-wt", "120s"
-    ]
-  ]
-}
-
 # SPECjbb2005-related targets
 
 bench-specjbb2005: ${bench-common-8} {
@@ -176,17 +157,6 @@ bench-specjbb2005: ${bench-common-8} {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
   timelimit: "2:00:00"
-}
-
-bench-specjbb2005-x4150: ${bench-specjbb2005} {
-  capabilities: [linux, x4150, bench, post-merge]
-  name: "bench-specjbb2005-linux-x4150"
-  run: [
-    ${bench-jvmci.mx-specjbb2005} [
-      "--machine-name", "x4150", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
 }
 
 # SPECjbb2013-related targets
@@ -198,17 +168,6 @@ bench-specjbb2013: ${bench-common-8} {
   timelimit: "3:00:00"
 }
 
-bench-specjbb2013-x52: ${bench-specjbb2013} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2013-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjbb2013} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
 # SPECjbb2015-related targets
 
 bench-specjbb2015: ${bench-common-8} {
@@ -218,36 +177,29 @@ bench-specjbb2015: ${bench-common-8} {
   timelimit: "3:00:00"
 }
 
-bench-specjbb2015-x52: ${bench-specjbb2015} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2015-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjbb2015} [
-      "--machine-name", "x52", "--",
-      "--jvm-config=graal-core", "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--"
-    ]
-  ]
-}
-
 # Build targets
 
 builds = [
-  ${gateTest8}        {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
-  ${gateBootstrap8}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
-# ${gateTest9}        {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
-# ${gateBootstrap9}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
-  ${gateStyle}        {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
+# ${gateTest8}        ${commonDarwin}  {capabilities : [darwin, amd64, gate],  name: "gate-test-8-darwin-amd64"}
+# ${gateTest8Debug}   ${commonDarwin}  {capabilities : [darwin, amd64, gate],  name: "gate-test-8-darwin-amd64-fastdebug"}
+  ${gateTest8}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64"}
+  ${gateTest8Debug}   ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64-fastdebug"}
+  ${gateBootstrap8}   ${commonDarwin}  {capabilities : [darwin, amd64, gate],  name: "gate-bootstrap-8-darwin-amd64"}
+  ${gateBootstrap8}   ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64"}
+# ${gateTest9}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-test-9-linux-amd64"}
+# ${gateBootstrap9}   ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-9-linux-amd64"}
+  ${gateStyle}        ${commonLinux}   {capabilities : [linux, amd64, gate],   name: "gate-style-linux-amd64"}
 # The linux-sparc gate machine throws OOME when running `javac -X -J-Xms64M -J-Xint` too often.
-#  ${gateTest8}        {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
+# ${gateTest8}        ${commonLinux}   {capabilities : [linux, sparcv9, gate], name: "gate-test-8-linux-sparcv9", timelimit: "1:00:00"}
   ${gateTest8}        ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9",      timelimit: "1:00:00"}
+  ${gateTest8Debug}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
   ${gateBootstrap8}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-bootstrap-8-solaris-sparcv9", timelimit: "1:00:00"}
-#  ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
-  ${bench-dacapo-x52}
-  ${bench-scala-dacapo-x52}
-  ${bench-specjvm2008-x52}
-  ${bench-specjbb2005-x4150}
-  ${bench-specjbb2013-x52}
-  ${bench-specjbb2015-x52}
-  ${bench-dacapo-timing-x52}
-  ${bench-scala-dacapo-timing-x52}
+# ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+  # TraceRA
+  ${gateTest8}        ${commonLinux} ${gateTraceRA} {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64-tracera"}
+  ${gateBootstrap8}   ${commonLinux} ${gateTraceRA} {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64-tracera"}
 ]
+
+include "ci_includes/x52.hocon"
+include "ci_includes/x4150.hocon"
+include "ci_includes/x52-tracera.hocon"

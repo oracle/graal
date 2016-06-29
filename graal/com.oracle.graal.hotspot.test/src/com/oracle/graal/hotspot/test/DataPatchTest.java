@@ -23,24 +23,23 @@
 
 package com.oracle.graal.hotspot.test;
 
-import static jdk.vm.ci.hotspot.HotSpotVMConfig.config;
-
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
-import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.OpaqueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class DataPatchTest extends GraalCompilerTest {
+public class DataPatchTest extends HotSpotGraalCompilerTest {
 
     public static double doubleSnippet() {
         return 84.72;
@@ -70,28 +69,24 @@ public class DataPatchTest extends GraalCompilerTest {
 
     @Test
     public void narrowOopTest() {
-        Assume.assumeTrue("skipping narrow oop data patch test", config.useCompressedOops);
+        Assume.assumeTrue("skipping narrow oop data patch test", runtime().getVMConfig().useCompressedOops);
         test("narrowOopSnippet");
     }
-
-    private static final HotSpotVMConfig config = config();
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         Registration r = new Registration(invocationPlugins, DataPatchTest.class);
-        r.registerMethodSubstitution(DataPatchTestSubstitutions.class, "compressUncompress", Object.class);
+        r.register1("compressUncompress", Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                CompressEncoding encoding = runtime().getVMConfig().getOopEncoding();
+                ValueNode compressed = b.add(CompressionNode.compress(arg, encoding));
+                ValueNode proxy = b.add(new OpaqueNode(compressed));
+                b.addPush(JavaKind.Object, CompressionNode.uncompress(proxy, encoding));
+                return true;
+            }
+        });
         return super.editGraphBuilderConfiguration(conf);
-    }
-
-    @ClassSubstitution(DataPatchTest.class)
-    private static class DataPatchTestSubstitutions {
-
-        @MethodSubstitution
-        public static Object compressUncompress(Object obj) {
-            Object compressed = CompressionNode.compression(CompressionOp.Compress, obj, config.getOopEncoding());
-            Object proxy = GraalDirectives.opaque(compressed);
-            return CompressionNode.compression(CompressionOp.Uncompress, proxy, config.getOopEncoding());
-        }
     }
 }

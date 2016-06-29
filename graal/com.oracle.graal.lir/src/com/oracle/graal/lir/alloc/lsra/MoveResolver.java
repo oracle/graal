@@ -108,12 +108,12 @@ public class MoveResolver {
         this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
-        this.registerBlocked = new int[allocator.getRegisters().length];
+        this.registerBlocked = new int[allocator.getRegisters().size()];
     }
 
     protected boolean checkEmpty() {
         assert mappingFrom.size() == 0 && mappingFromOpr.size() == 0 && mappingTo.size() == 0 : "list must be empty before and after processing";
-        for (int i = 0; i < getAllocator().getRegisters().length; i++) {
+        for (int i = 0; i < getAllocator().getRegisters().size(); i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
         checkMultipleReads();

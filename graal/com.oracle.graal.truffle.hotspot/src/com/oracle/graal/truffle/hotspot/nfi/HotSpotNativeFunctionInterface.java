@@ -25,12 +25,12 @@ package com.oracle.graal.truffle.hotspot.nfi;
 import java.lang.reflect.Field;
 
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
 
-import jdk.vm.ci.hotspot.HotSpotVMConfig;
 import sun.misc.Unsafe;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
@@ -44,7 +44,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     private HotSpotNativeFunctionHandle dllLookupFunctionHandle;
 
     public HotSpotNativeFunctionInterface(HotSpotProviders providers, RawNativeCallNodeFactory factory, Backend backend, long dlopen, long dlsym, long rtldDefault) {
-        this.rtldDefault = rtldDefault == HotSpotVMConfig.INVALID_RTLD_DEFAULT_HANDLE ? null : new HotSpotNativeLibraryHandle("RTLD_DEFAULT", rtldDefault);
+        this.rtldDefault = rtldDefault == GraalHotSpotVMConfig.INVALID_RTLD_DEFAULT_HANDLE ? null : new HotSpotNativeLibraryHandle("RTLD_DEFAULT", rtldDefault);
         this.libraryLoadFunctionPointer = new HotSpotNativeFunctionPointer(dlopen, "os::dll_load");
         this.functionLookupFunctionPointer = new HotSpotNativeFunctionPointer(dlsym, "os::dll_lookup");
         this.graphBuilder = new NativeCallStubGraphBuilder(providers, backend, factory);

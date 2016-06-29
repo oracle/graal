@@ -68,6 +68,7 @@ import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -99,7 +100,7 @@ public final class TraceLinearScan {
 
     private final FrameMapBuilder frameMapBuilder;
     private final RegisterAttributes[] registerAttributes;
-    private final Register[] registers;
+    private final RegisterArray registers;
     private final RegisterAllocationConfig regAllocConfig;
     private final MoveFactory moveFactory;
 
@@ -203,7 +204,7 @@ public final class TraceLinearScan {
      * Gets the number of registers. This value will never change.
      */
     int numRegisters() {
-        return registers.length;
+        return registers.size();
     }
 
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
@@ -889,7 +890,7 @@ public final class TraceLinearScan {
         return sortedBlocks;
     }
 
-    public Register[] getRegisters() {
+    public RegisterArray getRegisters() {
         return registers;
     }
 

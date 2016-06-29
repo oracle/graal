@@ -22,17 +22,19 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.config;
 
 import java.util.zip.CRC32;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Fold.InjectedParameter;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.word.Word;
@@ -51,8 +53,8 @@ public class CRC32Substitutions {
      * Gets the address of {@code StubRoutines::x86::_crc_table} in {@code stubRoutines_x86.hpp}.
      */
     @Fold
-    static long crcTableAddress() {
-        return config().crcTableAddress;
+    static long crcTableAddress(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.crcTableAddress;
     }
 
     @MethodSubstitution
@@ -60,7 +62,7 @@ public class CRC32Substitutions {
         int c = ~crc;
         int index = (b ^ c) & 0xFF;
         int offset = index << 2;
-        int result = Word.unsigned(crcTableAddress()).readInt(offset);
+        int result = Word.unsigned(crcTableAddress(INJECTED_VMCONFIG)).readInt(offset);
         result = result ^ (c >>> 8);
         return ~result;
     }

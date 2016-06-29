@@ -55,6 +55,25 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class Util {
 
+    private static int getJavaSpecificationVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    /**
+     * The integer value corresponding to the value of the {@code java.specification.version} system
+     * property after any leading {@code "1."} has been stripped.
+     */
+    public static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
+
+    /**
+     * Determines if the Java runtime is version 8 or earlier.
+     */
+    public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
+
     public static final int PRINTING_LINE_WIDTH = 40;
     public static final char SECTION_CHARACTER = '*';
     public static final char SUB_SECTION_CHARACTER = '=';

@@ -234,9 +234,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public static long computeIterationMask(Type type, int directCount, long[] offsets) {
         long mask = 0;
-        assert offsets.length <= NodeClass.MAX_EDGES : String.format("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
-        assert offsets.length - directCount <= NodeClass.MAX_LIST_EDGES : String.format("Exceeded maximum of %d list edges (%s)",
-                        NodeClass.MAX_LIST_EDGES, type);
+        if (offsets.length > NodeClass.MAX_EDGES) {
+            throw new GraalError("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
+        }
+        if (offsets.length - directCount > NodeClass.MAX_LIST_EDGES) {
+            throw new GraalError("Exceeded maximum of %d list edges (%s)", NodeClass.MAX_LIST_EDGES, type);
+        }
 
         for (int i = offsets.length - 1; i >= 0; i--) {
             long offset = offsets[i];

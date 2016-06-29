@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
 import static com.oracle.graal.compiler.common.calc.UnsignedMath.belowThan;
+import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
@@ -73,11 +74,12 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.DimensionsNode;
-import com.oracle.graal.hotspot.nodes.PrefetchAllocateNode;
+import com.oracle.graal.nodes.PrefetchAllocateNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
@@ -170,12 +172,13 @@ public class NewObjectSnippets implements Snippets {
     }
 
     public static void emitPrefetchAllocate(Word address, boolean isArray) {
-        if (config().allocatePrefetchStyle > 0) {
+        GraalHotSpotVMConfig config = config(INJECTED_VMCONFIG);
+        if (config.allocatePrefetchStyle > 0) {
             // Insert a prefetch for each allocation only on the fast-path
             // Generate several prefetch instructions.
-            int lines = isArray ? config().allocatePrefetchLines : config().allocateInstancePrefetchLines;
-            int stepSize = config().allocatePrefetchStepSize;
-            int distance = config().allocatePrefetchDistance;
+            int lines = isArray ? config.allocatePrefetchLines : config.allocateInstancePrefetchLines;
+            int stepSize = config.allocatePrefetchStepSize;
+            int distance = config.allocatePrefetchDistance;
             ExplodeLoopNode.explodeLoop();
             for (int i = 0; i < lines; i++) {
                 PrefetchAllocateNode.prefetch(OffsetAddressNode.address(address, distance));
@@ -192,7 +195,7 @@ public class NewObjectSnippets implements Snippets {
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(size);
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (useTLAB(INJECTED_VMCONFIG) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, false);
             result = formatObject(hub, size, top, prototypeMarkWord, fillContents, constantSize, true);
@@ -224,7 +227,7 @@ public class NewObjectSnippets implements Snippets {
                  * allocated using the fastpath.
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
-                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
                     /*
                      * FIXME(je,ds): we should actually pass typeContext instead of "" but late
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
@@ -257,7 +260,7 @@ public class NewObjectSnippets implements Snippets {
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(allocationSize);
-        if (probability(FREQUENT_PROBABILITY, skipNegativeCheck || belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB() &&
+        if (probability(FREQUENT_PROBABILITY, skipNegativeCheck || belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB(INJECTED_VMCONFIG) &&
                         probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
@@ -304,7 +307,7 @@ public class NewObjectSnippets implements Snippets {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
-        KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
+        KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(INJECTED_VMCONFIG), CLASS_ARRAY_KLASS_LOCATION);
         if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, klass.isNull() || length < 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -322,8 +325,8 @@ public class NewObjectSnippets implements Snippets {
         //    esz is the element size in bytes
         //@formatter:on
 
-        int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
-        int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
+        int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
+        int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
         Object result = allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
@@ -433,12 +436,12 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     protected static Object formatObject(KlassPointer hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
-        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
+        Word prototypeMarkWord = useBiasedLocking(INJECTED_VMCONFIG) ? hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
+            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, useSnippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
+            fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, useSnippetCounters);
         }
         return memory.toObject();
     }
@@ -460,7 +463,7 @@ public class NewObjectSnippets implements Snippets {
      */
     public static Object formatArray(KlassPointer hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
                     boolean useSnippetCounters) {
-        memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
+        memory.writeInt(arrayLengthOffset(INJECTED_VMCONFIG), length, INIT_LOCATION);
         /*
          * store hub last as the concurrent garbage collectors assume length is valid if hub field
          * is not null
@@ -484,9 +487,11 @@ public class NewObjectSnippets implements Snippets {
                         TLAB_END_LOCATION);
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
+        private final GraalHotSpotVMConfig config;
 
-        public Templates(HotSpotProviders providers, TargetDescription target) {
+        public Templates(HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
             super(providers, providers.getSnippetReflection(), target);
+            this.config = config;
         }
 
         /**
@@ -603,7 +608,7 @@ public class NewObjectSnippets implements Snippets {
         }
 
         public void lower(VerifyHeapNode verifyHeapNode, HotSpotRegistersProvider registers, LoweringTool tool) {
-            if (config().cAssertions) {
+            if (config.cAssertions) {
                 Arguments args = new Arguments(verifyHeap, verifyHeapNode.graph().getGuardsStage(), tool.getLoweringStage());
                 args.addConst("threadRegister", registers.getThreadRegister());
 
