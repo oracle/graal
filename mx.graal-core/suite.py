@@ -6,6 +6,8 @@ suite = {
     "suites": [
       {
         "name" : "truffle",
+        # IMPORTANT: When updating the Truffle import, notify Truffle language developers
+        # (by mail to graal-dev@openjdk.java.net) of the pending change.
         "version" : "0e6abb415d814432c24e2fcd8d074c9d795b5e1c",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
