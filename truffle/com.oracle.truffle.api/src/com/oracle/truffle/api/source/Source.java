@@ -189,7 +189,7 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)}
      */
     @Deprecated
     public static Source fromFileName(String fileName, boolean reload) throws IOException {
@@ -219,7 +219,7 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)}
      */
     @Deprecated
     public static Source fromFileName(String fileName) throws IOException {
@@ -247,7 +247,8 @@ public abstract class Source {
      * @throws IOException if the file cannot be found, or if an existing Source not created by this
      *             method matches the file name
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)} and
+     *             {@link Builder#content(java.lang.String)}
      */
     @Deprecated
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
@@ -273,7 +274,7 @@ public abstract class Source {
      *            <code>null</code>
      * @return a newly created, source representation
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.lang.String)}
      */
     @Deprecated
     public static Source fromText(CharSequence chars, String name) {
