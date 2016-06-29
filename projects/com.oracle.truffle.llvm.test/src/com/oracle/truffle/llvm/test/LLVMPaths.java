@@ -48,22 +48,23 @@ public final class LLVMPaths {
 
     public static final File LOCAL_TESTS = new File(PROJECT_ROOT, "tests/");
     static final File EXTERNAL_TEST_SUITES = new File(PROJECT_ROOT, "suites/");
-    static final File EXTERNAL_TEST_SUITES_CONFIG = new File(PROJECT_ROOT, "suites-configs/");
+    static final File EXTERNAL_TEST_SUITES_EXECUTION_CONFIG = new File(PROJECT_ROOT, "suites-configs/");
+    static final File EXTERNAL_TEST_SUITES_COMPILE_CONFIG = new File(PROJECT_ROOT, "suites-configs-compile/");
 
     // LLVM test suite
     static final File LLVM_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "llvm/");
-    static final File LLVM_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "llvm/");
+    static final File LLVM_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "llvm/");
 
     // GCC test suite
     public static final File GCC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "gcc/gcc-5.2.0/gcc/testsuite");
-    public static final File GCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "gcc/");
+    public static final File GCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "gcc/");
 
     public static final File GCC_TEST_SUITE_COMPILE_TORTURE = new File(EXTERNAL_TEST_SUITES, "gcc/gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile");
-    public static final File GCC_TEST_SUITE_COMPILE_TORTURE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "gcc-compile/");
+    public static final File GCC_TEST_SUITE_COMPILE_TORTURE_CONFIG = new File(EXTERNAL_TEST_SUITES_COMPILE_CONFIG, "gcc-compile/");
 
     // NWCC test suite
     public static final File NWCC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "nwcc/");
-    public static final File NWCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_CONFIG, "nwcc/");
+    public static final File NWCC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "nwcc/");
 
     public static final File FLUSH_BITCODE_FILE = new File(PROJECT_ROOT, "flush.temp.ll");
     public static final File FLUSH_C_FILE = new File(PROJECT_ROOT, "flush.c");

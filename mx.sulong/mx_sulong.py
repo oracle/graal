@@ -10,7 +10,6 @@ import mx_findbugs
 
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner, gate_clean
-from mx_jvmci import VM, buildvms
 from mx_gitlogcheck import logCheck
 
 _suite = mx.suite('sulong')
@@ -51,42 +50,29 @@ add_gate_runner(_suite, _graal_llvm_gate_runner)
 def executeGate():
     """executes the TruffleLLVM gate tasks"""
     tasks = []
-    with Task('BuildHotSpotGraalServer: product', tasks) as t:
-        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
-    with VM('server', 'product'):
-        with Task('Findbugs', tasks) as t:
-            if t and mx_findbugs.findbugs([]) != 0:
-                t.abort('FindBugs warnings were found')
-    with VM('server', 'product'):
-        with Task('TestBenchmarks', tasks) as t:
-            if t: runBenchmarkTestCases()
-    with VM('server', 'product'):
-        with Task('TestTypes', tasks) as t:
-            if t: runTypeTestCases()
-    with VM('server', 'product'):
-        with Task('TestPolglot', tasks) as t:
-            if t: runPolyglotTestCases()
-    with VM('server', 'product'):
-        with Task('TestInterop', tasks) as t:
-            if t: runInteropTestCases()
-    with VM('server', 'product'):
-        with Task('TestAsm', tasks) as t:
-            if t: runAsmTestCases()
-    with VM('server', 'product'):
-        with Task('TestSulong', tasks) as t:
-            if t: runTruffleTestCases()
-    with VM('server', 'product'):
-        with Task('TestGCC', tasks) as t:
-            if t: runGCCTestCases()
-    with VM('server', 'product'):
-        with Task('TestLLVM', tasks) as t:
-            if t: runLLVMTestCases()
-    with VM('server', 'product'):
-        with Task('TestNWCC', tasks) as t:
-            if t: runNWCCTestCases()
-    with VM('server', 'product'):
-        with Task('TestGCCSuiteCompile', tasks) as t:
-            if t: runCompileTestCases()
+    with Task('Findbugs', tasks) as t:
+        if t and mx_findbugs.findbugs([]) != 0:
+            t.abort('FindBugs warnings were found')
+    with Task('TestBenchmarks', tasks) as t:
+        if t: runBenchmarkTestCases()
+    with Task('TestTypes', tasks) as t:
+        if t: runTypeTestCases()
+    with Task('TestPolglot', tasks) as t:
+        if t: runPolyglotTestCases()
+    with Task('TestInterop', tasks) as t:
+        if t: runInteropTestCases()
+    with Task('TestAsm', tasks) as t:
+        if t: runAsmTestCases()
+    with Task('TestSulong', tasks) as t:
+        if t: runTruffleTestCases()
+    with Task('TestGCC', tasks) as t:
+        if t: runGCCTestCases()
+    with Task('TestLLVM', tasks) as t:
+        if t: runLLVMTestCases()
+    with Task('TestNWCC', tasks) as t:
+        if t: runNWCCTestCases()
+    with Task('TestGCCSuiteCompile', tasks) as t:
+        if t: runCompileTestCases()
 
 def travis1(args=None):
     tasks = []
@@ -99,55 +85,41 @@ def travis1(args=None):
                 mx._warn_or_abort('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.', args.strict_mode)
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
-    with Task('BuildHotSpotGraalServer: product', tasks) as t:
-        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
-    with VM('server', 'product'):
-        with Task('Findbugs', tasks) as t:
-            if t and mx_findbugs.findbugs([]) != 0:
-                t.abort('FindBugs warnings were found')
-    with VM('server', 'product'):
-        with Task('TestBenchmarks', tasks) as t:
-            if t: runBenchmarkTestCases()
-    with VM('server', 'product'):
-        with Task('TestPolglot', tasks) as t:
-            if t: runPolyglotTestCases()
-    with VM('server', 'product'):
-        with Task('TestInterop', tasks) as t:
-            if t: runInteropTestCases()
-    with VM('server', 'product'):
-        with Task('TestAsm', tasks) as t:
-            if t: runAsmTestCases()
-    with VM('server', 'product'):
-        with Task('TestTypes', tasks) as t:
-            if t: runTypeTestCases()
-    with VM('server', 'product'):
-        with Task('TestSulong', tasks) as t:
-            if t: runTruffleTestCases()
-    with VM('server', 'product'):
-        with Task('TestLLVM', tasks) as t:
-            if t: runLLVMTestCases()
-    with VM('server', 'product'):
-        with Task('TestNWCC', tasks) as t:
-            if t: runNWCCTestCases()
-    with VM('server', 'product'):
-        with Task('TestGCCSuiteCompile', tasks) as t:
-            if t: runCompileTestCases()
+    with Task('Findbugs', tasks) as t:
+        if t and mx_findbugs.findbugs([]) != 0:
+            t.abort('FindBugs warnings were found')
+    with Task('TestBenchmarks', tasks) as t:
+        if t: runBenchmarkTestCases()
+    with Task('TestPolglot', tasks) as t:
+        if t: runPolyglotTestCases()
+    with Task('TestInterop', tasks) as t:
+        if t: runInteropTestCases()
+    with Task('TestAsm', tasks) as t:
+        if t: runAsmTestCases()
+    with Task('TestTypes', tasks) as t:
+        if t: runTypeTestCases()
+    with Task('TestSulong', tasks) as t:
+        if t: runTruffleTestCases()
+    with Task('TestLLVM', tasks) as t:
+        if t: runLLVMTestCases()
+    with Task('TestNWCC', tasks) as t:
+        if t: runNWCCTestCases()
+    with Task('TestGCCSuiteCompile', tasks) as t:
+        if t: runCompileTestCases()
 
 def travis2(args=None):
     tasks = []
-    with Task('BuildHotSpotGraalServer: product', tasks) as t:
-        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
-    with VM('server', 'product'):
-        with Task('TestGCC', tasks) as t:
-            if t: runGCCTestCases()
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestGCC', tasks) as t:
+        if t: runGCCTestCases()
 
 def travisJRuby(args=None):
     tasks = []
-    with Task('BuildHotSpotGraalServer: product', tasks) as t:
-        if t: buildvms(['-c', '--vms', 'server', '--builds', 'product'])
-    with VM('server', 'product'):
-        with Task('TestJRuby', tasks) as t:
-            if t: runTestJRuby()
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestJRuby', tasks) as t:
+        if t: runTestJRuby()
 
 def localGate(args=None):
     """executes the gate without downloading the dependencies and without building"""
@@ -484,7 +456,7 @@ def runGCCTestCases(args=None):
     ensureGCCSuiteExists()
     ensureDragonEggExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.TestGCCSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuite'])
 
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
@@ -530,7 +502,7 @@ def runAsmTestCases(args=None):
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuiteCompile'])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
 
 def runTestJRuby(args=None):
     """tests that JRuby can use this version of Sulong to compile and run C extensions"""
@@ -666,7 +638,7 @@ def compileWithClangPP(args=None):
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
-    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr)) for distr in sulongDistributions])]
+    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])]
 
 def printOptions(args=None):
     """prints the Sulong Java property options"""

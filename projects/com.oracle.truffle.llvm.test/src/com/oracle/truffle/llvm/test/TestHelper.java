@@ -164,12 +164,13 @@ public class TestHelper {
             String javaHome = System.getProperty("java.home");
             String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
             String classpath = System.getProperty("java.class.path");
+            String jvmciClasspath = System.getProperty("jvmci.class.path.append");
             String className = RemoteLLVMTester.class.getCanonicalName();
             String bootClassPath = LLVMBaseOptionFacade.getRemoteTestBootClassPath();
             String debugOption = asOption(LLVMBaseOption.DEBUG.getKey(), "false");
             String projectRootOption = asOption(LLVMBaseOption.PROJECT_ROOT.getKey(), LLVMBaseOptionFacade.getProjectRoot());
             String options = debugOption + " " + projectRootOption;
-            String command = javaBin + " -cp " + classpath + " " + bootClassPath + " " + options + " " + className;
+            String command = javaBin + " -cp " + classpath + " " + bootClassPath + " -Djvmci.class.path.append=" + jvmciClasspath + " " + options + " " + className;
             Process process = Runtime.getRuntime().exec(command);
             return process;
         } catch (Exception e) {

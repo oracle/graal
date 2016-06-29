@@ -2,6 +2,7 @@ cache:
   directories:
   - projects/com.oracle.truffle.llvm.test/suites
   - projects/com.oracle.truffle.llvm.tools/tools
+  - graal-jvmci-8/
 sudo: required
 language: java
 python:
@@ -35,22 +36,21 @@ install:
   - export ECLIPSE_EXE=eclipse/eclipse
   - export DEFAULT_VM=server
   - export PATH=`pwd`/mx:$PATH
+  - 'wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jdk-8u92-linux-x64.tar.gz'
+  - tar -zxf jdk-8u92-linux-x64.tar.gz
+  - if [ -d graal-jvmci-8/.hg ]; then cd graal-jvmci-8/ && hg pull && hg update; else hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8; fi;
+  - cd graal-jvmci-8
+  - mx --java-home `pwd`/../jdk1.8.0_92/ build
+  - export JAVA_HOME=$(mx --java-home `pwd`/../jdk1.8.0_92 jdkhome)
+  - cd ..
 script:
   - $TEST_COMMAND
 branches:
   only:
     - master
 env:
-  - TEST_COMMAND='mx su-clangformatcheck'
-  - TEST_COMMAND='mx eclipseformat --primary'
-  - TEST_COMMAND='mx su-mdlcheck'
-  - TEST_COMMAND='mx su-gitlogcheck'
-  - TEST_COMMAND='mx pylint'
-  - TEST_COMMAND='mx checkstyle'
-  - TEST_COMMAND='mx checkoverlap'
-  - TEST_COMMAND='mx canonicalizeprojects'
+  - TEST_COMMAND='mx su-clangformatcheck && mx eclipseformat --primary && mx su-mdlcheck && mx su-gitlogcheck && mx pylint && mx checkstyle && mx checkoverlap && mx canonicalizeprojects'
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
-  - TEST_COMMAND='mx su-travis-jruby'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
