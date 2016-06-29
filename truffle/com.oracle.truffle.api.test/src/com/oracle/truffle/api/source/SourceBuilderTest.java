@@ -75,6 +75,25 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
+    @Test
+    public void relativeFile() throws IOException {
+        File relative = null;
+        for (File f : new File(".").listFiles()) {
+            if (f.isFile() && f.canRead()) {
+                relative = f;
+                break;
+            }
+        }
+        if (relative == null) {
+            // skip the test
+            return;
+        }
+        Source direct = Source.fromFileName(relative.getPath());
+        Source fromBuilder = SourceSnippets.likeFileName(relative.getPath());
+        assertEquals("Both sources are equal", direct, fromBuilder);
+    }
+
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
