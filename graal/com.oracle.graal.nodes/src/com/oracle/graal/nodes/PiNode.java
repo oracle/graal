@@ -71,6 +71,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         super(c, stamp, guard);
         this.object = object;
         this.piStamp = stamp;
+        inferStamp();
     }
 
     public PiNode(ValueNode object, Stamp stamp) {
@@ -78,9 +79,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
-        super(TYPE, stamp, (GuardingNode) anchor);
-        this.object = object;
-        this.piStamp = stamp;
+        this(TYPE, object, stamp, (GuardingNode) anchor);
     }
 
     public PiNode(ValueNode object, ValueNode anchor) {
@@ -123,7 +122,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             /* The actual stamp has not been set yet. */
             return this;
         }
-        inferStamp();
         ValueNode o = object();
 
         // The pi node does not give any additional information => skip it.
