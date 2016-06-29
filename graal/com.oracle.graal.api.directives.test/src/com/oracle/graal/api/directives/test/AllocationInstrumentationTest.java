@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import java.io.IOException;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,89 +33,89 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AllocationInstrumentationTest extends GraalCompilerTest {
 
+    private TinyInstrumentor instrumentor;
+
     public AllocationInstrumentationTest() {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(ClassA.class, "notInlinedMethod");
         method.setNotInlineable();
-    }
 
-    private static class ClassA {
-        // This method should be marked as not inlineable
-        void notInlinedMethod() {
+        try {
+            instrumentor = new TinyInstrumentor(AllocationInstrumentationTest.class, "instrumentation");
+        } catch (IOException e) {
+            Assert.fail("unable to initialize the instrumentor: " + e);
         }
     }
 
-    static boolean flag;
+    public static class ClassA {
+        // This method should be marked as not inlineable
+        public void notInlinedMethod() {
+        }
+    }
+
+    public static boolean flag;
 
     public static void resetFlag() {
         flag = false;
     }
 
+    static void instrumentation() {
+        GraalDirectives.instrumentationBegin(-1);
+        flag = true;
+        GraalDirectives.instrumentationEnd();
+    }
+
     public static void notEscapeSnippet() {
         @SuppressWarnings("unused")
         ClassA a = new ClassA(); // there is no further use of a
-
-        GraalDirectives.instrumentationBegin(-5);
-        flag = true;
-        GraalDirectives.instrumentationEnd();
     }
 
     @Test
     public void testNotEscape() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("notEscapeSnippet");
+            Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "notEscapeSnippet", Opcodes.NEW);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "notEscapeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // The allocation in the snippet does not escape and will be optimized away. We expect
             // the instrumentation is removed.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertFalse("expected flag=false", flag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertFalse("expected flag=false", flag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
     public static void mustEscapeSnippet() {
         ClassA a = new ClassA();
-
-        GraalDirectives.instrumentationBegin(-5);
-        flag = true;
-        GraalDirectives.instrumentationEnd();
-
         a.notInlinedMethod();
     }
 
     @Test
     public void testMustEscape() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("mustEscapeSnippet");
+            Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "mustEscapeSnippet", Opcodes.NEW);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "mustEscapeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // The allocation in the snippet escapes. We expect the instrumentation preserves.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("expected flag=true", flag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertTrue("expected flag=true", flag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
     public static void partialEscapeSnippet(boolean condition) {
         ClassA a = new ClassA();
-
-        GraalDirectives.instrumentationBegin(-5);
-        flag = true;
-        GraalDirectives.instrumentationEnd();
 
         if (condition) {
             a.notInlinedMethod();
@@ -123,21 +125,20 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
     @Test
     public void testPartialEscape() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("partialEscapeSnippet");
+            Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "partialEscapeSnippet", Opcodes.NEW);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "partialEscapeSnippet");
             executeExpected(method, null, true); // ensure the method is fully resolved
             resetFlag();
             // The allocation in the snippet escapes in the then-clause, and will be relocated to
             // this branch. We expect the instrumentation follows and will only be effective when
             // the then-clause is taken.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(false);
-                Assert.assertFalse("expected flag=false", flag);
-                code.executeVarargs(true);
-                Assert.assertTrue("expected flag=true", flag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(false);
+            Assert.assertFalse("expected flag=false", flag);
+            code.executeVarargs(true);
+            Assert.assertTrue("expected flag=true", flag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 

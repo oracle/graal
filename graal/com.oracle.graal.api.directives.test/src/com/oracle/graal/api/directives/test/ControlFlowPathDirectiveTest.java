@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import java.io.IOException;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,35 +33,46 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ControlFlowPathDirectiveTest extends GraalCompilerTest {
 
+    private TinyInstrumentor instrumentor;
+
     public ControlFlowPathDirectiveTest() {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(ClassA.class, "notInlinedMethod");
         method.setNotInlineable();
-    }
 
-    private static class ClassA {
-        // This method should be marked as not inlineable
-        void notInlinedMethod() {
+        try {
+            instrumentor = new TinyInstrumentor(ControlFlowPathDirectiveTest.class, "instrumentation");
+        } catch (IOException e) {
+            Assert.fail("unable to initialize the instrumentor: " + e);
         }
     }
 
-    static int path;
+    public static class ClassA {
+        // This method should be marked as not inlineable
+        public void notInlinedMethod() {
+        }
+    }
+
+    public static int path;
 
     public void resetPath() {
         path = -1;
     }
 
-    public static void allocationSnippet() {
-        ClassA a = new ClassA();
-
-        GraalDirectives.instrumentationBegin(-5);
+    static void instrumentation() {
+        GraalDirectives.instrumentationBegin(-1);
         path = GraalDirectives.controlFlowPath();
         GraalDirectives.instrumentationEnd();
+    }
+
+    public static void allocationSnippet() {
+        ClassA a = new ClassA();
 
         a.notInlinedMethod();
     }
@@ -67,29 +80,24 @@ public class ControlFlowPathDirectiveTest extends GraalCompilerTest {
     @Test
     public void testAllocationControlFlow() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("allocationSnippet");
+            Class<?> clazz = instrumentor.instrument(ControlFlowPathDirectiveTest.class, "allocationSnippet", Opcodes.NEW);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "allocationSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetPath();
             // The instrumentation targets the allocation and GraalDirectives.controlFlowPath() will
             // indicate whether the allocation occurs in TLAB (0) or in the common heap space (1).
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("control flow path for allocation should be assigned", path >= 0);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertTrue("control flow path for allocation should be assigned", path >= 0);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
-    private static final Object lock = new Object();
+    public static final Object lock = new Object();
 
     public static void lockSnippet() {
         synchronized (lock) {
-            GraalDirectives.instrumentationBegin(-1);
-            path = GraalDirectives.controlFlowPath();
-            GraalDirectives.instrumentationEnd();
-
             ClassA a = new ClassA();
             a.notInlinedMethod();
         }
@@ -98,18 +106,17 @@ public class ControlFlowPathDirectiveTest extends GraalCompilerTest {
     @Test
     public void testLockControlFlow() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("lockSnippet");
+            Class<?> clazz = instrumentor.instrument(ControlFlowPathDirectiveTest.class, "lockSnippet", Opcodes.MONITORENTER);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetPath();
             // The instrumentation targets the monitorenter and GraalDirectives.controlFlowPath()
             // will indicate the lock type [0..5].
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("control flow path for monitorenter should be assigned", path >= 0);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertTrue("control flow path for monitorenter should be assigned", path >= 0);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 

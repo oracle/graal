@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import java.io.IOException;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,40 +33,52 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LockInstrumentationTest extends GraalCompilerTest {
 
+    private TinyInstrumentor instrumentor;
+
     public LockInstrumentationTest() {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(ClassA.class, "notInlinedMethod");
         method.setNotInlineable();
+
+        try {
+            instrumentor = new TinyInstrumentor(LockInstrumentationTest.class, "instrumentation");
+        } catch (IOException e) {
+            Assert.fail("unable to initialize the instrumentor: " + e);
+        }
     }
 
-    private static class ClassA {
+    public static class ClassA {
 
         // This method should be marked as not inlineable
-        void notInlinedMethod() {
+        public void notInlinedMethod() {
         }
 
     }
 
-    private static final Object lock = new Object();
-    static boolean flag;
-    static boolean checkpoint;
+    public static final Object lock = new Object();
+    public static boolean flag;
+    public static boolean checkpoint;
 
     public void resetFlag() {
         flag = false;
         checkpoint = false;
     }
 
+    static void instrumentation() {
+        GraalDirectives.instrumentationBegin(-1);
+        flag = checkpoint;
+        GraalDirectives.instrumentationEnd();
+    }
+
     public static void lockSnippet() {
         synchronized (lock) {
-            GraalDirectives.instrumentationBegin(-1);
-            flag = true;
-            GraalDirectives.instrumentationEnd();
-
+            checkpoint = true;
             ClassA a = new ClassA();
             a.notInlinedMethod();
         }
@@ -73,30 +87,25 @@ public class LockInstrumentationTest extends GraalCompilerTest {
     @Test
     public void testLock() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("lockSnippet");
+            Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "lockSnippet", Opcodes.MONITORENTER);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
-            // The lock in the snippet will take place. We expect the instrumentation preserves.
+            // The monitorenter anchors. We expect the instrumentation set the flag before passing
+            // the checkpoint.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("expected flag=true", flag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertFalse("expected flag=flase", flag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
-    public static void nonEscapeLockSnippet() {
+    public static void postponeLockSnippet() {
         ClassA a = new ClassA();
 
         synchronized (a) {
-            GraalDirectives.instrumentationBegin(-1);
-            flag = checkpoint;
-            GraalDirectives.instrumentationEnd();
-
             checkpoint = true;
-
             a.notInlinedMethod();
         }
 
@@ -105,19 +114,18 @@ public class LockInstrumentationTest extends GraalCompilerTest {
     @Test
     public void testNonEscapeLock() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("nonEscapeLockSnippet");
+            Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "postponeLockSnippet", Opcodes.MONITORENTER);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "postponeLockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // The lock in the snippet will be relocated before the invocation to
             // notInlinedMethod(), i.e., after the checkpoint. We expect the instrumentation follows
             // and flag will be set to true.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("expected flag=true", flag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertTrue("expected flag=true", flag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 

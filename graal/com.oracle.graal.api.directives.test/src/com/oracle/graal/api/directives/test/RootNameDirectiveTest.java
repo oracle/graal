@@ -117,13 +117,11 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             rootName2 = null;
             // We expect both rootName1 and rootName2 are set to the name of the target snippet.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertEquals(toString(method), rootName1);
-                Assert.assertEquals(rootName1, rootName2);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertEquals(toString(method), rootName1);
+            Assert.assertEquals(rootName1, rootName2);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 

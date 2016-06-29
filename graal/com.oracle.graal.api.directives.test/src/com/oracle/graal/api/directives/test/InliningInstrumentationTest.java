@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import java.io.IOException;
 import java.util.Random;
 
 import org.junit.Assert;
@@ -33,6 +34,7 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,68 +45,71 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class InliningInstrumentationTest extends GraalCompilerTest {
 
+    private TinyInstrumentor instrumentor;
+
     public InliningInstrumentationTest() {
         HotSpotResolvedJavaMethod notInlinedMethod = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(Simple.class, "notInlinedMethod");
         notInlinedMethod.setNotInlineable();
+
+        try {
+            instrumentor = new TinyInstrumentor(InliningInstrumentationTest.class, "instrumentation");
+        } catch (IOException e) {
+            Assert.fail("unable to initialize the instrumentor: " + e);
+        }
     }
 
-    static boolean notInlineFlag;
+    public static boolean notInlineFlag;
 
     public void resetFlag() {
         notInlineFlag = false;
     }
 
-    public static void invokeSimpleOpSnippet(int v) {
-        Simple obj = new Simple();
-
-        obj.op(v);
-        GraalDirectives.instrumentationBegin(-2);
+    static void instrumentation() {
+        GraalDirectives.instrumentationBegin(-1);
         notInlineFlag = true;
         GraalDirectives.instrumentationEnd();
+    }
+
+    public static void invokeSimpleOpSnippet(int v) {
+        Simple obj = new Simple();
+        obj.op(v);
     }
 
     @Test
     public void testSimpleOp() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokeSimpleOpSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokeSimpleOpSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokeSimpleOpSnippet");
             executeExpected(method, null, 0); // ensure the method is fully resolved
             resetFlag();
             // trivial method whose node count is less than TrivialInliningSize(10) will be inlined.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(0);
-                Assert.assertFalse("Simple.op(I) shoud be inlined (trivial, nodeCount < 10)", notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(0);
+            Assert.assertFalse("Simple.op(I) shoud be inlined (trivial, nodeCount < 10)", notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
     public static void invokeComplexOpSnippet(int v) {
         Complex obj = new Complex();
-
         obj.op(v);
-        GraalDirectives.instrumentationBegin(-2);
-        notInlineFlag = true;
-        GraalDirectives.instrumentationEnd();
     }
 
     @Test
     public void testComplexOp() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokeComplexOpSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokeComplexOpSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokeComplexOpSnippet");
             executeExpected(method, null, 0); // ensure the method is fully resolved
             resetFlag();
             // complex method will be inlined if the node count does not exceed
             // MaximumInliningSize(300)
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(0);
-                Assert.assertFalse("Complex.op(I) should be inlined (relevance-based, nodeCount=22 < 300)",
-                                notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(0);
+            Assert.assertFalse("Complex.op(I) should be inlined (relevance-based, nodeCount=22 < 300)", notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
@@ -113,28 +118,24 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
 
         if (GraalDirectives.injectBranchProbability(0.01, condition)) {
             obj.op(v);
-            GraalDirectives.instrumentationBegin(-2);
-            notInlineFlag = true;
-            GraalDirectives.instrumentationEnd();
         }
     }
 
     @Test
     public void testComplexOpInSlowPath() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokeComplexOpInSlowPathSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokeComplexOpInSlowPathSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokeComplexOpInSlowPathSnippet");
             executeExpected(method, null, 0, true); // ensure the method is fully resolved
             resetFlag();
             // The invocation to the complex method is located in a slow path. Such invocation will
             // not be inlined if the node conut exceeds MaximumInliningSize(300) times the branch
             // probability.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(0, true);
-                Assert.assertTrue("Complex.op(I) should not be inlined (relevance-based, nodeCount=22 > 300 *0.01)", notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(0, true);
+            Assert.assertTrue("Complex.op(I) should not be inlined (relevance-based, nodeCount=22 > 300 *0.01)", notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
@@ -142,40 +143,34 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
         Simple obj = new Simple();
 
         obj.methodContainManyInvokes();
-        GraalDirectives.instrumentationBegin(-1);
-        notInlineFlag = true;
-        GraalDirectives.instrumentationEnd();
     }
 
     @Test
     public void testManyInvokesCallee() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokeManyInvokesCalleeSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokeManyInvokesCalleeSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokeManyInvokesCalleeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // If the callee contains more than LimitInlinedInvokes(5) invocations, then the
             // invocation will not be inlined.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                Assert.assertTrue("Simple.manyInvokes() should not be inlined (callee invoke probability is too high, invokeP=6 > 5)", notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            Assert.assertTrue("Simple.manyInvokes() should not be inlined (callee invoke probability is too high, invokeP=6 > 5)", notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
     public static void invokePolyOpSnippet(SuperClass obj, int v) {
         obj.op(v);
-        GraalDirectives.instrumentationBegin(-2);
-        notInlineFlag = true;
-        GraalDirectives.instrumentationEnd();
     }
 
     @Test
     public void testPolyOp() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokePolyOpSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokePolyOpSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokePolyOpSnippet");
             // ensure the method is fully resolved. Build a receiver type profile for the observed
             // invocation.
             for (int i = 0; i < 5000; i++) {
@@ -185,13 +180,11 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
             // A polymorphic invocation will be inlined if the sum of the node counts of all the
             // potential callees does not exceed MaximumInliningSize(300).
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(Factory.nextSimpleOrComplex(0.8), 0);
-                Assert.assertFalse("SuperClass.op(I) should be inlined (relevance-based, nodeCount=26 < 300)",
-                                notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(Factory.nextSimpleOrComplex(0.8), 0);
+            Assert.assertFalse("SuperClass.op(I) should be inlined (relevance-based, nodeCount=26 < 300)",
+                            notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
@@ -200,9 +193,6 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
                          // probability (which occurs after training many times) and leads to a
                          // DeoptimizingGuard
             obj.op(v);
-            GraalDirectives.instrumentationBegin(-2);
-            notInlineFlag = true;
-            GraalDirectives.instrumentationEnd();
         }
     }
 
@@ -210,7 +200,8 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
     public void testPolyOpInSlowPath() {
         // we cannot reuse invokePolyOpSnippet because of the existing type profile
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokePolyOpInSlowPathSnippet");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokePolyOpInSlowPathSnippet", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokePolyOpInSlowPathSnippet");
             // ensure the method is fully resolved. Build a receiver type profile for the observed
             // invocation.
             for (int i = 0; i < 5000; i++) {
@@ -221,28 +212,23 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
             // will not be inlined if the sum of the node counts of all the potential callees
             // exceeds MaximumInliningSize(300) times the branch probability.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(Factory.nextSimpleOrComplex(0.8), 0, true);
-                Assert.assertTrue("SuperClass.op(I) should not be inlined (relevance-based, nodeCount=26 > 300 * 0.01)",
-                                notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(Factory.nextSimpleOrComplex(0.8), 0, true);
+            Assert.assertTrue("SuperClass.op(I) should not be inlined (relevance-based, nodeCount=26 > 300 * 0.01)", notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
     public static void invokePolyOpWithManyReceiverTypes(SuperClass obj, int v) {
         obj.op(v);
-        GraalDirectives.instrumentationBegin(-2);
-        notInlineFlag = true;
-        GraalDirectives.instrumentationEnd();
     }
 
     @Test
     public void testPolyOpWithManyReceiverTypes() {
         // we cannot reuse invokePolyOpSnippet because of the existing type profile
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("invokePolyOpWithManyReceiverTypes");
+            Class<?> clazz = instrumentor.instrument(InliningInstrumentationTest.class, "invokePolyOpWithManyReceiverTypes", Opcodes.INVOKEVIRTUAL);
+            ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "invokePolyOpWithManyReceiverTypes");
             // ensure the method is fully resolved. Build a receiver type profile for the observed
             // invocation.
             for (int i = 0; i < 5000; i++) {
@@ -253,13 +239,11 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
             // receiver type profile cannot cover all cases, Graal will attempt to inline the mega
             // callee whose portion is greater than MegamorphicInliningMinMethodProbability(0.33D).
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs(Factory.nextSimple(0.1), 0);
-                Assert.assertTrue("SuperClass.op(I) should not be inlined (no methods remaining after filtering less frequent methods)",
-                                notInlineFlag);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs(Factory.nextSimple(0.1), 0);
+            Assert.assertTrue("SuperClass.op(I) should not be inlined (no methods remaining after filtering less frequent methods)",
+                            notInlineFlag);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
@@ -319,21 +303,21 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
 
     }
 
-    private abstract static class SuperClass {
-        abstract int op(int v);
+    public abstract static class SuperClass {
+        public abstract int op(int v);
     }
 
-    private static class Simple extends SuperClass {
+    public static class Simple extends SuperClass {
 
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
 
-        void notInlinedMethod() {
+        public void notInlinedMethod() {
         }
 
-        void methodContainManyInvokes() {
+        public void methodContainManyInvokes() {
             notInlinedMethod();
             notInlinedMethod();
             notInlinedMethod();
@@ -344,73 +328,73 @@ public class InliningInstrumentationTest extends GraalCompilerTest {
 
     }
 
-    private static class Complex extends SuperClass {
+    public static class Complex extends SuperClass {
 
         @Override
-        int op(int v) {
+        public int op(int v) {
             return ((((((v + 1) * 2) - 3) / 4) ^ 5) % 6) & 7;
         }
     }
 
     private static class Simple1 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple2 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple3 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple4 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple5 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple6 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple7 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple8 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }
 
     private static class Simple9 extends SuperClass {
         @Override
-        int op(int v) {
+        public int op(int v) {
             return v;
         }
     }

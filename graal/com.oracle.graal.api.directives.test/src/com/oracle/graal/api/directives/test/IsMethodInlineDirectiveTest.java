@@ -113,13 +113,11 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
             // calleeWithInstrumentationSnippet to be true, and the flag2 set in callerSnippet1 to
             // be false.
             InstalledCode code = getCode(method);
-            try {
-                code.executeVarargs();
-                assertTrue("calleWithInstrumentationSnippet should be inlined", flag1);
-                assertFalse("callerSnippet1 should not be inlined", flag2);
-            } catch (Throwable e) {
-                Assert.fail("Unexpected exception: " + e);
-            }
+            code.executeVarargs();
+            assertTrue("calleWithInstrumentationSnippet should be inlined", flag1);
+            assertFalse("callerSnippet1 should not be inlined", flag2);
+        } catch (Throwable e) {
+            Assert.fail("Unexpected exception: " + e);
         }
     }
 
