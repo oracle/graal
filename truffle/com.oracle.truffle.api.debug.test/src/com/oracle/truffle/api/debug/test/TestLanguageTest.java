@@ -31,8 +31,6 @@ import com.oracle.truffle.api.source.Source;
 
 public class TestLanguageTest extends AbstractDebugTest {
 
-    // line 3 STATEMENT includes newline
-    @Ignore
     @Test
     public void testBlockSourceSection() throws Throwable {
         final Source block = TestSource.createBlock2("testBlockSourceSection");
