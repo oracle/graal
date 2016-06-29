@@ -206,6 +206,7 @@ meth public void testAsynchronousFrameAccess() throws java.lang.InterruptedExcep
 meth public void testCallTargetStackTrace()
 meth public void testCombinedStackTrace()
 meth public void testDirectStackTrace()
+meth public void testFirstFrameIsCurrentFrame()
 meth public void testFrameAccess()
 meth public void testIndirectStackTrace()
 meth public void testNoStackTrace()
@@ -319,6 +320,7 @@ meth public abstract com.oracle.truffle.api.nodes.IndirectCallNode createIndirec
 meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.oracle.truffle.api.nodes.RepeatingNode)
 meth public abstract java.lang.String getName()
 meth public abstract java.util.Collection<com.oracle.truffle.api.RootCallTarget> getCallTargets()
+ anno 0 java.lang.Deprecated()
 meth public abstract void notifyTransferToInterpreter()
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess

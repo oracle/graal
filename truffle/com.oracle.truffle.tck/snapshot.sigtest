@@ -17,6 +17,7 @@ meth protected java.lang.String complexAddWithMethod()
 meth protected java.lang.String complexCopy()
 meth protected java.lang.String complexSumReal()
 meth protected java.lang.String compoundObject()
+meth protected java.lang.String countUpWhile()
 meth protected java.lang.String evaluateSource()
 meth protected java.lang.String globalObject()
 meth protected java.lang.String identity()
@@ -93,10 +94,12 @@ meth public void testPrimitiveidentityInt() throws java.lang.Exception
 meth public void testPrimitiveidentityLong() throws java.lang.Exception
 meth public void testPrimitiveidentityShort() throws java.lang.Exception
 meth public void testPrimitiveidentityString() throws java.lang.Exception
+meth public void testRootNodeName() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersA() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersB() throws java.lang.Exception
+meth public void timeOutTest() throws java.lang.Exception
 supr java.lang.Object
 hfds RANDOM,previousVMReference,tckVM
 hcls CompoundObject,ValuesObject

@@ -67,6 +67,7 @@ meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getNode()
 meth public java.lang.Object eval(java.lang.String,com.oracle.truffle.api.frame.FrameInstance) throws java.io.IOException
+meth public java.lang.String toString(java.lang.Object,com.oracle.truffle.api.frame.FrameInstance)
 meth public java.util.List<com.oracle.truffle.api.frame.FrameInstance> getStack()
 meth public java.util.List<java.lang.String> getRecentWarnings()
 meth public void prepareContinue()
