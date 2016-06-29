@@ -17,7 +17,7 @@ enum.
 * [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html#toString-java.lang.Object-com.oracle.truffle.api.frame.FrameInstance-)
 provides a way to convert any value on stack to its string representation.
 * [TruffleTCK](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/tck/TruffleTCK.html) checks
-whether properly languages support being interrupted after a time out
+whether languages properly support being interrupted after a time out
 * Language implementations are encouraged to mark their internal sources as
 [internal](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html#isInternal--)
 
