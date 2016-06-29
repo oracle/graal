@@ -564,8 +564,8 @@ public abstract class Source {
 
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
-     * name of a guest language source code file. Name is supposed to be at least as long as
-     * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
+     * name of a guest language source code file. Name is supposed to be shorter than
+     * {@link #getPath()}.
      *
      * @return the name of the guest language program
      * @since 0.8 or earlier
