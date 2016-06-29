@@ -26,13 +26,14 @@ import static com.oracle.graal.compiler.common.GraalOptions.AlwaysInlineVTableSt
 import static com.oracle.graal.compiler.common.GraalOptions.InlineVTableStubs;
 import static com.oracle.graal.compiler.common.GraalOptions.OmitHotExceptionStacktrace;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_COS_STUB;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_EXP_STUB;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_LOG10_STUB;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_LOG_STUB;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_SIN_STUB;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.ARITHMETIC_TAN_STUB;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
@@ -374,26 +375,28 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
 
         }
-        StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
+        if (GraalArithmeticStubs.getValue() && (math.getOperation() == UnaryOperation.LOG || math.getOperation() == UnaryOperation.LOG10)) {
+            StructuredGraph graph = math.graph();
+            ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
+            graph.addAfterFixed(tool.lastFixedNode(), call);
+            math.replaceAtUsages(call);
+        }
     }
 
     private static ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
         switch (operation) {
             case LOG:
-                return ARITHMETIC_LOG;
+                return ARITHMETIC_LOG_STUB;
             case LOG10:
-                return ARITHMETIC_LOG10;
+                return ARITHMETIC_LOG10_STUB;
             case EXP:
-                return ARITHMETIC_EXP;
+                return ARITHMETIC_EXP_STUB;
             case SIN:
-                return ARITHMETIC_SIN;
+                return ARITHMETIC_SIN_STUB;
             case COS:
-                return ARITHMETIC_COS;
+                return ARITHMETIC_COS_STUB;
             case TAN:
-                return ARITHMETIC_TAN;
+                return ARITHMETIC_TAN_STUB;
             default:
                 throw GraalError.shouldNotReachHere();
         }

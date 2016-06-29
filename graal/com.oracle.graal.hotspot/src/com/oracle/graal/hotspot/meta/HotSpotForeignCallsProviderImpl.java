@@ -61,6 +61,13 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final ForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new ForeignCallDescriptor("test_deoptimize_call_int", int.class, int.class);
 
+    public static final ForeignCallDescriptor ARITHMETIC_SIN_STUB = new ForeignCallDescriptor("arithmeticSinStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_COS_STUB = new ForeignCallDescriptor("arithmeticCosStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_TAN_STUB = new ForeignCallDescriptor("arithmeticTanStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_EXP_STUB = new ForeignCallDescriptor("arithmeticExpStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_LOG_STUB = new ForeignCallDescriptor("arithmeticLogStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_LOG10_STUB = new ForeignCallDescriptor("arithmeticLog10Stub", double.class, double.class);
+
     protected final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
 
