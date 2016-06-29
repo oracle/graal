@@ -158,7 +158,7 @@ class TimingBenchmarkMixin(object):
               "metric.unit": ("<unit>", str),
               "metric.type": "numeric",
               "metric.score-function": "id",
-              "metric.better": "higher",
+              "metric.better": "lower",
               "metric.iteration": 0
             },
             filter_fn=self.filterResult,
