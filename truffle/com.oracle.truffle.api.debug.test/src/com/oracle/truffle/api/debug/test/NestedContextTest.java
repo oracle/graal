@@ -79,10 +79,7 @@ public class NestedContextTest extends AbstractDebugTest {
                     final Breakpoint block12line9 = debugger.setLineBreakpoint(0, block12.createLineLocation(9), false);
                     expectExecutionEvent().resume();
                     expectSuspendedEvent().checkState(9, true, "STATEMENT").resume();
-                    try {
-                        getEngine().eval(block12);
-                    } catch (ThreadDeath ex) {
-                    }
+                    getEngine().eval(block12);
                     assertExecutedOK();
                     assertEquals(1, block12line9.getHitCount());
                     popContext();
