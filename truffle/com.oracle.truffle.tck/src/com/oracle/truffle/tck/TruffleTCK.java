@@ -1548,6 +1548,7 @@ public abstract class TruffleTCK {
     public void testRootNodeName() throws Exception {
         final String name = applyNumbers();
         final boolean[] eventHappened = new boolean[2];
+        final String[] actualName = new String[1];
         final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
@@ -1558,7 +1559,7 @@ public abstract class TruffleTCK {
         final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
             @Override
             protected void on(SuspendedEvent ev) {
-                assertEquals(name, ev.getNode().getRootNode().getName());
+                actualName[0] = ev.getNode().getRootNode().getName();
                 eventHappened[1] = true;
             }
         };
@@ -1570,6 +1571,7 @@ public abstract class TruffleTCK {
         apply.execute(fn).as(Number.class);
         assertTrue(eventHappened[0]);
         assertTrue(eventHappened[1]);
+        assertEquals(name, actualName[0]);
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
