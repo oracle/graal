@@ -31,7 +31,6 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
-import os
 
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(mx.suite('graal-core'), {
