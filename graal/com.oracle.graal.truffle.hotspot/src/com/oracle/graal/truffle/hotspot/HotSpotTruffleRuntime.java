@@ -46,10 +46,10 @@ import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -69,11 +69,8 @@ import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.serviceprovider.GraalServices;
-import com.oracle.graal.truffle.CompilationPolicy;
-import com.oracle.graal.truffle.CounterAndTimeBasedCompilationPolicy;
 import com.oracle.graal.truffle.DefaultTruffleCompiler;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.InterpreterOnlyCompilationPolicy;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCallBoundary;
 import com.oracle.graal.truffle.TruffleCompiler;
@@ -175,17 +172,10 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return createCallTargetImpl(null, rootNode, createSpeculationLog());
     }
 
-    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
-        CompilationPolicy compilationPolicy;
-        if (acceptForCompilation(rootNode)) {
-            compilationPolicy = new CounterAndTimeBasedCompilationPolicy();
-        } else {
-            compilationPolicy = new InterpreterOnlyCompilationPolicy();
-        }
-        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, speculationLog);
-        rootNode.setCallTarget(target);
+    @Override
+    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
+        RootCallTarget target = super.createCallTargetImpl(source, rootNode, speculationLog);
         callTargets.put(target, null);
-
         return target;
     }
 
@@ -338,6 +328,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return callMethods;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Collection<RootCallTarget> getCallTargets() {
         return Collections.unmodifiableSet(callTargets.keySet());
