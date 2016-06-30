@@ -37,6 +37,8 @@ import com.oracle.graal.replacements.amd64.AMD64MathSubstitutions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10Factory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleReadBytesFactory;
@@ -203,6 +205,8 @@ public class LLVMRuntimeIntrinsicFactory {
      */
     private static void intrinsifyCFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
         intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
+        intrinsics.put("@log", LLVMLogFactory.getInstance());
+        intrinsics.put("@log10", LLVMLog10Factory.getInstance());
     }
 
 }
