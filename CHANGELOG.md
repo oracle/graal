@@ -11,9 +11,9 @@ source objects are now deprecated.
 to provide name of a method or function it represents.
 * Instruments are now [loaded eagerly](https://github.com/graalvm/truffle/commit/81018616abb0d4ae68e98b7fcd6fda7c8d0393a2) -
 which has been reported as an observable behavioral change.
-* Instruments can now observe loaded sources via
-[LoadSourceEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/LoadSourceEvent.html)
-and co.
+* The [Instrumenter](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/Instrumenter.html)
+now allows one to observe when sources and source sections are being loaded via
+[attaching a listener](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachLoadSourceListener-com.oracle.truffle.api.instrumentation.SourceSectionFilter-T-boolean-).
 * Control the way loops are exploded with a new [LoopExplosionKind](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html)
 enum.
 * [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html#toString-java.lang.Object-com.oracle.truffle.api.frame.FrameInstance-)
