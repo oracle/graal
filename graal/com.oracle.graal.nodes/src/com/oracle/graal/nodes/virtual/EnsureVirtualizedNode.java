@@ -27,7 +27,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.VerificationError;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -37,7 +39,7 @@ import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class EnsureVirtualizedNode extends FixedWithNextNode implements Virtualizable, Lowerable {
 
     public static final NodeClass<EnsureVirtualizedNode> TYPE = NodeClass.create(EnsureVirtualizedNode.class);

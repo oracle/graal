@@ -33,7 +33,9 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.FrameState;
@@ -52,7 +54,7 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_50, size = NodeSize.SIZE_50)
 public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virtualizable, MemoryCheckpoint.Single, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);

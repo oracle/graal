@@ -59,12 +59,18 @@ import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodeinfo.NodeSize;
+import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.FullInfopointNode;
+import com.oracle.graal.nodes.ProxyNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -78,6 +84,7 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.options.DerivedOptionValue;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.OptimisticOptimizations;
@@ -179,12 +186,22 @@ public abstract class GraalCompilerTest extends GraalTest {
             protected void run(StructuredGraph graph) {
                 ComputeLoopFrequenciesClosure.compute(graph);
             }
+
+ 	    @Override
+            public float codeSizeIncrease() {
+                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+            }
         });
         ret.getHighTier().appendPhase(new Phase("CheckGraphPhase") {
 
             @Override
             protected void run(StructuredGraph graph) {
                 assert checkHighTierGraph(graph) : "failed HighTier graph check";
+            }
+
+ 	   @Override
+            public float codeSizeIncrease() {
+                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
             }
         });
         ret.getMidTier().appendPhase(new Phase("CheckGraphPhase") {
@@ -193,12 +210,23 @@ public abstract class GraalCompilerTest extends GraalTest {
             protected void run(StructuredGraph graph) {
                 assert checkMidTierGraph(graph) : "failed MidTier graph check";
             }
+
+            @Override
+            public float codeSizeIncrease() {
+                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+            }
+
         });
         ret.getLowTier().appendPhase(new Phase("CheckGraphPhase") {
 
             @Override
             protected void run(StructuredGraph graph) {
                 assert checkLowTierGraph(graph) : "failed LowTier graph check";
+            }
+
+   	    @Override
+            public float codeSizeIncrease() {
+                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
             }
         });
         return ret;
@@ -342,6 +370,69 @@ public abstract class GraalCompilerTest extends GraalTest {
         Assert.assertTrue("unexpected ReturnNode result node: " + graphString, result.isConstant());
         Assert.assertEquals("unexpected ReturnNode result kind: " + graphString, result.asJavaConstant().getJavaKind(), JavaKind.Int);
         Assert.assertEquals("unexpected ReturnNode result: " + graphString, result.asJavaConstant().asInt(), value);
+    }
+
+    protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
+        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        schedule.apply(graph);
+        ScheduleResult scheduleResult = graph.getLastSchedule();
+
+        NodeMap<Integer> canonicalId = graph.createNodeMap();
+        int nextId = 0;
+
+        List<String> constantsLines = new ArrayList<>();
+
+        StringBuilder result = new StringBuilder();
+        for (Block block : scheduleResult.getCFG().getBlocks()) {
+            result.append("Block " + block + " ");
+            if (block == scheduleResult.getCFG().getStartBlock()) {
+                result.append("* ");
+            }
+            result.append("-> ");
+            for (Block succ : block.getSuccessors()) {
+                result.append(succ + " ");
+            }
+            result.append("\n");
+            for (Node node : scheduleResult.getBlockToNodesMap().get(block)) {
+                if (node instanceof ValueNode && node.isAlive()) {
+                    if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode || node instanceof FullInfopointNode)) {
+                        if (node instanceof ConstantNode) {
+                            String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                            String str = name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
+                            constantsLines.add(str);
+                        } else {
+                            int id;
+                            if (canonicalId.get(node) != null) {
+                                id = canonicalId.get(node);
+                            } else {
+                                id = nextId++;
+                                canonicalId.set(node, id);
+                            }
+                            String name = node.getClass().getSimpleName();
+                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + filteredUsageCount(node) + ")\n");
+                            result.append(str);
+                        }
+                    }
+                }
+            }
+        }
+
+        StringBuilder constantsLinesResult = new StringBuilder();
+        constantsLinesResult.append(constantsLines.size() + " constants:\n");
+        Collections.sort(constantsLines);
+        for (String s : constantsLines) {
+            constantsLinesResult.append(s);
+            constantsLinesResult.append("\n");
+        }
+
+        return constantsLines.toString() + result.toString();
+    }
+
+    /**
+     * @return usage count excluding {@link FrameState} usages
+     */
+    private static int filteredUsageCount(Node node) {
+        return node.usages().filter(n -> !(n instanceof FrameState)).count();
     }
 
     /**

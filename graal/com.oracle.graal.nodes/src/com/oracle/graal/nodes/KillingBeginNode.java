@@ -25,10 +25,12 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
 
     public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);

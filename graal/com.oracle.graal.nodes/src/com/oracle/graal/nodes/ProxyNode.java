@@ -27,7 +27,9 @@ import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 
@@ -35,7 +37,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
  * live on entry to the loop) and is (potentially) used after the loop.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable {
 
     public static final NodeClass<ProxyNode> TYPE = NodeClass.create(ProxyNode.class);

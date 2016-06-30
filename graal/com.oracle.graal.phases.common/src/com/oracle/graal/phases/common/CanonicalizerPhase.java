@@ -100,6 +100,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
+    public float codeSizeIncrease() {
+        /*
+         * e.g. removing merges adding more return node, etc.
+         */
+        return 2.5f;
+    }
+
+    @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         new Instance(context).run(graph);
     }
@@ -471,4 +479,5 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     public boolean getCanonicalizeReads() {
         return canonicalizeReads;
     }
+
 }

@@ -129,4 +129,9 @@ public class OnStackReplacementPhase extends Phase {
         Debug.dump(Debug.INFO_LOG_LEVEL, graph, "OnStackReplacement result");
         new DeadCodeEliminationPhase(Required).apply(graph);
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 5.0f;
+    }
 }

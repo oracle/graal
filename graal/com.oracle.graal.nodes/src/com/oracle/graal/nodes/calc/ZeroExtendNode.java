@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -42,7 +43,7 @@ import jdk.vm.ci.code.CodeUtil;
 /**
  * The {@code ZeroExtendNode} converts an integer to a wider integer using zero extension.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_3)
 public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
 
     public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.create(ZeroExtendNode.class);

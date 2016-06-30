@@ -25,12 +25,14 @@ package com.oracle.graal.nodes.debug;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class SpillRegistersNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<SpillRegistersNode> TYPE = NodeClass.create(SpillRegistersNode.class);

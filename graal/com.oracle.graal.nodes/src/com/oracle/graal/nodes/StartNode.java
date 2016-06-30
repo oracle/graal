@@ -25,13 +25,15 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 
 /**
  * The start node of a graph.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory}, nameTemplate = "Start")
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, nameTemplate = "Start", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
     public static final NodeClass<StartNode> TYPE = NodeClass.create(StartNode.class);
 

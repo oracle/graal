@@ -31,7 +31,9 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
@@ -48,7 +50,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * Store of a value at a location specified as an offset relative to an object. No null check is
  * performed before the store.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
     public static final NodeClass<UnsafeStoreNode> TYPE = NodeClass.create(UnsafeStoreNode.class);

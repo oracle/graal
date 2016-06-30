@@ -31,7 +31,9 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -43,7 +45,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 
-@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 

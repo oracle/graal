@@ -24,7 +24,9 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -34,7 +36,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * Marks the control flow path where an object acquired a lightweight lock based on an atomic
  * compare-and-swap (CAS) of the mark word in the object's header.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class AcquiredCASLockNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<AcquiredCASLockNode> TYPE = NodeClass.create(AcquiredCASLockNode.class);
 

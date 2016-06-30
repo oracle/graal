@@ -29,7 +29,9 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Virtualizable;
@@ -48,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_8)
 public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable, Canonicalizable {
 
     public static final NodeClass<LoadIndexedNode> TYPE = NodeClass.create(LoadIndexedNode.class);

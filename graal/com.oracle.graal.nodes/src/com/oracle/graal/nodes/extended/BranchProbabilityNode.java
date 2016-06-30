@@ -28,7 +28,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodePredicates;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -44,7 +46,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * the if node's taken probability. Then the branch probability node will be removed. This node is
  * intended primarily for snippets, so that they can define their fast and slow paths.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
     public static final NodeClass<BranchProbabilityNode> TYPE = NodeClass.create(BranchProbabilityNode.class);

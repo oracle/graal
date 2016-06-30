@@ -35,7 +35,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodePredicate;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ArithmeticOperation;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -46,7 +48,7 @@ import com.oracle.graal.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<BinaryArithmeticNode> TYPE = NodeClass.create(BinaryArithmeticNode.class);

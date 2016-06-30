@@ -24,14 +24,16 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code LogicConstantNode} represents a boolean constant.
  */
-@NodeInfo(nameTemplate = "{p#value}")
+@NodeInfo(nameTemplate = "{p#value}", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class LogicConstantNode extends LogicNode implements LIRLowerable {
 
     public static final NodeClass<LogicConstantNode> TYPE = NodeClass.create(LogicConstantNode.class);

@@ -26,12 +26,14 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 
 /**
  * Logic node that negates its argument.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
     public static final NodeClass<LogicNegationNode> TYPE = NodeClass.create(LogicNegationNode.class);

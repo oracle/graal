@@ -36,7 +36,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -47,7 +49,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call from within a stub.
  */
-@NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory})
+@NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public final class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     public static final NodeClass<StubForeignCallNode> TYPE = NodeClass.create(StubForeignCallNode.class);

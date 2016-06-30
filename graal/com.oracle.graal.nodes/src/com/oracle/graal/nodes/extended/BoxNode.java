@@ -29,7 +29,9 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
@@ -47,7 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_100, size = NodeSize.SIZE_50)
 public final class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);

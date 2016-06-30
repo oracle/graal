@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -45,7 +47,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_4)
 public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
     public static final NodeClass<ArrayLengthNode> TYPE = NodeClass.create(ArrayLengthNode.class);

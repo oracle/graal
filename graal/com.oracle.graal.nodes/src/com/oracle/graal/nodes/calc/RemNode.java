@@ -26,13 +26,14 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Rem;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(shortName = "%")
+@NodeInfo(shortName = "%", cycles = NodeCycles.CYCLES_30/* div */)
 public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
 
     public static final NodeClass<RemNode> TYPE = NodeClass.create(RemNode.class);

@@ -30,7 +30,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.lir.VirtualStackSlot;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.extended.MonitorEnter;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
@@ -45,7 +47,7 @@ import com.oracle.graal.word.WordTypes;
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorEnter, MemoryCheckpoint.Single {
 
     public static final NodeClass<BeginLockScopeNode> TYPE = NodeClass.create(BeginLockScopeNode.class);

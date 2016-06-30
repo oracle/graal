@@ -32,7 +32,9 @@ import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.NarrowOopStamp;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.ConvertNode;
@@ -51,7 +53,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compress or uncompress an oop or metaspace pointer.
  */
-@NodeInfo(nameTemplate = "{p#op/s}")
+@NodeInfo(nameTemplate = "{p#op/s}", cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_2)
 public final class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
     public static final NodeClass<CompressionNode> TYPE = NodeClass.create(CompressionNode.class);

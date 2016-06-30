@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ControlSinkNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -37,7 +39,7 @@ import com.oracle.graal.word.Word;
  * Sets up the {@linkplain HotSpotBackend#EXCEPTION_HANDLER_IN_CALLER arguments} expected by an
  * exception handler in the caller's frame, removes the current frame and jumps to said handler.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_15, size = NodeSize.SIZE_8)
 public final class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implements LIRLowerable {
 
     public static final NodeClass<JumpToExceptionHandlerInCallerNode> TYPE = NodeClass.create(JumpToExceptionHandlerInCallerNode.class);

@@ -34,7 +34,9 @@ import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -44,7 +46,15 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 
-@NodeInfo(nameTemplate = "Alloc {i#virtualObjects}", allowedUsageTypes = {InputType.Extension})
+// @formatter:off
+@NodeInfo(nameTemplate = "Alloc {i#virtualObjects}",
+          allowedUsageTypes = {InputType.Extension},
+          cycles = NodeCycles.CYCLES_UNKOWN,
+          cyclesRationale = "We don't know statically how many, and which, allocations are done.",
+          size = NodeSize.SIZE_UNKOWN,
+          sizeRationale = "We don't know statically how much code for which allocations has to be generated."
+)
+// @formatter:on
 public final class CommitAllocationNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Simplifiable {
 
     public static final NodeClass<CommitAllocationNode> TYPE = NodeClass.create(CommitAllocationNode.class);

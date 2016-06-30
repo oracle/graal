@@ -31,7 +31,9 @@ import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.calc.FloatingNode;
 
@@ -42,7 +44,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
  * corresponds to the loop's predecessor, while the rest of the values correspond to the
  * {@link LoopEndNode}s.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     public static final NodeClass<PhiNode> TYPE = NodeClass.create(PhiNode.class);

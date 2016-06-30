@@ -26,14 +26,16 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node.IndirectCanonicalization;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.StructuralInput;
 import com.oracle.graal.nodes.calc.FloatingNode;
 
 /**
  * Base class for nodes that deal with addressing calculation.
  */
-@NodeInfo(allowedUsageTypes = InputType.Association)
+@NodeInfo(allowedUsageTypes = InputType.Association, size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0)
 public abstract class AddressNode extends FloatingNode implements IndirectCanonicalization {
     public static final NodeClass<AddressNode> TYPE = NodeClass.create(AddressNode.class);
 

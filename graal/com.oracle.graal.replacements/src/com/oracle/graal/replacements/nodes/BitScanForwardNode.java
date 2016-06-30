@@ -29,7 +29,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Determines the index of the least significant "1" bit. Note that the result is undefined if the
  * input is zero.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_3, size = NodeSize.SIZE_1)
 public final class BitScanForwardNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<BitScanForwardNode> TYPE = NodeClass.create(BitScanForwardNode.class);

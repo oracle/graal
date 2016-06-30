@@ -32,7 +32,9 @@ import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -48,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class EdgesTest extends GraalCompilerTest {
 
-    @NodeInfo
+    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         @Input NodeInputList<ValueNode> itail;

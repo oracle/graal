@@ -27,7 +27,9 @@ import java.util.ArrayList;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -38,7 +40,7 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
  *
  * @see VarargsParameter
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class ExplodeLoopNode extends FixedWithNextNode {
     public static final NodeClass<ExplodeLoopNode> TYPE = NodeClass.create(ExplodeLoopNode.class);
 

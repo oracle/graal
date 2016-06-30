@@ -27,7 +27,9 @@ import jdk.vm.ci.meta.JavaKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StateSplit;
@@ -46,7 +48,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * {@link StateSplit} and does not include a write barrier. Note that contrary to the sound of the
  * name this node can be used for storing any kind.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_6, size = NodeSize.SIZE_2)
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<DirectObjectStoreNode> TYPE = NodeClass.create(DirectObjectStoreNode.class);

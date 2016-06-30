@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -35,7 +37,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Creates a memory barrier.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_20, size = NodeSize.SIZE_2)
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);

@@ -43,6 +43,11 @@ public class VerifyCallerSensitiveMethods extends VerifyPhase<PhaseContext> {
     Class<? extends Annotation> callerSensitiveClass;
     Class<?> reflectionClass;
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     public VerifyCallerSensitiveMethods() {
         try {

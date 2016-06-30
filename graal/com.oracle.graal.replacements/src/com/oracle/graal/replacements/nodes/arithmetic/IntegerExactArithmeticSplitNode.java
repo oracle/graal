@@ -24,7 +24,9 @@ package com.oracle.graal.replacements.nodes.arithmetic;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
@@ -42,7 +44,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2/* add+cmp */, size = NodeSize.SIZE_2)
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
     public static final NodeClass<IntegerExactArithmeticSplitNode> TYPE = NodeClass.create(IntegerExactArithmeticSplitNode.class);
 

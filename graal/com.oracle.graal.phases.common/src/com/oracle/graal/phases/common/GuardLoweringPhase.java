@@ -288,4 +288,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
         new LowerGuards(block, Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()).processNodes(block, schedule);
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 2.5f;
+    }
 }

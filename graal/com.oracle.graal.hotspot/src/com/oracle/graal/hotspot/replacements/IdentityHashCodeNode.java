@@ -26,7 +26,9 @@ import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.replacements.nodes.PureFunctionMacroNode;
@@ -36,7 +38,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class IdentityHashCodeNode extends PureFunctionMacroNode {
 
     public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);

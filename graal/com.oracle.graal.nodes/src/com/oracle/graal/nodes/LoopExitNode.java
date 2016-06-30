@@ -29,9 +29,11 @@ import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 
-@NodeInfo(allowedUsageTypes = {InputType.Association})
+@NodeInfo(allowedUsageTypes = {InputType.Association}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class LoopExitNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable {
 
     public static final NodeClass<LoopExitNode> TYPE = NodeClass.create(LoopExitNode.class);

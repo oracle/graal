@@ -31,7 +31,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNodeUtil;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -44,7 +46,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * A floating read of a value from memory specified in terms of an object base and an object
  * relative location. This node does not null check the object.
  */
-@NodeInfo(nameTemplate = "Read#{p#location/s}")
+@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 

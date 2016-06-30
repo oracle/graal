@@ -24,10 +24,12 @@ package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.VirtualState;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public abstract class EscapeObjectState extends VirtualState implements ValueNumberable {
     public static final NodeClass<EscapeObjectState> TYPE = NodeClass.create(EscapeObjectState.class);
 

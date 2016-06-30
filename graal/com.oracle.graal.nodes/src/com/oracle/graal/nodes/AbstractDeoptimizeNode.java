@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -36,7 +38,13 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * After this node, execution will continue using a fallback execution engine (such as an
  * interpreter) at the position described by the {@link #stateBefore() deoptimization state}.
  */
-@NodeInfo
+// @formatter:off
+@NodeInfo(cycles = NodeCycles.CYCLES_INFINITY,
+          cyclesRationale = "The cycles for a deopt are as high as possible as we continue execution in the interpreter.",
+          size = NodeSize.SIZE_UNKOWN,
+          sizeRationale = "Deopts carry the meta information necessary to map the state back in the interpreter, but they pollute the cost model," +
+                          "thus we do not care about their size.")
+// @formatter:on
 public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode.DeoptBefore {
 
     public static final NodeClass<AbstractDeoptimizeNode> TYPE = NodeClass.create(AbstractDeoptimizeNode.class);

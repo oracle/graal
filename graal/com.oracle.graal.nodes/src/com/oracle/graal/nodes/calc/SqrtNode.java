@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -34,7 +36,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Square root.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_30, size = NodeSize.SIZE_1)
 public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIRLowerable {
 
     public static final NodeClass<SqrtNode> TYPE = NodeClass.create(SqrtNode.class);

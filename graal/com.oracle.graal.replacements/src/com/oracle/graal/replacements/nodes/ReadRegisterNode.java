@@ -25,7 +25,9 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -38,7 +40,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Access the value of a specific register.
  */
-@NodeInfo(nameTemplate = "ReadRegister %{p#register}")
+@NodeInfo(nameTemplate = "ReadRegister %{p#register}", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<ReadRegisterNode> TYPE = NodeClass.create(ReadRegisterNode.class);

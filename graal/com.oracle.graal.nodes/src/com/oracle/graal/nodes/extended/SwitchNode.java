@@ -31,7 +31,9 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeSuccessorList;
 import com.oracle.graal.graph.spi.SimplifierTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -41,7 +43,7 @@ import jdk.vm.ci.meta.Constant;
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public abstract class SwitchNode extends ControlSplitNode {
 
     public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);

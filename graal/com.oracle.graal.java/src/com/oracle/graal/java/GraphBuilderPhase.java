@@ -47,6 +47,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
+    public boolean checkContract() {
+        return false;
+    }
+
+    @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         new Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), context.getConstantFieldProvider(), graphBuilderConfig, context.getOptimisticOptimizations(),
                         null).run(graph);
@@ -76,6 +81,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.constantReflection = constantReflection;
             this.constantFieldProvider = constantFieldProvider;
             this.initialIntrinsicContext = initialIntrinsicContext;
+        }
+
+        @Override
+        public boolean checkContract() {
+            return false;
         }
 
         @Override

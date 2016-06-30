@@ -23,13 +23,15 @@
 package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class OpaqueNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);

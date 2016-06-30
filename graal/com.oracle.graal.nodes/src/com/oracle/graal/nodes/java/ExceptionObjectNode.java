@@ -29,7 +29,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.BeginStateSplitNode;
 import com.oracle.graal.nodes.InvokeWithExceptionNode;
@@ -43,7 +45,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * The entry to an exception handler with the exception coming from a call (as opposed to a local
  * throw instruction or implicit exception).
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_10, size = NodeSize.SIZE_8)
 public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, MemoryCheckpoint.Single {
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 

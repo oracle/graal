@@ -24,6 +24,7 @@ package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.NodeCostProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.util.Providers;
@@ -39,19 +40,22 @@ public class PhaseContext {
     private final LoweringProvider lowerer;
     private final Replacements replacements;
     private final StampProvider stampProvider;
+    private final NodeCostProvider nodeCostProvider;
 
     public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
-                    StampProvider stampProvider) {
+                    StampProvider stampProvider, NodeCostProvider nodeCostProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
         this.lowerer = lowerer;
         this.replacements = replacements;
         this.stampProvider = stampProvider;
+        this.nodeCostProvider = nodeCostProvider;
     }
 
     public PhaseContext(Providers providers) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider());
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider(),
+                        providers.getNodeCostProvider());
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -76,5 +80,9 @@ public class PhaseContext {
 
     public StampProvider getStampProvider() {
         return stampProvider;
+    }
+
+    public NodeCostProvider getNodeCostProvider() {
+        return nodeCostProvider;
     }
 }

@@ -30,7 +30,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FloatingGuardedNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -48,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Read {@code Klass::_layout_helper} and incorporate any useful stamp information based on any type
  * information in {@code klass}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_1)
 public final class KlassLayoutHelperNode extends FloatingGuardedNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.create(KlassLayoutHelperNode.class);

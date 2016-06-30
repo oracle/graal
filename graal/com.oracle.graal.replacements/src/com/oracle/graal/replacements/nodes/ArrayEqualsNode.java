@@ -32,7 +32,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
@@ -52,7 +54,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 /**
  * Compares two arrays with the same length.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_500, size = NodeSize.SIZE_100)
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);

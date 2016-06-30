@@ -30,7 +30,9 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.memory.FixedAccessNode;
 import com.oracle.graal.nodes.memory.ReadNode;
 import com.oracle.graal.nodes.memory.address.AddressNode;
@@ -41,7 +43,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
-@NodeInfo(nameTemplate = "JavaRead#{p#location/s}")
+@NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = NodeCycles.CYCLES_6, size = NodeSize.SIZE_2)
 public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
     public static final NodeClass<JavaReadNode> TYPE = NodeClass.create(JavaReadNode.class);

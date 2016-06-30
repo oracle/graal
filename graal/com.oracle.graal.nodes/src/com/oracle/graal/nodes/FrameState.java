@@ -42,7 +42,9 @@ import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.virtual.EscapeObjectState;
@@ -60,7 +62,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * This can be used as debug or deoptimization information.
  */
-@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}")
+@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_1)
 public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 

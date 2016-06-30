@@ -36,7 +36,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -72,7 +74,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
  * class.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public final class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);

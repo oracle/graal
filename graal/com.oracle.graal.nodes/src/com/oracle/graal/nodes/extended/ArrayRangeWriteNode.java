@@ -24,14 +24,16 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 
 /**
  * Base class for nodes that modify a range of an array.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public abstract class ArrayRangeWriteNode extends AbstractMemoryCheckpoint {
 
     public static final NodeClass<ArrayRangeWriteNode> TYPE = NodeClass.create(ArrayRangeWriteNode.class);

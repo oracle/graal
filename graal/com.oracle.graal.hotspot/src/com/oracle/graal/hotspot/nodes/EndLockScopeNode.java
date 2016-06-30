@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.extended.MonitorExit;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
@@ -37,7 +39,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * Intrinsic for closing a {@linkplain BeginLockScopeNode scope} binding a stack-based lock with an
  * object.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorExit, MemoryCheckpoint.Single {
     public static final NodeClass<EndLockScopeNode> TYPE = NodeClass.create(EndLockScopeNode.class);
 

@@ -28,7 +28,9 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
@@ -50,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
 public final class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public static final NodeClass<ObjectCloneNode> TYPE = NodeClass.create(ObjectCloneNode.class);

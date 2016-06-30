@@ -36,7 +36,9 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FloatingGuardedNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -55,7 +57,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * handled by
  * {@link ReadNode#canonicalizeRead(ValueNode, AddressNode, LocationIdentity, CanonicalizerTool)}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_1)
 public final class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     public static final NodeClass<ClassGetHubNode> TYPE = NodeClass.create(ClassGetHubNode.class);
     @Input protected ValueNode clazz;

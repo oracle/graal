@@ -25,7 +25,9 @@ package com.oracle.graal.replacements.nodes.arithmetic;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -40,7 +42,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_2)
 public final class IntegerSubExactNode extends SubNode implements IntegerExactArithmeticNode {
     public static final NodeClass<IntegerSubExactNode> TYPE = NodeClass.create(IntegerSubExactNode.class);
 

@@ -27,14 +27,16 @@ import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.VerificationError;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ControlSinkNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.util.GraphUtil;
 
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class NeverPartOfCompilationNode extends ControlSinkNode implements StateSplit, IterableNodeType {
 
     public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);

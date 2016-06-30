@@ -184,4 +184,9 @@ public class WriteBarrierAdditionPhase extends Phase {
             graph.addAfterFixed(node, serialArrayRangeWriteBarrier);
         }
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 100.0f;
+    }
 }

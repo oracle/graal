@@ -41,6 +41,11 @@ public class PhaseSuite<C> extends BasePhase<C> {
         this.phases = new ArrayList<>();
     }
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
+
     public boolean isImmutable() {
         return immutable;
     }

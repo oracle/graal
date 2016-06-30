@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.ArrayLengthProvider;
@@ -37,7 +39,7 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
  * {@link VirtualObjectNode}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     public static final NodeClass<AllocatedObjectNode> TYPE = NodeClass.create(AllocatedObjectNode.class);

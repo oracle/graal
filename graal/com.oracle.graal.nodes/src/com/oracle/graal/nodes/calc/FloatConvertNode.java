@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
@@ -44,7 +45,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
  * semantics.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_30)
 public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ConvertNode, Lowerable, ArithmeticLIRLowerable {
     public static final NodeClass<FloatConvertNode> TYPE = NodeClass.create(FloatConvertNode.class);
 

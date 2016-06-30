@@ -27,14 +27,16 @@ import java.util.Collections;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * LoopEnd nodes represent a loop back-edge. When a LoopEnd is reached, execution continues at the
  * {@linkplain #loopBegin() loop header}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public final class LoopEndNode extends AbstractEndNode {
 
     public static final NodeClass<LoopEndNode> TYPE = NodeClass.create(LoopEndNode.class);

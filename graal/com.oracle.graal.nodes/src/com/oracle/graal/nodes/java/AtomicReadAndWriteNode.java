@@ -28,7 +28,9 @@ import sun.misc.Unsafe;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
@@ -39,7 +41,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * Represents an atomic read-and-write operation like {@link Unsafe#getAndSetInt(Object, long, int)}
  * .
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_10, size = NodeSize.SIZE_4)
 public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<AtomicReadAndWriteNode> TYPE = NodeClass.create(AtomicReadAndWriteNode.class);

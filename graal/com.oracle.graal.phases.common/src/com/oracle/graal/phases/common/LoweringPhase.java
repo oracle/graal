@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.spi.NodeCostProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.BasePhase;
@@ -106,6 +107,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         public ValueNode asNode() {
             return this;
         }
+    }
+
+    @Override
+    public boolean checkContract() {
+        return false;
     }
 
     final class LoweringToolImpl implements LoweringTool {
@@ -197,6 +203,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public FixedWithNextNode lastFixedNode() {
             return lastFixedNode;
+        }
+
+        @Override
+        public NodeCostProvider getNodeCostProvider() {
+            return context.getNodeCostProvider();
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
@@ -313,6 +324,15 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public boolean checkContract() {
+            /*
+             * lowering with snippets cannot be fully built in the node costs of all high level
+             * nodes
+             */
+            return false;
+        }
+
+        @Override
         public void run(StructuredGraph graph) {
             schedulePhase.apply(graph, false);
             schedule = graph.getLastSchedule();
@@ -363,6 +383,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     }
                 }
             }
+
         }
 
         @SuppressWarnings("try")

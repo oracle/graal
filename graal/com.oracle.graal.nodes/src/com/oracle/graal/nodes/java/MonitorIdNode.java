@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -37,7 +39,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * states together. It is thus referenced from the {@link MonitorEnterNode}, from the
  * {@link MonitorExitNode} and from the {@link FrameState}.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Association})
+@NodeInfo(allowedUsageTypes = {InputType.Association}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<MonitorIdNode> TYPE = NodeClass.create(MonitorIdNode.class);

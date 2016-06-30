@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.PiNode;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2)
 public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable, PiPushable {
 
     public static final NodeClass<IsNullNode> TYPE = NodeClass.create(IsNullNode.class);

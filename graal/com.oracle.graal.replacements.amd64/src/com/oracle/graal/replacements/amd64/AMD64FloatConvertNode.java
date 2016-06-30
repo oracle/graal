@@ -27,7 +27,9 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.calc.UnaryArithmeticNode;
@@ -39,7 +41,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * of the {@link FloatConvertNode} which, on AMD64 needs a {@link AMD64FloatConvertNode} plus some
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64FloatConvertNode> TYPE = NodeClass.create(AMD64FloatConvertNode.class);
 

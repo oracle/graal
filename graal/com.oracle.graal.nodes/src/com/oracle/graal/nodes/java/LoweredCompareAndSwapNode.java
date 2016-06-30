@@ -28,7 +28,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -45,7 +47,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Memory}, cycles = NodeCycles.CYCLES_30, size = NodeSize.SIZE_8)
 public final class LoweredCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<LoweredCompareAndSwapNode> TYPE = NodeClass.create(LoweredCompareAndSwapNode.class);

@@ -45,6 +45,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * not apply effects on their {@link Graph graph} that cannot be easily undone.
  */
 public class VerifyVirtualizableUsage extends VerifyPhase<PhaseContext> {
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
 
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {

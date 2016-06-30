@@ -29,7 +29,9 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNegationNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -49,7 +51,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_30, size = NodeSize.SIZE_30)
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 

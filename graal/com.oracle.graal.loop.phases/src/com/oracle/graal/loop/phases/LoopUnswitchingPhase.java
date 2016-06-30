@@ -90,4 +90,9 @@ public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
         }
         Debug.log("%s", sb);
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 10.0f;
+    }
 }

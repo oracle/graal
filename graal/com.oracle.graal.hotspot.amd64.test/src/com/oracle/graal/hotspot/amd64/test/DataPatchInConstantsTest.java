@@ -41,7 +41,9 @@ import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -164,7 +166,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         return plugins;
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
     private static final class LoadThroughPatchNode extends FixedWithNextNode implements LIRLowerable {
         public static final NodeClass<LoadThroughPatchNode> TYPE = NodeClass.create(LoadThroughPatchNode.class);
 

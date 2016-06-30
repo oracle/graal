@@ -27,12 +27,14 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 
-@NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Anchor, InputType.Guard})
+@NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Anchor, InputType.Guard}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
     public static final NodeClass<SnippetAnchorNode> TYPE = NodeClass.create(SnippetAnchorNode.class);
 

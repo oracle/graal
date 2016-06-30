@@ -28,14 +28,16 @@ import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code NegateNode} node negates its operand.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
 
     public static final NodeClass<NegateNode> TYPE = NodeClass.create(NegateNode.class);

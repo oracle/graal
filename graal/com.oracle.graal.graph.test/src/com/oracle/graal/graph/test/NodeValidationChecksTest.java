@@ -28,11 +28,13 @@ import org.junit.Test;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 
 public class NodeValidationChecksTest {
 
-    @NodeInfo
+    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
 

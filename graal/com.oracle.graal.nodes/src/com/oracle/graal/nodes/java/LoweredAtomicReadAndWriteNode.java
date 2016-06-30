@@ -28,7 +28,9 @@ import sun.misc.Unsafe;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -42,7 +44,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * Represents the lowered version of an atomic read-and-write operation like
  * {@link Unsafe#getAndSetInt(Object, long, int)} .
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_2)
 public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<LoweredAtomicReadAndWriteNode> TYPE = NodeClass.create(LoweredAtomicReadAndWriteNode.class);

@@ -98,7 +98,7 @@ public final class SchedulePhase extends Phase {
         this(strategy, false);
     }
 
-    private SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
+    public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
         this.selectedStrategy = strategy;
         this.immutableGraph = immutableGraph;
     }
@@ -850,4 +850,5 @@ public final class SchedulePhase extends Phase {
             return blockToNodesMap.get(block);
         }
     }
+
 }

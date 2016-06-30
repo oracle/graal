@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -46,7 +47,7 @@ import jdk.vm.ci.meta.SerializableConstant;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_15)
 public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);

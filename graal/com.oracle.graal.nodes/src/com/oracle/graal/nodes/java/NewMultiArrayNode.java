@@ -27,7 +27,9 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.NodeList;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.DeoptimizingFixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArrayLengthProvider;
@@ -39,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_50, size = NodeSize.SIZE_50)
 public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
 
     public static final NodeClass<NewMultiArrayNode> TYPE = NodeClass.create(NewMultiArrayNode.class);

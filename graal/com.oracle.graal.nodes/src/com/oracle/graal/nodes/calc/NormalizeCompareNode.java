@@ -28,7 +28,9 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
  * of the inputs is NaN), the result is 1 if isUnorderedLess is false and -1 if isUnorderedLess is
  * true.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_4)
 public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
     public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.create(NormalizeCompareNode.class);

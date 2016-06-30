@@ -28,7 +28,9 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
@@ -39,7 +41,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
  * value matched the expected value.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_30, size = NodeSize.SIZE_8)
 public final class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<CompareAndSwapNode> TYPE = NodeClass.create(CompareAndSwapNode.class);

@@ -31,7 +31,9 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.BinaryNode;
@@ -46,7 +48,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}")
+@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_1)
 public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
 
     public static final NodeClass<BinaryMathIntrinsicNode> TYPE = NodeClass.create(BinaryMathIntrinsicNode.class);

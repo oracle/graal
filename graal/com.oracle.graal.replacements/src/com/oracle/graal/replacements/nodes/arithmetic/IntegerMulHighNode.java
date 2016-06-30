@@ -30,7 +30,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.BinaryNode;
@@ -40,7 +42,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(shortName = "*H")
+@NodeInfo(shortName = "*H", cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_2)
 public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<IntegerMulHighNode> TYPE = NodeClass.create(IntegerMulHighNode.class);
 

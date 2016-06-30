@@ -49,6 +49,7 @@ import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
+import com.oracle.graal.nodes.spi.NodeCostProvider;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.sparc.SPARCGraphBuilderPlugins;
@@ -96,13 +97,15 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
         LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
         HotSpotStampProvider stampProvider = new HotSpotStampProvider();
-        Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider);
+        NodeCostProvider nodeCostProvider = new SPARCHotSpotNodeCostProvider();
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, nodeCostProvider);
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, target);
         Plugins plugins = createGraphBuilderPlugins(config, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers, snippetReflection,
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, nodeCostProvider, suites, registers,
+                        snippetReflection,
                         wordTypes, plugins);
 
         return createBackend(config, runtime, providers);

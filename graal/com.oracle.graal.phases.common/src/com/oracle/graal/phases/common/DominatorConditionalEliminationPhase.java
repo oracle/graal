@@ -215,6 +215,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         node.replaceAtPredecessor(deopt);
                         GraphUtil.killCFG(node);
                     }
+                    Debug.log("Kill fixed guard guard");
                     return true;
                 })) {
                     registerNewCondition(node.condition(), node.isNegated(), node);
@@ -235,6 +236,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                             }
                         });
                     }
+                    Debug.log("Kill if");
                     return true;
                 });
             }

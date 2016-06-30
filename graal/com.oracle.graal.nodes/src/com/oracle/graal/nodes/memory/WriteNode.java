@@ -30,7 +30,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -45,7 +47,7 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-@NodeInfo(nameTemplate = "Write#{p#location/s}")
+@NodeInfo(nameTemplate = "Write#{p#location/s}", cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);

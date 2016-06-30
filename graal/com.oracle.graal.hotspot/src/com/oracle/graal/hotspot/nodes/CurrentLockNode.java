@@ -26,7 +26,9 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.lir.VirtualStackSlot;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -38,7 +40,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Intrinsic for getting the lock in the current {@linkplain BeginLockScopeNode lock scope}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<CurrentLockNode> TYPE = NodeClass.create(CurrentLockNode.class);
 

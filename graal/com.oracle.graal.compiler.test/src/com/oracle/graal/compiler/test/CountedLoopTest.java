@@ -28,7 +28,9 @@ import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.loop.InductionVariable;
 import com.oracle.graal.loop.LoopsData;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -211,7 +213,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         test("twoVariablesSnippet");
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);

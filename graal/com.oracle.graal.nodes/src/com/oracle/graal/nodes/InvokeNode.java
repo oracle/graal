@@ -31,7 +31,9 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -47,7 +49,16 @@ import com.oracle.graal.nodes.util.GraphUtil;
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
  */
-@NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
+// @formatter:off
+@NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}",
+          allowedUsageTypes = {InputType.Memory},
+          cycles = NodeCycles.CYCLES_UNKOWN,
+          cyclesRationale = "We cannot estimate the runtime cost of a call, it is a blackhole." +
+                            "However, we can estimate, dyanmically, the cost of the call operation itself based on the type of the call.",
+          size = NodeSize.SIZE_UNKOWN,
+          sizeRationale = "We can only dyanmically, based on the type of the call (special, static, virtual, interface) decide" +
+                          "how much code is generated for the call.")
+// @formatter:on
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeNode> TYPE = NodeClass.create(InvokeNode.class);
 

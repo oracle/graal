@@ -30,7 +30,9 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Count the number of leading zeros using the {@code lzcntq} or {@code lzcntl} instructions.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_6, size = NodeSize.SIZE_1)
 public final class AMD64CountLeadingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.create(AMD64CountLeadingZerosNode.class);
 

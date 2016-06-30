@@ -27,7 +27,9 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Loads an object's class (i.e., this node can be created for {@code object.getClass()}).
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
 public final class GetClassNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<GetClassNode> TYPE = NodeClass.create(GetClassNode.class);

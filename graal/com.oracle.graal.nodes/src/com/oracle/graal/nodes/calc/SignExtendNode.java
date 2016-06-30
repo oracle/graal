@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -38,7 +39,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_3)
 public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
 
     public static final NodeClass<SignExtendNode> TYPE = NodeClass.create(SignExtendNode.class);
