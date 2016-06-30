@@ -59,18 +59,18 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Opcode private final IntrinsicOpcode opcode;
     @Def protected Value result;
     @Use protected Value input;
-    @Temp({REG, ILLEGAL}) protected Value xmm1Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm2Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm3Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm4Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm5Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm6Temp;
-    @Temp({REG, ILLEGAL}) protected Value xmm7Temp;
-    @Temp({REG, ILLEGAL}) protected Value gpr1Temp;
-    @Temp({REG, ILLEGAL}) protected Value gpr2Temp;
-    @Temp({REG, ILLEGAL}) protected Value gpr3Temp;
-    @Temp({REG, ILLEGAL}) protected Value gpr4Temp;
-    @Temp({STACK, ILLEGAL}) protected Value stackTemp;
+    @Temp({REG, ILLEGAL}) protected Value xmm1Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm2Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm3Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm4Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm5Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm6Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm7Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr1Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr2Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr3Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr4Temp = Value.ILLEGAL;
+    @Temp({STACK, ILLEGAL}) protected Value stackTemp = Value.ILLEGAL;
 
     public AMD64MathIntrinsicOp(LIRGeneratorTool tool, IntrinsicOpcode opcode, Value result, Value input, Value stackTemp) {
         super(TYPE);
@@ -94,7 +94,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     }
 
     public AMD64MathIntrinsicOp(LIRGeneratorTool tool, IntrinsicOpcode opcode, Value result, Value input) {
-        this(tool, opcode, result, input, null);
+        this(tool, opcode, result, input, Value.ILLEGAL);
     }
 
     @Override

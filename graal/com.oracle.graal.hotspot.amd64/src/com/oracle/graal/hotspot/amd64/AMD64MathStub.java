@@ -20,17 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_COS_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.stubs.SnippetStub;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -45,19 +46,19 @@ public class AMD64MathStub extends SnippetStub {
     }
 
     private static String snippetName(ForeignCallDescriptor descriptor) {
-        if (descriptor == ARITHMETIC_LOG) {
+        if (descriptor == ARITHMETIC_LOG_STUB) {
             return "log";
         }
-        if (descriptor == ARITHMETIC_LOG10) {
+        if (descriptor == ARITHMETIC_LOG10_STUB) {
             return "log10";
         }
-        if (descriptor == ARITHMETIC_SIN) {
+        if (descriptor == ARITHMETIC_SIN_STUB) {
             return "sin";
         }
-        if (descriptor == ARITHMETIC_COS) {
+        if (descriptor == ARITHMETIC_COS_STUB) {
             return "cos";
         }
-        if (descriptor == ARITHMETIC_TAN) {
+        if (descriptor == ARITHMETIC_TAN_STUB) {
             return "tan";
         }
         throw new InternalError("Unknown operation " + descriptor);
