@@ -102,7 +102,11 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (piStamp == StampFactory.forNodeIntrinsic()) {
             return false;
         }
-        return updateStamp(piStamp.improveWith(object().stamp()));
+        return updateStamp(computeStamp());
+    }
+
+    private Stamp computeStamp() {
+        return piStamp.improveWith(object().stamp());
     }
 
     @Override
@@ -122,10 +126,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             /* The actual stamp has not been set yet. */
             return this;
         }
+        // Use most up to date stamp.
+        Stamp computedStamp = computeStamp();
+
         ValueNode o = object();
 
         // The pi node does not give any additional information => skip it.
-        if (stamp().equals(o.stamp())) {
+        if (computedStamp.equals(o.stamp())) {
             return o;
         }
 
@@ -150,7 +157,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             for (Node n : g.asNode().usages()) {
                 if (n instanceof PiNode) {
                     PiNode otherPi = (PiNode) n;
-                    if (o == otherPi.object() && stamp().equals(otherPi.stamp())) {
+                    if (o == otherPi.object() && computedStamp.equals(otherPi.stamp())) {
                         /*
                          * Two PiNodes with the same guard and same result, so return the one with
                          * the more precise piStamp.
