@@ -31,7 +31,6 @@ from os.path import join, exists
 import mx
 import mx_benchmark
 import mx_graal_core
-import os
 
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(mx.suite('graal-core'), {
@@ -847,144 +846,8 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 
-class JMHJsonRule(object):
-    extra_jmh_keys = [
-        "mode",
-        "threads",
-        "forks",
-        "warmupIterations",
-        "warmupTime",
-        "warmupBatchSize",
-        "measurementIterations",
-        "measurementTime",
-        "measurementBatchSize",
-        ]
+class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
-    def __init__(self, filename, suiteName):
-        self.filename = filename
-        self.suiteName = suiteName
-
-    def shortenPackageName(self, benchmark):
-        s = benchmark.split(".")
-        # class and method
-        clazz = s[-2:]
-        package = [str(x[0]) for x in s[:-2]]
-        return ".".join(package + clazz)
-
-    def benchSuiteName(self):
-        return self.suiteName
-
-    def parse(self, text):
-        import json
-        r = []
-        with open(self.filename) as fp:
-            for result in json.load(fp):
-
-                benchmark = result["benchmark"]
-                mode = result["mode"]
-
-                pm = result["primaryMetric"]
-                unit = pm["scoreUnit"]
-                unit_parts = unit.split("/")
-
-                if mode == "thrpt":
-                    # Throughput, ops/time
-                    metricName = "throughput"
-                    better = "higher"
-                    if len(unit_parts) == 2:
-                        metricUnit = "op/" + unit_parts[1]
-                    else:
-                        metricUnit = unit
-                elif mode in ["avgt", "sample", "ss"]:
-                    # Average time, Sampling time, Single shot invocation time
-                    metricName = "time"
-                    better = "lower"
-                    if len(unit_parts) == 2:
-                        metricUnit = unit_parts[0]
-                    else:
-                        metricUnit = unit
-                else:
-                    raise RuntimeError("Unknown benchmark mode {0}".format(mode))
-
-
-                d = {
-                    "bench-suite" : self.benchSuiteName(),
-                    "benchmark" : self.shortenPackageName(benchmark),
-                    # full name
-                    "extra.jmh.benchmark" : benchmark,
-                    "metric.name": metricName,
-                    "metric.unit": metricUnit,
-                    "metric.score-function": "id",
-                    "metric.better": better,
-                    "metric.type": "numeric",
-                }
-
-                if "params" in result:
-                    # add all parameter as a single string
-                    d["extra.jmh.params"] = ", ".join(["=".join(kv) for kv in result["params"].iteritems()])
-                    # and also the individual values
-                    for k, v in result["params"].iteritems():
-                        d["extra.jmh.param." + k] = str(v)
-
-                for k in JMHJsonRule.extra_jmh_keys:
-                    if k in result:
-                        d["extra.jmh." + k] = str(result[k])
-
-                for jmhFork, rawData in enumerate(pm["rawData"]):
-                    for iteration, data in enumerate(rawData):
-                        d2 = d.copy()
-                        d2.update({
-                          "metric.value": float(data),
-                          "metric.iteration": int(iteration),
-                          "extra.jmh.fork": str(jmhFork),
-                        })
-                        r.append(d2)
-        return r
-
-
-class JMHBenchmarkSuiteBase(mx_benchmark.JavaBenchmarkSuite):
-    jmh_result_file = "jmh_result.json"
-
-    def extraRunArgs(self):
-        return ["-rff", JMHBenchmarkSuiteBase.jmh_result_file, "-rf", "json"]
-
-    def extraVmArgs(self):
-        return []
-
-    def getJMHEntry(self):
-        raise NotImplementedError()
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is not None:
-            mx.abort("No benchmark should be specified for the selected suite. (Use JMH specific filtering instead.)")
-        vmArgs = self.vmArgs(bmSuiteArgs) + self.extraVmArgs()
-        runArgs = self.runArgs(bmSuiteArgs) + self.extraRunArgs()
-        return vmArgs + self.getJMHEntry() + ['--jvmArgsPrepend', ' '.join(vmArgs)] + runArgs
-
-    def benchmarks(self):
-        return ["default"]
-
-    def successPatterns(self):
-        return [
-            re.compile(
-                r"# Run complete.",
-                re.MULTILINE)
-        ]
-
-    def benchSuiteName(self):
-        return self.name()
-
-    def failurePatterns(self):
-        return [re.compile(r"<failure>")]
-
-    def flakySuccessPatterns(self):
-        return []
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return [JMHJsonRule(JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName())]
-
-
-class JMHBenchmarkSuite(JMHBenchmarkSuiteBase):
     def name(self):
         return "jmh-graal-core-whitebox"
 
@@ -995,29 +858,16 @@ class JMHBenchmarkSuite(JMHBenchmarkSuiteBase):
         return "graal-compiler"
 
     def extraVmArgs(self):
-        # find all projects with a direct JMH dependency
-        jmhProjects = []
-        for p in mx.projects_opt_limit_to_suites():
-            if 'JMH' in [x.name for x in p.deps]:
-                jmhProjects.append(p)
-        cp = mx.classpath([p.name for p in jmhProjects], jdk=mx.get_jdk())
-
-        return ['-XX:-UseJVMCIClassLoader', '-cp', cp]
-
-    def getJMHEntry(self):
-        return ["org.openjdk.jmh.Main"]
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
 
 
-mx_benchmark.add_bm_suite(JMHBenchmarkSuite())
+mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
 
-class JMHBenchmarkJARSuite(JMHBenchmarkSuiteBase):
+class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
     def name(self):
         return "jmh-jar"
-
-    def benchSuiteName(self):
-        return "jmh-" + self.jmhName()
 
     def group(self):
         return "Graal"
@@ -1025,31 +875,5 @@ class JMHBenchmarkJARSuite(JMHBenchmarkSuiteBase):
     def subgroup(self):
         return "graal-compiler"
 
-    def vmArgs(self, bmSuiteArgs):
-        vmArgs = super(JMHBenchmarkJARSuite, self).vmArgs(bmSuiteArgs)
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--jmh-jar", default=None)
-        parser.add_argument("--jmh-name", default=None)
-        args, remaining = parser.parse_known_args(vmArgs)
-        self.jmh_jar = args.jmh_jar
-        self.jmh_name = args.jmh_name
-        return remaining
 
-    def getJMHEntry(self):
-        return ["-jar", self.jmhJAR()]
-
-    def jmhName(self):
-        if self.jmh_name is None:
-            mx.abort("Please use the --jmh-name benchmark suite argument to set the name of the JMH suite.")
-        return self.jmh_name
-
-    def jmhJAR(self):
-        if self.jmh_jar is None:
-            mx.abort("Please use the --jmh-jar benchmark suite argument to set the JMH jar file.")
-        jmh_jar = os.path.expanduser(self.jmh_jar)
-        if not exists(jmh_jar):
-            mx.abort("The --jmh-jar argument points to a non-existing file: " + jmh_jar)
-        return jmh_jar
-
-
-mx_benchmark.add_bm_suite(JMHBenchmarkJARSuite())
+mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
