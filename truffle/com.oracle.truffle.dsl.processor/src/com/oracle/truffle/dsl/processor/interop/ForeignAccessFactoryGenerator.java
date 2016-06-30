@@ -70,7 +70,7 @@ public final class ForeignAccessFactoryGenerator {
         Writer w = factoryFile.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
-        w.append("final class ").append(simpleClassName);
+        w.append("public final class ").append(simpleClassName);
         w.append(" implements Factory10, Factory {\n");
 
         appendSingletonAndGetter(w);
