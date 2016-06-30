@@ -27,12 +27,12 @@ package com.oracle.truffle.api.instrumentation;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * Represents a source load event from a {@link LoadSourceEventListener}.
+ * Represents a source load event from a {@link LoadSourceListener}.
  *
  * Instances of {@link LoadSourceEvent} should be neither stored, cached nor hashed. The equality
  * and hashing behavior is undefined.
  *
- * @see LoadSourceEventListener
+ * @see LoadSourceListener
  * @since 0.15
  */
 public final class LoadSourceEvent {

@@ -28,12 +28,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents a source section load event from a {@link LoadSourceSectionEventListener}.
+ * Represents a source section load event from a {@link LoadSourceSectionListener}.
  *
  * Instances of {@link LoadSourceSectionEvent} should be neither stored, cached nor hashed. The
  * equality and hashing behavior is undefined.
  *
- * @see LoadSourceSectionEventListener
+ * @see LoadSourceSectionListener
  * @since 0.15
  */
 public final class LoadSourceSectionEvent {

@@ -300,7 +300,7 @@ final class InstrumentationHandler {
     private static void notifySourceBindingLoaded(EventBinding<?> binding, Source source) {
         if (!binding.isDisposed() && binding.isInstrumentedSource(source)) {
             try {
-                ((LoadSourceEventListener) binding.getElement()).onLoad(new LoadSourceEvent(source));
+                ((LoadSourceListener) binding.getElement()).onLoad(new LoadSourceEvent(source));
             } catch (Throwable t) {
                 if (binding.isLanguageBinding()) {
                     throw t;
@@ -312,7 +312,7 @@ final class InstrumentationHandler {
     }
 
     static void notifySourceSectionLoaded(EventBinding<?> binding, Node node, SourceSection section) {
-        LoadSourceSectionEventListener listener = (LoadSourceSectionEventListener) binding.getElement();
+        LoadSourceSectionListener listener = (LoadSourceSectionListener) binding.getElement();
         try {
             listener.onLoad(new LoadSourceSectionEvent(section, node));
         } catch (Throwable t) {
@@ -929,14 +929,14 @@ final class InstrumentationHandler {
         }
 
         @Override
-        public <T extends LoadSourceEventListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
+        public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifySourceOnly(filter);
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceListener(this, filter, listener, notifyLoaded);
         }
 
         @Override
-        public <T extends LoadSourceSectionEventListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
+        public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
         }
