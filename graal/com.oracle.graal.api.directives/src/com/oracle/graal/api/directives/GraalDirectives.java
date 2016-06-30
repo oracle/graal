@@ -410,13 +410,21 @@ public final class GraalDirectives {
     }
 
     /**
-     * @return an integer representing a control flow path taken for a @Snippet. This method is
-     *         valid only if invoked within an instrumentation (see
-     *         {@link #instrumentationBeginForPredecessor()} and {@link #instrumentationEnd()}), and
-     *         the associated target node of the instrumentation is a preceding node that will be
-     *         substituted by a @Snippet with multiple control flow paths. It will be replaced with
-     *         a ValuePhiNode with constant integer inputs [0, N-1], where N denotes the number of
-     *         control flow paths of the snippet.
+     * @return an integer representing a control flow path taken for allocation or synchronization
+     *         optimizations in the compiled code. This method is valid only if invoked within an
+     *         instrumentation (see {@link #instrumentationBeginForPredecessor()} and
+     *         {@link #instrumentationEnd()}), and the associated target bytecode of the
+     *         instrumentation is {@code new} or {@code monitorenter}. In case of {@code new}, it
+     *         returns 0 if the allocation takes place at TLAB, or 1 if not. In case of
+     *         {@code monitorenter}, when the flag {@code UseBiasedLocking} is enabled, it returns
+     *         [0-10], indicating the following lock status: {@code bias existing} (0),
+     *         {@code bias acquired} (1), {@code bias transfer} (2), {@code bias revoked} (3),
+     *         {@code bias epoch-expired} (4), {@code unbiasable & failed-cas} (5),
+     *         {@code bias disabled & failed-cas} (6), {@code unbiasable & cas recursive} (7),
+     *         {@code bias disabled & cas recursive} (8), {@code unbiasable & cas} (9),
+     *         {@code bias disabled & cas} (10); when the flag {@code UseBiasedLocking} is disabled,
+     *         it returns 0 for {@code failed-cas}, 1 for {@code cas recursive}, or 2 for
+     *         {@code cas}.
      */
     public static int controlFlowPath() {
         return -1;

@@ -27,13 +27,16 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeFlood;
+import com.oracle.graal.graph.NodeNodeMap;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopEndNode;
+import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -42,9 +45,9 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The {@code ControlFlowPathNode} represents an integer indicating which control flow path is taken
- * at a MergeNode. The MergeNode is targeted by the InstrumentationNode that this node belongs. Such
- * situation occurs when the InstrumentationNode originally targets a node that is substituted by a
- * snippet.
+ * between an {@link InstrumentationNode} and its target node. Note that if a target node is
+ * substituted by a snippet, the new target node will be the first control flow node of the inlined
+ * sub-graph.
  */
 @NodeInfo
 public final class ControlFlowPathNode extends FixedWithNextNode implements InstrumentationInliningCallback, LIRLowerable {
@@ -77,18 +80,75 @@ public final class ControlFlowPathNode extends FixedWithNextNode implements Inst
     public void preInlineInstrumentation(InstrumentationNode instrumentation) {
     }
 
+    /**
+     * The {@code PathFinder} identifies all paths between an {@link InstrumentationNode} and its
+     * target.
+     */
+    static class PathFinder {
+
+        private NodeNodeMap lastMerge; // keep track of the last preceding AbstractMergeNode for
+                                       // each FixedNode between the given InstrumentationNode and
+                                       // its target
+
+        PathFinder(InstrumentationNode instrumentation) {
+            lastMerge = new NodeNodeMap(instrumentation.graph());
+            NodeFlood cfgFlood = instrumentation.graph().createNodeFlood();
+            cfgFlood.add(instrumentation.getTarget());
+            // iterate through the control flow until the InstrumentationNode is met
+            for (Node current : cfgFlood) {
+                if (current instanceof LoopEndNode || current instanceof InstrumentationNode) {
+                    // do nothing
+                } else if (current instanceof AbstractEndNode) {
+                    AbstractMergeNode merge = ((AbstractEndNode) current).merge();
+                    cfgFlood.add(merge);
+                    lastMerge.put(merge, merge);
+                } else {
+                    for (Node successor : current.successors()) {
+                        cfgFlood.add(successor);
+                        AbstractMergeNode merge = (AbstractMergeNode) lastMerge.get(current);
+                        if (merge != null) {
+                            lastMerge.put(successor, merge);
+                        }
+                    }
+                }
+            }
+        }
+
+        private int pathIndex = 0;
+
+        /**
+         * Create a {@link ValuePhiNode} that represents the taken path for the given
+         * {@link AbstractMergeNode}.
+         */
+        ValuePhiNode createPhi(AbstractMergeNode merge) {
+            ValuePhiNode phi = merge.graph().addWithoutUnique(new ValuePhiNode(StampFactory.intValue(), merge));
+            for (EndNode end : merge.cfgPredecessors()) {
+                AbstractMergeNode mergeForEnd = (AbstractMergeNode) lastMerge.get(end);
+                if (mergeForEnd != null) {
+                    phi.addInput(createPhi(mergeForEnd));
+                } else {
+                    phi.addInput(ConstantNode.forInt(pathIndex++, merge.graph()));
+                }
+            }
+            return phi;
+        }
+
+        AbstractMergeNode getLastMerge(Node node) {
+            return (AbstractMergeNode) lastMerge.get(node);
+        }
+
+    }
+
     @Override
     public void postInlineInstrumentation(InstrumentationNode instrumentation) {
-        if (instrumentation.getTarget() instanceof AbstractMergeNode) {
-            AbstractMergeNode merge = (AbstractMergeNode) instrumentation.getTarget();
-            if (isCFGAccessible(merge, instrumentation)) { // ensure the scheduling
+        ValueNode target = instrumentation.getTarget();
+        if (target != null) {
+            PathFinder pathFinder = new PathFinder(instrumentation);
+            AbstractMergeNode merge = pathFinder.getLastMerge(instrumentation);
+            if (merge != null && isCFGAccessible(merge, instrumentation)) { // ensure the scheduling
                 // create a ValuePhiNode selecting between constant integers that represent the
                 // control flow paths
-                ValuePhiNode phi = graph().addWithoutUnique(new ValuePhiNode(StampFactory.intValue(), merge));
-                for (int i = 0; i < merge.cfgPredecessors().count(); i++) {
-                    phi.addInput(ConstantNode.forInt(i, merge.graph()));
-                }
-                graph().replaceFixedWithFloating(this, phi);
+                graph().replaceFixedWithFloating(this, pathFinder.createPhi(merge));
                 return;
             }
         }
