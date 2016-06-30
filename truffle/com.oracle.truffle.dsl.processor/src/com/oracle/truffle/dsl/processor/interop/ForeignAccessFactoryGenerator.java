@@ -118,12 +118,12 @@ public final class ForeignAccessFactoryGenerator {
             allocation = "ForeignAccess.create(null, new " + simpleClassName + "());";
         }
         w.append("  public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
-        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append("}\n");
+        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append(" }\n");
         w.append("\n");
     }
 
     private void appendPrivateConstructor(Writer w) throws IOException {
-        w.append("  private ").append(simpleClassName).append("(){}").append("\n");
+        w.append("  private ").append(simpleClassName).append("() { }").append("\n");
         w.append("\n");
     }
 
