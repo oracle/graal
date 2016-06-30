@@ -49,4 +49,24 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMLog extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.log(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMLog10 extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.log10(value);
+        }
+
+    }
+
 }
