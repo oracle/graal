@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 
 public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
@@ -178,6 +179,16 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
     @Test
     public void testPeel() {
         test("preventPeelSnippet", 42);
+    }
+
+    /**
+     * Cloning a ControlFlowAnchorNode is not allowed but cloning a whole graph containing one is
+     * ok.
+     */
+    @Test
+    public void testClone() {
+        StructuredGraph g = parseEager("preventPeelSnippet", AllowAssumptions.NO);
+        g.copy();
     }
 
     private static List<NodeCount> getNodeCountAnnotations(StructuredGraph graph) {
