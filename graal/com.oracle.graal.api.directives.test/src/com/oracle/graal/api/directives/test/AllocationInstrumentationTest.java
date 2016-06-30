@@ -59,21 +59,21 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
         }
     }
 
-    public static boolean flag;
+    public static boolean allocationWasExecuted;
 
     public static void resetFlag() {
-        flag = false;
+        allocationWasExecuted = false;
     }
 
     static void instrumentation() {
         GraalDirectives.instrumentationBeginForPredecessor();
-        flag = true;
+        allocationWasExecuted = true;
         GraalDirectives.instrumentationEnd();
     }
 
     public static void notEscapeSnippet() {
         @SuppressWarnings("unused")
-        ClassA a = new ClassA(); // there is no further use of a
+        ClassA a = new ClassA(); // a does not escape
     }
 
     @Test
@@ -87,7 +87,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             // the instrumentation is removed.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            Assert.assertFalse("expected flag=false", flag);
+            Assert.assertFalse("allocation should not take place", allocationWasExecuted);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }
@@ -95,7 +95,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     public static void mustEscapeSnippet() {
         ClassA a = new ClassA();
-        a.notInlinedMethod();
+        a.notInlinedMethod(); // a escapses
     }
 
     @Test
@@ -105,10 +105,10 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "mustEscapeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
-            // The allocation in the snippet escapes. We expect the instrumentation preserves.
+            // The allocation in the snippet escapes. We expect the instrumentation is preserved.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            Assert.assertTrue("expected flag=true", flag);
+            Assert.assertTrue("allocation should take place", allocationWasExecuted);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }
@@ -118,7 +118,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
         ClassA a = new ClassA();
 
         if (condition) {
-            a.notInlinedMethod();
+            a.notInlinedMethod(); // a escapes in the then-clause
         }
     }
 
@@ -134,9 +134,9 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             // the then-clause is taken.
             InstalledCode code = getCode(method);
             code.executeVarargs(false);
-            Assert.assertFalse("expected flag=false", flag);
+            Assert.assertFalse("allocation should not take place", allocationWasExecuted);
             code.executeVarargs(true);
-            Assert.assertTrue("expected flag=true", flag);
+            Assert.assertTrue("allocation should take place", allocationWasExecuted);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }
