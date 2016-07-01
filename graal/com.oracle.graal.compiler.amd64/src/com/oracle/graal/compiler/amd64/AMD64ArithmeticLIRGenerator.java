@@ -910,21 +910,24 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitMathCos(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), COS, result, getLIRGen().asAllocatable(input)));
+        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), COS, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 
     @Override
     public Value emitMathSin(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), SIN, result, getLIRGen().asAllocatable(input)));
+        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), SIN, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 
     @Override
     public Value emitMathTan(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), TAN, result, getLIRGen().asAllocatable(input)));
+        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), TAN, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 

@@ -94,6 +94,9 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         }
         link(new AMD64MathStub(ARITHMETIC_LOG_STUB, providers, registerStubCall(ARITHMETIC_LOG_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         link(new AMD64MathStub(ARITHMETIC_LOG10_STUB, providers, registerStubCall(ARITHMETIC_LOG10_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_SIN_STUB, providers, registerStubCall(ARITHMETIC_SIN_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_COS_STUB, providers, registerStubCall(ARITHMETIC_COS_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_TAN_STUB, providers, registerStubCall(ARITHMETIC_TAN_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
 
         if (config.useCRC32Intrinsics) {
             // This stub does callee saving
