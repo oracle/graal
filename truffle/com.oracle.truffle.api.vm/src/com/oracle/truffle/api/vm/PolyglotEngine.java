@@ -449,8 +449,8 @@ public class PolyglotEngine {
 
     /**
      * Evaluates provided source. Chooses language registered for a particular
-     * {@link Source#getMimeType() MIME type} (throws {@link IOException} if there is none). The
-     * language is then allowed to parse and execute the source.
+     * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
+     * none). The language is then allowed to parse and execute the source.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
