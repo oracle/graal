@@ -1546,30 +1546,36 @@ public abstract class TruffleTCK {
     /** @since 0.15 */
     @Test
     public void testRootNodeName() throws Exception {
+        final boolean[] isPrepared = new boolean[1];
+        final int[] haltCount = new int[1];
         final String name = applyNumbers();
-        final boolean[] eventHappened = new boolean[2];
+        final String[] actualName = new String[1];
         final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
             @Override
             protected void on(ExecutionEvent event) {
+                // Also happens when language loads prologue code
                 event.prepareStepInto();
-                eventHappened[0] = true;
             }
         };
         final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
             @Override
             protected void on(SuspendedEvent ev) {
-                assertEquals(name, ev.getNode().getRootNode().getName());
-                eventHappened[1] = true;
+                if (isPrepared[0]) {
+                    actualName[0] = ev.getNode().getRootNode().getName();
+                    haltCount[0] = haltCount[0] + 1;
+                }
             }
         };
         final Builder builder = PolyglotEngine.newBuilder().onEvent(onExec).onEvent(onHalted);
         final PolyglotEngine engine = prepareVM(builder);
+        // Code loaded, causing any language prologue code to be also loaded
+        isPrepared[0] = true;
         final PolyglotEngine.Value apply = engine.findGlobalSymbol(name);
         final int value = RANDOM.nextInt(100);
         final TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
         apply.execute(fn).as(Number.class);
-        assertTrue(eventHappened[0]);
-        assertTrue(eventHappened[1]);
+        assertEquals(1, haltCount[0]);
+        assertEquals(name, actualName[0]);
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {
