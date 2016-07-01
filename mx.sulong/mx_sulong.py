@@ -102,10 +102,6 @@ def travis1(args=None):
         if t: runTruffleTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
-    with Task('TestNWCC', tasks) as t:
-        if t: runNWCCTestCases()
-    with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: runCompileTestCases()
 
 def travis2(args=None):
     tasks = []
@@ -113,6 +109,15 @@ def travis2(args=None):
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('TestGCC', tasks) as t:
         if t: runGCCTestCases()
+
+def travis3(args=None):
+    tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestNWCC', tasks) as t:
+        if t: runNWCCTestCases()
+    with Task('TestGCCSuiteCompile', tasks) as t:
+        if t: runCompileTestCases()
 
 def travisJRuby(args=None):
     tasks = []
@@ -530,7 +535,7 @@ def getCommonOptions(lib_args=None):
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
-        lib_args = ['-lgmp', '-lgfortran']
+        lib_args = ['-lgmp', '-lgfortran', '-lpcre']
 
     lib_names = []
 
@@ -538,9 +543,9 @@ def getSearchPathOption(lib_args=None):
         '-lc': ['libc.so.6', 'libc.dylib'],
         '-lstdc++': ['libstdc++.so.6', 'libstdc++.6.dylib'],
         '-lgmp': ['libgmp.so.10', 'libgmp.10.dylib'],
-        '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib']
+        '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib'],
+        '-lpcre': ['libpcre.so', 'libpcre.dylib']
     }
-
     osStr = mx.get_os()
     index = {'linux': 0, 'darwin': 1}[mx.get_os()]
     if index is None:
@@ -728,7 +733,7 @@ def gccBench(args=None):
     return mx.run(['./a.out'])
 
 def standardLinkerCommands(args=None):
-    return ['-lm', '-lgmp']
+    return ['-lm', '-lgmp', '-lpcre']
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
@@ -817,6 +822,7 @@ mx.update_commands(_suite, {
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
+    'su-travis3' : [travis3, ''],
     'su-travis-jruby' : [travisJRuby, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],

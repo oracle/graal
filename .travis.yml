@@ -52,5 +52,6 @@ env:
   - TEST_COMMAND='mx su-clangformatcheck && mx eclipseformat --primary && mx su-mdlcheck && mx su-gitlogcheck && mx pylint && mx checkstyle && mx checkoverlap && mx canonicalizeprojects'
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
+  - TEST_COMMAND='mx su-travis3'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
