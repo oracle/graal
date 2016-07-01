@@ -22,16 +22,27 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_COS_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
+
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.DefaultHotSpotLoweringProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.amd64.AMD64ConvertSnippets;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -58,6 +69,34 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
             convertSnippets.lower((FloatConvertNode) n, tool);
         } else {
             super.lower(n, tool);
+        }
+    }
+
+    @Override
+    protected ForeignCallDescriptor foreignCallForUnaryOperation(UnaryOperation operation) {
+        if (GraalArithmeticStubs.getValue() && (operation == UnaryOperation.LOG || operation == UnaryOperation.LOG10)) {
+            return stubForOperation(operation);
+        }
+        // Lower only using LIRGenerator
+        return null;
+    }
+
+    private static ForeignCallDescriptor stubForOperation(UnaryOperation operation) {
+        switch (operation) {
+            case LOG:
+                return ARITHMETIC_LOG_STUB;
+            case LOG10:
+                return ARITHMETIC_LOG10_STUB;
+            case EXP:
+                return ARITHMETIC_EXP_STUB;
+            case SIN:
+                return ARITHMETIC_SIN_STUB;
+            case COS:
+                return ARITHMETIC_COS_STUB;
+            case TAN:
+                return ARITHMETIC_TAN_STUB;
+            default:
+                throw GraalError.shouldNotReachHere();
         }
     }
 }

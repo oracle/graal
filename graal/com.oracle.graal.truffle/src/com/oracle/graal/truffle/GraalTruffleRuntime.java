@@ -233,6 +233,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return loopNodeFactory;
     }
 
+    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
+        CompilationPolicy compilationPolicy;
+        if (acceptForCompilation(rootNode)) {
+            compilationPolicy = new CounterAndTimeBasedCompilationPolicy();
+        } else {
+            compilationPolicy = new InterpreterOnlyCompilationPolicy();
+        }
+        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, compilationPolicy, speculationLog);
+        rootNode.setCallTarget(target);
+        tvmci.onLoad(target.getRootNode());
+        return target;
+    }
+
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {

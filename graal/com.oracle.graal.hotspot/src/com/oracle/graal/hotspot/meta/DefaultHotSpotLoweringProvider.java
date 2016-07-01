@@ -374,13 +374,16 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
 
         }
-        StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
+        ForeignCallDescriptor foreignCall = foreignCallForUnaryOperation(math.getOperation());
+        if (foreignCall != null) {
+            StructuredGraph graph = math.graph();
+            ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, foreignCall, math.getValue()));
+            graph.addAfterFixed(tool.lastFixedNode(), call);
+            math.replaceAtUsages(call);
+        }
     }
 
-    private static ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
+    protected ForeignCallDescriptor foreignCallForUnaryOperation(UnaryOperation operation) {
         switch (operation) {
             case LOG:
                 return ARITHMETIC_LOG;
