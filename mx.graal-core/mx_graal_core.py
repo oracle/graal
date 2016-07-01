@@ -107,15 +107,7 @@ if isJDK8:
 
     #: The deployed Graal distributions
     _jvmci_classpath = [
-        JVMCIClasspathEntry('GRAAL_OPTIONS'),
-        JVMCIClasspathEntry('GRAAL_NODEINFO'),
-        JVMCIClasspathEntry('GRAAL_SERVICEPROVIDER'),
-        JVMCIClasspathEntry('GRAAL_API'),
-        JVMCIClasspathEntry('GRAAL_COMPILER'),
-        JVMCIClasspathEntry('GRAAL_RUNTIME'),
-        JVMCIClasspathEntry('GRAAL_HOTSPOT'),
-        JVMCIClasspathEntry('GRAAL_TRUFFLE'),
-        JVMCIClasspathEntry('GRAAL_TRUFFLE_HOTSPOT'),
+        JVMCIClasspathEntry('GRAAL'),
     ]
 
     def add_jvmci_classpath_entry(entry):
