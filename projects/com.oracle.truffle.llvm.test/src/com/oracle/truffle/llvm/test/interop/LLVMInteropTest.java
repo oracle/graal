@@ -430,7 +430,7 @@ public final class LLVMInteropTest {
                 File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + fileName, ".ll");
                 Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
                 Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-                return engine.eval(Source.fromFileName(bcOptFile.getPath())).as(Integer.class);
+                return engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
             } catch (IOException e) {
                 throw new AssertionError(e);
             } finally {
