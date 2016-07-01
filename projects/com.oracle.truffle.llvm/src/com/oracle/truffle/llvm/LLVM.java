@@ -51,6 +51,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.MissingNameException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
@@ -226,7 +227,7 @@ public class LLVM {
         LLVMLogger.info("current file: " + file.getAbsolutePath());
         Source fileSource;
         try {
-            fileSource = Source.fromFileName(file.getAbsolutePath());
+            fileSource = Source.newBuilder(file).build();
             return evaluateFromSource(fileSource, args);
         } catch (IOException e) {
             throw new AssertionError(e);
@@ -234,9 +235,13 @@ public class LLVM {
     }
 
     public static int executeMain(String codeString, Object... args) {
-        Source fromText = Source.fromText(codeString, "code string").withMimeType(LLVMLanguage.LLVM_IR_MIME_TYPE);
-        LLVMLogger.info("current code string: " + codeString);
-        return evaluateFromSource(fromText, args);
+        try {
+            Source fromText = Source.newBuilder(codeString).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build();
+            LLVMLogger.info("current code string: " + codeString);
+            return evaluateFromSource(fromText, args);
+        } catch (MissingNameException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static int evaluateFromSource(Source fileSource, Object... args) {

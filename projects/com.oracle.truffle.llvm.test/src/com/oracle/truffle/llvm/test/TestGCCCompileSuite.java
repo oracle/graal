@@ -69,7 +69,7 @@ public class TestGCCCompileSuite extends TestSuiteBase {
             Builder engineBuilder = PolyglotEngine.newBuilder();
             engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
             PolyglotEngine build = engineBuilder.build();
-            build.eval(Source.fromFileName(tuple.getBitCodeFile().getAbsolutePath()));
+            build.eval(Source.newBuilder(tuple.getBitCodeFile()).build());
             recordTestCase(tuple, true);
         } catch (Throwable e) {
             recordError(tuple, e);
