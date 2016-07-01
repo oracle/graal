@@ -1816,12 +1816,8 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         ArrayDataPointerConstant piInvTablePtr = new ArrayDataPointerConstant(piInvTable, 16);
         ArrayDataPointerConstant piFourPtr = new ArrayDataPointerConstant(piFour, 16);
         ArrayDataPointerConstant piThirtyTwoInvPtr = new ArrayDataPointerConstant(piThirtyTwoInv, 8);
-        ArrayDataPointerConstant shifterPtr = new ArrayDataPointerConstant(shifter, 8);
         ArrayDataPointerConstant signMaskPtr = new ArrayDataPointerConstant(signMask, 8);
         ArrayDataPointerConstant pThreePtr = new ArrayDataPointerConstant(pThree, 8);
-        ArrayDataPointerConstant allOnesPtr = new ArrayDataPointerConstant(allOnes, 8);
-        ArrayDataPointerConstant twoPowFiftyFivePtr = new ArrayDataPointerConstant(twoPowFiftyFive, 8);
-        ArrayDataPointerConstant twoPowFiftyFiveMPtr = new ArrayDataPointerConstant(twoPowFiftyFiveM, 8);
         ArrayDataPointerConstant pOnePtr = new ArrayDataPointerConstant(pOne, 8);
         ArrayDataPointerConstant negZeroPtr = new ArrayDataPointerConstant(negZero, 8);
         ArrayDataPointerConstant onePtr = new ArrayDataPointerConstant(one, 8);
