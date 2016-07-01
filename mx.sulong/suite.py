@@ -294,6 +294,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "com.oracle.truffle.llvm.types"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
       "javaCompliance" : "1.8",

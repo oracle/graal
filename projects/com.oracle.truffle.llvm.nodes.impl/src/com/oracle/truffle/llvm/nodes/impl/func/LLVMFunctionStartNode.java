@@ -87,7 +87,7 @@ public class LLVMFunctionStartNode extends RootNode {
                     initNullers.add(new LLVMStackFrameNuller.LLVMDoubleNuller(slot));
                     break;
                 case Object:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMObjectNuller(slot));
+                    initNullers.add(new LLVMStackFrameNuller.LLVMAddressNuller(slot));
                     break;
                 case Illegal:
                     break;
