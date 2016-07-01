@@ -35,6 +35,13 @@ import java.io.Writer;
 
 final class TestSource {
 
+    static Source createBlock2(String sourceName) {
+        return Source.newBuilder("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n").name(sourceName + FILENAME_EXTENSION).mimeType(MIME_TYPE).build();
+    }
+
     static Source createBlock8(String sourceName) {
         return Source.newBuilder("ROOT(\n" +
                         "  STATEMENT,\n" +

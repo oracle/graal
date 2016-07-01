@@ -80,7 +80,7 @@ public class BreakpointTest extends AbstractDebugTest {
                 }
             }
         }).resume();
-        expectSuspendedEvent().checkState(3, true, "STATEMENT\n  ").resume();   // FIXME-SourceSection
+        expectSuspendedEvent().checkState(3, true, "STATEMENT").resume();
         getEngine().eval(test2);
         assertExecutedOK();
     }
