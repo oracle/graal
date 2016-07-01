@@ -155,12 +155,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         try {
             engine.eval(Source.newBuilder("ROOT(EXPRESSION)").name("unknown").mimeType("testLanguageInstrumentation").build());
             Assert.fail("expected exception");
-        } catch (IOException e) {
-            // we assert that MyLanguageException is not wrapped into
-            // InstrumentationException.
-            if (!(e.getCause() instanceof MyLanguageException)) {
-                Assert.fail(String.format("expected MyLanguageException but was %s in %s", e.getCause(), e));
-            }
+        } catch (MyLanguageException e) {
+            // we assert that MyLanguageException is not wrapped
         }
         Assert.assertEquals(1, TestLanguageInstrumentationLanguage.installInstrumentsCounter);
         Assert.assertEquals(1, TestLanguageInstrumentationLanguage.createContextCounter);
@@ -224,7 +220,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected CallTarget parse(final Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(final Source code, Node context, String... argumentNames) {
             return Truffle.getRuntime().createCallTarget(new RootNode(TestLanguageInstrumentationLanguage.class, null, null) {
 
                 @Child private BaseNode base = InstrumentationTestLanguage.parse(code);
@@ -841,7 +837,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected CallTarget parse(final Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(final Source code, Node context, String... argumentNames) {
             return Truffle.getRuntime().createCallTarget(new RootNode(TestIsNodeTaggedWith1Language.class, null, null) {
 
                 @Child private BaseNode base = InstrumentationTestLanguage.parse(code);

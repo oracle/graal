@@ -35,8 +35,8 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        throw new IOException();
+    protected CallTarget parse(Source code, Node context, String... argumentNames) {
+        throw new IllegalStateException();
     }
 
     @Override

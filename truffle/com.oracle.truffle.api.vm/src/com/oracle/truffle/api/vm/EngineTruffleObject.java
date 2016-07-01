@@ -33,7 +33,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.io.IOException;
 import java.util.Objects;
 
 final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory {
@@ -101,11 +100,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         @Override
         public Object execute(VirtualFrame frame) {
             EngineTruffleObject engineTruffleObject = (EngineTruffleObject) ForeignAccess.getReceiver(frame);
-            try {
-                return engineTruffleObject.engine.invokeForeign(foreignAccess, frame, engineTruffleObject.delegate);
-            } catch (IOException ex) {
-                throw new IllegalArgumentException(ex);
-            }
+            return engineTruffleObject.engine.invokeForeign(foreignAccess, frame, engineTruffleObject.delegate);
         }
     }
 

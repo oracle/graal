@@ -76,7 +76,7 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportFound() throws IOException {
+    public void explicitExportFound() {
         // @formatter:off
         vm.eval(Source.newBuilder("explicit.ahoj=42").name("Fourty two").mimeType(L1).build());
         Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
@@ -86,7 +86,7 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void implicitExportFound() throws IOException {
+    public void implicitExportFound() {
         // @formatter:off
         vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
@@ -97,7 +97,7 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferred2() throws IOException {
+    public void explicitExportPreferred2() {
         // @formatter:off
         vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
@@ -111,7 +111,7 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferred1() throws IOException {
+    public void explicitExportPreferred1() {
         // @formatter:off
         vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L1).build()
         );
@@ -191,7 +191,7 @@ public class ImplicitExplicitExportTest {
         }
 
         @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 

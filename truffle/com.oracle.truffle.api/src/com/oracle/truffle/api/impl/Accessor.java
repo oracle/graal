@@ -98,7 +98,7 @@ public abstract class Accessor {
     public abstract static class LanguageSupport {
         public abstract Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Object instrumenter, Map<String, Object> config);
 
-        public abstract Object eval(TruffleLanguage<?> l, Source s, Map<Source, CallTarget> cache) throws IOException;
+        public abstract Object eval(TruffleLanguage<?> l, Source s, Map<Source, CallTarget> cache);
 
         public abstract Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException;
 
@@ -175,8 +175,8 @@ public abstract class Accessor {
             }
 
             @Override
-            protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-                throw new IOException();
+            protected CallTarget parse(Source code, Node context, String... argumentNames) {
+                throw new IllegalStateException();
             }
 
             @Override

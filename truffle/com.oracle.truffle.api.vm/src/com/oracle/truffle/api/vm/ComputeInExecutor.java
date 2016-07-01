@@ -24,11 +24,7 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.util.concurrent.Executor;
-
-import com.oracle.truffle.api.interop.InteropException;
 
 abstract class ComputeInExecutor<R> implements Runnable {
     private final Executor executor;
@@ -41,9 +37,9 @@ abstract class ComputeInExecutor<R> implements Runnable {
         this.executor = executor;
     }
 
-    protected abstract R compute() throws IOException;
+    protected abstract R compute();
 
-    public final R get() throws IOException {
+    public final R get() {
         perform();
         if (executor != null) {
             waitForDone();
@@ -52,34 +48,24 @@ abstract class ComputeInExecutor<R> implements Runnable {
         return result;
     }
 
-    private void waitForDone() throws InterruptedIOException {
+    private void waitForDone() {
         synchronized (this) {
             while (!done) {
                 try {
                     wait();
                 } catch (InterruptedException ex) {
-                    throw new InterruptedIOException(ex.getMessage());
                 }
             }
         }
     }
 
-    private void exceptionCheck() throws IOException, RuntimeException {
-        if (exception instanceof IOException) {
-            throw (IOException) exception;
-        }
-        if (exception instanceof InteropException) {
-            throw ((InteropException) exception).raise();
-        }
-        if (exception instanceof RuntimeException) {
-            throw (RuntimeException) exception;
-        }
+    private void exceptionCheck() throws RuntimeException {
         if (exception != null) {
-            throw new RuntimeException(exception);
+            throw raise(RuntimeException.class, exception);
         }
     }
 
-    public final void perform() throws IOException {
+    public final void perform() {
         if (started) {
             return;
         }
@@ -113,5 +99,10 @@ abstract class ComputeInExecutor<R> implements Runnable {
     @Override
     public final String toString() {
         return "value=" + result + ",exception=" + exception + ",computed=" + done;
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    static <E extends Throwable> E raise(Class<E> castTo, Throwable ex) throws E {
+        throw (E) ex;
     }
 }

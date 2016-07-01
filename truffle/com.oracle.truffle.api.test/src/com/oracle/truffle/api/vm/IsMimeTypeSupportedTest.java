@@ -24,8 +24,6 @@ package com.oracle.truffle.api.vm;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.IOException;
-
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -48,7 +46,7 @@ public class IsMimeTypeSupportedTest {
     }
 
     @Test
-    public void isMimeSupported() throws IOException {
+    public void isMimeSupported() {
         assertEquals(true, vm.eval(Source.newBuilder(MIME_TYPE).name("supported").mimeType(MIME_TYPE).build()).as(Boolean.class));
         assertEquals(false, vm.eval(Source.newBuilder("application/x-this-language-does-not-exist").name("unsupported").mimeType(MIME_TYPE).build()).as(Boolean.class));
     }

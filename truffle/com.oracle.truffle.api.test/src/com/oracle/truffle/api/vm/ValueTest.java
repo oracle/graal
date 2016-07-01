@@ -29,7 +29,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -74,7 +73,7 @@ public class ValueTest implements Executor {
             value = language1.eval(Source.newBuilder("parse=does not work").name("error.value").mimeType("content/unknown").build());
             Object res = value.get();
             fail("Should throw an exception: " + res);
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             assertTrue("Message contains the right text: " + ex.getMessage(), ex.getMessage().contains("does not work"));
         }
 

@@ -26,7 +26,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.Test;
@@ -89,8 +88,8 @@ public class EngineTest {
         try {
             PolyglotEngine.Value value = language1.eval(Source.newBuilder("throwInteropException").name("interopTest").mimeType("content/unknown").build());
             value.as(Object.class);
-        } catch (IOException e) {
-            if (e.getCause() instanceof InteropException) {
+        } catch (Exception e) {
+            if (e instanceof InteropException) {
                 return;
             }
             Assert.fail(String.format("expected InteropException but was %s in %s", e.getCause(), e));
@@ -99,7 +98,7 @@ public class EngineTest {
     }
 
     @Test
-    public void checkCachingOfNodes() throws IOException {
+    public void checkCachingOfNodes() {
         PolyglotEngine vm1 = createBuilder().build();
         register(vm1);
         PolyglotEngine vm2 = createBuilder().executor(Executors.newSingleThreadExecutor()).build();
@@ -170,7 +169,7 @@ public class EngineTest {
     }
 
     @Test
-    public void engineConfigBasicAccess() throws IOException {
+    public void engineConfigBasicAccess() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -199,7 +198,7 @@ public class EngineTest {
     }
 
     @Test
-    public void engineConfigShouldBeReadOnly() throws IOException {
+    public void engineConfigShouldBeReadOnly() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -219,7 +218,7 @@ public class EngineTest {
     }
 
     @Test
-    public void secondValueWins() throws IOException {
+    public void secondValueWins() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -232,7 +231,7 @@ public class EngineTest {
     }
 
     @Test
-    public void secondValueWins2() throws IOException {
+    public void secondValueWins2() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-2", "hello", "world");
         builder.config("application/x-test-import-export-2", "hello", "truffle");
@@ -245,7 +244,7 @@ public class EngineTest {
     }
 
     @Test
-    public void altValueWins() throws IOException {
+    public void altValueWins() {
         Builder builder = createBuilder();
         builder.config(L1, "hello", "truffle");
         builder.config(L1_ALT, "hello", "world");
@@ -258,7 +257,7 @@ public class EngineTest {
     }
 
     @Test
-    public void altValueWins2() throws IOException {
+    public void altValueWins2() {
         Builder builder = createBuilder();
         builder.config(L1_ALT, "hello", "truffle");
         builder.config(L1, "hello", "world");
@@ -271,7 +270,7 @@ public class EngineTest {
     }
 
     @Test
-    public void configIsNeverNull() throws IOException {
+    public void configIsNeverNull() {
         Builder builder = createBuilder();
         PolyglotEngine vm = builder.build();
         register(vm);
@@ -286,7 +285,7 @@ public class EngineTest {
     }
 
     @Test
-    public void exampleOfConfiguration() throws IOException {
+    public void exampleOfConfiguration() {
         // @formatter:off
         String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
         Builder builder = PolyglotEngine.newBuilder();

@@ -334,7 +334,7 @@ public final class REPLServer {
             }
         }
 
-        void eval(Source source, boolean stepInto) throws IOException {
+        void eval(Source source, boolean stepInto) {
             this.steppingInto = stepInto;
             try {
                 engine.eval(source);

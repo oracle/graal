@@ -28,7 +28,6 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
@@ -81,7 +80,7 @@ class ExecWithTimeOut extends EventConsumer<SuspendedEvent> //
                     ScheduledExecutorService executor, // run us later
                     PolyglotEngine.Value function, // unknown function
                     Object parameter // parameter of the function
-    ) throws IOException {
+    ) {
         initTimeOut(executor);
         Throwable caught = null;
         try {

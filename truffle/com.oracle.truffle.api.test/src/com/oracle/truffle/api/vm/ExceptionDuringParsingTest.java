@@ -28,8 +28,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,7 +55,7 @@ public class ExceptionDuringParsingTest {
         try {
             vm.eval(src);
             fail("Exception thrown");
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             assertEquals(ex.getMessage(), "No, no, no!");
         }
 
