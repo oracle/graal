@@ -91,7 +91,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final GraalHotSpotVMConfig config;
 
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
+    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime) {
 
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = new GraalHotSpotVMConfig(store);
@@ -102,12 +102,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
         }
 
-        CompilerConfiguration compilerConfiguration = compilerFactory.createCompilerConfiguration();
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory();
+        CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
 
         JVMCIBackend hostJvmciBackend = jvmciRuntime.getHostJVMCIBackend();
         Architecture hostArchitecture = hostJvmciBackend.getTarget().arch;
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
-            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(hostArchitecture);
+            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(hostArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
@@ -120,7 +121,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
 
             Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
-            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(gpuArchitecture);
+            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(gpuArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }

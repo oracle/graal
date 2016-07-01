@@ -41,16 +41,16 @@ import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.serviceprovider.GraalServices;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.services.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
+import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
 
-public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
+@ServiceProvider(JVMCICompilerFactory.class)
+public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
     /**
      * The name of the system property specifying a file containing extra Graal option settings.
@@ -77,6 +77,11 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
     }
 
     @Override
+    public String getCompilerName() {
+        return "graal";
+    }
+
+    @Override
     public void onSelection() {
         initializeOptions();
         JVMCIVersionCheck.check(false);
@@ -92,22 +97,6 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
         public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(true);
         // @formatter:on
 
-    }
-
-    @SuppressWarnings("try")
-    private static class Lazy {
-
-        static {
-            try (InitTimer t = timer("HotSpotBackendFactory.register")) {
-                for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
-                    backend.register();
-                }
-            }
-        }
-
-        static void registerBackends() {
-            // force run of static initializer
-        }
     }
 
     private static boolean optionsInitialized;
@@ -182,17 +171,12 @@ public abstract class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFa
         }
     }
 
-    protected abstract HotSpotBackendFactory getBackendFactory(Architecture arch);
-
-    protected abstract CompilerConfiguration createCompilerConfiguration();
-
     @SuppressWarnings("try")
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            Lazy.registerBackends();
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, this);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime);
             HotSpotGraalVMEventListener.addRuntime(graalRuntime);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }

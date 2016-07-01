@@ -28,7 +28,8 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
 import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
-import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.CompilerConfigurationFactory;
+import com.oracle.graal.hotspot.DefaultCompilerConfigurationFactory;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -55,6 +56,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -71,8 +73,13 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
-    public void register() {
-        DefaultHotSpotGraalCompilerFactory.registerBackend(AArch64.class, this);
+    public Class<? extends Architecture> getArchitecture() {
+        return AArch64.class;
+    }
+
+    @Override
+    public boolean isAssociatedWith(CompilerConfigurationFactory factory) {
+        return factory instanceof DefaultCompilerConfigurationFactory;
     }
 
     @Override

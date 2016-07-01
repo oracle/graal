@@ -22,37 +22,23 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.util.IdentityHashMap;
-
-import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
+import com.oracle.graal.compiler.phases.EconomyCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
+@ServiceProvider(CompilerConfigurationFactory.class)
+public class EconomyCompilerConfigurationFactory extends DefaultCompilerConfigurationFactory {
 
-@ServiceProvider(JVMCICompilerFactory.class)
-public class DefaultHotSpotGraalCompilerFactory extends HotSpotGraalCompilerFactory {
+    public static final String NAME = "economy";
 
-    private static IdentityHashMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = new IdentityHashMap<>();
+    public static final int AUTO_SELECTION_PRIORITY = 1;
 
-    public static void registerBackend(Class<? extends Architecture> arch, HotSpotBackendFactory factory) {
-        assert !backends.containsKey(arch) : "duplicate graal backend";
-        backends.put(arch, factory);
-    }
-
-    @Override
-    public String getCompilerName() {
-        return "graal";
+    public EconomyCompilerConfigurationFactory() {
+        super(NAME, AUTO_SELECTION_PRIORITY);
     }
 
     @Override
     protected CompilerConfiguration createCompilerConfiguration() {
-        return new BasicCompilerConfiguration();
-    }
-
-    @Override
-    protected HotSpotBackendFactory getBackendFactory(Architecture arch) {
-        return backends.get(arch.getClass());
+        return new EconomyCompilerConfiguration();
     }
 }

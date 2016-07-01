@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,29 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import com.oracle.graal.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+@ServiceProvider(CompilerConfigurationFactory.class)
+public class DefaultCompilerConfigurationFactory extends CompilerConfigurationFactory {
 
-public interface HotSpotBackendFactory {
+    public static final String NAME = "default";
 
-    /**
-     * Gets the class describing the architecture the backend created by this factor is associated
-     * with.
-     */
-    Class<? extends Architecture> getArchitecture();
+    public static final int AUTO_SELECTION_PRIORITY = 2;
 
-    /**
-     * Determines if this backend factory is associated with a given compiler configuration factory.
-     */
-    boolean isAssociatedWith(CompilerConfigurationFactory factory);
+    public DefaultCompilerConfigurationFactory(String selector, int autoSelectionPriority) {
+        super(selector, autoSelectionPriority);
+        assert !NAME.equals(selector);
+        assert autoSelectionPriority != AUTO_SELECTION_PRIORITY;
+    }
 
-    HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
+    public DefaultCompilerConfigurationFactory() {
+        super(NAME, AUTO_SELECTION_PRIORITY);
+    }
+
+    @Override
+    protected CompilerConfiguration createCompilerConfiguration() {
+        return new BasicCompilerConfiguration();
+    }
 }
