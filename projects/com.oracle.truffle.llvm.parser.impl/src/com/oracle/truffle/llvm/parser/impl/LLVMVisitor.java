@@ -132,7 +132,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMObjectNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -570,7 +570,14 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             case Double:
                 return new LLVMDoubleNuller(slot);
             case Object:
-                return new LLVMObjectNuller(slot);
+                /**
+                 * It would be cleaner do not distinct between the frame slot kinds but the variable
+                 * type. We cannot simply set the object to null, since phis that have null and
+                 * other Object's inside escape and are allocated. We set a null address here, since
+                 * other Sulong data types that use Object are implement inefficiently anyway. In
+                 * the long term, they should have their own stack nuller.
+                 */
+                return new LLVMAddressNuller(slot);
             case Illegal:
                 throw new AssertionError("illegal");
             default:
