@@ -78,8 +78,8 @@ suite = {
     },
 
     "C1VISUALIZER_DIST" : {
-      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2015-07-22.zip"],
-      "sha1" : "7ead6b2f7ed4643ef4d3343a5562e3d3f39564ac",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/c1visualizer/c1visualizer-1.4.zip"],
+      "sha1" : "9e929537a2df6daa80182828f18b12966dda9f86",
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
