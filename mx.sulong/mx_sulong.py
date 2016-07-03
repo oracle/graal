@@ -506,6 +506,7 @@ def runAsmTestCases(args=None):
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
+    ensureGCCSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
 
