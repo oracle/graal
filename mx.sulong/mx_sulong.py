@@ -506,6 +506,7 @@ def runAsmTestCases(args=None):
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
+    ensureGCCSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
 
@@ -741,7 +742,7 @@ def mdlCheck(args=None):
         for f in files:
             if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
                 absPath = path + '/' + f
-                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032', absPath])
+                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032,~MD033', absPath])
 
 def getBitcodeLibrariesOption():
     libraries = []
