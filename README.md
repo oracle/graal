@@ -58,6 +58,21 @@ Then, download mx, which is the build tool used by Sulong:
     git clone https://github.com/graalvm/mx
     export PATH=$PWD/mx:$PATH
 
+Next, you need a JVMCI compatible JDK that you can download from
+[OTN](http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jdk-8u92-linux-x64.tar.gz).
+Extract it inside the `graalvm` directory:
+
+    tar -zxf jdk-8u92-linux-x64.tar.gz
+
+Clone JVMCI inside the Graal VM directory and enable it in the downloaded
+JDK:
+
+    hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8
+    cd graal-jvmci-8
+    mx --java-home `pwd`/../jdk1.8.0_92/ build
+    export JAVA_HOME=$(mx --java-home `pwd`/../jdk1.8.0_92 jdkhome)
+    cd ..
+
 Afterwards, use git to clone the Sulong project and its dependencies:
 
     git clone https://github.com/graalvm/sulong
