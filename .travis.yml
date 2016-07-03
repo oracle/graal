@@ -1,8 +1,7 @@
 cache:
   directories:
-  - projects/com.oracle.truffle.llvm.test/suites
   - projects/com.oracle.truffle.llvm.tools/tools
-  - graal-jvmci-8/
+  - graal-jvmci-8
 sudo: required
 language: java
 python:
