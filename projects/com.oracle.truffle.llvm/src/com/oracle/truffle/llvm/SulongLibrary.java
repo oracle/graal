@@ -38,7 +38,6 @@ import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import com.oracle.truffle.api.source.MissingMIMETypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 
@@ -86,11 +85,7 @@ public class SulongLibrary {
                         }
                     }
                 } else {
-                    try {
-                        handleSource.accept(Source.newBuilder(string).name(file.getPath() + "@" + zipEntry.getName()).build());
-                    } catch (MissingMIMETypeException e) {
-                        throw new AssertionError(e);
-                    }
+                    handleSource.accept(Source.newBuilder(string).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build());
                 }
                 zipEntry = zipStream.getNextEntry();
             }
