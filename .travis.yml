@@ -38,7 +38,7 @@ install:
   - export PATH=`pwd`/mx:$PATH
   - 'wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jdk-8u92-linux-x64.tar.gz'
   - tar -zxf jdk-8u92-linux-x64.tar.gz
-  - if [ -d graal-jvmci-8/.hg ]; then cd graal-jvmci-8/ && hg pull && hg update; else hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8; fi;
+  - if [ -d graal-jvmci-8/.hg ]; then cd graal-jvmci-8 && hg pull && hg update && cd ..; else hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8; fi;
   - cd graal-jvmci-8
   - mx --java-home `pwd`/../jdk1.8.0_92/ build
   - export JAVA_HOME=$(mx --java-home `pwd`/../jdk1.8.0_92 jdkhome)
