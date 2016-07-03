@@ -59,7 +59,7 @@ Then, download mx, which is the build tool used by Sulong:
     export PATH=$PWD/mx:$PATH
 
 Next, you need a JVMCI compatible JDK that you can download from
-[OTN](http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jdk-8u92-linux-x64.tar.gz).
+[OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `graalvm` directory:
 
     tar -zxf jdk-8u92-linux-x64.tar.gz
