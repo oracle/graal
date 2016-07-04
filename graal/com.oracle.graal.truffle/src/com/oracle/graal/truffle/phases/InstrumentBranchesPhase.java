@@ -26,7 +26,6 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentB
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -60,20 +59,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    private static final Field ACCESS_TABLE_JAVA_FIELD;
+    private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
-
-    static {
-        Field javaField = null;
-        try {
-            javaField = InstrumentBranchesPhase.class.getField("ACCESS_TABLE");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        ACCESS_TABLE_JAVA_FIELD = javaField;
-    }
 
     private final MethodFilter[] methodFilter;
 
@@ -88,7 +77,14 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
+        ResolvedJavaField[] fields = context.getMetaAccess().lookupJavaType(InstrumentBranchesPhase.class).getStaticFields();
+        ResolvedJavaField tableField = null;
+        for (ResolvedJavaField field : fields) {
+            if (field.getName().equals(ACCESS_TABLE_FIELD_NAME)) {
+                tableField = field;
+                break;
+            }
+        }
         JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
         try {
             for (IfNode n : graph.getNodes().filter(IfNode.class)) {

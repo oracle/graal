@@ -88,7 +88,6 @@ import com.oracle.graal.truffle.substitutions.TruffleInvocationPluginProvider;
 import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import jdk.vm.ci.code.Architecture;
@@ -458,11 +457,7 @@ public class PartialEvaluator {
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);
 
-        if (TruffleOptions.AOT) {
-            assert !TruffleCompilerOptions.TruffleInstrumentBranches.getValue() : "TruffleCompilerOptions.TruffleInstrumentBranches cannot be used in AOT mode";
-        } else if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue()) {
-            new InstrumentBranchesPhase().apply(graph, tierContext);
-        }
+        new InstrumentBranchesPhase().apply(graph, tierContext);
 
         graph.maybeCompress();
 
