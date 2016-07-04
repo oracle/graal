@@ -171,12 +171,24 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         }
     }
 
-    @SuppressWarnings("try")
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
+        return createCompiler(runtime, null);
+    }
+
+    /**
+     * Creates a new {@link HotSpotGraalRuntime} object a new {@link HotSpotGraalCompiler} and
+     * returns the latter.
+     *
+     * @param runtime the JVMCI runtime on which the {@link HotSpotGraalRuntime} is built
+     * @param compilerConfigurationName value for the {@code name} parameter of
+     *            {@link CompilerConfigurationFactory#selectFactory(String)}
+     */
+    @SuppressWarnings("try")
+    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, String compilerConfigurationName) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationName);
             HotSpotGraalVMEventListener.addRuntime(graalRuntime);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }

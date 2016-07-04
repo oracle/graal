@@ -132,15 +132,19 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     /**
-     * Selects and instantiates the {@link CompilerConfigurationFactory} to use based on the value
-     * of {@link Options#CompilerConfiguration} is supplied otherwise on the available factory that
-     * has the highest auto-selection priority.
+     * Selects and instantiates a {@link CompilerConfigurationFactory}. The selection algorithm is
+     * as follows: if {@code name} is non-null, then select the factory with the same name else if
+     * {@link Options#CompilerConfiguration}{@code .getValue()} is non-null then select the factory
+     * whose name matches the value else select the factory with the highest
+     * {@link #autoSelectionPriority} value.
+     *
+     * @param name the name of the compiler configuration to select (optional)
      */
     @SuppressWarnings("try")
-    static CompilerConfigurationFactory selectFactory() {
+    static CompilerConfigurationFactory selectFactory(String name) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
-            String value = Options.CompilerConfiguration.getValue();
+            String value = name == null ? Options.CompilerConfiguration.getValue() : name;
             if ("help".equals(value)) {
                 System.out.println("The available Graal compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
