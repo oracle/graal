@@ -33,6 +33,7 @@ import mx
 _suite = mx.suite('graal-core')
 
 def _run_netbeans_app(app_name, env=None, args=None):
+    args = [] if args is None else args
     dist = app_name.upper() + '_DIST'
     name = app_name.lower()
     extractPath = join(_suite.get_output_root())
@@ -78,7 +79,9 @@ def igv(args):
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
-    _run_netbeans_app('C1Visualizer', args=args)
+    env = dict(os.environ)
+    env['jdkhome'] = _igvJdk()
+    _run_netbeans_app('C1Visualizer', env, args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library
