@@ -27,7 +27,8 @@ import java.util.Set;
 
 import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
 import com.oracle.graal.compiler.sparc.SPARCSuitesProvider;
-import com.oracle.graal.hotspot.DefaultHotSpotGraalCompilerFactory;
+import com.oracle.graal.hotspot.CompilerConfigurationFactory;
+import com.oracle.graal.hotspot.DefaultCompilerConfigurationFactory;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -52,6 +53,7 @@ import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.sparc.SPARCGraphBuilderPlugins;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -67,8 +69,13 @@ import jdk.vm.ci.sparc.SPARC;
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
-    public void register() {
-        DefaultHotSpotGraalCompilerFactory.registerBackend(SPARC.class, this);
+    public boolean isAssociatedWith(CompilerConfigurationFactory factory) {
+        return factory instanceof DefaultCompilerConfigurationFactory;
+    }
+
+    @Override
+    public Class<? extends Architecture> getArchitecture() {
+        return SPARC.class;
     }
 
     @Override

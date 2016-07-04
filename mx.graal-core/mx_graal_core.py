@@ -153,16 +153,6 @@ else:
         assert descriptor != None
         _graal_module_descriptor = descriptor
 
-#: The selected JVMCI compiler
-_jvmci_compiler = 'graal'
-
-def set_jvmci_compiler(compilerName):
-    """
-    Sets the value for the ``jvmci.Compiler`` system property passed to the VM.
-    """
-    global _jvmci_compiler
-    _jvmci_compiler = compilerName
-
 _bootclasspath_appends = []
 
 def add_bootclasspath_append(dep):
@@ -433,7 +423,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.Compiler=graal-economy', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
     BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
@@ -695,8 +685,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
             argsPrefix.append('-modulepath')
             argsPrefix.append(module.jarpath)
 
-    # Set the default JVMCI compiler
-    argsPrefix.append('-Djvmci.Compiler=' + _jvmci_compiler)
+    # Set the JVMCI compiler to Graal
+    argsPrefix.append('-Djvmci.Compiler=graal')
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]

@@ -22,22 +22,23 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.compiler.phases.EconomyCompilerConfiguration;
+import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
+@ServiceProvider(CompilerConfigurationFactory.class)
+public class DefaultCompilerConfigurationFactory extends CompilerConfigurationFactory {
 
-@ServiceProvider(JVMCICompilerFactory.class)
-public class EconomyHotSpotGraalCompilerFactory extends DefaultHotSpotGraalCompilerFactory {
+    public static final String NAME = "default";
 
-    @Override
-    public String getCompilerName() {
-        return "graal-economy";
+    public static final int AUTO_SELECTION_PRIORITY = 2;
+
+    public DefaultCompilerConfigurationFactory() {
+        super(NAME, AUTO_SELECTION_PRIORITY);
     }
 
     @Override
     protected CompilerConfiguration createCompilerConfiguration() {
-        return new EconomyCompilerConfiguration();
+        return new BasicCompilerConfiguration();
     }
 }
