@@ -33,12 +33,6 @@ public class DefaultCompilerConfigurationFactory extends CompilerConfigurationFa
 
     public static final int AUTO_SELECTION_PRIORITY = 2;
 
-    public DefaultCompilerConfigurationFactory(String selector, int autoSelectionPriority) {
-        super(selector, autoSelectionPriority);
-        assert !NAME.equals(selector);
-        assert autoSelectionPriority != AUTO_SELECTION_PRIORITY;
-    }
-
     public DefaultCompilerConfigurationFactory() {
         super(NAME, AUTO_SELECTION_PRIORITY);
     }

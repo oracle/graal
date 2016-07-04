@@ -27,7 +27,7 @@ import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(CompilerConfigurationFactory.class)
-public class EconomyCompilerConfigurationFactory extends DefaultCompilerConfigurationFactory {
+public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFactory {
 
     public static final String NAME = "economy";
 
