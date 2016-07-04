@@ -32,7 +32,7 @@ import mx
 
 _suite = mx.suite('graal-core')
 
-def _run_netbeans_download(app_name, env=None, args=None):
+def _run_netbeans_app(app_name, env=None, args=None):
     dist = app_name.upper() + '_DIST'
     name = app_name.lower()
     extractPath = join(_suite.get_output_root())
@@ -74,11 +74,11 @@ def igv(args):
     # make the jar for Batik 1.7 available.
     env['IGV_BATIK_JAR'] = mx.library('BATIK').get_path(True)
     env['jdkhome'] = _igvJdk()
-    _run_netbeans_download('IdealGraphVisualizer', env, args)
+    _run_netbeans_app('IdealGraphVisualizer', env, args)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
-    _run_netbeans_download('C1Visualizer', args=args)
+    _run_netbeans_app('C1Visualizer', args=args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library
