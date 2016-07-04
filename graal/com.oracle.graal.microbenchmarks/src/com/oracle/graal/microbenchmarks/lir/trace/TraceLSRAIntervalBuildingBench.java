@@ -34,7 +34,7 @@ import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
-import com.oracle.graal.lir.alloc.trace.lsra.IntervalData;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase.Analyser;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -56,7 +56,7 @@ import jdk.vm.ci.code.TargetDescription;
 public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
 
     private static class DummyTraceAllocatorPhase extends AllocationPhase {
-        private IntervalData intervalData = null;
+        private TraceLinearScan allocator;
 
         @Override
         @SuppressWarnings("try")
@@ -67,9 +67,8 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             TraceBuilderResult<B> resultTraces = getTraces(context);
 
             for (Trace<B> trace : resultTraces.getTraces()) {
-                intervalData = new IntervalData(target, lirGenRes, registerAllocationConfig);
-                Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(intervalData, resultTraces, trace.getBlocks(), lirGenRes.getLIR(), true, spillMoveFactory,
-                                registerAllocationConfig.getRegisterConfig().getCallerSaveRegisters());
+                allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, null);
+                Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(allocator, resultTraces);
                 a.analyze();
             }
         }
@@ -110,9 +109,9 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             applyLIRPhase(SSI_CONSTRUCTION_PHASE, allocationContext);
         }
 
-        public IntervalData compile() {
+        public TraceLinearScan compile() {
             applyLIRPhase(LTA_PHASE, allocationContext);
-            return LTA_PHASE.intervalData;
+            return LTA_PHASE.allocator;
         }
 
     }
@@ -125,7 +124,7 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
     }
 
     @Benchmark
-    public IntervalData buildIntervals(State s) {
+    public TraceLinearScan buildIntervals(State s) {
         return s.compile();
     }
 }
