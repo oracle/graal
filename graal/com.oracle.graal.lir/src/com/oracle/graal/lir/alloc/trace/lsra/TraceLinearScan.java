@@ -636,7 +636,7 @@ public final class TraceLinearScan {
 
     @SuppressWarnings("try")
     public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, IntervalData intervals) {
+                    RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -644,12 +644,8 @@ public final class TraceLinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            if (intervals == null) {
-                intervalData = new IntervalData(target, res, regAllocConfig);
-                TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-            } else {
-                intervalData = intervals;
-            }
+            intervalData = new IntervalData(target, res, regAllocConfig);
+            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", getIntervalData())) {
 
