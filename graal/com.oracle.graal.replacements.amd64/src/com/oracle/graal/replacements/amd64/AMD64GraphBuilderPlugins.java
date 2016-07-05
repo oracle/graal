@@ -48,6 +48,7 @@ import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
@@ -62,7 +63,7 @@ public class AMD64GraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
                 registerUnsafePlugins(invocationPlugins);
-                registerMathPlugins(invocationPlugins);
+                registerMathPlugins(invocationPlugins, arch);
             }
         });
     }
@@ -115,7 +116,7 @@ public class AMD64GraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins) {
+    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch) {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
@@ -132,6 +133,15 @@ public class AMD64GraphBuilderPlugins {
             }
         });
 
+        if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
+            r.register1("rint", Double.TYPE, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                    b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
