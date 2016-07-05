@@ -34,17 +34,35 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.graal.jtt.JTTTest;
 
 @RunWith(Parameterized.class)
-public class Math_rint extends JTTTest {
+public class Math_round extends JTTTest {
 
     @Parameter(value = 0) public double input;
 
-    public static double test(double arg) {
+    public static double rint(double arg) {
         return Math.rint(arg);
     }
 
     @Test
-    public void run() throws Throwable {
-        runTest("test", input);
+    public void runRint() throws Throwable {
+        runTest("rint", input);
+    }
+
+    public static double floor(double arg) {
+        return Math.floor(arg);
+    }
+
+    @Test
+    public void runFloor() throws Throwable {
+        runTest("floor", input);
+    }
+
+    public static double ceil(double arg) {
+        return Math.ceil(arg);
+    }
+
+    @Test
+    public void runCeil() throws Throwable {
+        runTest("ceil", input);
     }
 
     @Parameters(name = "{0}")

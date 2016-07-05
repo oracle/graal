@@ -27,6 +27,7 @@ import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOp
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -134,13 +135,9 @@ public class AMD64GraphBuilderPlugins {
         });
 
         if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
-            r.register1("rint", Double.TYPE, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                    b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg)));
-                    return true;
-                }
-            });
+            registerRound(r, "rint", RoundingMode.NEAREST);
+            registerRound(r, "ceil", RoundingMode.UP);
+            registerRound(r, "floor", RoundingMode.DOWN);
         }
     }
 
@@ -149,6 +146,16 @@ public class AMD64GraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.recursiveAppend(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerRound(Registration r, String name, RoundingMode mode) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg, mode)));
                 return true;
             }
         });

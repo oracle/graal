@@ -24,9 +24,11 @@ package com.oracle.graal.replacements.amd64;
 
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
@@ -45,16 +47,34 @@ import jdk.vm.ci.meta.JavaKind;
 public final class AMD64RoundNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64RoundNode> TYPE = NodeClass.create(AMD64RoundNode.class);
 
-    public AMD64RoundNode(ValueNode value) {
-        super(TYPE, roundStamp((FloatStamp) value.stamp()), value);
+    private final RoundingMode mode;
+
+    public AMD64RoundNode(ValueNode value, RoundingMode mode) {
+        super(TYPE, roundStamp((FloatStamp) value.stamp(), mode), value);
+        this.mode = mode;
     }
 
-    private static FloatStamp roundStamp(FloatStamp stamp) {
+    private static double round(RoundingMode mode, double input) {
+        switch (mode) {
+            case DOWN:
+                return Math.floor(input);
+            case NEAREST:
+                return Math.rint(input);
+            case UP:
+                return Math.ceil(input);
+            case TRUNCATE:
+                return (long) input;
+            default:
+                throw GraalError.unimplemented("unimplemented RoundingMode " + mode);
+        }
+    }
+
+    private static FloatStamp roundStamp(FloatStamp stamp, RoundingMode mode) {
         double min = stamp.lowerBound();
-        min = Math.min(min, Math.rint(min));
+        min = Math.min(min, round(mode, min));
 
         double max = stamp.upperBound();
-        max = Math.max(max, Math.rint(max));
+        max = Math.max(max, round(mode, max));
 
         return new FloatStamp(stamp.getBits(), min, max, stamp.isNonNaN());
     }
@@ -62,16 +82,16 @@ public final class AMD64RoundNode extends UnaryNode implements ArithmeticLIRLowe
     @Override
     public Stamp foldStamp(Stamp newStamp) {
         assert newStamp.isCompatible(getValue().stamp());
-        return roundStamp((FloatStamp) newStamp);
+        return roundStamp((FloatStamp) newStamp, mode);
     }
 
-    public static ValueNode tryFold(ValueNode value) {
-        if (value.isConstant()) {
-            JavaConstant c = value.asJavaConstant();
+    public ValueNode tryFold(ValueNode input) {
+        if (input.isConstant()) {
+            JavaConstant c = input.asJavaConstant();
             if (c.getJavaKind() == JavaKind.Double) {
-                return ConstantNode.forDouble(Math.rint(c.asDouble()));
+                return ConstantNode.forDouble(round(mode, c.asDouble()));
             } else if (c.getJavaKind() == JavaKind.Float) {
-                return ConstantNode.forFloat((float) Math.rint(c.asFloat()));
+                return ConstantNode.forFloat((float) round(mode, c.asFloat()));
             }
         }
         return null;
@@ -85,6 +105,6 @@ public final class AMD64RoundNode extends UnaryNode implements ArithmeticLIRLowe
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitRound(builder.operand(getValue())));
+        builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitRound(builder.operand(getValue()), mode));
     }
 }

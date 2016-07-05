@@ -37,7 +37,20 @@ public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorT
 
     Value emitCountTrailingZeros(Value value);
 
-    Value emitRound(Value value);
+    enum RoundingMode {
+        NEAREST(0),
+        DOWN(1),
+        UP(2),
+        TRUNCATE(3);
+
+        public final int encoding;
+
+        RoundingMode(int encoding) {
+            this.encoding = encoding;
+        }
+    }
+
+    Value emitRound(Value value, RoundingMode mode);
 
     void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right);
 }
