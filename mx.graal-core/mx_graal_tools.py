@@ -32,7 +32,8 @@ import mx
 
 _suite = mx.suite('graal-core')
 
-def _run_netbeans_download(app_name, env=None):
+def _run_netbeans_app(app_name, env=None, args=None):
+    args = [] if args is None else args
     dist = app_name.upper() + '_DIST'
     name = app_name.lower()
     extractPath = join(_suite.get_output_root())
@@ -58,8 +59,7 @@ def _run_netbeans_download(app_name, env=None):
     if mx.get_os() != 'windows':
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
         os.chmod(executable, 0777)
-
-    mx.run([executable], env=env)
+    mx.run([executable]+args, env=env)
 
 def _igvJdk():
     v8u20 = mx.VersionSpec("1.8.0_20")
@@ -75,11 +75,13 @@ def igv(args):
     # make the jar for Batik 1.7 available.
     env['IGV_BATIK_JAR'] = mx.library('BATIK').get_path(True)
     env['jdkhome'] = _igvJdk()
-    _run_netbeans_download('IdealGraphVisualizer', env=env)
+    _run_netbeans_app('IdealGraphVisualizer', env, args)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
-    _run_netbeans_download('C1Visualizer')
+    env = dict(os.environ)
+    env['jdkhome'] = _igvJdk()
+    _run_netbeans_app('C1Visualizer', env, args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library
