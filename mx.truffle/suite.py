@@ -361,8 +361,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-                        "com.oracle.truffle.api.profiles",
-                        "com.oracle.truffle.api.instrumentation"],
+                        "com.oracle.truffle.api.vm"],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
