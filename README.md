@@ -50,17 +50,17 @@ How to get started?
 First create a new directory, which will contain the needed GraalVM
 projects:
 
-    mkdir graalvm
-    cd graalvm
+    mkdir sulong-dev
+    cd sulong-dev
 
 Then, download mx, which is the build tool used by Sulong:
 
     git clone https://github.com/graalvm/mx
     export PATH=$PWD/mx:$PATH
 
-Next, you need a JVMCI compatible JDK that you can download from
-[OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
-Extract it inside the `graalvm` directory:
+Next, you need a recent [Java SE Development Kit 8u92.](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+
+Extract it inside the `sulong-dev` directory:
 
     tar -zxf jdk-8u92-linux-x64.tar.gz
 
