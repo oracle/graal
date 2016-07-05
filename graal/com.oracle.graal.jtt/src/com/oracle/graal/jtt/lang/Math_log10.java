@@ -37,7 +37,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.graal.jtt.JTTTest;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.DoubleConsts;
 
 /**
  * This has been converted to JUnit from the jtreg test test/java/lang/Math/Log10Tests.java in JDK8.
@@ -162,7 +161,7 @@ public final class Math_log10 extends JTTTest {
         addEqualityTest(tests, Double.NEGATIVE_INFINITY, Double.NaN);
         addEqualityTest(tests, -8.0, Double.NaN);
         addEqualityTest(tests, -1.0, Double.NaN);
-        addEqualityTest(tests, -DoubleConsts.MIN_NORMAL, Double.NaN);
+        addEqualityTest(tests, -Double.MIN_NORMAL, Double.NaN);
         addEqualityTest(tests, -Double.MIN_VALUE, Double.NaN);
         addEqualityTest(tests, -0.0, -Double.POSITIVE_INFINITY);
         addEqualityTest(tests, +0.0, -Double.POSITIVE_INFINITY);
