@@ -490,10 +490,13 @@ public class PolyglotEngine {
                 for (Language language : getLanguages().values()) {
                     TruffleLanguage<?> impl = language.getImpl(false);
                     if (impl != null) {
-                        try {
-                            Access.LANGS.dispose(impl, language.getEnv(true));
-                        } catch (Exception | Error ex) {
-                            LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
+                        final Env env = language.getEnv(false, true);
+                        if (env != null) {
+                            try {
+                                Access.LANGS.dispose(impl, env);
+                            } catch (Exception | Error ex) {
+                                LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
+                            }
                         }
                     }
                 }
@@ -949,7 +952,7 @@ public class PolyglotEngine {
     public final class Instrument {
 
         private final InstrumentCache info;
-
+        private final Object instrumentLock = new Object();
         private volatile boolean enabled;
 
         Instrument(InstrumentCache cache) {
@@ -1016,35 +1019,34 @@ public class PolyglotEngine {
             if (disposed) {
                 throw new IllegalStateException("Engine has already been disposed");
             }
-            if (this.enabled != enabled) {
-                if (executor == null) {
-                    setEnabledImpl(enabled, true);
-                } else {
-                    ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
-                        @Override
-                        protected Void compute() throws IOException {
-                            setEnabledImpl(enabled, true);
-                            return null;
-                        }
-
-                    };
-                    try {
-                        compute.perform();
-                    } catch (IOException ex) {
-                        throw new IllegalStateException(ex);
+            if (executor == null) {
+                setEnabledImpl(enabled, true);
+            } else {
+                ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
+                    @Override
+                    protected Void compute() throws IOException {
+                        setEnabledImpl(enabled, true);
+                        return null;
                     }
+                };
+                try {
+                    compute.perform();
+                } catch (IOException ex) {
+                    throw new IllegalStateException(ex);
                 }
             }
         }
 
         void setEnabledImpl(final boolean enabled, boolean cleanup) {
-            if (this.enabled != enabled) { // check again for thread safety
-                if (enabled) {
-                    Access.INSTRUMENT.addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
-                } else {
-                    Access.INSTRUMENT.disposeInstrument(instrumentationHandler, this, cleanup);
+            synchronized (instrumentLock) {
+                if (this.enabled != enabled) {
+                    if (enabled) {
+                        Access.INSTRUMENT.addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
+                    } else {
+                        Access.INSTRUMENT.disposeInstrument(instrumentationHandler, this, cleanup);
+                    }
+                    this.enabled = enabled;
                 }
-                this.enabled = enabled;
             }
         }
 
@@ -1169,10 +1171,18 @@ public class PolyglotEngine {
         }
 
         TruffleLanguage.Env getEnv(boolean create) {
-            if (env == null && create) {
-                env = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
+            return getEnv(create, false);
+        }
+
+        TruffleLanguage.Env getEnv(boolean create, boolean clear) {
+            TruffleLanguage.Env tmp = env;
+            if (tmp == null && create) {
+                env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
             }
-            return env;
+            if (clear) {
+                env = null;
+            }
+            return tmp;
         }
 
         /** @since 0.9 */
@@ -1180,6 +1190,7 @@ public class PolyglotEngine {
         public String toString() {
             return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
         }
+
     } // end of Language
 
     //

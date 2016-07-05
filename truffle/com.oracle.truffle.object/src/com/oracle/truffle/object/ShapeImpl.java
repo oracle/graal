@@ -55,10 +55,8 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
-import com.oracle.truffle.object.LocationImpl.TypedObjectLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
@@ -551,7 +549,7 @@ public abstract class ShapeImpl extends Shape {
             Property p = iterator.next();
             sb.append(p);
             if (iterator.hasNext()) {
-                sb.append(", ");
+                sb.append(",");
             }
             if (sb.length() >= limit) {
                 sb.append("...");
@@ -945,6 +943,7 @@ public abstract class ShapeImpl extends Shape {
             }
         }
 
+        @SuppressWarnings("deprecation")
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
@@ -958,8 +957,9 @@ public abstract class ShapeImpl extends Shape {
                 return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
             } else if (oldLocation instanceof ConstantLocation) {
                 return LocationImpl.valueEquals(oldLocation.get(null, false), value) ? oldLocation : new Locations.ConstantLocation(value);
-            } else if (oldLocation instanceof TypedObjectLocation && !((TypedObjectLocation<?>) oldLocation).getType().isAssignableFrom(value.getClass())) {
-                newLocation = (((TypedObjectLocation<?>) oldLocation).toUntypedLocation());
+            } else if (oldLocation instanceof com.oracle.truffle.object.LocationImpl.TypedObjectLocation &&
+                            !((com.oracle.truffle.object.LocationImpl.TypedObjectLocation<?>) oldLocation).getType().isAssignableFrom(value.getClass())) {
+                newLocation = (((com.oracle.truffle.object.LocationImpl.TypedObjectLocation<?>) oldLocation).toUntypedLocation());
             } else if (oldLocation instanceof DualLocation) {
                 if (oldLocation.canStore(value)) {
                     newLocation = oldLocation;
@@ -971,8 +971,8 @@ public abstract class ShapeImpl extends Shape {
             } else {
                 return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.NonNull));
             }
-            if (newLocation instanceof EffectivelyFinalLocation) {
-                newLocation = ((EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
+            if (newLocation instanceof com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation) {
+                newLocation = ((com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
             }
             return newLocation;
         }

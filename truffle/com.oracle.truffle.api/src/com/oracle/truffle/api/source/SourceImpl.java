@@ -50,6 +50,7 @@ final class SourceImpl extends Source implements Cloneable {
     }
 
     static synchronized void registerSource(SourceImpl source) {
+        findSource(null);
         SOURCES = new Ref(source, SOURCES);
     }
 

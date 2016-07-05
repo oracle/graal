@@ -28,10 +28,13 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URL;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipEntry;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -72,6 +75,25 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
+    @Test
+    public void relativeFile() throws IOException {
+        File relative = null;
+        for (File f : new File(".").listFiles()) {
+            if (f.isFile() && f.canRead()) {
+                relative = f;
+                break;
+            }
+        }
+        if (relative == null) {
+            // skip the test
+            return;
+        }
+        Source direct = Source.fromFileName(relative.getPath());
+        Source fromBuilder = SourceSnippets.likeFileName(relative.getPath());
+        assertEquals("Both sources are equal", direct, fromBuilder);
+    }
+
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
@@ -89,7 +111,7 @@ public class SourceBuilderTest {
 
     @Test
     public void assignMimeTypeAndIdentityForFile() throws IOException {
-        File file = File.createTempFile("Hello", ".java");
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
         String text;
@@ -120,7 +142,7 @@ public class SourceBuilderTest {
 
     @Test
     public void assignMimeTypeAndIdentityForVirtualFile() throws Exception {
-        File file = File.createTempFile("Hello", ".java");
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
 
         String text = "// Hello";
@@ -239,6 +261,26 @@ public class SourceBuilderTest {
     }
 
     @Test
+    public void jarURLGetsAName() throws IOException {
+        File sample = File.createTempFile("sample", ".jar");
+        sample.deleteOnExit();
+        JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
+        os.putNextEntry(new ZipEntry("x.js"));
+        os.write("Hi!".getBytes("UTF-8"));
+        os.closeEntry();
+        os.close();
+
+        URL resource = new URL("jar:" + sample.toURI() + "!/x.js");
+        assertNotNull("Resource found", resource);
+        assertEquals("JAR protocol", "jar", resource.getProtocol());
+        Source s = Source.newBuilder(resource).build();
+        assertEquals("Hi!", s.getCode());
+        assertEquals("x.js", s.getName());
+
+        sample.delete();
+    }
+
+    @Test
     public void relativeURLWithOwnContent() throws Exception {
         URL resource = SourceSnippets.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
@@ -321,13 +363,13 @@ public class SourceBuilderTest {
 
     public void subSourceHashAndEquals() {
         Source src = Source.newBuilder("One Two Three").name("counting.en").mimeType("content/unknown").build();
-        Source one = Source.subSource(src, 0, 3);
-        Source two = Source.subSource(src, 4, 3);
-        Source three = Source.subSource(src, 8);
+        Source one = src.subSource(0, 3);
+        Source two = src.subSource(4, 3);
+        Source three = src.subSource(8, src.getLength() - 8);
 
-        Source oneSnd = Source.subSource(src, 0, 3);
-        Source twoSnd = Source.subSource(src, 4, 3);
-        Source threeSnd = Source.subSource(src, 8);
+        Source oneSnd = src.subSource(0, 3);
+        Source twoSnd = src.subSource(4, 3);
+        Source threeSnd = src.subSource(8, src.getLength() - 8);
 
         assertNotEquals("One: " + one.getCode() + " two: " + two.getCode(), one, two);
         assertNotEquals(three, two);
@@ -350,8 +392,8 @@ public class SourceBuilderTest {
 
     @Test
     public void subSourceFromTwoFiles() throws Exception {
-        File f1 = File.createTempFile("subSource", ".js");
-        File f2 = File.createTempFile("subSource", ".js");
+        File f1 = File.createTempFile("subSource", ".js").getCanonicalFile();
+        File f2 = File.createTempFile("subSource", ".js").getCanonicalFile();
 
         try (FileWriter w = new FileWriter(f1)) {
             w.write("function test() {\n" + "  return 1;\n" + "}\n");
@@ -367,8 +409,8 @@ public class SourceBuilderTest {
         assertNotEquals("Different sources", s1, s2);
         assertEquals("But same content", s1.getCode(), s2.getCode());
 
-        Source sub1 = Source.subSource(s1, 0, 8);
-        Source sub2 = Source.subSource(s2, 0, 8);
+        Source sub1 = s1.subSource(0, 8);
+        Source sub2 = s2.subSource(0, 8);
 
         assertNotEquals("Different sub sources", sub1, sub2);
         assertEquals("with the same content", sub1.getCode(), sub2.getCode());

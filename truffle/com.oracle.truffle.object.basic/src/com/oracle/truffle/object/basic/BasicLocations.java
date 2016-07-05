@@ -36,6 +36,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
+
 import java.lang.invoke.MethodHandle;
 
 /**
@@ -88,7 +89,7 @@ public abstract class BasicLocations {
         }
 
         @Override
-        protected String getWhereString() {
+        public String getWhereString() {
             return "[" + index + "]";
         }
     }
@@ -125,7 +126,7 @@ public abstract class BasicLocations {
         }
 
         @Override
-        protected String getWhereString() {
+        public String getWhereString() {
             return "@" + index;
         }
     }
@@ -564,6 +565,11 @@ public abstract class BasicLocations {
         @Override
         public final void accept(LocationVisitor locationVisitor) {
             ((LocationImpl) longLocation).accept(locationVisitor);
+        }
+
+        @Override
+        public String getWhereString() {
+            return longLocation.getWhereString();
         }
     }
 

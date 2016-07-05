@@ -148,7 +148,10 @@ public abstract class Source {
      * @param name the {@link #getName() name} of a source to seek for
      * @return found source or <code>null</code> if no source with name is known
      * @since 0.8 or earlier
+     * @deprecated centralized caching will be removed, if needed cache your {@link Source} objects
+     *             yourself
      */
+    @Deprecated
     public static Source find(String name) {
         return SourceImpl.findSource(name);
     }
@@ -186,7 +189,7 @@ public abstract class Source {
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)}
      */
     @Deprecated
     public static Source fromFileName(String fileName, boolean reload) throws IOException {
@@ -210,13 +213,16 @@ public abstract class Source {
      * then cached. The {@link #getShortName() short name} of the source is equal to
      * {@link File#getName() name of the file}. The {@link #getName() name} of the file is exactly
      * the provided <code>fileName</code> string. The {@link #getPath() path} is
-     * {@link File#getCanonicalPath() canonical path} of the provided file name.
+     * {@link File#getCanonicalPath() canonical path} of the provided file name. When rewritting to
+     * {@link #newBuilder(java.io.File)}, use:
+     *
+     * {@link SourceSnippets#likeFileName}
      *
      * @param fileName path to the file with the source
      * @return source representing the file's content
      * @throws IOException if the file cannot be read
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)}
      */
     @Deprecated
     public static Source fromFileName(String fileName) throws IOException {
@@ -244,7 +250,8 @@ public abstract class Source {
      * @throws IOException if the file cannot be found, or if an existing Source not created by this
      *             method matches the file name
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.io.File)} and
+     *             {@link Builder#content(java.lang.String)}
      */
     @Deprecated
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
@@ -270,7 +277,7 @@ public abstract class Source {
      *            <code>null</code>
      * @return a newly created, source representation
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated Use {@link #newBuilder(java.lang.String)}
      */
     @Deprecated
     public static Source fromText(CharSequence chars, String name) {
@@ -303,7 +310,9 @@ public abstract class Source {
      * @param name name for the newly created source
      * @return a newly created, non-indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
+    @Deprecated
     public static Source fromAppendableText(String name) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
         Content content = new AppendableLiteralSourceImpl(name);
@@ -338,7 +347,7 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
      * @since 0.8 or earlier
-     * @deprecated use {@link #fromAppendableText(java.lang.String)}
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
     @Deprecated
     public static Source fromNamedAppendableText(String name) {
@@ -358,10 +367,28 @@ public abstract class Source {
      * @return a new instance representing a sub-range of another Source
      * @throws IllegalArgumentException if the specified sub-range is not contained in the base
      * @since 0.8 or earlier
+     * @deprecated use {@link #subSource(int, int)}
      */
+    @Deprecated
     public static Source subSource(Source base, int baseCharIndex, int length) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSourceImpl subSource = SubSourceImpl.create(base, baseCharIndex, length);
+        return new SourceImpl(subSource);
+    }
+
+    /**
+     * Creates a {@linkplain Source Source instance} that represents the contents of a sub-range of
+     * an <code>this</code> {@link Source}.
+     *
+     * @param baseCharIndex 0-based index of the first character of the sub-range
+     * @param length the number of characters in the sub-range
+     * @return a new instance representing a sub-range of another Source
+     * @throws IllegalArgumentException if the specified sub-range is not contained in the base
+     * @since 0.15
+     */
+    public Source subSource(int baseCharIndex, int length) {
+        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
+        final SubSourceImpl subSource = SubSourceImpl.create(this, baseCharIndex, length);
         return new SourceImpl(subSource);
     }
 
@@ -374,7 +401,10 @@ public abstract class Source {
      * @return a new instance representing a sub-range at the end of another Source
      * @throws IllegalArgumentException if the index is out of range
      * @since 0.8 or earlier
+     * @deprecated use {@link #subSource(int, int) base.subSource(baseCharIndex, base.getLength() -
+     *             baseCharIndex)}
      */
+    @Deprecated
     public static Source subSource(Source base, int baseCharIndex) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
 
@@ -457,7 +487,10 @@ public abstract class Source {
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
+     * @deprecated Use {@link #newBuilder(java.lang.String)} where you construct the string via its
+     *             {@link String#String(byte[], java.nio.charset.Charset)} constructor
      */
+    @Deprecated
     public static Source fromBytes(byte[] bytes, String name, Charset charset) {
         return fromBytes(bytes, 0, bytes.length, name, charset);
     }
@@ -477,7 +510,10 @@ public abstract class Source {
      * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      * @since 0.8 or earlier
+     * @deprecated Use {@link #newBuilder(java.lang.String)} where you construct the string via its
+     *             {@link String#String(byte[], int, int, java.nio.charset.Charset)} constructor
      */
+    @Deprecated
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
         CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
         Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
@@ -531,8 +567,8 @@ public abstract class Source {
 
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
-     * name of a guest language source code file. Name is supposed to be at least as long as
-     * {@link #getShortName()} and as long, or shorter than {@link #getPath()}.
+     * name of a guest language source code file. Name is supposed to be shorter than
+     * {@link #getPath()}.
      *
      * @return the name of the guest language program
      * @since 0.8 or earlier
@@ -739,7 +775,9 @@ public abstract class Source {
      * @param chars the text to append
      * @throws UnsupportedOperationException by concrete subclasses that do not support appending
      * @since 0.8 or earlier
+     * @deprecated No replacement. Appendable sources will not be supported in the future.
      */
+    @Deprecated
     public void appendCode(CharSequence chars) {
         content().appendCode(chars);
         clearTextMap();
@@ -1177,7 +1215,8 @@ public abstract class Source {
 
         private Content buildURL() throws IOException {
             final URL url = (URL) origin;
-            URLSourceImpl ret = new URLSourceImpl(url, content, null);
+            String computedName = url.getPath().substring(url.getPath().lastIndexOf('/') + 1);
+            URLSourceImpl ret = new URLSourceImpl(url, content, computedName);
             return ret;
         }
 
@@ -1208,6 +1247,16 @@ class SourceSnippets {
         assert file.toURI().equals(source.getURI());
         assert "text/x-java".equals(source.getMimeType());
         // END: SourceSnippets#fromFile
+        return source;
+    }
+
+    public static Source likeFileName(String fileName) throws IOException {
+        // BEGIN: SourceSnippets#likeFileName
+        File file = new File(fileName);
+        Source source = Source.newBuilder(file.getCanonicalFile()).
+            name(file.getPath()).
+            build();
+        // END: SourceSnippets#likeFileName
         return source;
     }
 

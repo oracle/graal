@@ -7,7 +7,7 @@ meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter
 meth public void dispose()
 meth public {com.oracle.truffle.api.instrumentation.EventBinding%0} getElement()
 supr java.lang.Object
-hfds disposed,element,filter,instrumenter
+hfds disposed,element,filter,instrumenter,isExecutionEvent
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
 meth public !varargs com.oracle.truffle.api.CallTarget parseInContext(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
@@ -51,8 +51,27 @@ meth public abstract com.oracle.truffle.api.nodes.Node getDelegateNode()
 CLSS public abstract com.oracle.truffle.api.instrumentation.Instrumenter
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract java.util.Set<java.lang.Class<?>> queryTags(com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.instrumentation.LoadSourceEvent
+meth public com.oracle.truffle.api.source.Source getSource()
+supr java.lang.Object
+hfds source
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.LoadSourceListener
+meth public abstract void onLoad(com.oracle.truffle.api.instrumentation.LoadSourceEvent)
+
+CLSS public final com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent
+meth public com.oracle.truffle.api.nodes.Node getNode()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+supr java.lang.Object
+hfds node,sourceSection
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.LoadSourceSectionListener
+meth public abstract void onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent)
 
 CLSS public final com.oracle.truffle.api.instrumentation.ProbeNode
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()

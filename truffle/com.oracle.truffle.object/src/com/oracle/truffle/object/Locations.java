@@ -221,7 +221,11 @@ public abstract class Locations {
 
         @Override
         public String toString() {
-            return objectLocation.toString() + "," + primitiveLocation.toString() + "," + type;
+            if (type == Object.class) {
+                return objectLocation.toString() + "," + primitiveLocation.toString();
+            } else {
+                return "(" + type + ")" + primitiveLocation.toString() + "," + objectLocation.toString();
+            }
         }
 
         @Override

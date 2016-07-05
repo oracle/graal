@@ -58,6 +58,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Marks array fields that are children of this node.
      *
+     * This annotation implies the semantics of @{@link CompilationFinal}(dimensions = 1).
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -67,6 +69,8 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Marks fields that represent child nodes of this node.
+     *
+     * This annotation implies the semantics of {@link CompilationFinal}.
      *
      * @since 0.8 or earlier
      */
@@ -209,10 +213,10 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         newChild.parent = this;
-        NodeUtil.forEachChild(this, new NodeVisitor() {
+        NodeUtil.forEachChild(newChild, new NodeVisitor() {
             public boolean visit(Node child) {
                 if (child != null && child.getParent() == null) {
-                    Node.this.adoptUnadoptedHelper(child);
+                    newChild.adoptUnadoptedHelper(child);
                 }
                 return true;
             }

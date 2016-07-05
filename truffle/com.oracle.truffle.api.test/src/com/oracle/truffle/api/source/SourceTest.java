@@ -228,7 +228,7 @@ public class SourceTest {
 
     @Test
     public void fileSample() throws Exception {
-        File sample = File.createTempFile("sample", ".java");
+        File sample = File.createTempFile("sample", ".java").getCanonicalFile();
         sample.deleteOnExit();
         SourceSnippets.fromFile(sample.getParentFile(), sample.getName());
         sample.delete();

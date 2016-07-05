@@ -40,7 +40,9 @@ import java.lang.annotation.Target;
 public @interface ExplodeLoop {
 
     /**
-     * @since 0.14
+     * Controls behavior of {@link ExplodeLoop} annotation.
+     *
+     * @since 0.15
      */
     enum LoopExplosionKind {
         /**
@@ -49,7 +51,7 @@ public @interface ExplodeLoop {
          * processed only once. For example, a loop with 4 iterations and 2 loop ends leads to
          * 1+1+1+1 = 4 copies of the loop body.
          *
-         * @since 0.14
+         * @since 0.15
          */
         FULL_UNROLL,
         /**
@@ -58,7 +60,7 @@ public @interface ExplodeLoop {
          * processed multiple times. For example, a loop with 4 iterations and 2 loop ends leads to
          * 1+2+4+8 = 15 copies of the loop body.
          *
-         * @since 0.14
+         * @since 0.15
          */
         FULL_EXPLODE,
         /**
@@ -67,7 +69,7 @@ public @interface ExplodeLoop {
          * loop with 4 iterations and 2 loop exits leads to 4 * 2 = 8 copies of the code after the
          * loop.
          *
-         * @since 0.14
+         * @since 0.15
          */
         FULL_EXPLODE_UNTIL_RETURN,
         /**
@@ -76,7 +78,7 @@ public @interface ExplodeLoop {
          * necessary, but can introduce loops again. This kind is useful for bytecode interpreter
          * loops.
          *
-         * @since 0.14
+         * @since 0.15
          */
         MERGE_EXPLODE
     }
@@ -84,7 +86,7 @@ public @interface ExplodeLoop {
     /**
      * The loop explosion kind.
      *
-     * @since 0.14
+     * @since 0.15
      */
     LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL;
 

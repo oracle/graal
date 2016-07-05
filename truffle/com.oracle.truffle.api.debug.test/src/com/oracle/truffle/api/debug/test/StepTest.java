@@ -49,7 +49,7 @@ public class StepTest extends AbstractDebugTest {
         expectSuspendedEvent().checkState(3, true, "STATEMENT").stepInto(2);
         expectSuspendedEvent().checkState(5, true, "STATEMENT").stepOver(1);
         expectSuspendedEvent().checkState(6, true, "STATEMENT").stepOver(3);
-        expectSuspendedEvent().checkState(9, true, "STATEMENT\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(9, true, "STATEMENT").resume();
         getEngine().eval(block);
         assertExecutedOK();
     }

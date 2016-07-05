@@ -22,46 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.debug.test;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import org.junit.Test;
 
-/**
- * Represents a source section load event from a {@link LoadSourceSectionListener}.
- *
- * Instances of {@link LoadSourceSectionEvent} should be neither stored, cached nor hashed. The
- * equality and hashing behavior is undefined.
- *
- * @see LoadSourceSectionListener
- * @since 0.15
- */
-public final class LoadSourceSectionEvent {
+import com.oracle.truffle.api.source.Source;
 
-    private final SourceSection sourceSection;
-    private final Node node;
+public class TestLanguageTest extends AbstractDebugTest {
 
-    LoadSourceSectionEvent(SourceSection sourceSection, Node node) {
-        this.sourceSection = sourceSection;
-        this.node = node;
+    @Test
+    public void testBlockSourceSection() throws Throwable {
+        final Source block = TestSource.createBlock2("testBlockSourceSection");
+        expectExecutionEvent().stepInto();
+        expectSuspendedEvent().checkState(2, true, "STATEMENT").stepInto(1);
+        expectSuspendedEvent().checkState(3, true, "STATEMENT").resume();                                                                         // "STATEMENT\n"
+        getEngine().eval(block);
+        assertExecutedOK();
     }
-
-    /**
-     * Returns the loaded source section that caused this event.
-     *
-     * @since 0.15
-     */
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    /**
-     * Returns the instrumentable Truffle node that caused this event.
-     *
-     * @since 0.15
-     */
-    public Node getNode() {
-        return node;
-    }
-
 }

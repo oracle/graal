@@ -35,7 +35,10 @@ public final class CommonMIMETypeTestDetector extends FileTypeDetector {
         if (path.getFileName().toString().endsWith(".js")) {
             return "application/javascript";
         }
-        return null;
+        if (path.getFileName().toString().endsWith(".txt")) {
+            return "text/plain";
+        }
+        return "content/unknown";
     }
 
 }

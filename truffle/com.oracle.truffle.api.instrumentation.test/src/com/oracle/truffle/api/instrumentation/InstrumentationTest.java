@@ -259,12 +259,10 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
-    public void testInstrumentException1() throws IOException {
+    public void testInstrumentException1() {
         engine.getInstruments().get("testInstrumentException1").setEnabled(true);
-        run("");
 
         Assert.assertTrue(getErr().contains("MyLanguageException"));
-
     }
 
     @Registration(name = "", version = "", id = "testInstrumentException1")
