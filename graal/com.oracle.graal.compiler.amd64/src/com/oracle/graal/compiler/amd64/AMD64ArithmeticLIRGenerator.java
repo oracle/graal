@@ -1120,4 +1120,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         getLIRGen().append(new AMD64BinaryConsumer.Op(CMP.getRMOpcode(size), size, left, getLIRGen().asAllocatable(right)));
     }
 
+    @Override
+    public Value emitRound(Value value, RoundingMode mode) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(value));
+        assert ((AMD64Kind) value.getPlatformKind()).isXMM();
+        if (value.getPlatformKind() == AMD64Kind.SINGLE) {
+            getLIRGen().append(new AMD64Binary.RMIOp(AMD64RMIOp.ROUNDSS, OperandSize.PD, result, getLIRGen().asAllocatable(value), mode.encoding));
+        } else {
+            getLIRGen().append(new AMD64Binary.RMIOp(AMD64RMIOp.ROUNDSD, OperandSize.PD, result, getLIRGen().asAllocatable(value), mode.encoding));
+        }
+        return result;
+    }
 }
