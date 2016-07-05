@@ -44,6 +44,9 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     private static void foldNullChecks(LIR ir, List<? extends AbstractBlockBase<?>> blocks, int implicitNullCheckLimit) {
         for (AbstractBlockBase<?> block : blocks) {
+            if (block == null) {
+                continue;
+            }
             List<LIRInstruction> list = ir.getLIRforBlock(block);
 
             if (!list.isEmpty()) {

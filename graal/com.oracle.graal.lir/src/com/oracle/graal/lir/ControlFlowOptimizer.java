@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIR.verifyBlocks;
 
-import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -68,7 +67,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          * @return whether the block can be deleted
          */
         private boolean canDeleteBlock(B block) {
-            if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
+            if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
                 return false;
             }
 
@@ -96,9 +95,8 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
 
         private void deleteEmptyBlocks(List<B> blocks) {
             assert verifyBlocks(lir, blocks);
-            Iterator<B> iterator = blocks.iterator();
-            while (iterator.hasNext()) {
-                B block = iterator.next();
+            for (int i = 0; i < blocks.size(); i++) {
+                B block = blocks.get(i);
                 if (canDeleteBlock(block)) {
 
                     block.delete();
@@ -109,7 +107,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     }
 
                     BLOCKS_DELETED.increment();
-                    iterator.remove();
+                    blocks.set(i, null);
                 }
             }
             assert verifyBlocks(lir, blocks);

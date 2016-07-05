@@ -222,6 +222,9 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printBlock(AbstractBlockBase<?> block, boolean printNodes) {
+        if (block == null) {
+            return;
+        }
         printBlockProlog(block);
         if (printNodes) {
             assert block instanceof Block;

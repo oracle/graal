@@ -411,6 +411,9 @@ public class CompilationResultBuilder {
     }
 
     private void emitBlock(AbstractBlockBase<?> block) {
+        if (block == null) {
+            return;
+        }
         if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }

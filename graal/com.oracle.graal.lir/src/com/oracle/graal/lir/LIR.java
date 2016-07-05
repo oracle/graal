@@ -167,6 +167,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     public static boolean verifyBlocks(LIR lir, List<? extends AbstractBlockBase<?>> blocks) {
         for (AbstractBlockBase<?> block : blocks) {
+            if (block == null) {
+                continue;
+            }
             for (AbstractBlockBase<?> sux : block.getSuccessors()) {
                 assert blocks.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
