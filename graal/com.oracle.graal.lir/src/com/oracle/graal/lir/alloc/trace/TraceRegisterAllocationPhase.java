@@ -38,13 +38,10 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.lsra.IntervalData;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceIntervalMap;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.lir.phases.AllocationStage;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
@@ -95,7 +92,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
-        TraceIntervalMap intervalMap = getIntervalMap(context);
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace<B> trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
@@ -109,8 +105,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
                                         cachedStackSlots);
-                        IntervalData intervalData = getAndDelete(intervalMap, trace);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig, intervalData);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
@@ -125,23 +120,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
-    }
-
-    private static <B extends AbstractBlockBase<B>> IntervalData getAndDelete(TraceIntervalMap intervalMap, Trace<B> trace) {
-        if (intervalMap == null) {
-            return null;
-        }
-        IntervalData intervalData = intervalMap.get(trace);
-        // remove entry
-        intervalMap.put(trace, null);
-        return intervalData;
-    }
-
-    private static TraceIntervalMap getIntervalMap(AllocationContext context) {
-        if (!AllocationStage.Options.TraceRACombinedSSIConstruction.getValue()) {
-            return null;
-        }
-        return context.contextRemove(TraceIntervalMap.class);
     }
 
     @SuppressWarnings("unchecked")

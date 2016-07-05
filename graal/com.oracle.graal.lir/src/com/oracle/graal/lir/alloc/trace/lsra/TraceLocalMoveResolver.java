@@ -449,7 +449,6 @@ final class TraceLocalMoveResolver {
     protected void spillInterval(int spillCandidate, TraceInterval fromInterval, AllocatableValue spillSlot) {
         assert mappingFrom.get(spillCandidate).equals(fromInterval);
         TraceInterval spillInterval = getAllocator().createDerivedInterval(fromInterval);
-        spillInterval.setKind(fromInterval.kind());
 
         // add a dummy range because real position is difficult to calculate
         // Note: this range is a special case when the integrity of the allocation is

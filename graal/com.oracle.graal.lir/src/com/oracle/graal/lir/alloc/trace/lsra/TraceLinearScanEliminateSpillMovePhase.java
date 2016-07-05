@@ -174,13 +174,13 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                                 }
                             }
                         }
-                    } // end of instruction iteration
+                    }   // end of instruction iteration
 
                     if (insertionBuffer.initialized()) {
                         insertionBuffer.finish();
                     }
                 }
-            } // end of block iteration
+            }   // end of block iteration
 
             assert interval == TraceInterval.EndMarker : "missed an interval";
         }
