@@ -51,10 +51,10 @@ public final class LocationMarkerPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        new Marker<B>(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
+        new Marker(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
     }
 
-    static final class Marker<T extends AbstractBlockBase<T>> extends LocationMarker<T, RegStackValueSet> {
+    static final class Marker extends LocationMarker<RegStackValueSet> {
 
         private final RegisterAttributes[] registerAttributes;
 
