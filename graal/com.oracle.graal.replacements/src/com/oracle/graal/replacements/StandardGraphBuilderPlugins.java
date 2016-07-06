@@ -71,7 +71,6 @@ import com.oracle.graal.nodes.debug.BlackholeNode;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.debug.OpaqueNode;
 import com.oracle.graal.nodes.debug.SpillRegistersNode;
-import com.oracle.graal.nodes.debug.instrumentation.ControlFlowPathNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
 import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
 import com.oracle.graal.nodes.debug.instrumentation.IsMethodInlinedNode;
@@ -813,13 +812,6 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new InstrumentationEndNode());
-                return true;
-            }
-        });
-        r.register0("controlFlowPath", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Int, new ControlFlowPathNode());
                 return true;
             }
         });
