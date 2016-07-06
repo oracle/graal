@@ -390,7 +390,13 @@ public class CompilationResultBuilder {
         assert lir != null;
         List<? extends AbstractBlockBase<?>> order = lir.codeEmittingOrder();
         assert order.get(currentBlockIndex) == edge.getSourceBlock();
-        return currentBlockIndex < order.size() - 1 && order.get(currentBlockIndex + 1) == edge.getTargetBlock();
+        for (int nextIndex = currentBlockIndex + 1; nextIndex > 0 && nextIndex < order.size(); nextIndex++) {
+            AbstractBlockBase<?> nextBlock = order.get(nextIndex);
+            if (nextBlock != null) {
+                return nextBlock == edge.getTargetBlock();
+            }
+        }
+        return false;
     }
 
     /**
@@ -403,6 +409,7 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
         frameContext.enter(this);
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
+            assert (b == null && lir.codeEmittingOrder().get(currentBlockIndex) == null) || lir.codeEmittingOrder().get(currentBlockIndex).equals(b);
             emitBlock(b);
             currentBlockIndex++;
         }

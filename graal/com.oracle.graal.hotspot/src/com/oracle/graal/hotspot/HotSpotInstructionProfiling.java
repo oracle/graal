@@ -115,6 +115,9 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof InstructionCounterOp) {
                     InstructionCounterOp currentOp = (InstructionCounterOp) inst;

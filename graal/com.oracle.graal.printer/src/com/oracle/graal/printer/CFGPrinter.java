@@ -162,6 +162,9 @@ class CFGPrinter extends CompilationPrinter {
         if (lir == null) {
             latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
             for (AbstractBlockBase<?> abstractBlock : blocks) {
+                if (abstractBlock == null) {
+                    continue;
+                }
                 Block block = (Block) abstractBlock;
                 Node cur = block.getBeginNode();
                 while (true) {

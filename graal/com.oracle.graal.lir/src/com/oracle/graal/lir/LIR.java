@@ -186,6 +186,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
     public void resetLabels() {
 
         for (AbstractBlockBase<?> block : codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lirInstructions.get(block)) {
                 if (inst instanceof LabelOp) {
                     ((LabelOp) inst).getLabel().reset();
