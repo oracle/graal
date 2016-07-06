@@ -50,37 +50,30 @@ How to get started?
 First create a new directory, which will contain the needed GraalVM
 projects:
 
-    mkdir sulong-dev
-    cd sulong-dev
+    mkdir sulong-dev && cd sulong-dev
 
 Then, download mx, which is the build tool used by Sulong:
 
     git clone https://github.com/graalvm/mx
     export PATH=$PWD/mx:$PATH
 
-Next, you need a recent [Java SE Development Kit 8u92.](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
-
-Extract it inside the `sulong-dev` directory:
-
-    tar -zxf jdk-8u92-linux-x64.tar.gz
-
-Clone JVMCI inside the Graal VM directory and enable it in the downloaded
-JDK:
-
-    hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8
-    cd graal-jvmci-8
-    mx --java-home `pwd`/../jdk1.8.0_92/ build
-    export JAVA_HOME=$(mx --java-home `pwd`/../jdk1.8.0_92 jdkhome)
-    cd ..
-
-Afterwards, use git to clone the Sulong project and its dependencies:
+Next, use git to clone the Sulong project and its dependencies:
 
     git clone https://github.com/graalvm/sulong
 
-Next, build the project:
+Next, you need to download a recent
+[labsjdk](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
+Extract it inside the `sulong-dev` directory:
 
-    cd sulong
-    mx build
+    tar -zxf labsjdk-8u92-jvmci-0.17-linux-amd64.tar.gz
+
+Set `JAVA_HOME` to point to the extracted labsjdk from above:
+
+    echo JAVA_HOME=`pwd`/labsjdk1.8.0_92-jvmci-0.17 > sulong/mx.sulong/env
+
+Finally, build the project:
+
+    cd sulong && mx build
 
 The mx tool will ask you to choose between its server and jvmci
 configuration. For now, just select server. You can read the differences
