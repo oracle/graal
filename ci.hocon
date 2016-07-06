@@ -3,7 +3,7 @@ java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT",    platformspecific: true}
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
-eclipse : {name: eclipse, version: "4.5.2", platformspecific: true}
+eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
 
 common : {
   packages : {
