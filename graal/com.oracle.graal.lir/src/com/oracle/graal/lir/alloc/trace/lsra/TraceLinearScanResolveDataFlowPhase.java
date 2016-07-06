@@ -57,7 +57,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceLinearScanAllocationContext context) {
         TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
-        new Resolver(allocator, traceBuilderResult).resolveDataFlow(allocator.sortedBlocks());
+        new Resolver(allocator, traceBuilderResult).resolveDataFlow(trace, allocator.sortedBlocks());
     }
 
     private static final class Resolver {
@@ -112,7 +112,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
          * that have been split.
          */
         @SuppressWarnings("try")
-        private void resolveDataFlow(AbstractBlockBase<?>[] blocks) {
+        private void resolveDataFlow(Trace currentTrace, AbstractBlockBase<?>[] blocks) {
             if (blocks.length < 2) {
                 // no resolution necessary
                 return;
@@ -124,15 +124,15 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 for (int i = 0; i < blocks.length - 1; i++) {
                     AbstractBlockBase<?> fromBlock = blocks[i];
                     toBlock = blocks[i + 1];
-                    assert containedInTrace(fromBlock) : "Not in Trace: " + fromBlock;
-                    assert containedInTrace(toBlock) : "Not in Trace: " + toBlock;
+                    assert containedInTrace(currentTrace, fromBlock) : "Not in Trace: " + fromBlock;
+                    assert containedInTrace(currentTrace, toBlock) : "Not in Trace: " + toBlock;
                     resolveCollectMappings(fromBlock, toBlock, moveResolver);
                 }
                 assert blocks[blocks.length - 1].equals(toBlock);
                 if (toBlock.isLoopEnd()) {
                     assert toBlock.getSuccessorCount() == 1;
                     AbstractBlockBase<?> loopHeader = toBlock.getSuccessors()[0];
-                    if (containedInTrace(loopHeader)) {
+                    if (containedInTrace(currentTrace, loopHeader)) {
                         resolveCollectMappings(toBlock, loopHeader, moveResolver);
                     }
                 }
@@ -153,12 +153,8 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             }
         }
 
-        private boolean containedInTrace(AbstractBlockBase<?> block) {
-            return currentTrace().getId() == traceBuilderResult.getTraceForBlock(block).getId();
-        }
-
-        private Trace currentTrace() {
-            return traceBuilderResult.getTraceForBlock(allocator.blockAt(0));
+        private boolean containedInTrace(Trace currentTrace, AbstractBlockBase<?> block) {
+            return currentTrace.getId() == traceBuilderResult.getTraceForBlock(block).getId();
         }
 
         private static final DebugCounter numSSIResolutionMoves = Debug.counter("SSI LSRA[numSSIResolutionMoves]");
