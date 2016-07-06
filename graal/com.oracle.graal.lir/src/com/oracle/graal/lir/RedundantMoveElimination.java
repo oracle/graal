@@ -169,10 +169,10 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         private void initBlockData(LIR lir) {
 
-            List<? extends AbstractBlockBase<?>> blocks = lir.linearScanOrder();
+            AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
             numRegs = 0;
 
-            int maxStackLocations = COMPLEXITY_LIMIT / blocks.size();
+            int maxStackLocations = COMPLEXITY_LIMIT / blocks.length;
 
             /*
              * Search for relevant locations which can be optimized. These are register or stack
@@ -224,7 +224,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
             try (Indent indent = Debug.logAndIndent("solve data flow")) {
 
-                List<? extends AbstractBlockBase<?>> blocks = lir.linearScanOrder();
+                AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
 
                 int numIter = 0;
 
@@ -253,7 +253,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             assert valueNum > 0;
                             boolean newState = false;
 
-                            if (block == blocks.get(0) || block.isExceptionEntry()) {
+                            if (block == blocks[0] || block.isExceptionEntry()) {
                                 /*
                                  * The entry block has undefined values. And also exception handler
                                  * blocks: the LinearScan can insert moves at the end of an
@@ -325,7 +325,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
             try (Indent indent = Debug.logAndIndent("eliminate moves")) {
 
-                List<? extends AbstractBlockBase<?>> blocks = lir.linearScanOrder();
+                AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
 
                 for (AbstractBlockBase<?> block : blocks) {
 

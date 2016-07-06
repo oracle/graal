@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -41,12 +40,12 @@ public final class TraceBuilderResult {
     private final ArrayList<Trace> traces;
     private final int[] blockToTrace;
 
-    static TraceBuilderResult create(List<? extends AbstractBlockBase<?>> blocks, ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
+    static TraceBuilderResult create(AbstractBlockBase<?>[] blocks, ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
         connect(traces, blockToTrace);
         ArrayList<Trace> newTraces = reorderTraces(traces, blockToTrace, pred);
         TraceBuilderResult traceBuilderResult = new TraceBuilderResult(newTraces, blockToTrace);
         traceBuilderResult.numberTraces();
-        assert verify(traceBuilderResult, blocks.size());
+        assert verify(traceBuilderResult, blocks.length);
         return traceBuilderResult;
     }
 

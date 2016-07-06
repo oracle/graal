@@ -132,7 +132,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final List<? extends AbstractBlockBase<?>> sortedBlocks;
+    private final AbstractBlockBase<?>[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -179,7 +179,7 @@ public class LinearScan {
     private int numVariables;
     private final boolean neverSpillConstants;
 
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks,
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
@@ -363,11 +363,11 @@ public class LinearScan {
 
     // access to block list (sorted in linear scan order)
     public int blockCount() {
-        return sortedBlocks.size();
+        return sortedBlocks.length;
     }
 
     public AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks.get(index);
+        return sortedBlocks[index];
     }
 
     /**
@@ -912,7 +912,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public List<? extends AbstractBlockBase<?>> sortedBlocks() {
+    public AbstractBlockBase<?>[] sortedBlocks() {
         return sortedBlocks;
     }
 

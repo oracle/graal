@@ -92,10 +92,10 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             }
         }
 
-        private void deleteEmptyBlocks(List<? extends AbstractBlockBase<?>> blocks) {
+        private void deleteEmptyBlocks(AbstractBlockBase<?>[] blocks) {
             assert verifyBlocks(lir, blocks);
-            for (int i = 0; i < blocks.size(); i++) {
-                AbstractBlockBase<?> block = blocks.get(i);
+            for (int i = 0; i < blocks.length; i++) {
+                AbstractBlockBase<?> block = blocks[i];
                 if (canDeleteBlock(block)) {
 
                     block.delete();
@@ -106,7 +106,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     }
 
                     BLOCKS_DELETED.increment();
-                    blocks.set(i, null);
+                    blocks[i] = null;
                 }
             }
             assert verifyBlocks(lir, blocks);

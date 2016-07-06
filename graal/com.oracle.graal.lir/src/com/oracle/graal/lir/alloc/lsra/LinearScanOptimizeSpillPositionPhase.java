@@ -61,7 +61,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     @SuppressWarnings("try")
     private void optimizeSpillPosition() {
         try (Indent indent0 = Debug.logAndIndent("OptimizeSpillPositions")) {
-            LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.getLIR().linearScanOrder().size()];
+            LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.getLIR().linearScanOrder().length];
             for (Interval interval : allocator.intervals()) {
                 optimizeInterval(insertionBuffers, interval);
             }
@@ -193,8 +193,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
         public AbstractBlockBase<?> next() {
             AbstractBlockBase<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
-            if (nextBlockIndex < allocator.sortedBlocks().size()) {
-                block = allocator.sortedBlocks().get(nextBlockIndex);
+            if (nextBlockIndex < allocator.sortedBlocks().length) {
+                block = allocator.sortedBlocks()[nextBlockIndex];
                 if (range.to <= allocator.getFirstLirInstructionId(block)) {
                     range = range.next;
                     if (range == Range.EndMarker) {

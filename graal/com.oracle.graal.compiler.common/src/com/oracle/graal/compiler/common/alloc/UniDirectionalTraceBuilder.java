@@ -37,7 +37,7 @@ import com.oracle.graal.debug.Indent;
  */
 public final class UniDirectionalTraceBuilder {
 
-    public static TraceBuilderResult computeTraces(AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks, TrivialTracePredicate pred) {
+    public static TraceBuilderResult computeTraces(AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] blocks, TrivialTracePredicate pred) {
         return new UniDirectionalTraceBuilder(blocks).build(startBlock, blocks, pred);
     }
 
@@ -50,13 +50,13 @@ public final class UniDirectionalTraceBuilder {
     private final int[] blocked;
     private final int[] blockToTrace;
 
-    private UniDirectionalTraceBuilder(List<? extends AbstractBlockBase<?>> blocks) {
-        processed = new BitSet(blocks.size());
+    private UniDirectionalTraceBuilder(AbstractBlockBase<?>[] blocks) {
+        processed = new BitSet(blocks.length);
         worklist = new PriorityQueue<>(UniDirectionalTraceBuilder::compare);
         assert (worklist != null);
 
-        blocked = new int[blocks.size()];
-        blockToTrace = new int[blocks.size()];
+        blocked = new int[blocks.length];
+        blockToTrace = new int[blocks.length];
         for (AbstractBlockBase<?> block : blocks) {
             blocked[block.getId()] = block.getPredecessorCount();
         }
@@ -71,7 +71,7 @@ public final class UniDirectionalTraceBuilder {
     }
 
     @SuppressWarnings("try")
-    private TraceBuilderResult build(AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks, TrivialTracePredicate pred) {
+    private TraceBuilderResult build(AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] blocks, TrivialTracePredicate pred) {
         try (Indent indent = Debug.logAndIndent("UniDirectionalTraceBuilder: start trace building: %s", startBlock)) {
             ArrayList<Trace> traces = buildTraces(startBlock);
             return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);

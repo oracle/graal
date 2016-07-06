@@ -63,7 +63,7 @@ public class MatchRuleTest extends LIRTest {
         getLIRSuites().getPreAllocationOptimizationStage().appendPhase(new CheckPhase());
         compile(getResolvedJavaMethod("test1Snippet"), null);
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder().get(0))) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
             if (ins instanceof MemoryConstOp && ((MemoryConstOp) ins).getOpcode().toString().equals("CMP")) {
                 assertFalse("MemoryConstOp expected only once in first block", found);
                 found = true;
