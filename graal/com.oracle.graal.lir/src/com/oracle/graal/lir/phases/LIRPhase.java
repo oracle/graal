@@ -112,12 +112,14 @@ public abstract class LIRPhase<C> {
         memUseTracker = statistics.memUseTracker;
     }
 
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    C context) {
         apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
     }
 
     @SuppressWarnings("try")
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    C context, boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
                 run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
@@ -130,7 +132,8 @@ public abstract class LIRPhase<C> {
         }
     }
 
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    C context);
 
     public static CharSequence createName(Class<?> clazz) {
         String className = clazz.getName();

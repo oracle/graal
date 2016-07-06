@@ -55,7 +55,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    AllocationContext context) {
         optimizeSpillPosition();
         allocator.printIntervals("After optimize spill position");
     }

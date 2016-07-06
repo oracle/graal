@@ -58,8 +58,9 @@ public class TraceBuilderPhase extends AllocationPhase {
     public static final int TRACE_DUMP_LEVEL = 3;
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        B startBlock = linearScanOrder.get(0);
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    AllocationContext context) {
+        AbstractBlockBase<?> startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
 
@@ -77,7 +78,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         context.contextAdd(traceBuilderResult);
     }
 
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult getTraceBuilderResult(LIR lir, B startBlock, List<B> blocks) {
+    private static TraceBuilderResult getTraceBuilderResult(LIR lir, AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks) {
         TraceBuilderResult.TrivialTracePredicate pred = getTrivialTracePredicate(lir);
 
         if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {

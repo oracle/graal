@@ -55,7 +55,7 @@ import jdk.vm.ci.code.TargetDescription;
 public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
                     PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
         Optimizer optimizer = new Optimizer(ir);

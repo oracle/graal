@@ -35,7 +35,7 @@ import jdk.vm.ci.code.TargetDescription;
 final class TraceLinearScanRegisterAllocationPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
         TraceLinearScan allocator = context.allocator;
         allocateRegisters(allocator);
     }

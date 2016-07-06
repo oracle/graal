@@ -569,7 +569,7 @@ public final class TraceLinearScan implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, MoveFactory spillMoveFactory,
+    public void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
 
         /*

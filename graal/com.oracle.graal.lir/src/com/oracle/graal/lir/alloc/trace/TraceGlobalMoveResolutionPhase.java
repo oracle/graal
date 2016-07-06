@@ -61,7 +61,8 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    TraceAllocationContext context) {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         resolveGlobalDataFlow(context.resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }

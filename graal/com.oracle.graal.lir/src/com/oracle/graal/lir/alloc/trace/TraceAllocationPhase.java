@@ -79,12 +79,12 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         return name;
     }
 
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, C context) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context) {
         apply(target, lirGenRes, codeEmittingOrder, trace, context, true);
     }
 
     @SuppressWarnings("try")
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, C context,
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context,
                     boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
@@ -98,5 +98,5 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         }
     }
 
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, C context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context);
 }
