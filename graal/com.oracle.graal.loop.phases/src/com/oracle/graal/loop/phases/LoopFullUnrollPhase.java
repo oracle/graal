@@ -51,16 +51,16 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     protected void run(StructuredGraph graph, PhaseContext context) {
         if (graph.hasLoops()) {
             boolean peeled;
-            boolean intergerComparesCleaned = false;
+            boolean integerComparesCleaned = false;
             do {
                 peeled = false;
                 final LoopsData dataCounted = new LoopsData(graph);
                 dataCounted.detectedCountedLoops();
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     if (getPolicies().shouldFullUnroll(loop)) {
-                        if (!intergerComparesCleaned) {
+                        if (!integerComparesCleaned) {
                             cleanupIntegerCompares(graph, context);
-                            intergerComparesCleaned = true;
+                            integerComparesCleaned = true;
                         }
                         Debug.log("FullUnroll %s", loop);
                         LoopTransformations.fullUnroll(loop, context, canonicalizer);
