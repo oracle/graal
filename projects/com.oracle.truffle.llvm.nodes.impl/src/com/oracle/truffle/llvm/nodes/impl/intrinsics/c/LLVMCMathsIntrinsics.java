@@ -69,4 +69,34 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMRint extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.rint(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMCeil extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.ceil(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMFloor extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.floor(value);
+        }
+
+    }
+
 }
