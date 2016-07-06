@@ -91,12 +91,12 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         }
     }
 
-    static String rootName1;
-    static String rootName2;
+    static String rootNameInCallee;
+    static String rootNameInCaller;
 
     public static void rootNameWithinInstrumentationSnippet() {
         GraalDirectives.instrumentationBegin();
-        rootName1 = GraalDirectives.rootName();
+        rootNameInCallee = GraalDirectives.rootName();
         GraalDirectives.instrumentationEnd();
     }
 
@@ -104,7 +104,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         rootNameWithinInstrumentationSnippet();
 
         GraalDirectives.instrumentationBegin();
-        rootName2 = GraalDirectives.rootName();
+        rootNameInCaller = GraalDirectives.rootName();
         GraalDirectives.instrumentationEnd();
     }
 
@@ -113,13 +113,13 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
             ResolvedJavaMethod method = getResolvedJavaMethod("callerSnippet1");
             executeExpected(method, null); // ensure the method is fully resolved
-            rootName1 = null;
-            rootName2 = null;
+            rootNameInCallee = null;
+            rootNameInCaller = null;
             // We expect both rootName1 and rootName2 are set to the name of the target snippet.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            Assert.assertEquals(toString(method), rootName1);
-            Assert.assertEquals(rootName1, rootName2);
+            Assert.assertEquals(toString(method), rootNameInCallee);
+            Assert.assertEquals(rootNameInCallee, rootNameInCaller);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }

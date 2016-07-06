@@ -62,17 +62,17 @@ public class LockInstrumentationTest extends GraalCompilerTest {
     }
 
     public static final Object lock = new Object();
-    public static boolean flag;
+    public static boolean lockAfterCheckPoint;
     public static boolean checkpoint;
 
-    public void resetFlag() {
-        flag = false;
+    public void resetFlags() {
+        lockAfterCheckPoint = false;
         checkpoint = false;
     }
 
     static void instrumentation() {
         GraalDirectives.instrumentationBeginForPredecessor();
-        flag = checkpoint;
+        lockAfterCheckPoint = checkpoint;
         GraalDirectives.instrumentationEnd();
     }
 
@@ -90,12 +90,12 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "lockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
-            resetFlag();
+            resetFlags();
             // The monitorenter anchors. We expect the instrumentation set the flag before passing
             // the checkpoint.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            Assert.assertFalse("expected flag=flase", flag);
+            Assert.assertFalse("expected lock was performed before checkpoint", lockAfterCheckPoint);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }
@@ -117,13 +117,13 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "postponeLockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "postponeLockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
-            resetFlag();
+            resetFlags();
             // The lock in the snippet will be relocated before the invocation to
             // notInlinedMethod(), i.e., after the checkpoint. We expect the instrumentation follows
             // and flag will be set to true.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            Assert.assertTrue("expected flag=true", flag);
+            Assert.assertTrue("expected lock was performed after checkpoint", lockAfterCheckPoint);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }

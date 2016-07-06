@@ -85,12 +85,12 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         }
     }
 
-    static boolean flag1;
-    static boolean flag2;
+    static boolean isCalleeInlined;
+    static boolean isCallerInlined;
 
     public static void calleeWithInstrumentationSnippet() {
         GraalDirectives.instrumentationBegin();
-        flag1 = GraalDirectives.isMethodInlined();
+        isCalleeInlined = GraalDirectives.isMethodInlined();
         GraalDirectives.instrumentationEnd();
     }
 
@@ -98,7 +98,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         calleeWithInstrumentationSnippet();
 
         GraalDirectives.instrumentationBegin();
-        flag2 = GraalDirectives.isMethodInlined();
+        isCallerInlined = GraalDirectives.isMethodInlined();
         GraalDirectives.instrumentationEnd();
     }
 
@@ -107,15 +107,15 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
             ResolvedJavaMethod method = getResolvedJavaMethod("callerSnippet1");
             executeExpected(method, null); // ensure the method is fully resolved
-            flag1 = false;
-            flag2 = false;
+            isCalleeInlined = false;
+            isCallerInlined = false;
             // calleeWithInstrumentationSnippet will be inlined. We expect the flag1 set in
             // calleeWithInstrumentationSnippet to be true, and the flag2 set in callerSnippet1 to
             // be false.
             InstalledCode code = getCode(method);
             code.executeVarargs();
-            assertTrue("calleWithInstrumentationSnippet should be inlined", flag1);
-            assertFalse("callerSnippet1 should not be inlined", flag2);
+            assertTrue("calleWithInstrumentationSnippet should be inlined", isCalleeInlined);
+            assertFalse("callerSnippet1 should not be inlined", isCallerInlined);
         } catch (Throwable e) {
             Assert.fail("Unexpected exception: " + e);
         }
