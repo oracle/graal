@@ -38,8 +38,10 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import com.oracle.graal.lir.phases.LIRPhase;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
@@ -49,7 +51,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
+public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     /**
      * Abstract move resolver interface for testing.
@@ -59,7 +61,7 @@ public final class TraceGlobalMoveResolutionPhase extends TraceAllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, TraceAllocationContext context) {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         resolveGlobalDataFlow(context.resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }
