@@ -32,13 +32,18 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.replacements.StandardGraphBuilderPlugins;
 import com.oracle.graal.replacements.amd64.AMD64MathSubstitutions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleReadBytesFactory;
@@ -199,14 +204,18 @@ public class LLVMRuntimeIntrinsicFactory {
      * when Graal intrinsifies the corresponding Java method calls, e.g.
      * {@link java.lang.Math#sin(double)}. Currently, the Graal intrinsifications for some
      * trigonometric functions in {@link AMD64MathSubstitutions} are still twice as slow as their C
-     * counterparts. Hence, only the C standard library <code>sqrt</code> is intrinsified, since its
-     * Graal intrinsification in {@link StandardGraphBuilderPlugins} is implemented as efficient as
-     * the C function.
+     * counterparts.
      */
     private static void intrinsifyCFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
         intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
         intrinsics.put("@log", LLVMLogFactory.getInstance());
         intrinsics.put("@log10", LLVMLog10Factory.getInstance());
+        intrinsics.put("@rint", LLVMRintFactory.getInstance());
+        intrinsics.put("@ceil", LLVMCeilFactory.getInstance());
+        intrinsics.put("@floor", LLVMFloorFactory.getInstance());
+        intrinsics.put("@abs", LLVMAbsFactory.getInstance());
+        intrinsics.put("@labs", LLVMLAbsFactory.getInstance());
+        intrinsics.put("@fabs", LLVMFAbsFactory.getInstance());
     }
 
 }
