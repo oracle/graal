@@ -43,6 +43,7 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void notifyShutdown(GraalTruffleRuntime runtime) {
         Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = Truffle.getRuntime().getCallTargets().stream().map(target -> (OptimizedCallTarget) target).collect(
                         Collectors.groupingBy(target -> {

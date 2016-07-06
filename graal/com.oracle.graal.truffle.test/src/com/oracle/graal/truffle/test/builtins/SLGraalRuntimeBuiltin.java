@@ -50,6 +50,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      * Finds all call targets available for the same original call target. This might be useful if a
      * {@link CallTarget} got duplicated due to splitting.
      */
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     protected static final Set<OptimizedCallTarget> findDuplicateCallTargets(OptimizedCallTarget originalCallTarget) {
         final Set<OptimizedCallTarget> allCallTargets = new HashSet<>();

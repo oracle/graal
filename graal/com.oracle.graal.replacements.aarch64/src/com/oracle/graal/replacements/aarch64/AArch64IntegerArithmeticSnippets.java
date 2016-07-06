@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FixedBinaryNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.SignedDivNode;
+import com.oracle.graal.nodes.calc.SignedRemNode;
 import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
@@ -86,9 +86,9 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         if (node instanceof SafeNode) {
             // We already introduced the zero division check, nothing to do.
             return;
-        } else if (node instanceof IntegerDivNode) {
+        } else if (node instanceof SignedDivNode) {
             snippet = kind == JavaKind.Int ? idiv : ldiv;
-        } else if (node instanceof IntegerRemNode) {
+        } else if (node instanceof SignedRemNode) {
             snippet = kind == JavaKind.Int ? irem : lrem;
         } else if (node instanceof UnsignedDivNode) {
             snippet = kind == JavaKind.Int ? uidiv : uldiv;
@@ -166,16 +166,16 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         }
     }
 
-    @NodeIntrinsic(SafeIntegerDivNode.class)
+    @NodeIntrinsic(SafeSignedDivNode.class)
     private static native int safeDiv(int x, int y);
 
-    @NodeIntrinsic(SafeIntegerDivNode.class)
+    @NodeIntrinsic(SafeSignedDivNode.class)
     private static native long safeDiv(long x, long y);
 
-    @NodeIntrinsic(SafeIntegerRemNode.class)
+    @NodeIntrinsic(SafeSignedRemNode.class)
     private static native int safeRem(int x, int y);
 
-    @NodeIntrinsic(SafeIntegerRemNode.class)
+    @NodeIntrinsic(SafeSignedRemNode.class)
     private static native long safeRem(long x, long y);
 
     @NodeIntrinsic(SafeUnsignedDivNode.class)
@@ -198,19 +198,19 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     }
 
     @NodeInfo
-    static class SafeIntegerDivNode extends IntegerDivNode implements SafeNode {
-        public static final NodeClass<SafeIntegerDivNode> TYPE = NodeClass.create(SafeIntegerDivNode.class);
+    static class SafeSignedDivNode extends SignedDivNode implements SafeNode {
+        public static final NodeClass<SafeSignedDivNode> TYPE = NodeClass.create(SafeSignedDivNode.class);
 
-        protected SafeIntegerDivNode(ValueNode x, ValueNode y) {
+        protected SafeSignedDivNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
     }
 
     @NodeInfo
-    static class SafeIntegerRemNode extends IntegerRemNode implements SafeNode {
-        public static final NodeClass<SafeIntegerRemNode> TYPE = NodeClass.create(SafeIntegerRemNode.class);
+    static class SafeSignedRemNode extends SignedRemNode implements SafeNode {
+        public static final NodeClass<SafeSignedRemNode> TYPE = NodeClass.create(SafeSignedRemNode.class);
 
-        protected SafeIntegerRemNode(ValueNode x, ValueNode y) {
+        protected SafeSignedRemNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,8 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
-
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.amd64.AMD64Call;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
@@ -38,9 +35,12 @@ import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.IndirectCallTargetNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FixedBinaryNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.IntegerDivRemNode;
+import com.oracle.graal.nodes.calc.IntegerDivRemNode.Op;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
@@ -58,8 +58,9 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @Override
     protected boolean peephole(ValueNode valueNode) {
-        if ((valueNode instanceof IntegerDivNode) || (valueNode instanceof IntegerRemNode)) {
-            FixedBinaryNode divRem = (FixedBinaryNode) valueNode;
+        if (valueNode instanceof IntegerDivRemNode) {
+            AMD64ArithmeticLIRGenerator arithmeticGen = (AMD64ArithmeticLIRGenerator) gen.getArithmetic();
+            IntegerDivRemNode divRem = (IntegerDivRemNode) valueNode;
             FixedNode node = divRem.next();
             while (true) {
                 if (node instanceof IfNode) {
@@ -77,18 +78,37 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 }
 
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
-                if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
-                    FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;
-                    if (otherDivRem.getX() == divRem.getX() && otherDivRem.getY() == divRem.getY() && !hasOperand(otherDivRem)) {
-                        Value[] results = ((AMD64ArithmeticLIRGenerator) gen.getArithmetic()).emitIntegerDivRem(operand(divRem.getX()), operand(divRem.getY()), state((DeoptimizingNode) valueNode));
-                        if (divRem instanceof IntegerDivNode) {
-                            setResult(divRem, results[0]);
-                            setResult(otherDivRem, results[1]);
-                        } else {
-                            setResult(divRem, results[1]);
-                            setResult(otherDivRem, results[0]);
+                if (fixedWithNextNode instanceof IntegerDivRemNode) {
+                    IntegerDivRemNode otherDivRem = (IntegerDivRemNode) fixedWithNextNode;
+                    if (divRem.getOp() != otherDivRem.getOp() && divRem.getType() == otherDivRem.getType()) {
+                        if (otherDivRem.getX() == divRem.getX() && otherDivRem.getY() == divRem.getY() && !hasOperand(otherDivRem)) {
+                            Value[] results;
+                            switch (divRem.getType()) {
+                                case SIGNED:
+                                    results = arithmeticGen.emitSignedDivRem(operand(divRem.getX()), operand(divRem.getY()), state((DeoptimizingNode) valueNode));
+                                    break;
+                                case UNSIGNED:
+                                    results = arithmeticGen.emitUnsignedDivRem(operand(divRem.getX()), operand(divRem.getY()), state((DeoptimizingNode) valueNode));
+                                    break;
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
+                            switch (divRem.getOp()) {
+                                case DIV:
+                                    assert otherDivRem.getOp() == Op.REM;
+                                    setResult(divRem, results[0]);
+                                    setResult(otherDivRem, results[1]);
+                                    break;
+                                case REM:
+                                    assert otherDivRem.getOp() == Op.DIV;
+                                    setResult(divRem, results[1]);
+                                    setResult(otherDivRem, results[0]);
+                                    break;
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
+                            return true;
                         }
-                        return true;
                     }
                 }
                 node = fixedWithNextNode.next();

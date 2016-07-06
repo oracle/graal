@@ -39,12 +39,16 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 @NodeInfo(shortName = "/")
-public final class DivNode extends BinaryArithmeticNode<Div> {
+public class DivNode extends BinaryArithmeticNode<Div> {
 
     public static final NodeClass<DivNode> TYPE = NodeClass.create(DivNode.class);
 
     public DivNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getDiv, x, y);
+    }
+
+    protected DivNode(NodeClass<? extends DivNode> c, ValueNode x, ValueNode y) {
+        super(c, ArithmeticOpTable::getDiv, x, y);
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {

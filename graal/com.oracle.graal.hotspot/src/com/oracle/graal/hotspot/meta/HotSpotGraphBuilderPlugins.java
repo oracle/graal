@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
@@ -395,7 +396,7 @@ public class HotSpotGraphBuilderPlugins {
     public static final String constantPoolClass;
 
     static {
-        if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+        if (Java8OrEarlier) {
             cbcEncryptName = "encrypt";
             cbcDecryptName = "decrypt";
             aesEncryptName = "encryptBlock";
@@ -438,7 +439,7 @@ public class HotSpotGraphBuilderPlugins {
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
             Registration r = new Registration(plugins, CRC32.class);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+            if (Java8OrEarlier) {
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
             } else {

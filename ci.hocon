@@ -1,7 +1,7 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u92-jvmci-0.15", platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.17", platformspecific: true}
 java9 : {name : oraclejdk, version : "9",    platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u92-jvmci-0.15-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u92-jvmci-0.17-fastdebug", platformspecific: true}
 
 common : {
   timelimit : "30:00"
@@ -41,7 +41,7 @@ commonDarwin : ${common} {
   }
 }
 
-gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+gateCmd : ["mx", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 
 java8Downloads : {
   downloads : {
@@ -72,12 +72,18 @@ java9Downloads : {
 }
 
 gateTest : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
   run : [
     ${gateCmd} ["build,test"]
   ]
 }
 
 gateBootstrap : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
   run : [
     ${gateCmd} ["build,bootstrap"]
   ]
@@ -96,10 +102,17 @@ gateStyle : ${java8Downloads} {
   }
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["style,fullbuild"]
   ]
+}
+
+gateTraceRA : {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
+  }
 }
 
 bench-jvmci : {
@@ -112,7 +125,7 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
-  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-micros-graal"]
+  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
@@ -179,6 +192,9 @@ builds = [
   ${gateTest8Debug}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-test-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
   ${gateBootstrap8}   ${commonSolaris} {capabilities : [solaris, sparcv9, gate], name: "gate-bootstrap-8-solaris-sparcv9", timelimit: "1:00:00"}
 # ${benchSPECjvm2008} {capabilities : [linux, amd64, bench],  name: "bench-specjvm2008-linux-amd64"}
+  # TraceRA
+  ${gateTest8}        ${commonLinux} ${gateTraceRA} {capabilities : [linux, amd64, gate],   name: "gate-test-8-linux-amd64-tracera"}
+  ${gateBootstrap8}   ${commonLinux} ${gateTraceRA} {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64-tracera"}
 ]
 
 include "ci_includes/x52.hocon"

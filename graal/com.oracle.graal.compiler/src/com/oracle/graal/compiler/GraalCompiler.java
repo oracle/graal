@@ -86,6 +86,7 @@ import jdk.vm.ci.meta.VMConstant;
  */
 public class GraalCompiler {
 
+    private static final DebugTimer CompilerTimer = Debug.timer("GraalCompiler");
     private static final DebugTimer FrontEnd = Debug.timer("FrontEnd");
     private static final DebugTimer BackEnd = Debug.timer("BackEnd");
     private static final DebugTimer EmitLIR = Debug.timer("EmitLIR");
@@ -170,7 +171,7 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compile(Request<T> r) {
         try (Scope s = MethodMetricsRootScopeInfo.createRootScopeIfAbsent(r.installedCodeOwner)) {
             assert !r.graph.isFrozen();
-            try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
+            try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start()) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 emitBackEnd(r.graph, null, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, null, r.lirSuites);
             } catch (Throwable e) {

@@ -272,6 +272,9 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
 
     @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope methodScope, LoopScope loopScope, Node node) {
+        if (node instanceof ValueNode) {
+            ((ValueNode) node).inferStamp();
+        }
         if (node instanceof Canonicalizable) {
             Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool(methodScope.graph.getAssumptions()));
             if (canonical == null) {

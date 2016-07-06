@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -320,6 +320,7 @@ public class AMD64Assembler extends Assembler {
         PackedFloatingAssertion(XMM, XMM, PS, PD),
         SingleAssertion(XMM, XMM, SS),
         DoubleAssertion(XMM, XMM, SD),
+        PackedDoubleAssertion(XMM, XMM, PD),
         IntToFloatingAssertion(XMM, CPU, DWORD, QWORD),
         FloatingToIntAssertion(CPU, XMM, DWORD, QWORD);
 
@@ -1126,6 +1127,8 @@ public class AMD64Assembler extends Assembler {
         // @formatter:off
         public static final AMD64RMIOp IMUL    = new AMD64RMIOp("IMUL", false, 0x69);
         public static final AMD64RMIOp IMUL_SX = new AMD64RMIOp("IMUL", true,  0x6B);
+        public static final AMD64RMIOp ROUNDSS = new AMD64RMIOp("ROUNDSS", true, P_0F3A, 0x0A, OpAssertion.PackedDoubleAssertion);
+        public static final AMD64RMIOp ROUNDSD = new AMD64RMIOp("ROUNDSD", true, P_0F3A, 0x0B, OpAssertion.PackedDoubleAssertion);
         // @formatter:on
 
         protected AMD64RMIOp(String opcode, boolean immIsByte, int op) {

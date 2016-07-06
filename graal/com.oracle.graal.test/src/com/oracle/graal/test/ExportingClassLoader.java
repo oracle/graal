@@ -28,14 +28,14 @@ package com.oracle.graal.test;
  */
 public class ExportingClassLoader extends ClassLoader {
     public ExportingClassLoader() {
-        if (!GraalTest.JDK8OrEarlier) {
+        if (!GraalTest.Java8OrEarlier) {
             JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
         }
     }
 
     public ExportingClassLoader(ClassLoader parent) {
         super(parent);
-        if (!GraalTest.JDK8OrEarlier) {
+        if (!GraalTest.Java8OrEarlier) {
             JLRModule.fromClass(getClass()).exportAllPackagesTo(JLRModule.getUnnamedModuleFor(this));
         }
     }

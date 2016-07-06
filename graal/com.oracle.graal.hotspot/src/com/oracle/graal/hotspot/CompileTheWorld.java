@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldClasspath;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldConfig;
 import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldExcludeMethodFilter;
@@ -75,6 +76,7 @@ import java.util.stream.Collectors;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.CompilerThreadFactory;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
 import com.oracle.graal.debug.GraalDebugConfig;
@@ -106,12 +108,10 @@ import jdk.vm.ci.services.Services;
  */
 public final class CompileTheWorld {
 
-    private static final String JAVA_VERSION = System.getProperty("java.specification.version");
-
     /**
-     * Magic token to denote that JDK classes are to be compiled. If {@link #JAVA_VERSION} denotes a
-     * JDK earlier than 9, then the classes in {@code rt.jar} are compiled. Otherwise the classes in
-     * {@code <java.home>/lib/modules} are compiled.
+     * Magic token to denote that JDK classes are to be compiled. If {@link Util#Java8OrEarlier},
+     * then the classes in {@code rt.jar} are compiled. Otherwise the classes in {@code
+     * <java.home>/lib/modules} are compiled.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -133,19 +133,14 @@ public final class CompileTheWorld {
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
          * @param options a space separated set of option value settings with each option setting in
-         *            a -G:<value> format but without the leading "-G:". Ignored if null.
+         *            a {@code -Dgraal.<name>=<value>} format but without the leading
+         *            {@code -Dgraal.}. Ignored if null.
          */
         public Config(String options) {
             if (options != null) {
                 Map<String, String> optionSettings = new HashMap<>();
                 for (String optionSetting : options.split("\\s+|#")) {
-                    if (optionSetting.charAt(0) == '-') {
-                        optionSettings.put(optionSetting.substring(1), "false");
-                    } else if (optionSetting.charAt(0) == '+') {
-                        optionSettings.put(optionSetting.substring(1), "true");
-                    } else {
-                        OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
-                    }
+                    OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                 }
                 OptionsParser.parseOptions(optionSettings, this, ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader()));
             }
@@ -256,9 +251,8 @@ public final class CompileTheWorld {
             GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
         if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
-            boolean jdk8OrEarlier = JAVA_VERSION.compareTo("1.9") < 0;
             String bcpEntry = null;
-            if (jdk8OrEarlier) {
+            if (Java8OrEarlier) {
                 final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
                 for (int i = 0; i < entries.length && bcpEntry == null; i++) {
                     String entry = entries[i];
@@ -565,7 +559,7 @@ public final class CompileTheWorld {
                 if (entry.endsWith(".zip") || entry.endsWith(".jar")) {
                     cpe = new JarClassPathEntry(entry);
                 } else if (isJImage(entry)) {
-                    assert JAVA_VERSION.compareTo("1.9") >= 0;
+                    assert !Java8OrEarlier;
                     cpe = new ImageClassPathEntry(entry);
                 } else {
                     if (!new File(entry).isDirectory()) {

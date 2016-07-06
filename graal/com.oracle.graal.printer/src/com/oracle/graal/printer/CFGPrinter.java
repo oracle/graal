@@ -541,15 +541,27 @@ class CFGPrinter extends CompilationPrinter {
 
     IntervalVisitor intervalVisitor = new IntervalVisitor() {
 
-        @Override
-        public void visitIntervalStart(Object parentOperand, Object splitOperand, Object location, Object hint, String typeName, char typeChar) {
-            out.printf("%s %s ", splitOperand, typeName);
-            if (location != null) {
-                out.printf("\"[%s|%c]\"", location, typeChar);
-            } else {
-                out.printf("\"[%s|%c]\"", splitOperand, typeChar);
+        /**
+         * @return a formatted description of the operand that the C1Visualizer can handle.
+         */
+        String getFormattedOperand(Value operand) {
+            String s = operand.toString();
+            int last = s.lastIndexOf('|');
+            if (last != -1) {
+                return s.substring(0, last) + "|" + operand.getPlatformKind().getTypeChar();
             }
-            out.printf("%s %s ", parentOperand, hint != null ? hint : -1);
+            return s;
+        }
+
+        @Override
+        public void visitIntervalStart(Value parentOperand, Value splitOperand, Value location, Value hint, String typeName) {
+            out.printf("%s %s ", getFormattedOperand(splitOperand), typeName);
+            if (location != null) {
+                out.printf("\"[%s]\"", getFormattedOperand(location));
+            } else {
+                out.printf("\"[%s]\"", getFormattedOperand(splitOperand));
+            }
+            out.printf(" %s %s ", getFormattedOperand(parentOperand), hint != null ? getFormattedOperand(hint) : -1);
         }
 
         @Override

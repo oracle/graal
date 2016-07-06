@@ -59,9 +59,21 @@ def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    name = 'com.oracle.graal.hotspot.JVMCIVersionCheck'
+    simplename = 'JVMCIVersionCheck'
+    name = 'com.oracle.graal.hotspot.' + simplename
     binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
-    javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
+    if isinstance(_suite, mx.BinarySuite):
+        javaSource = join(binDir, simplename + '.java')
+        if not exists(javaSource):
+            dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
+            assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
+            d = dists[0]
+            assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+            with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
+                with open(javaSource, 'w') as fp:
+                    fp.write(zf.read(name.replace('.', '/') + '.java'))
+    else:
+        javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
     javaClass = join(binDir, name.replace('.', '/') + '.class')
     if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
         mx.run([jdk.javac, '-d', binDir, javaSource])
@@ -95,15 +107,7 @@ if isJDK8:
 
     #: The deployed Graal distributions
     _jvmci_classpath = [
-        JVMCIClasspathEntry('GRAAL_OPTIONS'),
-        JVMCIClasspathEntry('GRAAL_NODEINFO'),
-        JVMCIClasspathEntry('GRAAL_SERVICEPROVIDER'),
-        JVMCIClasspathEntry('GRAAL_API'),
-        JVMCIClasspathEntry('GRAAL_COMPILER'),
-        JVMCIClasspathEntry('GRAAL_RUNTIME'),
-        JVMCIClasspathEntry('GRAAL_HOTSPOT'),
-        JVMCIClasspathEntry('GRAAL_TRUFFLE'),
-        JVMCIClasspathEntry('GRAAL_TRUFFLE_HOTSPOT'),
+        JVMCIClasspathEntry('GRAAL'),
     ]
 
     def add_jvmci_classpath_entry(entry):
@@ -148,16 +152,6 @@ else:
         global _graal_module_descriptor
         assert descriptor != None
         _graal_module_descriptor = descriptor
-
-#: The selected JVMCI compiler
-_jvmci_compiler = 'graal'
-
-def set_jvmci_compiler(compilerName):
-    """
-    Sets the value for the ``jvmci.Compiler`` system property passed to the VM.
-    """
-    global _jvmci_compiler
-    _jvmci_compiler = compilerName
 
 _bootclasspath_appends = []
 
@@ -227,11 +221,7 @@ def ctw(args, extraVMarguments=None):
 
     args, vmargs = parser.parse_known_args(args)
 
-    if args.ctwopts:
-        # Replace spaces  with '#' since -G: options cannot contain spaces
-        vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
-
-    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
+    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause VM crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if args.cp:
@@ -245,7 +235,7 @@ def ctw(args, extraVMarguments=None):
             # Compile all classes in the JRT image by default.
             cp = join(jdk.home, 'lib', 'modules')
 
-    vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+    vmargs.append('-Dgraal.CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     if _get_XX_option_value(vmargs + _noneAsEmptyList(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')
@@ -254,7 +244,7 @@ def ctw(args, extraVMarguments=None):
         if not _is_jvmci_enabled(vmargs):
             vmargs.extend(['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp])
         else:
-            vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
+            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
     else:
         if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
@@ -266,7 +256,7 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append(','.join(nonBootJDKModules))
             if args.limitmods:
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-            vmargs.extend(['-G:CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld'])
+            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld'])
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
@@ -319,7 +309,7 @@ class GraalTags:
     fulltest = 'fulltest'
 
 def _noneAsEmptyList(a):
-    if a is None:
+    if not a or not any(a):
         return []
     return a
 
@@ -347,12 +337,12 @@ def _gate_java_benchmark(args, successRe):
         mx.abort('Could not find benchmark success pattern: ' + successRe)
 
 def _gate_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-G:+ExitVMOnException'] + _noneAsEmptyList(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.ExitVMOnException=true'] + _noneAsEmptyList(extraVMarguments)
     dacapoJar = mx.library('DACAPO').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-G:+ExitVMOnException'] + _noneAsEmptyList(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'] + _noneAsEmptyList(extraVMarguments)
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
@@ -368,7 +358,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=[GraalTags.fulltest]) as t:
-        if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-XX:-UseJVMCICompiler', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
+        if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-XX:-UseJVMCICompiler', '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -429,17 +419,16 @@ graal_unit_test_runs = [
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa', '-G:+VerifyGraalGraphs', '-G:+VerifyGraalGraphEdges'], tags=[GraalTags.bootstrap]),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.Compiler=graal-economy', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-G:+TraceRA', '-G:RegisterPressure=' + _registers, '-G:+ExitVMOnException', '-G:+LIRUnlockBackendRestart'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases', '-G:+ExitVMOnException'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true'], tags=[GraalTags.bootstrap]),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
 ]
-
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
@@ -641,30 +630,33 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if jacocoArgs:
         argsPrefix.extend(jacocoArgs)
 
-    # Support for -G: options
-    def translateGOption(arg):
+    # Check for -G: options
+    def checkGOption(arg):
         if arg.startswith('-G:+'):
             if '=' in arg:
                 mx.abort('Mixing + and = in -G: option specification: ' + arg)
-            arg = '-Dgraal.' + arg[len('-G:+'):] + '=true'
+            translation = '-Dgraal.' + arg[len('-G:+'):] + '=true'
         elif arg.startswith('-G:-'):
             if '=' in arg:
                 mx.abort('Mixing - and = in -G: option specification: ' + arg)
-            arg = '-Dgraal.' + arg[len('-G:+'):] + '=false'
+            translation = '-Dgraal.' + arg[len('-G:+'):] + '=false'
         elif arg.startswith('-G:'):
             if '=' not in arg:
                 mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
-            arg = '-Dgraal.' + arg[len('-G:'):]
-        return arg
+            translation = '-Dgraal.' + arg[len('-G:'):]
+        else:
+            return arg
+        mx.warn('Support for -G options is deprecated and will soon be removed. Replace "' + arg + '" with "' + translation + '"')
+        return translation
 
-    # add default graal.options.file and translate -G: options
+    # add default graal.options.file
     options_file = join(mx.primary_suite().dir, 'graal.options')
     if exists(options_file):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
-    args = [translateGOption(a) for a in args]
+    args = [checkGOption(a) for a in args]
 
-    if '-G:+PrintFlags' in args and '-Xcomp' not in args:
-        mx.warn('Using -G:+PrintFlags may have no effect without -Xcomp as Graal initialization is lazy')
+    if '-Dgraal.PrintFlags=true' in args and '-Xcomp' not in args:
+        mx.warn('Using -Dgraal.PrintFlags=true may have no effect without -Xcomp as Graal initialization is lazy')
 
     if isJDK8:
         argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
@@ -693,8 +685,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
             argsPrefix.append('-modulepath')
             argsPrefix.append(module.jarpath)
 
-    # Set the default JVMCI compiler
-    argsPrefix.append('-Djvmci.Compiler=' + _jvmci_compiler)
+    # Set the JVMCI compiler to Graal
+    argsPrefix.append('-Djvmci.Compiler=graal')
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
@@ -727,7 +719,7 @@ _JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJVMCI9JDKConfig(mx.JDKConfig):
     """
-    A JDKConfig that configures Graal as the JVMCI compiler and also adds support for the ``-G:`` options.
+    A JDKConfig that configures Graal as the JVMCI compiler.
     """
     def __init__(self):
         mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)

@@ -28,8 +28,6 @@ import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.PrintVMConfig;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.ShowVMConfig;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
@@ -37,7 +35,6 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 
 import com.oracle.graal.api.collections.CollectionsProvider;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
@@ -55,8 +52,6 @@ import com.oracle.graal.graph.NodeCollectionsProvider;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.runtime.RuntimeProvider;
@@ -66,8 +61,6 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.hotspot.VMField;
-import jdk.vm.ci.hotspot.VMFlag;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
@@ -77,15 +70,6 @@ import jdk.vm.ci.runtime.JVMCIBackend;
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Prints all available VM configuration information and exits.")
-        public static final OptionValue<Boolean> PrintVMConfig = new OptionValue<>(false);
-        @Option(help = "Prints all available VM configuration information and continues.")
-        public static final OptionValue<Boolean> ShowVMConfig = new OptionValue<>(false);
-        // @formatter:on
-    }
 
     private static boolean checkArrayIndexScaleInvariants() {
         assert getArrayIndexScale(JavaKind.Byte) == 1;
@@ -106,12 +90,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final GraalHotSpotVMConfig config;
 
+    /**
+     * @param compilerConfigurationName value for the {@code name} parameter of
+     *            {@link CompilerConfigurationFactory#selectFactory(String)}
+     */
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
+    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, String compilerConfigurationName) {
 
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
-        printVMConfig(store);
-
         config = new GraalHotSpotVMConfig(store);
         CompileTheWorldOptions.overrideWithNativeOptions(config);
 
@@ -120,12 +106,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
         }
 
-        CompilerConfiguration compilerConfiguration = compilerFactory.createCompilerConfiguration();
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(compilerConfigurationName);
+        CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
 
         JVMCIBackend hostJvmciBackend = jvmciRuntime.getHostJVMCIBackend();
         Architecture hostArchitecture = hostJvmciBackend.getTarget().arch;
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
-            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(hostArchitecture);
+            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(hostArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
@@ -138,7 +125,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
 
             Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
-            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(gpuArchitecture);
+            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(gpuArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
@@ -214,39 +201,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         assert checkArrayIndexScaleInvariants();
 
         runtimeStartTime = System.nanoTime();
-    }
-
-    private static void printVMConfig(HotSpotVMConfigStore store) {
-        if (PrintVMConfig.getValue() || ShowVMConfig.getValue()) {
-            TreeMap<String, VMField> fields = new TreeMap<>(store.getFields());
-            for (VMField field : fields.values()) {
-                if (!field.isStatic()) {
-                    TTY.printf("[vmconfig:instance field] %s %s {offset=%d[0x%x]}%n", field.type, field.name, field.offset, field.offset);
-                } else {
-                    String value = field.value == null ? "null" : String.format("%d[0x%x]", field.value, field.value);
-                    TTY.printf("[vmconfig:static field] %s %s = %s {address=0x%x}%n", field.type, field.name, value, field.address);
-                }
-            }
-            TreeMap<String, VMFlag> flags = new TreeMap<>(store.getFlags());
-            for (VMFlag flag : flags.values()) {
-                TTY.printf("[vmconfig:flag] %s %s = %s%n", flag.type, flag.name, flag.value);
-            }
-            TreeMap<String, Long> addresses = new TreeMap<>(store.getAddresses());
-            for (Map.Entry<String, Long> e : addresses.entrySet()) {
-                TTY.printf("[vmconfig:address] %s = %d[0x%x]%n", e.getKey(), e.getValue(), e.getValue());
-            }
-            TreeMap<String, Long> constants = new TreeMap<>(store.getConstants());
-            for (Map.Entry<String, Long> e : constants.entrySet()) {
-                TTY.printf("[vmconfig:constant] %s = %d[0x%x]%n", e.getKey(), e.getValue(), e.getValue());
-            }
-            TreeMap<String, Long> typeSizes = new TreeMap<>(store.getTypeSizes());
-            for (Map.Entry<String, Long> e : typeSizes.entrySet()) {
-                TTY.printf("[vmconfig:type size] %s = %d%n", e.getKey(), e.getValue());
-            }
-            if (PrintVMConfig.getValue()) {
-                System.exit(0);
-            }
-        }
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {

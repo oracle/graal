@@ -65,7 +65,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
     }
 
     private static Object getConstantPoolForObject() {
-        String miscPackage = JDK8OrEarlier ? "sun.misc" : "jdk.internal.misc";
+        String miscPackage = Java8OrEarlier ? "sun.misc" : "jdk.internal.misc";
         try {
             Class<?> sharedSecretsClass = Class.forName(miscPackage + ".SharedSecrets");
             Class<?> javaLangAccessClass = Class.forName(miscPackage + ".JavaLangAccess");
@@ -103,7 +103,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
      * </pre>
      */
     private static void assumeJDK8() {
-        Assume.assumeTrue(JDK8OrEarlier);
+        Assume.assumeTrue(Java8OrEarlier);
     }
 
     @Test
@@ -211,7 +211,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
         cw.visit(52, ACC_SUPER, "com/oracle/graal/hotspot/test/ConstantPoolTest", null, "java/lang/Object", null);
         cw.visitInnerClass("com/oracle/graal/hotspot/test/ConstantPoolTest", "com/oracle/graal/hotspot/test/ConstantPoolSubstitutionsTests", "ConstantPoolTest",
                         ACC_STATIC);
-        String constantPool = System.getProperty("java.specification.version").compareTo("1.9") < 0 ? "sun/reflect/ConstantPool" : "jdk/internal/reflect/ConstantPool";
+        String constantPool = Java8OrEarlier ? "sun/reflect/ConstantPool" : "jdk/internal/reflect/ConstantPool";
 
         mv = cw.visitMethod(0, "<init>", "()V", null, null);
         mv.visitCode();

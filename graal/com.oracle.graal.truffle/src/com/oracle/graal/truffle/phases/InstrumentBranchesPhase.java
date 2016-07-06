@@ -26,8 +26,9 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentB
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,6 +43,9 @@ import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.AddNode;
+import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -55,36 +59,36 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
-    private static final MethodFilter[] METHOD_FILTER;
-    private static final Field ACCESS_TABLE_JAVA_FIELD;
+    private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
-    public static final boolean[] ACCESS_TABLE = new boolean[ACCESS_TABLE_SIZE];
+    public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
 
-    static {
-        Field javaField = null;
-        try {
-            javaField = InstrumentBranchesPhase.class.getField("ACCESS_TABLE");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        ACCESS_TABLE_JAVA_FIELD = javaField;
+    private final MethodFilter[] methodFilter;
 
+    public InstrumentBranchesPhase() {
         String filterValue = TruffleInstrumentBranchesFilter.getValue();
         if (filterValue != null) {
-            METHOD_FILTER = MethodFilter.parse(filterValue);
+            methodFilter = MethodFilter.parse(filterValue);
         } else {
-            METHOD_FILTER = new MethodFilter[0];
+            methodFilter = new MethodFilter[0];
         }
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        ResolvedJavaField tableField = context.getMetaAccess().lookupJavaField(ACCESS_TABLE_JAVA_FIELD);
+        ResolvedJavaField[] fields = context.getMetaAccess().lookupJavaType(InstrumentBranchesPhase.class).getStaticFields();
+        ResolvedJavaField tableField = null;
+        for (ResolvedJavaField field : fields) {
+            if (field.getName().equals(ACCESS_TABLE_FIELD_NAME)) {
+                tableField = field;
+                break;
+            }
+        }
         JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
         try {
             for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(n);
+                BranchInstrumentation.Point p = instrumentation.getOrCreatePoint(methodFilter, n);
                 if (p != null) {
                     insertCounter(graph, tableField, tableConstant, n, p, true);
                     insertCounter(graph, tableField, tableConstant, n, p, false);
@@ -102,14 +106,30 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         TypeReference typeRef = TypeReference.createExactTrusted((ResolvedJavaType) tableField.getType());
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(p.getRawIndex(isTrue)));
-        ConstantNode v = graph.unique(ConstantNode.forBoolean(true));
-        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Boolean, v));
+        LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, JavaKind.Long));
+        ConstantNode one = graph.unique(ConstantNode.forLong(1L));
+        ValueNode add = graph.unique(new AddNode(load, one));
+        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Long, add));
 
-        graph.addAfterFixed(beginNode, store);
+        graph.addAfterFixed(beginNode, load);
+        graph.addAfterFixed(load, store);
     }
 
     public static class BranchInstrumentation {
 
+        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<Map.Entry<String, Point>>() {
+            @Override
+            public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
+                long diff = y.getValue().getHotness() - x.getValue().getHotness();
+                if (diff < 0) {
+                    return -1;
+                } else if (diff == 0) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        };
         public Map<String, Point> pointMap = new LinkedHashMap<>();
         public int tableCount = 0;
 
@@ -118,10 +138,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
          * we discriminate nodes by their inlining site, or only by the method in which they were
          * defined.
          */
-        private static String filterAndEncode(Node ifNode) {
+        private static String filterAndEncode(MethodFilter[] methodFilter, Node ifNode) {
             NodeSourcePosition pos = ifNode.getNodeSourcePosition();
             if (pos != null) {
-                if (!MethodFilter.matches(METHOD_FILTER, pos.getMethod())) {
+                if (!MethodFilter.matches(methodFilter, pos.getMethod())) {
                     return null;
                 }
                 if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
@@ -145,21 +165,34 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         }
 
         public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        public synchronized ArrayList<String> accessTableToHistogram() {
+            long totalExecutions = pointMap.values().stream().mapToLong(v -> v.getHotness()).sum();
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> {
+                int length = (int) ((1.0 * entry.getValue().getHotness() / totalExecutions) * 80);
+                String bar = String.join("", Collections.nCopies(length, "*"));
+                return String.format("%3d: %s", entry.getValue().getIndex(), bar);
+            }).collect(Collectors.toCollection(ArrayList::new));
         }
 
         public synchronized void dumpAccessTable() {
             // Dump accumulated profiling information.
-            TTY.println("Branch execution profile");
-            TTY.println("========================");
+            TTY.println("Branch execution profile (sorted by hotness)");
+            TTY.println("============================================");
+            for (String line : accessTableToHistogram()) {
+                TTY.println(line);
+            }
+            TTY.println();
             for (String line : accessTableToList()) {
                 TTY.println(line);
                 TTY.println();
             }
         }
 
-        public synchronized Point getOrCreatePoint(IfNode n) {
-            String key = filterAndEncode(n);
+        public synchronized Point getOrCreatePoint(MethodFilter[] methodFilter, IfNode n) {
+            String key = filterAndEncode(methodFilter, n);
             if (key == null) {
                 return null;
             }
@@ -206,11 +239,28 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 this.index = index;
             }
 
+            public long ifVisits() {
+                return ACCESS_TABLE[index * 2];
+            }
+
+            public long elseVisits() {
+                return ACCESS_TABLE[index * 2 + 1];
+            }
+
             public BranchState getBranchState() {
-                int rawIndex = index * 2;
-                boolean ifVisited = ACCESS_TABLE[rawIndex];
-                boolean elseVisited = ACCESS_TABLE[rawIndex + 1];
-                return BranchState.from(ifVisited, elseVisited);
+                return BranchState.from(ifVisits() > 0, elseVisits() > 0);
+            }
+
+            public String getCounts() {
+                return "if=" + ifVisits() + "#, else=" + elseVisits() + "#";
+            }
+
+            public long getHotness() {
+                return ifVisits() + elseVisits();
+            }
+
+            public int getIndex() {
+                return index;
             }
 
             public int getRawIndex(boolean isTrue) {
@@ -223,7 +273,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
             @Override
             public String toString() {
-                return "[" + index + "] state = " + getBranchState();
+                return "[" + index + "] state = " + getBranchState() + "(" + getCounts() + ")";
             }
         }
 

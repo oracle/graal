@@ -47,7 +47,7 @@ import com.oracle.graal.lir.ValueConsumer;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Value;
 
-public class SSIBuilder {
+public final class SSIBuilder {
 
     private static class BlockData {
 
@@ -109,7 +109,7 @@ public class SSIBuilder {
         return lir.getControlFlowGraph().getBlocks();
     }
 
-    protected LIR getLIR() {
+    private LIR getLIR() {
         return lir;
     }
 
@@ -171,14 +171,12 @@ public class SSIBuilder {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         processLocalUse(liveGen, operand);
-                        visitUse(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         processLocalUse(liveGen, operand);
-                        visitAlive(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer stateConsumer = new InstructionValueConsumer() {
@@ -193,21 +191,18 @@ public class SSIBuilder {
                                 }
                             }
                         }
-                        visitState(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         processLocalDef(liveGen, liveKill, operand);
-                        visitDef(block, op, operand, mode, flags);
                     }
                 };
                 InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         processLocalDef(liveGen, liveKill, operand);
-                        visitTemp(block, op, operand, mode, flags);
                     }
                 };
 
@@ -218,7 +213,6 @@ public class SSIBuilder {
                     final LIRInstruction op = instIt.previous();
 
                     try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
-                        visitInstruction(block, op);
                         op.visitEachOutput(defConsumer);
                         op.visitEachTemp(tempConsumer);
                         op.visitEachState(stateConsumer);
@@ -242,7 +236,7 @@ public class SSIBuilder {
         } // end of block iteration
     }
 
-    protected void processLocalUse(final BitSet liveGen, Value operand) {
+    private static void processLocalUse(final BitSet liveGen, Value operand) {
         if (isVariable(operand)) {
             int operandNum = operandNumber(operand);
             liveGen.set(operandNum);
@@ -252,7 +246,7 @@ public class SSIBuilder {
         }
     }
 
-    protected void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand) {
+    private static void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand) {
         if (isVariable(operand)) {
             int operandNum = operandNumber(operand);
             liveKill.set(operandNum);
@@ -261,79 +255,6 @@ public class SSIBuilder {
                 Debug.log("liveKill for operand %d(%s)", operandNum, operand);
             }
         }
-    }
-
-    /**
-     * @param block
-     * @param op
-     * @param operand
-     * @param mode
-     * @param flags
-     */
-    protected void visitUse(AbstractBlockBase<?> block, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-    }
-
-    /**
-     * @param block
-     * @param op
-     * @param operand
-     * @param mode
-     * @param flags
-     */
-    protected void visitAlive(AbstractBlockBase<?> block, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-    }
-
-    /**
-     * @param block
-     * @param op
-     * @param operand
-     * @param mode
-     * @param flags
-     */
-    protected void visitDef(AbstractBlockBase<?> block, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-    }
-
-    /**
-     * @param block
-     * @param op
-     * @param operand
-     * @param mode
-     * @param flags
-     */
-    protected void visitTemp(AbstractBlockBase<?> block, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-    }
-
-    /**
-     * @param block
-     * @param op
-     * @param operand
-     * @param mode
-     * @param flags
-     */
-    protected void visitState(AbstractBlockBase<?> block, LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-    }
-
-    /**
-     * @param op
-     * @param block
-     * @param incoming
-     */
-    protected void visitIncoming(AbstractBlockBase<?> block, LIRInstruction op, Value[] incoming) {
-    }
-
-    /**
-     * @param op
-     * @param block
-     * @param outgoing
-     */
-    protected void visitOutgoing(AbstractBlockBase<?> block, LIRInstruction op, Value[] outgoing) {
-    }
-
-    /**
-     * @param block
-     * @param op
-     */
-    protected void visitInstruction(AbstractBlockBase<?> block, LIRInstruction op) {
     }
 
     /**
@@ -464,7 +385,6 @@ public class SSIBuilder {
             values[cnt++] = liveIn.get(i) ? operands[i] : Value.ILLEGAL;
         }
         LabelOp label = SSIUtil.incoming(getLIR(), block);
-        visitIncoming(block, label, values);
         label.addIncomingValues(values);
     }
 
@@ -479,7 +399,6 @@ public class SSIBuilder {
             values[cnt++] = operands[i];
         }
         BlockEndOp blockEndOp = SSIUtil.outgoing(getLIR(), block);
-        visitOutgoing(block, (LIRInstruction) blockEndOp, values);
         blockEndOp.addOutgoingValues(values);
     }
 }

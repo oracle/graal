@@ -1,12 +1,14 @@
 suite = {
-  "mxversion" : "5.31.0",
+  "mxversion" : "5.34.0",
   "name" : "graal-core",
 
   "imports" : {
     "suites": [
       {
         "name" : "truffle",
-        "version" : "4cedec080054e9be81d8f6fdf7a2fa37587afde6",
+        # IMPORTANT: When updating the Truffle import, notify Truffle language developers
+        # (by mail to graal-dev@openjdk.java.net) of the pending change.
+        "version" : "fbb6bb30803df787c07b1c8131789c94acfc2761",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -76,8 +78,8 @@ suite = {
     },
 
     "C1VISUALIZER_DIST" : {
-      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2015-07-22.zip"],
-      "sha1" : "7ead6b2f7ed4643ef4d3343a5562e3d3f39564ac",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/c1visualizer/c1visualizer-1.4.zip"],
+      "sha1" : "9e929537a2df6daa80182828f18b12966dda9f86",
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {

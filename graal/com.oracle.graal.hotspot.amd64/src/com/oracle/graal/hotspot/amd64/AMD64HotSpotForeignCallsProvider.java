@@ -23,11 +23,8 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
-import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
@@ -42,12 +39,12 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.AMD64MathStub;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -60,6 +57,13 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
+
+    public static final ForeignCallDescriptor ARITHMETIC_SIN_STUB = new ForeignCallDescriptor("arithmeticSinStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_COS_STUB = new ForeignCallDescriptor("arithmeticCosStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_TAN_STUB = new ForeignCallDescriptor("arithmeticTanStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_EXP_STUB = new ForeignCallDescriptor("arithmeticExpStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_LOG_STUB = new ForeignCallDescriptor("arithmeticLogStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_LOG10_STUB = new ForeignCallDescriptor("arithmeticLog10Stub", double.class, double.class);
 
     private final Value[] nativeABICallerSaveRegisters;
 
@@ -88,10 +92,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
             link(new AMD64DeoptimizationStub(providers, target, config, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
             link(new AMD64UncommonTrapStub(providers, target, config, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         }
-        if (GraalArithmeticStubs.getValue()) {
-            link(new AMD64MathStub(ARITHMETIC_LOG, providers, registerStubCall(ARITHMETIC_LOG, REEXECUTABLE, LEAF, NO_LOCATIONS)));
-            link(new AMD64MathStub(ARITHMETIC_LOG10, providers, registerStubCall(ARITHMETIC_LOG10, REEXECUTABLE, LEAF, NO_LOCATIONS)));
-        }
+        link(new AMD64MathStub(ARITHMETIC_LOG_STUB, providers, registerStubCall(ARITHMETIC_LOG_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_LOG10_STUB, providers, registerStubCall(ARITHMETIC_LOG10_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
 
         if (config.useCRC32Intrinsics) {
             // This stub does callee saving

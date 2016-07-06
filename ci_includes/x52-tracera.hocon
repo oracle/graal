@@ -43,11 +43,6 @@ bench-specjbb2015-x52-tracera: ${bench-specjbb2015-x52} ${x52.tracera} {
   name: "bench-specjbb2015-linux-x52-tracera"
 }
 
-# JMH micros graal
-
-bench-micros-graal-x52-tracera: ${bench-micros-graal-x52} ${x52.tracera} {
-  name: "bench-jmh-micros-graal-x52-tracera"
-}
 
 # Build targets
 
@@ -58,5 +53,4 @@ builds += [
   ${bench-specjbb2015-x52-tracera}
   ${bench-dacapo-timing-x52-tracera}
   ${bench-scala-dacapo-timing-x52-tracera}
-  ${bench-micros-graal-x52-tracera}
 ]

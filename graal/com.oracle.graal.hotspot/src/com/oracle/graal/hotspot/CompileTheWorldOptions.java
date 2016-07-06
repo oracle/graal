@@ -50,7 +50,7 @@ public class CompileTheWorldOptions {
     public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
     @Option(help = "Option value overrides to use during compile the world. For example, " +
                    "to disable inlining and partial escape analysis specify '-PartialEscapeAnalysis -Inline'. " +
-                   "The format for each option is the same as on the command line just without the '-G:' prefix.", type = OptionType.Debug)
+                   "The format for each option is the same as on the command line just without the '-Dgraal.' prefix.", type = OptionType.Debug)
     public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
 
     @Option(help = "Run CTW using as many threads as there are processors on the system", type = OptionType.Debug)

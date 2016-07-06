@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.verify;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
+
 import java.lang.annotation.Annotation;
 
 import com.oracle.graal.nodes.Invoke;
@@ -45,7 +47,7 @@ public class VerifyCallerSensitiveMethods extends VerifyPhase<PhaseContext> {
     public VerifyCallerSensitiveMethods() {
         try {
             ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-            if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+            if (Java8OrEarlier) {
                 reflectionClass = classLoader.loadClass("sun.reflect.Reflection");
                 callerSensitiveClass = (Class<? extends Annotation>) classLoader.loadClass("sun.reflect.ConstantPool");
             } else {

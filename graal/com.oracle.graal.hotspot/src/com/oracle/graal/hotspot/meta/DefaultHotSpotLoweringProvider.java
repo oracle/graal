@@ -108,12 +108,9 @@ import com.oracle.graal.nodes.UnwindNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.calc.IntegerDivNode;
-import com.oracle.graal.nodes.calc.IntegerRemNode;
+import com.oracle.graal.nodes.calc.IntegerDivRemNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.RemNode;
-import com.oracle.graal.nodes.calc.UnsignedDivNode;
-import com.oracle.graal.nodes.calc.UnsignedRemNode;
 import com.oracle.graal.nodes.debug.StringToBytesNode;
 import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
@@ -324,7 +321,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 stringToBytesSnippets.lower((StringToBytesNode) n, tool);
             }
-        } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
+        } else if (n instanceof IntegerDivRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
@@ -379,13 +376,16 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
 
         }
-        StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getValue()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
+        ForeignCallDescriptor foreignCall = foreignCallForUnaryOperation(math.getOperation());
+        if (foreignCall != null) {
+            StructuredGraph graph = math.graph();
+            ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, foreignCall, math.getValue()));
+            graph.addAfterFixed(tool.lastFixedNode(), call);
+            math.replaceAtUsages(call);
+        }
     }
 
-    private static ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
+    protected ForeignCallDescriptor foreignCallForUnaryOperation(UnaryOperation operation) {
         switch (operation) {
             case LOG:
                 return ARITHMETIC_LOG;
