@@ -30,25 +30,25 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 /**
  * Represents a list of sequentially executed {@code AbstractBlockBase blocks}.
  */
-public class Trace<T extends AbstractBlockBase<T>> {
-    private final ArrayList<T> blocks;
-    private final ArrayList<Trace<T>> successors;
+public class Trace {
+    private final ArrayList<AbstractBlockBase<?>> blocks;
+    private final ArrayList<Trace> successors;
     private int id = -1;
 
-    public Trace(Collection<T> blocks) {
+    public Trace(Collection<AbstractBlockBase<?>> blocks) {
         this(new ArrayList<>(blocks));
     }
 
-    public Trace(ArrayList<T> blocks) {
+    public Trace(ArrayList<AbstractBlockBase<?>> blocks) {
         this.blocks = blocks;
         this.successors = new ArrayList<>();
     }
 
-    public ArrayList<T> getBlocks() {
+    public ArrayList<AbstractBlockBase<?>> getBlocks() {
         return blocks;
     }
 
-    public ArrayList<Trace<T>> getSuccessors() {
+    public ArrayList<Trace> getSuccessors() {
         return successors;
     }
 

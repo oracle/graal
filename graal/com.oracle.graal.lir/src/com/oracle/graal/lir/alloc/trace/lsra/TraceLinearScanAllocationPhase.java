@@ -32,7 +32,7 @@ abstract class TraceLinearScanAllocationPhase extends TraceAllocationPhase<Trace
     static final class TraceLinearScanAllocationContext extends TraceAllocationPhase.TraceAllocationContext {
         public final TraceLinearScan allocator;
 
-        TraceLinearScanAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+        TraceLinearScanAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult traceBuilderResult, TraceLinearScan allocator) {
             super(spillMoveFactory, registerAllocationConfig, traceBuilderResult);
             this.allocator = allocator;
         }

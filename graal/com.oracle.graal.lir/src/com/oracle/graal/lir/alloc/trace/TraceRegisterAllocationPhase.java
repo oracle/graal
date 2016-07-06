@@ -86,14 +86,14 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
-        TraceBuilderResult<B> resultTraces = getTraces(context);
+        TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
-            for (Trace<B> trace : resultTraces.getTraces()) {
+            for (Trace trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
                     tracesCounter.increment();
                     if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
@@ -120,11 +120,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
         deconstructSSIForm(lir);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
-        return context.contextLookup(TraceBuilderResult.class);
     }
 
     /**

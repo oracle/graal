@@ -67,7 +67,7 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
     }
 
     @SuppressWarnings("try")
-    private static <B extends AbstractBlockBase<B>> void resolveGlobalDataFlow(TraceBuilderResult<B> resultTraces, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, Architecture arch) {
+    private static void resolveGlobalDataFlow(TraceBuilderResult resultTraces, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, Architecture arch) {
         LIR lir = lirGenRes.getLIR();
         /* Resolve trace global data-flow mismatch. */
         TraceGlobalMoveResolver moveResolver = new TraceGlobalMoveResolver(lirGenRes, spillMoveFactory, arch);
@@ -78,7 +78,7 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
         };
 
         try (Indent indent = Debug.logAndIndent("Trace global move resolution")) {
-            for (Trace<B> trace : resultTraces.getTraces()) {
+            for (Trace trace : resultTraces.getTraces()) {
                 for (AbstractBlockBase<?> fromBlock : trace.getBlocks()) {
                     for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
                         if (resultTraces.getTraceForBlock(fromBlock) != resultTraces.getTraceForBlock(toBlock)) {

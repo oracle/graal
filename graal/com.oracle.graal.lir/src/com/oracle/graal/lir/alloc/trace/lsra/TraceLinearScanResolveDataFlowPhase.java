@@ -56,17 +56,17 @@ import jdk.vm.ci.meta.Value;
 final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceLinearScanAllocationContext context) {
-        TraceBuilderResult<?> traceBuilderResult = context.resultTraces;
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+        TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
         new Resolver(allocator, traceBuilderResult).resolveDataFlow(allocator.sortedBlocks());
     }
 
     private static final class Resolver {
         private final TraceLinearScan allocator;
-        private final TraceBuilderResult<?> traceBuilderResult;
+        private final TraceBuilderResult traceBuilderResult;
 
-        private Resolver(TraceLinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
+        private Resolver(TraceLinearScan allocator, TraceBuilderResult traceBuilderResult) {
             this.allocator = allocator;
             this.traceBuilderResult = traceBuilderResult;
         }
@@ -159,7 +159,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             return currentTrace().getId() == traceBuilderResult.getTraceForBlock(block).getId();
         }
 
-        private Trace<?> currentTrace() {
+        private Trace currentTrace() {
             return traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
         }
 

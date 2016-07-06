@@ -33,7 +33,7 @@ public final class TraceStatisticsPrinter {
     private static final String SEP = ";";
 
     @SuppressWarnings("try")
-    public static <T extends AbstractBlockBase<T>> void printTraceStatistics(TraceBuilderResult<T> result, String compilationUnitName) {
+    public static void printTraceStatistics(TraceBuilderResult result, String compilationUnitName) {
         try (Scope s = Debug.scope("DumpTraceStatistics")) {
             if (Debug.isLogEnabled(Debug.VERBOSE_LOG_LEVEL)) {
                 print(result, compilationUnitName);
@@ -44,8 +44,8 @@ public final class TraceStatisticsPrinter {
     }
 
     @SuppressWarnings("try")
-    protected static <T extends AbstractBlockBase<T>> void print(TraceBuilderResult<T> result, String compilationUnitName) {
-        List<Trace<T>> traces = result.getTraces();
+    protected static void print(TraceBuilderResult result, String compilationUnitName) {
+        List<Trace> traces = result.getTraces();
         int numTraces = traces.size();
 
         try (Indent indent0 = Debug.logAndIndent(Debug.VERBOSE_LOG_LEVEL, "<tracestatistics>")) {
@@ -53,11 +53,11 @@ public final class TraceStatisticsPrinter {
             try (Indent indent1 = Debug.logAndIndent(Debug.VERBOSE_LOG_LEVEL, "<traces>")) {
                 printRawLine("tracenumber", "total", "min", "max", "numBlocks");
                 for (int i = 0; i < numTraces; i++) {
-                    List<T> t = traces.get(i).getBlocks();
+                    List<AbstractBlockBase<?>> t = traces.get(i).getBlocks();
                     double total = 0;
                     double max = Double.NEGATIVE_INFINITY;
                     double min = Double.POSITIVE_INFINITY;
-                    for (T block : t) {
+                    for (AbstractBlockBase<?> block : t) {
                         double probability = block.probability();
                         total += probability;
                         if (probability < min) {

@@ -58,20 +58,20 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     };
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceLinearScanAllocationContext context) {
-        TraceBuilderResult<?> traceBuilderResult = context.resultTraces;
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+        TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
         boolean shouldEliminateSpillMoves = shouldEliminateSpillMoves(traceBuilderResult, allocator);
         eliminateSpillMoves(allocator, shouldEliminateSpillMoves, traceBuilderResult);
     }
 
-    private static boolean shouldEliminateSpillMoves(TraceBuilderResult<?> traceBuilderResult, TraceLinearScan allocator) {
+    private static boolean shouldEliminateSpillMoves(TraceBuilderResult traceBuilderResult, TraceLinearScan allocator) {
         return !traceBuilderResult.incomingSideEdges(traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0)));
     }
 
     // called once before assignment of register numbers
     @SuppressWarnings("try")
-    private static void eliminateSpillMoves(TraceLinearScan allocator, boolean shouldEliminateSpillMoves, TraceBuilderResult<?> traceBuilderResult) {
+    private static void eliminateSpillMoves(TraceLinearScan allocator, boolean shouldEliminateSpillMoves, TraceBuilderResult traceBuilderResult) {
         try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves: Trace%d", traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0)))) {
             allocator.sortIntervalsBySpillPos();
 

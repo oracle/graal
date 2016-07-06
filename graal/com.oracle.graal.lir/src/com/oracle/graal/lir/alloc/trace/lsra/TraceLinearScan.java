@@ -122,7 +122,7 @@ public final class TraceLinearScan implements IntervalDumper {
      */
     private FixedInterval[] sortedFixedIntervals;
 
-    protected final TraceBuilderResult<?> traceBuilderResult;
+    protected final TraceBuilderResult traceBuilderResult;
 
     private final boolean neverSpillConstants;
 
@@ -135,8 +135,8 @@ public final class TraceLinearScan implements IntervalDumper {
 
     private final LIRGenerationResult res;
 
-    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
-                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
+    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace trace,
+                    TraceBuilderResult traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
         this.res = res;
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -569,7 +569,7 @@ public final class TraceLinearScan implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, MoveFactory spillMoveFactory,
+    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace trace, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
 
         /*
