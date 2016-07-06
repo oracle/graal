@@ -53,7 +53,7 @@ public final class TraceStatisticsPrinter {
             try (Indent indent1 = Debug.logAndIndent(Debug.VERBOSE_LOG_LEVEL, "<traces>")) {
                 printRawLine("tracenumber", "total", "min", "max", "numBlocks");
                 for (int i = 0; i < numTraces; i++) {
-                    List<AbstractBlockBase<?>> t = traces.get(i).getBlocks();
+                    AbstractBlockBase<?>[] t = traces.get(i).getBlocks();
                     double total = 0;
                     double max = Double.NEGATIVE_INFINITY;
                     double min = Double.POSITIVE_INFINITY;
@@ -67,7 +67,7 @@ public final class TraceStatisticsPrinter {
                             max = probability;
                         }
                     }
-                    printLine(i, total, min, max, t.size());
+                    printLine(i, total, min, max, t.length);
                 }
             }
             Debug.log(Debug.VERBOSE_LOG_LEVEL, "</traces>");

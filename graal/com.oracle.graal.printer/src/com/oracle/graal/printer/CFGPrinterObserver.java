@@ -219,7 +219,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof AbstractBlockBase<?>[]) {
             cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
         } else if (object instanceof Trace) {
-            cfgPrinter.printCFG(message, ((Trace) object).getBlocks().toArray(new AbstractBlockBase<?>[0]), false);
+            cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
         } else if (object instanceof TraceBuilderResult) {
             cfgPrinter.printTraces(message, (TraceBuilderResult) object);
         }

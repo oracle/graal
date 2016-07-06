@@ -29,9 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
@@ -114,23 +112,23 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
          * that have been split.
          */
         @SuppressWarnings("try")
-        private void resolveDataFlow(ArrayList<? extends AbstractBlockBase<?>> blocks) {
-            if (blocks.size() < 2) {
+        private void resolveDataFlow(AbstractBlockBase<?>[] blocks) {
+            if (blocks.length < 2) {
                 // no resolution necessary
                 return;
             }
             try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
                 TraceLocalMoveResolver moveResolver = allocator.createMoveResolver();
-                ListIterator<? extends AbstractBlockBase<?>> it = blocks.listIterator();
                 AbstractBlockBase<?> toBlock = null;
-                for (AbstractBlockBase<?> fromBlock = it.next(); it.hasNext(); fromBlock = toBlock) {
-                    toBlock = it.next();
+                for (int i = 0; i < blocks.length - 1; i++) {
+                    AbstractBlockBase<?> fromBlock = blocks[i];
+                    toBlock = blocks[i + 1];
                     assert containedInTrace(fromBlock) : "Not in Trace: " + fromBlock;
                     assert containedInTrace(toBlock) : "Not in Trace: " + toBlock;
                     resolveCollectMappings(fromBlock, toBlock, moveResolver);
                 }
-                assert blocks.get(blocks.size() - 1).equals(toBlock);
+                assert blocks[blocks.length - 1].equals(toBlock);
                 if (toBlock.isLoopEnd()) {
                     assert toBlock.getSuccessorCount() == 1;
                     AbstractBlockBase<?> loopHeader = toBlock.getSuccessors()[0];
@@ -160,7 +158,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
         }
 
         private Trace currentTrace() {
-            return traceBuilderResult.getTraceForBlock(allocator.sortedBlocks().get(0));
+            return traceBuilderResult.getTraceForBlock(allocator.blockAt(0));
         }
 
         private static final DebugCounter numSSIResolutionMoves = Debug.counter("SSI LSRA[numSSIResolutionMoves]");

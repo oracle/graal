@@ -73,7 +73,7 @@ public final class BiDirectionalTraceBuilder {
     private TraceBuilderResult build(AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] blocks, TrivialTracePredicate pred) {
         try (Indent indent = Debug.logAndIndent("BiDirectionalTraceBuilder: start trace building")) {
             ArrayList<Trace> traces = buildTraces();
-            assert traces.get(0).getBlocks().get(0).equals(startBlock) : "The first traces always contains the start block";
+            assert traces.get(0).getBlocks()[0].equals(startBlock) : "The first traces always contains the start block";
             return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);
         }
     }

@@ -56,7 +56,7 @@ final class TraceTrivialAllocator extends TraceAllocationPhase<TraceAllocationPh
         LIR lir = lirGenRes.getLIR();
         TraceBuilderResult resultTraces = context.resultTraces;
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
-        AbstractBlockBase<?> block = trace.getBlocks().get(0);
+        AbstractBlockBase<?> block = trace.getBlocks()[0];
 
         AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
 
