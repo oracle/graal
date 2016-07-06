@@ -105,7 +105,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     } else {
                         TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
                                         cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                        allocator.allocate(target, lirGenRes, codeEmittingOrder, trace, spillMoveFactory, registerAllocationConfig);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }

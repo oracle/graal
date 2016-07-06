@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class TraceTrivialAllocator extends TraceAllocationPhase {
+final class TraceTrivialAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context) {

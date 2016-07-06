@@ -569,7 +569,7 @@ public final class TraceLinearScan implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
+    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
 
         /*
@@ -578,7 +578,7 @@ public final class TraceLinearScan implements IntervalDumper {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", this)) {
 
@@ -588,20 +588,20 @@ public final class TraceLinearScan implements IntervalDumper {
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
-                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                 printIntervals("After register allocation");
 
                 // resolve intra-trace data-flow
-                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                 Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                 // eliminate spill moves
                 if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
-                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                     Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                 }
 
-                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();

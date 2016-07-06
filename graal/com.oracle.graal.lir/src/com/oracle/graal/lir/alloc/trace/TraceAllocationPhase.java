@@ -40,9 +40,9 @@ import com.oracle.graal.lir.phases.LIRPhase.LIRPhaseStatistics;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public abstract class TraceAllocationPhase {
+public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceAllocationContext> {
 
-    public static final class TraceAllocationContext {
+    public static class TraceAllocationContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
         public final TraceBuilderResult<?> resultTraces;
@@ -79,12 +79,12 @@ public abstract class TraceAllocationPhase {
         return name;
     }
 
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context) {
+    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, C context) {
         apply(target, lirGenRes, codeEmittingOrder, trace, context, true);
     }
 
     @SuppressWarnings("try")
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context,
+    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, C context,
                     boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
@@ -98,5 +98,5 @@ public abstract class TraceAllocationPhase {
         }
     }
 
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context);
+    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, C context);
 }
