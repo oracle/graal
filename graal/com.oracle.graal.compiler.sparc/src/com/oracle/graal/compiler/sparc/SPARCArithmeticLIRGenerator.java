@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Udivx;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.Xnor;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Faddd;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fadds;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdivd;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdivs;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fdtos;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fitod;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fitos;
@@ -50,6 +48,8 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fnegs;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fstod;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fxtod;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.UMulxhi;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_DREM;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_FREM;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.BSF;
@@ -67,6 +67,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Op3s;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
+import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
@@ -90,6 +91,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
 import com.oracle.graal.lir.sparc.SPARCOPFOp;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -345,11 +347,9 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
     public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
         Value aLoaded;
-        Value bLoaded;
         Variable q1; // Intermediate values
         Variable q2;
         Variable q3;
-        Variable q4;
         SPARCKind aKind = (SPARCKind) a.getPlatformKind();
         switch (aKind) {
             case WORD:
@@ -365,24 +365,20 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 result = emitSub(aLoaded, q2, false);
                 break;
             case SINGLE:
-                aLoaded = getLIRGen().load(a);
-                bLoaded = getLIRGen().load(b);
-                q1 = emitBinary(result.getValueKind(), Fdivs, aLoaded, bLoaded, state);
-                q2 = getLIRGen().newVariable(LIRKind.value(aKind));
-                getLIRGen().append(new FloatConvertOp(FloatConvertOp.FloatConvert.F2I, q1, q2));
-                q3 = emitUnary(Fitos, q2);
-                q4 = emitBinary(LIRKind.value(aKind), Fmuls, q3, bLoaded);
-                result = emitSub(aLoaded, q4, false);
+                ForeignCallLinkage fremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_FREM);
+                if (fremCall != null) {
+                    result = getLIRGen().emitForeignCall(fremCall, state, a, b);
+                } else {
+                    throw new BailoutException(true, "Required foreign call to %s is not available via JVMCI", ARITHMETIC_FREM);
+                }
                 break;
             case DOUBLE:
-                aLoaded = getLIRGen().load(a);
-                bLoaded = getLIRGen().load(b);
-                q1 = emitBinary(result.getValueKind(), Fdivd, aLoaded, bLoaded, state);
-                q2 = getLIRGen().newVariable(LIRKind.value(aKind));
-                getLIRGen().append(new FloatConvertOp(FloatConvertOp.FloatConvert.D2L, q1, q2));
-                q3 = emitUnary(Fxtod, q2);
-                q4 = emitBinary(result.getValueKind(), Fmuld, q3, bLoaded);
-                result = emitSub(aLoaded, q4, false);
+                ForeignCallLinkage dremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_DREM);
+                if (dremCall != null) {
+                    result = getLIRGen().emitForeignCall(dremCall, state, a, b);
+                } else {
+                    throw new BailoutException(true, "Required foreign call to %s is not available via JVMCI", ARITHMETIC_DREM);
+                }
                 break;
             default:
                 throw GraalError.shouldNotReachHere("missing: " + a.getPlatformKind());
