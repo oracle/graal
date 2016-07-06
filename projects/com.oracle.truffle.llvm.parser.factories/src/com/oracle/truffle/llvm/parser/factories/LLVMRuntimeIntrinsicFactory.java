@@ -36,8 +36,11 @@ import com.oracle.graal.replacements.amd64.AMD64MathSubstitutions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintFactory;
@@ -210,6 +213,9 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@rint", LLVMRintFactory.getInstance());
         intrinsics.put("@ceil", LLVMCeilFactory.getInstance());
         intrinsics.put("@floor", LLVMFloorFactory.getInstance());
+        intrinsics.put("@abs", LLVMAbsFactory.getInstance());
+        intrinsics.put("@labs", LLVMLAbsFactory.getInstance());
+        intrinsics.put("@fabs", LLVMFAbsFactory.getInstance());
     }
 
 }
