@@ -28,8 +28,6 @@ import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocat
 import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedSlots;
 import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.virtualFramesize;
 
-import java.util.List;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -50,8 +48,7 @@ import jdk.vm.ci.code.TargetDescription;
 public class SimpleStackSlotAllocator extends AllocationPhase {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         allocateStackSlots((FrameMapBuilderTool) lirGenRes.getFrameMapBuilder(), lirGenRes);
         lirGenRes.buildFrameMap();
     }

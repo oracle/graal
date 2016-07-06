@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import java.util.List;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
@@ -79,16 +76,15 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         return name;
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context) {
-        apply(target, lirGenRes, codeEmittingOrder, trace, context, true);
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context) {
+        apply(target, lirGenRes, trace, context, true);
     }
 
     @SuppressWarnings("try")
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context,
-                    boolean dumpLIR) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context, boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
-                run(target, lirGenRes, codeEmittingOrder, trace, context);
+                run(target, lirGenRes, trace, context);
                 if (dumpLIR && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
                     Debug.dump(Debug.BASIC_LOG_LEVEL, lirGenRes.getLIR(), "%s", getName());
                 }
@@ -98,5 +94,5 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         }
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, C context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context);
 }

@@ -152,8 +152,7 @@ public final class SSIUtil {
         assert fromBlock.getSuccessorCount() == 1 || toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s has %d successors and %s has %d predecessors", fromBlock,
                         fromBlock.getSuccessorCount(), toBlock, toBlock.getPredecessorCount());
         assert Arrays.asList(fromBlock.getSuccessors()).contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock,
-                        Arrays.toString(fromBlock.getSuccessors()),
-                        toBlock);
+                        Arrays.toString(fromBlock.getSuccessors()), toBlock);
 
         BlockEndOp blockEnd = outgoing(lir, fromBlock);
         LabelOp label = incoming(lir, toBlock);

@@ -27,8 +27,6 @@ import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.domi
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
-import java.util.List;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -55,8 +53,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         optimizeSpillPosition();
         allocator.printIntervals("After optimize spill position");
     }

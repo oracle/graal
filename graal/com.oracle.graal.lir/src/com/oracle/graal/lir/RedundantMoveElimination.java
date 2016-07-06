@@ -60,8 +60,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
     private static final DebugCounter deletedMoves = Debug.counter("RedundantMovesEliminated");
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         Optimization redundantMoveElimination = new Optimization(lirGenRes.getFrameMap());
         redundantMoveElimination.doOptimize(lirGenRes.getLIR());
     }

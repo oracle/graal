@@ -399,7 +399,7 @@ public abstract class GraalCompilerState {
      */
     protected final void lirGeneration() {
         LIRGenerationContext context = new LIRGenerationContext(lirGenTool, nodeLirGen, request.graph, schedule);
-        new LIRGenerationPhase().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        new LIRGenerationPhase().apply(request.backend.getTarget(), lirGenRes, context);
     }
 
     /**
@@ -415,7 +415,7 @@ public abstract class GraalCompilerState {
      * Executes a {@link LIRPhase} within a given {@code context}.
      */
     protected <C> void applyLIRPhase(LIRPhase<C> phase, C context) {
-        phase.apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        phase.apply(request.backend.getTarget(), lirGenRes, context);
     }
 
     /**

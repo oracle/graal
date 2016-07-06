@@ -58,8 +58,8 @@ public class TraceBuilderPhase extends AllocationPhase {
     public static final int TRACE_DUMP_LEVEL = 3;
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
+        List<? extends AbstractBlockBase<?>> linearScanOrder = lirGenRes.getLIR().linearScanOrder();
         AbstractBlockBase<?> startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
