@@ -64,24 +64,24 @@ public abstract class LIRPhase<C> {
      */
     private final DebugMemUseTracker memUseTracker;
 
-    private static class LIRPhaseStatistics {
+    public static final class LIRPhaseStatistics {
         /**
          * Records time spent within {@link #apply}.
          */
-        private final DebugTimer timer;
+        public final DebugTimer timer;
 
         /**
          * Records memory usage within {@link #apply}.
          */
-        private final DebugMemUseTracker memUseTracker;
+        public final DebugMemUseTracker memUseTracker;
 
-        LIRPhaseStatistics(Class<?> clazz) {
+        private LIRPhaseStatistics(Class<?> clazz) {
             timer = Debug.timer("LIRPhaseTime_%s", clazz);
             memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", clazz);
         }
     }
 
-    private static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<LIRPhaseStatistics>() {
+    public static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<LIRPhaseStatistics>() {
         @Override
         protected LIRPhaseStatistics computeValue(Class<?> c) {
             return new LIRPhaseStatistics(c);
@@ -132,13 +132,17 @@ public abstract class LIRPhase<C> {
 
     protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
 
-    protected CharSequence createName() {
-        String className = LIRPhase.this.getClass().getName();
+    public static CharSequence createName(Class<?> clazz) {
+        String className = clazz.getName();
         String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
         if (s.endsWith("Phase")) {
             s = s.substring(0, s.length() - "Phase".length());
         }
         return s;
+    }
+
+    protected CharSequence createName() {
+        return createName(getClass());
     }
 
     public final CharSequence getName() {
@@ -147,5 +151,4 @@ public abstract class LIRPhase<C> {
         }
         return name;
     }
-
 }
