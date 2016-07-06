@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -44,7 +45,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "<")
-public final class IntegerLessThanNode extends CompareNode {
+public final class IntegerLessThanNode extends CompareNode implements IterableNodeType {
     public static final NodeClass<IntegerLessThanNode> TYPE = NodeClass.create(IntegerLessThanNode.class);
 
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
