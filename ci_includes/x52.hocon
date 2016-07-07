@@ -12,7 +12,7 @@ bench-dacapo-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
   run: [
     ${bench-jvmci.mx-dacapo} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
@@ -23,7 +23,7 @@ bench-dacapo-timing-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
   run: [
     ${bench-jvmci.mx-dacapo-timing} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
@@ -36,7 +36,7 @@ bench-scala-dacapo-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
   run: [
     ${bench-jvmci.mx-scala-dacapo} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
@@ -47,7 +47,7 @@ bench-scala-dacapo-timing-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
@@ -60,7 +60,7 @@ bench-specjvm2008-x52: ${commonLinux} ${bench-specjvm2008} ${x52.default} {
   run: [
     ${bench-jvmci.mx-specjvm2008} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--",
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--",
       "-it", "240s", "-wt", "120s"
     ]
   ]
@@ -74,7 +74,7 @@ bench-specjbb2015-x52: ${commonLinux} ${bench-specjbb2015} ${x52.default} {
   run: [
     ${bench-jvmci.mx-specjbb2015} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
@@ -87,7 +87,7 @@ bench-micros-graal-x52: ${bench-common-8} ${x52.default} {
   run: [
     ${bench-jvmci.mx-micros-graal} [
       "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }
