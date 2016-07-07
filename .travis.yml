@@ -49,7 +49,7 @@ install:
       if [[ $GATE == *fullbuild* ]]
       then
         export JDT=$MX_PATH/ecj.jar
-        wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar -O $JDT
+        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O $JDT
       fi
   - |
       if [ "$JDK" == "jdk9" ]
