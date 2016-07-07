@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
@@ -50,7 +50,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     private final AbstractBlockBase<?>[] codeEmittingOrder;
 
-    private final BlockMap<List<LIRInstruction>> lirInstructions;
+    private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
 
     private boolean hasArgInCallerFrame;
 
@@ -82,11 +82,11 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return false;
     }
 
-    public List<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
+    public ArrayList<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
         return lirInstructions.get(block);
     }
 
-    public void setLIRforBlock(AbstractBlockBase<?> block, List<LIRInstruction> list) {
+    public void setLIRforBlock(AbstractBlockBase<?> block, ArrayList<LIRInstruction> list) {
         assert getLIRforBlock(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
@@ -161,7 +161,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
     public static boolean verifyBlock(LIR lir, AbstractBlockBase<?> block) {
-        List<LIRInstruction> ops = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> ops = lir.getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }
