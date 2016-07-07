@@ -554,7 +554,7 @@ public final class Profiler {
      */
     public static final class Counter {
 
-        enum TimeKind {
+        public enum TimeKind {
             INTERPRETED_AND_COMPILED,
             INTERPRETED,
             COMPILED
