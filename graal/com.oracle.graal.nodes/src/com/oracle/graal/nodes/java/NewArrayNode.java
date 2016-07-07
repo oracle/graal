@@ -33,7 +33,6 @@ import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
-import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
@@ -48,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
     public static final NodeClass<NewArrayNode> TYPE = NodeClass.create(NewArrayNode.class);
+    private final ResolvedJavaType elementType;
 
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         this(elementType, length, fillContents, null);
@@ -59,6 +59,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
 
     protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore) {
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(elementType.getArrayClass())), length, fillContents, stateBefore);
+        this.elementType = elementType;
     }
 
     @NodeIntrinsic
@@ -74,7 +75,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
-        return StampTool.typeOrNull(this).getComponentType();
+        return elementType;
     }
 
     @Override
