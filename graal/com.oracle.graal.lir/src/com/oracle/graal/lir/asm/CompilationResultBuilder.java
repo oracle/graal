@@ -390,13 +390,8 @@ public class CompilationResultBuilder {
         assert lir != null;
         List<? extends AbstractBlockBase<?>> order = lir.codeEmittingOrder();
         assert order.get(currentBlockIndex) == edge.getSourceBlock();
-        for (int nextIndex = currentBlockIndex + 1; nextIndex > 0 && nextIndex < order.size(); nextIndex++) {
-            AbstractBlockBase<?> nextBlock = order.get(nextIndex);
-            if (nextBlock != null) {
-                return nextBlock == edge.getTargetBlock();
-            }
-        }
-        return false;
+        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(order, currentBlockIndex);
+        return nextBlock == edge.getTargetBlock();
     }
 
     /**

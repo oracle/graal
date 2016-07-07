@@ -116,6 +116,24 @@ public final class LIR extends LIRGenerator.VariableProvider {
     }
 
     /**
+     * Gets the next non-{@code null} block in a list.
+     *
+     * @param blocks list of blocks
+     * @param blockIndex index of the current block
+     * @return the next block in the list that is none {@code null} or {@code null} if there is no
+     *         such block
+     */
+    public static AbstractBlockBase<?> getNextBlock(List<? extends AbstractBlockBase<?>> blocks, int blockIndex) {
+        for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.size(); nextIndex++) {
+            AbstractBlockBase<?> nextBlock = blocks.get(nextIndex);
+            if (nextBlock != null) {
+                return nextBlock;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Gets the exception edge (if any) originating at a given operation.
      */
     public static LabelRef getExceptionEdge(LIRInstruction op) {
