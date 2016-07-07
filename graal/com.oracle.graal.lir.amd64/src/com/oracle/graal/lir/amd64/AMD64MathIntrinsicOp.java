@@ -36,13 +36,16 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
+import com.oracle.graal.lir.LIRInstruction.Temp;
 import com.oracle.graal.lir.asm.ArrayDataPointerConstant;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
@@ -70,7 +73,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value xmm9Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr1Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr2Temp = Value.ILLEGAL;
-    @Temp({REG, ILLEGAL}) protected Value gpr3Temp = Value.ILLEGAL;
+    @Temp protected AllocatableValue rcxTemp;
     @Temp({REG, ILLEGAL}) protected Value gpr4Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr5Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr6Temp = Value.ILLEGAL;
@@ -89,14 +92,8 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                         opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
             this.gpr1Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.gpr2Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr3Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            this.rcxTemp = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.QWORD));
             this.gpr4Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr6Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr7Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr8Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr9Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr10Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.xmm1Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm2Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm3Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
@@ -104,8 +101,17 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             this.xmm5Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm6Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm7Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
-            this.xmm8Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
-            this.xmm9Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+
+            if (opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
+                this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr6Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr7Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr8Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr9Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr10Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.xmm8Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+                this.xmm9Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            }
         }
         this.stackTemp = stackTemp;
     }
@@ -293,7 +299,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
 
         Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
@@ -647,7 +653,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
 
         Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
@@ -1129,10 +1135,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                     0x54400000, 0x3fb921fb
     };
 
-    public int[] negZero = {
-                    0x00000000, 0x3c800000
-    };
-
     public void sinIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         ArrayDataPointerConstant oneHalfPtr = new ArrayDataPointerConstant(oneHalf, 16);
         ArrayDataPointerConstant pTwoPtr = new ArrayDataPointerConstant(pTwo, 16);
@@ -1151,12 +1153,10 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         ArrayDataPointerConstant twoPowFiftyFivePtr = new ArrayDataPointerConstant(twoPowFiftyFive, 8);
         ArrayDataPointerConstant twoPowFiftyFiveMPtr = new ArrayDataPointerConstant(twoPowFiftyFiveM, 8);
         ArrayDataPointerConstant pOnePtr = new ArrayDataPointerConstant(pOne, 8);
-        ArrayDataPointerConstant negZeroPtr = new ArrayDataPointerConstant(negZero, 8);
 
         Label bb0 = new Label();
         Label bb1 = new Label();
         Label bb2 = new Label();
-        Label bb3 = new Label();
         Label bb4 = new Label();
         Label bb5 = new Label();
         Label bb6 = new Label();
@@ -1171,7 +1171,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
         Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
         Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
@@ -1203,9 +1203,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                                                                                               // 0x40245f30
         masm.movdq(temp2, (AMD64Address) crb.recordDataReferenceInCode(shifterPtr));          // 0x00000000,
                                                                                               // 0x43380000
-        masm.andl(gpr1, 2146435072);
-        masm.cmpl(gpr1, 2146435072);
-        masm.jcc(ConditionFlag.Equal, bb14);
 
         masm.andl(gpr1, 2147418112);
         masm.subl(gpr1, 808452096);
@@ -1234,7 +1231,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                                                                                               // 0x3ec71de3,
                                                                                               // 0x1a01a01a,
                                                                                               // 0x3efa01a0
-        masm.pshufd(temp4, dest, 68);
+        masm.pshufd(temp4, dest, 0x44);
         masm.mulsd(temp3, temp1);
         if (masm.supports(CPUFeature.SSE3)) {
             masm.movddup(temp1, temp1);
@@ -1258,7 +1255,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             masm.movlhps(temp3, temp3);
         }
         masm.subsd(temp4, temp6);
-        masm.pshufd(dest, dest, 68);
+        masm.pshufd(dest, dest, 0x44);
         masm.pshufd(temp7, temp8, 0xE);
         masm.movdqu(temp2, temp8);
         masm.movdqu(temp9, temp7);
@@ -1340,13 +1337,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jmp(bb15);
 
         masm.bind(bb1);
-        masm.pextrw(gpr1, dest, 3);
-        masm.andl(gpr1, 32752);
-        masm.cmpl(gpr1, 32752);
-        masm.jcc(ConditionFlag.Equal, bb3);
-
         masm.pextrw(gpr3, dest, 3);
         masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
@@ -1692,11 +1687,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addl(gpr6, 536870912);
         masm.jmp(bb6);
 
-        masm.bind(bb3);
-        masm.movsd(dest, stackSlot);
-        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(negZeroPtr));           // 0x00000000,
-                                                                                              // 0x3c800000
-
         masm.bind(bb15);
     }
 
@@ -1823,12 +1813,10 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         ArrayDataPointerConstant twoPowFiftyFivePtr = new ArrayDataPointerConstant(twoPowFiftyFive, 8);
         ArrayDataPointerConstant twoPowFiftyFiveMPtr = new ArrayDataPointerConstant(twoPowFiftyFiveM, 8);
         ArrayDataPointerConstant pOnePtr = new ArrayDataPointerConstant(pOne, 8);
-        ArrayDataPointerConstant negZeroPtr = new ArrayDataPointerConstant(negZero, 8);
         ArrayDataPointerConstant onePtr = new ArrayDataPointerConstant(one, 8);
 
         Label bb0 = new Label();
         Label bb1 = new Label();
-        Label bb2 = new Label();
         Label bb3 = new Label();
         Label bb4 = new Label();
         Label bb5 = new Label();
@@ -1844,7 +1832,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
         Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
         Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
@@ -1874,9 +1862,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movl(gpr1, new AMD64Address(gpr1, 4));
         masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr)); // 0x6dc9c883,
                                                                                             // 0x40245f30
-        masm.andl(gpr1, 2146435072);
-        masm.cmpl(gpr1, 2146435072);
-        masm.jcc(ConditionFlag.Equal, bb14);
 
         masm.andl(gpr1, 2147418112);
         masm.subl(gpr1, 808452096);
@@ -1994,13 +1979,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jmp(bb13);
 
         masm.bind(bb1);
-        masm.pextrw(gpr1, dest, 3);
-        masm.andl(gpr1, 32752);
-        masm.cmpl(gpr1, 32752);
-        masm.jcc(ConditionFlag.Equal, bb2);
-
         masm.pextrw(gpr3, dest, 3);
         masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
@@ -2348,11 +2331,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.shrq(gpr6, 3);
         masm.addl(gpr6, 536870912);
         masm.jmp(bb6);
-
-        masm.bind(bb2);
-        masm.movsd(dest, stackSlot);
-        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(negZeroPtr));         // 0x00000000,
-                                                                                            // 0x3c800000
 
         masm.bind(bb13);
     }
@@ -2775,10 +2753,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                     0x00000000, 0x3c800000
     };
 
-    private static int[] negZeroTan = {
-                    0x00000000, 0x80000000
-    };
-
     public void tanIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         ArrayDataPointerConstant oneHalfTanPtr = new ArrayDataPointerConstant(oneHalfTan, 16);
         ArrayDataPointerConstant mulSixteenPtr = new ArrayDataPointerConstant(mulSixteen, 16);
@@ -2800,16 +2774,13 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         ArrayDataPointerConstant oneTanPtr = new ArrayDataPointerConstant(oneTan, 8);
         ArrayDataPointerConstant twoPowFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowFiftyFiveTan, 8);
         ArrayDataPointerConstant twoPowMFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowMFiftyFiveTan, 8);
-        ArrayDataPointerConstant negZeroTanPtr = new ArrayDataPointerConstant(negZeroTan, 8);
 
         Label bb0 = new Label();
         Label bb1 = new Label();
         Label bb2 = new Label();
         Label bb3 = new Label();
-        Label bb4 = new Label();
         Label bb5 = new Label();
         Label bb6 = new Label();
-        Label bb7 = new Label();
         Label bb8 = new Label();
         Label bb9 = new Label();
         Label bb10 = new Label();
@@ -2821,7 +2792,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
         Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
         Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
@@ -2838,18 +2809,9 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
         Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
 
-        AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
-
-        masm.movdq(stackSlot, value);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
         }
-
-        masm.leaq(gpr1, stackSlot);
-        masm.movl(gpr1, new AMD64Address(gpr1, 4));
-        masm.andl(gpr1, 2146435072);
-        masm.cmpl(gpr1, 2146435072);
-        masm.jcc(ConditionFlag.Equal, bb14);
 
         masm.pextrw(gpr1, dest, 3);
         masm.andl(gpr1, 32767);
@@ -3047,13 +3009,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jmp(bb15);
 
         masm.bind(bb1);
-        masm.pextrw(gpr1, dest, 3);
-        masm.andl(gpr1, 32752);
-        masm.cmpl(gpr1, 32752);
-        masm.jcc(ConditionFlag.Equal, bb4);
-
         masm.pextrw(gpr3, dest, 3);
         masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
@@ -3158,8 +3118,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movl(gpr2, 0);
         masm.shlq(gpr8, 32);
         masm.orq(gpr8, gpr10);
-
-        masm.bind(bb7);
 
         masm.bind(bb8);
         masm.cmpq(gpr8, 0);
@@ -3427,7 +3385,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movq(gpr9, gpr10);
         masm.movq(gpr8, gpr2);
         masm.movl(gpr2, 32768);
-        masm.jmp(bb7);
+        masm.jmp(bb8);
 
         masm.bind(bb13);
         masm.shrl(gpr8);
@@ -3445,11 +3403,6 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.shrq(gpr6, 2);
         masm.addl(gpr6, 1073741824);
         masm.jmp(bb8);
-
-        masm.bind(bb4);
-        masm.movdq(dest, stackSlot);
-        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(negZeroTanPtr));          // 0x00000000,
-                                                                                                // 0x80000000
 
         masm.bind(bb15);
     }
