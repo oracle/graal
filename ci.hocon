@@ -123,7 +123,6 @@ bench-jvmci : {
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
   mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
-  mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
@@ -154,15 +153,6 @@ bench-specjbb2005: ${bench-common-8} {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
   timelimit: "2:00:00"
-}
-
-# SPECjbb2013-related targets
-
-bench-specjbb2013: ${bench-common-8} {
-  downloads: {
-    SPECJBB2013: { name: specjbb2013, version: "1.00" }
-  }
-  timelimit: "3:00:00"
 }
 
 # SPECjbb2015-related targets
