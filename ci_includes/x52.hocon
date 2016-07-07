@@ -1,105 +1,18 @@
 x52.default : {
+  capabilities: [linux, x52]
   environment : {
     JVM_CONFIG :  "graal-core"
+    JVM        :  "server"
+    MACHINE_NAME: "x52"
   }
 }
 
-# DaCapo-related targets
-
-bench-dacapo-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-bench-dacapo-timing-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
-  capabilities: [linux, x52, daily]
-  name: "bench-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# Scala DaCapo-related targets
-
-bench-scala-dacapo-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-scala-dacapo-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-bench-scala-dacapo-timing-x52: ${commonLinux} ${bench-common-8} ${x52.default} {
-  capabilities: [linux, x52, daily]
-  name: "bench-scala-dacapo-timing-linux-x52"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo-timing} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# SPECJvm2008-related targets
-
-bench-specjvm2008-x52: ${commonLinux} ${bench-specjvm2008} ${x52.default} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjvm2008-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjvm2008} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--",
-      "-it", "240s", "-wt", "120s"
-    ]
-  ]
-}
-
-# SPECjbb2015-related targets
-
-bench-specjbb2015-x52: ${commonLinux} ${bench-specjbb2015} ${x52.default} {
-  capabilities: [linux, x52, bench, post-merge]
-  name: "bench-specjbb2015-linux-x52"
-  run: [
-    ${bench-jvmci.mx-specjbb2015} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# JMH micros graal
-
-bench-micros-graal-x52: ${bench-common-8} ${x52.default} {
-  capabilities: [linux, x52, weekly]
-  name: "bench-jmh-micros-graal-x52"
-  run: [
-    ${bench-jvmci.mx-micros-graal} [
-      "--machine-name", "x52", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# Build targets
-
 builds += [
-  ${bench-dacapo-x52}
-  ${bench-scala-dacapo-x52}
-  ${bench-specjvm2008-x52}
-  ${bench-specjbb2015-x52}
-  ${bench-dacapo-timing-x52}
-  ${bench-scala-dacapo-timing-x52}
-  ${bench-micros-graal-x52}
+  ${bench-dacapo}              ${x52.default} { name: "bench-dacapo-linux-x52" }
+  ${bench-dacapo-timing}       ${x52.default} { name: "bench-dacapo-timing-linux-x52" }
+  ${bench-scala-dacapo}        ${x52.default} { name: "bench-scala-dacapo-linux-x52" }
+  ${bench-scala-dacapo-timing} ${x52.default} { name: "bench-scala-dacapo-timing-linux-x52" }
+  ${bench-specjvm2008}         ${x52.default} { name: "bench-specjvm2008-linux-x52" }
+  ${bench-specjbb2015}         ${x52.default} { name: "bench-specjbb2015-linux-x52" }
+  ${bench-micros-graal}        ${x52.default} { name: "bench-jmh-micros-graal-x52" }
 ]

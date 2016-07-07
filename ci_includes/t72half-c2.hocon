@@ -1,0 +1,19 @@
+# T7-2 machine, with zone limited to one socket (half)
+
+t72half.c2 : {
+  targets: [weekly]
+  capabilities: [solaris, t72half]
+  environment : {
+    JVM_CONFIG   : "default"
+    JVM          : "server"
+    MACHINE_NAME : "t72half"
+  }
+}
+
+builds += [
+  ${bench-dacapo}              ${t72half.c2} { name: "bench-dacapo-linux-t72half-c2" }
+  ${bench-scala-dacapo}        ${t72half.c2} { name: "bench-scala-dacapo-linux-t72half-c2" }
+  ${bench-specjvm2008}         ${t72half.c2} { name: "bench-specjvm2008-linux-t72half-c2" }
+  ${bench-specjbb2015}         ${t72half.c2} { name: "bench-specjbb2015-linux-t72half-c2" }
+#  ${bench-micros-graal}        ${t72half.c2} { name: "bench-jmh-micros-graal-t72half-c2" }
+]
