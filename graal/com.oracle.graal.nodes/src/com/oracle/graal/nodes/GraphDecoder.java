@@ -75,6 +75,12 @@ public class GraphDecoder {
         public final LoopScope callerLoopScope;
         /** The target graph where decoded nodes are added to. */
         public final StructuredGraph graph;
+        /**
+         * Mark for nodes that were present before the decoding of this method started. Note that
+         * nodes that were decoded after the mark can still be part of an outer method, since
+         * floating nodes of outer methods are decoded lazily.
+         */
+        public final Graph.Mark methodStartMark;
         /** The encode graph that is decoded. */
         public final EncodedGraph encodedGraph;
         /** Access to the encoded graph. */
@@ -95,6 +101,7 @@ public class GraphDecoder {
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
             this.graph = graph;
+            this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
             this.cleanupTasks = new ArrayList<>();
@@ -620,7 +627,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
             List<ValueNode> newFrameStateValues = new ArrayList<>();
             for (ValueNode frameStateValue : frameState.values) {
-                if (frameStateValue == null || frameStateValue.isConstant()) {
+                if (frameStateValue == null || frameStateValue.isConstant() || !methodScope.graph.isNew(methodScope.methodStartMark, frameStateValue)) {
                     newFrameStateValues.add(frameStateValue);
 
                 } else {
@@ -1426,7 +1433,7 @@ public class GraphDecoder {
                 realValue = ProxyPlaceholder.unwrap(value);
             }
 
-            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue)) {
+            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !methodScope.graph.isNew(methodScope.methodStartMark, realValue)) {
                 newValues.add(realValue);
             } else {
                 /*
