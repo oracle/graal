@@ -26,7 +26,7 @@ core.*
 /mx.graal-core/eclipse-launches/
 /graal.options
 /workingsets.xml
-/.idea
+.idea
 /mxbuild
 /mx.imports
 ecj.jar
