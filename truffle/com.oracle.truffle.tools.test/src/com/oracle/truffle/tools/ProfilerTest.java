@@ -296,6 +296,36 @@ public class ProfilerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testRootName() throws IOException {
+
+        profiler.setCollecting(true);
+        profiler.setTiming(false);
+        Map<SourceSection, Counter> counters = profiler.getCounters();
+        Assert.assertEquals(0, counters.size());
+        Assert.assertTrue(profiler.isCollecting());
+        Assert.assertFalse(profiler.isTiming());
+        Assert.assertFalse(profiler.hasData());
+        Assert.assertNull(profiler.getMimeTypes());
+
+        run(source);
+
+        counters = profiler.getCounters();
+        final SourceSection rootSection = source.createSection(null, 0, 140);
+        final SourceSection leafSection = source.createSection(null, 17, 16);
+        final SourceSection callfooSection = source.createSection(null, 47, 27);
+        final SourceSection callbarSection = source.createSection(null, 88, 27);
+        Counter root = counters.get(rootSection);
+        Counter leaf = counters.get(leafSection);
+        Counter callfoo = counters.get(callfooSection);
+        Counter callbar = counters.get(callbarSection);
+
+        Assert.assertEquals("", root.getName());
+        Assert.assertEquals("foo", leaf.getName());
+        Assert.assertEquals("bar", callfoo.getName());
+        Assert.assertEquals("baz", callbar.getName());
+    }
+
+    @Test
     public void testMIMEFilter() throws IOException {
 
         profiler.setCollecting(true);
