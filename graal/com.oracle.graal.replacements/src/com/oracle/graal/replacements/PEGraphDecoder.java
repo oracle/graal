@@ -40,7 +40,6 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeSourcePosition;
@@ -51,7 +50,6 @@ import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.EncodedGraph;
 import com.oracle.graal.nodes.FixedNode;
@@ -68,6 +66,7 @@ import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.UnwindNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -378,7 +377,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, false), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
-        cleanupGraph(methodScope, null);
+        cleanupGraph(methodScope);
         assert methodScope.graph.verify();
 
         try {
@@ -390,8 +389,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
-        super.cleanupGraph(methodScope, start);
+    protected void cleanupGraph(MethodScope methodScope) {
+        super.cleanupGraph(methodScope);
 
         for (FrameState frameState : methodScope.graph.getNodes(FrameState.TYPE)) {
             if (frameState.bci == BytecodeFrame.UNWIND_BCI) {

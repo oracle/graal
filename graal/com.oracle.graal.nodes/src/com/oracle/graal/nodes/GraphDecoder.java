@@ -330,7 +330,7 @@ public class GraphDecoder {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             decode(createInitialLoopScope(methodScope, null));
-            cleanupGraph(methodScope, null);
+            cleanupGraph(methodScope);
             assert methodScope.graph.verify();
         } catch (Throwable ex) {
             Debug.handle(ex);
@@ -1462,9 +1462,8 @@ public class GraphDecoder {
      * Removes unnecessary nodes from the graph after decoding.
      *
      * @param methodScope The current method.
-     * @param start Marker for the begin of the current method in the graph.
      */
-    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
+    protected void cleanupGraph(MethodScope methodScope) {
         assert verifyEdges(methodScope);
     }
 
