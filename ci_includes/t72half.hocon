@@ -4,83 +4,17 @@ t72half.default : {
   capabilities: [solaris, t72half]
   environment : {
     JVM_CONFIG :  "graal-core"
+    JVM        :  "server"
+    MACHINE_NAME: "t72half"
   }
 }
 
-# DaCapo-related targets
-
-bench-dacapo-t72half: ${commonSolaris} ${bench-common-8} ${t72half.default} {
-  targets: [bench, post-merge]
-  name: "bench-dacapo-solaris-t72half"
-  run: [
-    ${bench-jvmci.mx-dacapo} [
-      "--machine-name", "t72half", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# Scala DaCapo-related targets
-
-bench-scala-dacapo-t72half: ${commonSolaris} ${bench-common-8} ${t72half.default} {
-  targets: [bench, post-merge]
-  name: "bench-scala-dacapo-solaris-t72half"
-  run: [
-    ${bench-jvmci.mx-scala-dacapo} [
-      "--machine-name", "t72half", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# SPECJvm2008-related targets
-
-bench-specjvm2008-t72half: ${commonSolaris} ${bench-specjvm2008} ${t72half.default} {
-  targets: [bench, post-merge]
-  name: "bench-specjvm2008-linux-t72half"
-  run: [
-    ${bench-jvmci.mx-specjvm2008} [
-      "--machine-name", "t72half", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--",
-      "-it", "240s", "-wt", "120s"
-    ]
-  ]
-}
-
-# SPECjbb2015-related targets
-
-bench-specjbb2015-t72half: ${commonSolaris} ${bench-specjbb2015} ${t72half.default} {
-  targets: [bench, post-merge]
-  name: "bench-specjbb2015-linux-t72half"
-  run: [
-    ${bench-jvmci.mx-specjbb2015} [
-      "--machine-name", "t72half", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# JMH micros graal
-
-bench-micros-graal-t72half: ${bench-common-8} ${t72half.default} {
-  targets: [weekly]
-  capabilities: [solaris, t72half]
-  name: "bench-jmh-micros-graal-t72half"
-  run: [
-    ${bench-jvmci.mx-micros-graal} [
-      "--machine-name", "t72half", "--",
-      "-Xmx64g", "-Xms64g", "-Xmn56g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-
-# Build targets
-
 builds += [
-  ${bench-dacapo-t72half}
-  ${bench-scala-dacapo-t72half}
-  ${bench-specjvm2008-t72half}
-  ${bench-specjbb2015-t72half}
-  ${bench-micros-graal-t72half}
+  ${bench-dacapo}              ${t72half.default} { name: "bench-dacapo-solaris-t72half" }
+  ${bench-dacapo-timing}       ${t72half.default} { name: "bench-dacapo-timing-solaris-t72half" }
+  ${bench-scala-dacapo}        ${t72half.default} { name: "bench-scala-dacapo-solaris-t72half" }
+  ${bench-scala-dacapo-timing} ${t72half.default} { name: "bench-scala-dacapo-timing-solaris-t72half" }
+  ${bench-specjvm2008}         ${t72half.default} { name: "bench-specjvm2008-solaris-t72half" }
+  ${bench-specjbb2015}         ${t72half.default} { name: "bench-specjbb2015-solaris-t72half" }
+  ${bench-micros-graal}        ${t72half.default} { name: "bench-jmh-micros-graal-solaris-t72half" }
 ]
