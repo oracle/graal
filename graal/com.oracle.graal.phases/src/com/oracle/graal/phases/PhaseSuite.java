@@ -67,8 +67,12 @@ public class PhaseSuite<C> extends BasePhase<C> {
     }
 
     public final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass) {
+        return findPhase(phaseClass, false);
+    }
+
+    public final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass, boolean recursive) {
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
-        if (findNextPhase(it, phaseClass)) {
+        if (findNextPhase(it, phaseClass, recursive)) {
             return it;
         } else {
             return null;
@@ -76,10 +80,20 @@ public class PhaseSuite<C> extends BasePhase<C> {
     }
 
     public static <C> boolean findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass) {
+        return findNextPhase(it, phaseClass, false);
+    }
+
+    public static <C> boolean findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass, boolean recursive) {
         while (it.hasNext()) {
             BasePhase<? super C> phase = it.next();
             if (phaseClass.isInstance(phase)) {
                 return true;
+            } else if (recursive && phase instanceof PhaseSuite) {
+                @SuppressWarnings("unchecked")
+                PhaseSuite<C> suite = (PhaseSuite<C>) phase;
+                if (suite.findPhase(phaseClass, true) != null) {
+                    return true;
+                }
             }
         }
         return false;
