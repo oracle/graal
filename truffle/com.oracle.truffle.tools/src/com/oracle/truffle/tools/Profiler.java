@@ -616,8 +616,8 @@ public final class Profiler {
         }
 
         /**
-         * Total time taken executing the program element since the last time data was
-         * {@linkplain #clear() cleared}.
+         * Total time in nanoseconds taken executing the program element since the last time data
+         * was {@linkplain #clear() cleared}.
          *
          * @since 0.15
          */
@@ -635,7 +635,7 @@ public final class Profiler {
         }
 
         /**
-         * Self time taken executing the program element since the last time data was
+         * Self time in nanoseconds taken executing the program element since the last time data was
          * {@linkplain #clear() cleared}.
          *
          * @since 0.15
