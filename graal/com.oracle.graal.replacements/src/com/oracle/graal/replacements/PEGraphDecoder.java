@@ -33,11 +33,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.compiler.common.cfg.CFGVerifier;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -49,6 +51,7 @@ import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.EncodedGraph;
 import com.oracle.graal.nodes.FixedNode;
@@ -377,6 +380,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope, null);
         assert methodScope.graph.verify();
+
+        try {
+            /* Check that the control flow graph can be computed, to catch problems early. */
+            assert CFGVerifier.verify(ControlFlowGraph.compute(methodScope.graph, true, true, true, true));
+        } catch (Throwable ex) {
+            throw GraalError.shouldNotReachHere("Control flow graph not valid after partial evaluation");
+        }
     }
 
     @Override
