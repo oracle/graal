@@ -23,9 +23,6 @@
 
 package com.oracle.graal.jtt.bytecode;
 
-import static org.junit.Assume.assumeFalse;
-import jdk.vm.ci.sparc.SPARC;
-
 import org.junit.Test;
 
 public class BC_frem extends BC_float_base {
@@ -36,7 +33,6 @@ public class BC_frem extends BC_float_base {
 
     @Test
     public void frem() {
-        assumeFalse("Skipping test on SPARC which is known not working. See  https://github.com/graalvm/graal-core/issues/46", getTarget().arch instanceof SPARC);
         runTest("test", x, y);
     }
 }
