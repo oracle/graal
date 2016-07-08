@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 
@@ -121,7 +120,7 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
-        registerUnaryMath(r, "exp", EXP);
+        // registerUnaryMath(r, "exp", EXP);
 
         r.registerMethodSubstitution(AMD64MathSubstitutions.class, "sin", double.class);
         r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
