@@ -1,6 +1,6 @@
 # DaCapo-related targets
 
-bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
+bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
   mx-benchmark : ["mx", "benchmark", "--results-file", "bench-results.json"]

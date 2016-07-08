@@ -1,8 +1,10 @@
 x52.default : {
   capabilities: [linux, x52]
   environment : {
-    JVM_CONFIG :  "graal-core"
-    JVM        :  "server"
+    XMX         : "64g"
+    XMS         : "64g"
+    JVM_CONFIG  : "graal-core"
+    JVM         : "server"
     MACHINE_NAME: "x52"
   }
 }

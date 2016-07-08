@@ -4,6 +4,8 @@ t72half.c2 : {
   targets: [weekly]
   capabilities: [solaris, t72half]
   environment : {
+    XMX          : "64g"
+    XMS          : "64g"
     JVM_CONFIG   : "default"
     JVM          : "server"
     MACHINE_NAME : "t72half"

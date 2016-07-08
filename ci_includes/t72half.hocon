@@ -3,8 +3,10 @@
 t72half.default : {
   capabilities: [solaris, t72half]
   environment : {
-    JVM_CONFIG :  "graal-core"
-    JVM        :  "server"
+    XMX         : "64g"
+    XMS         : "64g"
+    JVM_CONFIG  : "graal-core"
+    JVM         : "server"
     MACHINE_NAME: "t72half"
   }
 }
