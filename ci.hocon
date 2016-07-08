@@ -3,6 +3,7 @@ builds = []
 
 include "ci_common/common.hocon"
 include "ci_common/gate.hocon"
+include "ci_common/gate_tasks.hocon"
 
 include "ci_includes/bench.hocon"
 include "ci_includes/x52.hocon"
