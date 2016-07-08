@@ -1,0 +1,73 @@
+# overlay version
+overlay = fe72ac07547f1688f42b247257062842a4de9103
+
+java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.17", platformspecific: true}
+java9 : {name : oraclejdk, version : "9",    platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u92-jvmci-0.17-fastdebug", platformspecific: true}
+
+common : {
+  timelimit : "30:00"
+}
+
+commonLinux : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
+    gcc-build-essentials : ">=4.9.1" # GCC 4.9.0 fails on cluster
+  }
+}
+
+commonSolaris : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    make : ">=3.83"
+    "solarisstudio" : "==12.3"
+  }
+}
+
+commonDarwin : ${common} {
+  packages : {
+    # Brew does not support versions
+    git : ""
+    mercurial : ""
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    # No need to specify "make" or "gcc" as Mac OS X has these
+    # available once Xcode has been installed.
+  }
+}
+
+java8Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8}
+  }
+}
+
+java8DownloadsDebug : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8Debug}
+  }
+}
+
+java9Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+      ${java8}
+    ]}
+    JAVA_HOME : ${java9}
+  }
+}
