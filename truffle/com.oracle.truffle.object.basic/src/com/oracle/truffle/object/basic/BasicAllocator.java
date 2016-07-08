@@ -155,7 +155,6 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location locationForValueUpcast(Object value, Location oldLocation) {
-        assert !(value instanceof Class);
         if (oldLocation instanceof DualLocation) {
             DualLocation dualLocation = (DualLocation) oldLocation;
             if (dualLocation.getType() == null) {
