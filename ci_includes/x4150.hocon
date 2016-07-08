@@ -1,23 +1,14 @@
 x4150.default : {
+  capabilities: [linux, x4150]
   environment : {
-    JVM_CONFIG :  "graal-core"
+    XMX         : "64g"
+    XMS         : "64g"
+    JVM_CONFIG  : "graal-core"
+    JVM         : "server"
+    MACHINE_NAME: "x4150"
   }
 }
-# SPECjbb2005-related targets
-
-bench-specjbb2005-x4150: ${commonLinux} ${bench-specjbb2005} ${x4150.default} {
-  capabilities: [linux, x4150, bench, post-merge]
-  name: "bench-specjbb2005-linux-x4150"
-  run: [
-    ${bench-jvmci.mx-specjbb2005} [
-      "--machine-name", "x4150", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
-    ]
-  ]
-}
-
-# Build targets
 
 builds += [
-  ${bench-specjbb2005-x4150}
+  ${bench-specjbb2005} ${x4150.default} { name: "bench-specjbb2005-linux-x4150"}
 ]

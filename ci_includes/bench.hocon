@@ -57,9 +57,13 @@ bench-scala-dacapo-timing: ${bench-common-8} {
 # SPECjbb2005-related targets
 
 bench-specjbb2005: ${bench-common-8} {
+  targets: [bench, post-merge]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
+  run: [
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
+  ]
   timelimit: "2:00:00"
 }
 
