@@ -65,7 +65,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
     private static final DebugCounter eliminatedBackup = Debug.counter("StackMoveOptimizer[EliminatedScratchBackupRestore]");
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
                     PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {

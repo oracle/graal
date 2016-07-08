@@ -78,7 +78,8 @@ public class LIRSuites {
      * machine code generation.
      * <p>
      * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s,
-     * {@link VirtualStackSlot}s or {@link StackSlot}s.
+     * {@link VirtualStackSlot}s or {@link StackSlot}s. Blocks might be removed from
+     * {@link LIR#codeEmittingOrder()} by overwriting them with {@code null}.
      */
     public LIRPhaseSuite<PostAllocationOptimizationContext> getPostAllocationOptimizationStage() {
         return postAllocStage;

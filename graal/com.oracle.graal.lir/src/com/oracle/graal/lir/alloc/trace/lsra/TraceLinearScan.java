@@ -122,7 +122,7 @@ public final class TraceLinearScan implements IntervalDumper {
      */
     private FixedInterval[] sortedFixedIntervals;
 
-    protected final TraceBuilderResult<?> traceBuilderResult;
+    protected final TraceBuilderResult traceBuilderResult;
 
     private final boolean neverSpillConstants;
 
@@ -135,8 +135,8 @@ public final class TraceLinearScan implements IntervalDumper {
 
     private final LIRGenerationResult res;
 
-    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace<? extends AbstractBlockBase<?>> trace,
-                    TraceBuilderResult<?> traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
+    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace trace,
+                    TraceBuilderResult traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
         this.res = res;
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -569,7 +569,7 @@ public final class TraceLinearScan implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, MoveFactory spillMoveFactory,
+    public void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, MoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
 
         /*
@@ -578,7 +578,7 @@ public final class TraceLinearScan implements IntervalDumper {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", this)) {
 
@@ -588,20 +588,20 @@ public final class TraceLinearScan implements IntervalDumper {
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
-                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                 printIntervals("After register allocation");
 
                 // resolve intra-trace data-flow
-                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                 Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                 // eliminate spill moves
                 if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
-                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
                     Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                 }
 
-                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();

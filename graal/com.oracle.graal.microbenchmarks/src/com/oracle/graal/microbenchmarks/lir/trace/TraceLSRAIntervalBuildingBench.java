@@ -60,22 +60,17 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
 
         @Override
         @SuppressWarnings("try")
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
                         AllocationContext context) {
             MoveFactory spillMoveFactory = context.spillMoveFactory;
             RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
-            TraceBuilderResult<B> resultTraces = getTraces(context);
+            TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
-            for (Trace<B> trace : resultTraces.getTraces()) {
+            for (Trace trace : resultTraces.getTraces()) {
                 allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, null);
                 Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(allocator, resultTraces);
                 a.analyze();
             }
-        }
-
-        @SuppressWarnings("unchecked")
-        private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
-            return context.contextLookup(TraceBuilderResult.class);
         }
     }
 
