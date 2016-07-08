@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -68,8 +69,7 @@ import jdk.vm.ci.meta.Value;
 final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceLinearScanAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
         TraceLinearScan allocator = context.allocator;
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         new Assigner(allocator, spillMoveFactory).assignLocations();
@@ -139,7 +139,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 * 
+                 *
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -278,5 +278,4 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             }
         };
     }
-
 }

@@ -372,6 +372,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     private static int calculateConstantSize(LIR lir) {
         int size = 0;
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof SPARCLIRInstructionMixin) {
                     SizeEstimate pred = ((SPARCLIRInstructionMixin) inst).estimateSize();
@@ -386,6 +389,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     private static void resetDelayedControlTransfers(LIR lir) {
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof SPARCDelayedControlTransfer) {
                     ((SPARCDelayedControlTransfer) inst).resetState();
@@ -402,7 +408,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
      */
     private static void stuffDelayedControlTransfers(LIR l) {
         for (AbstractBlockBase<?> b : l.codeEmittingOrder()) {
-            stuffDelayedControlTransfers(l, b);
+            if (b != null) {
+                stuffDelayedControlTransfers(l, b);
+            }
         }
     }
 

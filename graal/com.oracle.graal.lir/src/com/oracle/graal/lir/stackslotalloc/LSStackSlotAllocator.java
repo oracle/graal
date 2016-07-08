@@ -88,7 +88,8 @@ public final class LSStackSlotAllocator extends AllocationPhase {
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    AllocationContext context) {
         allocateStackSlots((FrameMapBuilderTool) lirGenRes.getFrameMapBuilder(), lirGenRes);
         lirGenRes.buildFrameMap();
     }

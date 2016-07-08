@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -77,9 +78,8 @@ import jdk.vm.ci.meta.Value;
 public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceLinearScanAllocationContext context) {
-        TraceBuilderResult<?> traceBuilderResult = context.traceBuilderResult;
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+        TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
         new Analyser(allocator, traceBuilderResult).analyze();
     }
@@ -87,10 +87,10 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
     public static final class Analyser {
         private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
         private final TraceLinearScan allocator;
-        private final TraceBuilderResult<?> traceBuilderResult;
+        private final TraceBuilderResult traceBuilderResult;
         private int numInstructions;
 
-        public Analyser(TraceLinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
+        public Analyser(TraceLinearScan allocator, TraceBuilderResult traceBuilderResult) {
             this.allocator = allocator;
             this.traceBuilderResult = traceBuilderResult;
         }

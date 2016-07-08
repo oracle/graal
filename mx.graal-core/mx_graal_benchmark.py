@@ -243,7 +243,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
             [benchmarks[0]] + runArgs)
 
-    def benchmarks(self):
+    def benchmarkList(self, bmSuiteArgs):
         return [key for key, value in self.daCapoIterations().iteritems() if value != -1]
 
     def daCapoSuiteTitle(self):
@@ -508,12 +508,12 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
-            benchmarks = self.benchmarks()
+            benchmarks = self.benchmarkList(bmSuiteArgs)
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
 
-    def benchmarks(self):
+    def benchmarkList(self, bmSuiteArgs):
         return _allSpecJVM2008Benchs
 
     def successPatterns(self):
@@ -606,7 +606,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
             runArgs)
 
-    def benchmarks(self):
+    def benchmarkList(self, bmSuiteArgs):
         return ["default"]
 
     def successPatterns(self):
@@ -691,7 +691,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
 
-    def benchmarks(self):
+    def benchmarkList(self, bmSuiteArgs):
         return ["default"]
 
     def successPatterns(self):
@@ -790,7 +790,7 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
 
-    def benchmarks(self):
+    def benchmarkList(self, bmSuiteArgs):
         return ["default"]
 
     def successPatterns(self):

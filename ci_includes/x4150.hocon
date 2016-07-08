@@ -11,7 +11,7 @@ bench-specjbb2005-x4150: ${commonLinux} ${bench-specjbb2005} ${x4150.default} {
   run: [
     ${bench-jvmci.mx-specjbb2005} [
       "--machine-name", "x4150", "--",
-      "-Xmx64g", "-Xms64g", "-XX:+UseJVMCICompiler", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
+      "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}"
     ]
   ]
 }

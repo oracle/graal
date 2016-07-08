@@ -24,6 +24,7 @@ package com.oracle.graal.lir.alloc.trace.lsra;
 
 import java.util.List;
 
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Indent;
@@ -34,8 +35,7 @@ import jdk.vm.ci.code.TargetDescription;
 final class TraceLinearScanRegisterAllocationPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceLinearScanAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
         TraceLinearScan allocator = context.allocator;
         allocateRegisters(allocator);
     }

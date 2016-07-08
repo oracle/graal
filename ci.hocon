@@ -118,65 +118,6 @@ gateTraceRA : {
   }
 }
 
-bench-jvmci : {
-  mx-benchmark : ["mx", "--jdk=jvmci", "benchmark", "--results-file", "bench-results.json"]
-  mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
-  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
-  mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
-  mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
-  mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
-  mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
-  mx-specjbb2013: ${bench-jvmci.mx-benchmark} ["specjbb2013"]
-  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
-  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox"]
-  mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
-}
-
-bench-common-8 : ${java8Downloads} {
-  setup: [
-    ["mx", "build"]
-  ]
-  teardown : [
-    ${bench-jvmci.mx-teardown}
-  ]
-}
-
-# SPECJvm2008-related targets
-
-bench-specjvm2008: ${bench-common-8} {
-  downloads: {
-    SPECJVM2008: { name: specjvm2008, version: "1.01" }
-  }
-  timelimit: "2:50:00"
-}
-
-# SPECjbb2005-related targets
-
-bench-specjbb2005: ${bench-common-8} {
-  downloads: {
-    SPECJBB2005: { name: specjbb2005, version: "1.07" }
-  }
-  timelimit: "2:00:00"
-}
-
-# SPECjbb2013-related targets
-
-bench-specjbb2013: ${bench-common-8} {
-  downloads: {
-    SPECJBB2013: { name: specjbb2013, version: "1.00" }
-  }
-  timelimit: "3:00:00"
-}
-
-# SPECjbb2015-related targets
-
-bench-specjbb2015: ${bench-common-8} {
-  downloads: {
-    SPECJBB2015: { name: specjbb2015, version: "1.00" }
-  }
-  timelimit: "3:00:00"
-}
-
 # Build targets
 
 builds = [
@@ -200,6 +141,12 @@ builds = [
   ${gateBootstrap8}   ${commonLinux} ${gateTraceRA} {capabilities : [linux, amd64, gate],   name: "gate-bootstrap-8-linux-amd64-tracera"}
 ]
 
+include "ci_includes/bench.hocon"
 include "ci_includes/x52.hocon"
-include "ci_includes/x4150.hocon"
+include "ci_includes/x52-c1.hocon"
+include "ci_includes/x52-c2.hocon"
 include "ci_includes/x52-tracera.hocon"
+include "ci_includes/x4150.hocon"
+include "ci_includes/t72half.hocon"
+include "ci_includes/t72half-c1.hocon"
+include "ci_includes/t72half-c2.hocon"

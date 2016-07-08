@@ -88,7 +88,7 @@ public class MatchRuleTest extends LIRTest {
 
     public static class CheckPhase extends LIRPhase<PreAllocationOptimizationContext> {
         @Override
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
                         PreAllocationOptimizationContext context) {
             lir = lirGenRes.getLIR();
         }
