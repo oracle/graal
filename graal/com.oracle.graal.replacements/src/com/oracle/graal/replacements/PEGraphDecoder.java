@@ -376,7 +376,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                         parameterPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope, null);
-        methodScope.graph.verify();
+        assert methodScope.graph.verify();
     }
 
     @Override

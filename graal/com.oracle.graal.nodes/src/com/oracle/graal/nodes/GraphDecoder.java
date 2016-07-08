@@ -324,7 +324,7 @@ public class GraphDecoder {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope, null);
-            methodScope.graph.verify();
+            assert methodScope.graph.verify();
         } catch (Throwable ex) {
             Debug.handle(ex);
         }
