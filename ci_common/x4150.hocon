@@ -3,7 +3,7 @@ x4150.default : ${commonLinux} {
   environment : {
     XMX         : "64g"
     XMS         : "64g"
-    JVM_CONFIG  : "graal-core"
+    JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "x4150"
   }
