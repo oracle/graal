@@ -1,4 +1,4 @@
-x4150.default : {
+x4150.default : ${commonLinux} {
   capabilities: [linux, x4150]
   environment : {
     XMX         : "64g"

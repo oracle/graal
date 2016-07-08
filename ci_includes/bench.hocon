@@ -31,7 +31,7 @@ bench-dacapo: ${bench-common-8} {
   ]
 }
 
-bench-dacapo-timing: ${commonLinux} ${bench-common-8} {
+bench-dacapo-timing: ${bench-common-8} {
   targets: [daily]
   run: [
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}

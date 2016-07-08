@@ -1,4 +1,4 @@
-x52.default : {
+x52.default : ${commonLinux} {
   capabilities: [linux, x52]
   environment : {
     XMX         : "64g"

@@ -1,6 +1,6 @@
 # T7-2 machine, with zone limited to one socket (half)
 
-t72half.default : {
+t72half.default : ${commonSolaris} {
   capabilities: [solaris, t72half]
   environment : {
     XMX         : "64g"
