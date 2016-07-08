@@ -385,6 +385,40 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram2", bytecodes, 0, 6));
     }
 
+    @Test
+    public void nestedLoopsProgram3() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-2,
+                        /* 4: */Bytecode.DUP,
+
+                        /* 5: */Bytecode.POP,
+                        /* 6: */Bytecode.DUP,
+                        /* 7: */Bytecode.IFZERO,
+                        /* 8: */22,
+
+                        /* 9: */Bytecode.CONST,
+                        /* 10: */1,
+                        /* 11: */Bytecode.ADD,
+                        /* 12: */Bytecode.CONST,
+                        /* 13: */-2,
+
+                        /* 14: */Bytecode.DUP,
+                        /* 15: */Bytecode.IFZERO,
+                        /* 16: */5,
+                        /* 17: */Bytecode.CONST,
+                        /* 18: */1,
+                        /* 19: */Bytecode.ADD,
+                        /* 20: */Bytecode.JMP,
+                        /* 21: */14,
+
+                        /* 22: */Bytecode.POP,
+                        /* 23: */Bytecode.RETURN};
+        assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 8));
+    }
+
     @Test(timeout = 2000)
     public void manyIfsProgram() {
         byte[] bytecodes = new byte[]{
