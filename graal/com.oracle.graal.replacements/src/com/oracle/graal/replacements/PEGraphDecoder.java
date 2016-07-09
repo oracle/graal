@@ -677,10 +677,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         List<Map.Entry<ResolvedJavaMethod, Integer>> methods = new ArrayList<>(methodCounts.entrySet());
         methods.sort((e1, e2) -> -Integer.compare(e1.getValue(), e2.getValue()));
 
-        StringBuilder msg = new StringBuilder("Too deep inlining, probably caused by recursive inlining. Inlined methods ordered by inlining frequency:");
+        StringBuilder msg = new StringBuilder("Too deep inlining, probably caused by recursive inlining.").append(System.lineSeparator()).append("== Inlined methods ordered by inlining frequency:");
         for (Map.Entry<ResolvedJavaMethod, Integer> entry : methods) {
             msg.append(System.lineSeparator()).append(entry.getKey().format("%H.%n(%p) [")).append(entry.getValue()).append("]");
         }
+        msg.append(System.lineSeparator()).append("== Complete stack trace of inlined methods:");
+        int lastBci = 0;
+        for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
+            msg.append(System.lineSeparator()).append(cur.method.asStackTraceElement(lastBci));
+            if (cur.invokeData != null) {
+                lastBci = cur.invokeData.invoke.bci();
+            } else {
+                lastBci = 0;
+            }
+        }
+
         throw new BailoutException(msg.toString());
     }
 
