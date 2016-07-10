@@ -50,6 +50,14 @@ public class Linker {
                 final String arg = args[n];
 
                 switch (arg) {
+                    case "-h":
+                    case "-help":
+                    case "--help":
+                    case "/?":
+                    case "/help":
+                        help();
+                        break;
+
                     case "-o":
                         if (n + 1 >= args.length) {
                             throw new Exception("-o needs to be followed by a file name");
@@ -75,6 +83,12 @@ public class Linker {
             System.exit(1);
         }
 
+    }
+
+    private static void help() {
+        System.err.println("su-link [-o out.su] one.ll two.ll ...");
+        System.err.println();
+        System.err.println("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
     }
 
     public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException {
