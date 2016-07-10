@@ -2,7 +2,6 @@ import tarfile
 import os
 from os.path import join
 import shutil
-import zipfile
 import subprocess
 
 import mx
@@ -621,29 +620,7 @@ def opt(args=None):
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
-    modules = []
-    libraries = []
-    n = 0
-    while n < len(args):
-        arg = args[n]
-        if arg == '-o':
-            out = args[n + 1]
-            n += 1
-        elif arg.startswith('-l'):
-            libraries += [arg[2:]]
-        else:
-            modules += [arg]
-        n += 1
-    if out is None:
-        out = 'out.su'
-    if len(modules) == 1:
-        prefix = os.path.dirname(modules[0])
-    else:
-        prefix = os.path.commonprefix(modules)
-    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
-        for module in modules:
-            z.write(module, module[len(prefix):])
-        z.writestr('libs', '\n'.join(libraries))
+    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.tools.Linker"] + args)
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
