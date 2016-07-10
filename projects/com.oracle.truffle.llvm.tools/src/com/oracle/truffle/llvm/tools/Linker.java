@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -43,12 +44,16 @@ import java.util.zip.ZipOutputStream;
 
 public class Linker {
 
+    private static final int BUFFER_SIZE = 1024;
+
     public static void main(String[] args) {
         try {
             String outputFileName = null;
             final Collection<String> bitcodeFileNames = new ArrayList<>();
 
-            for (int n = 0; n < args.length; n++) {
+            int n = 0;
+
+            while (n < args.length) {
                 final String arg = args[n];
 
                 switch (arg) {
@@ -57,7 +62,7 @@ public class Linker {
                     case "--help":
                     case "/?":
                     case "/help":
-                        help();
+                        help(System.err);
                         break;
 
                     case "-o":
@@ -73,6 +78,8 @@ public class Linker {
                         bitcodeFileNames.add(arg);
                         break;
                 }
+
+                n++;
             }
 
             if (outputFileName == null) {
@@ -81,20 +88,21 @@ public class Linker {
 
             link(outputFileName, bitcodeFileNames);
         } catch (Exception e) {
-            System.err.println(e.getMessage());
+            final PrintStream err = System.err;
+            err.println(e.getMessage());
             System.exit(1);
         }
 
     }
 
-    private static void help() {
-        System.err.println("su-link [-o out.su] one.ll two.ll ...");
-        System.err.println();
-        System.err.println("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
+    private static void help(PrintStream out) {
+        out.println("su-link [-o out.su] one.ll two.ll ...");
+        out.println();
+        out.println("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
     }
 
     public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {
-        final byte[] buffer = new byte[1024];
+        final byte[] buffer = new byte[BUFFER_SIZE];
 
         try (ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(outputFileName))) {
             for (String bitcodeFileName : bitcodeFileNames) {

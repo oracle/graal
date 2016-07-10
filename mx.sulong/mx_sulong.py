@@ -2,7 +2,6 @@ import tarfile
 import os
 from os.path import join
 import shutil
-import zipfile
 import subprocess
 
 import mx
