@@ -34,6 +34,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.zip.ZipEntry;
@@ -91,15 +94,32 @@ public class Linker {
         System.err.println("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
     }
 
-    public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException {
+    public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {
         final byte[] buffer = new byte[1024];
 
         try (ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(outputFileName))) {
             for (String bitcodeFileName : bitcodeFileNames) {
                 final File bitcodeFile = new File(bitcodeFileName);
 
+                final MessageDigest digest = MessageDigest.getInstance("SHA-1");
+
                 try (InputStream inputStream = new FileInputStream(bitcodeFile)) {
-                    outputStream.putNextEntry(new ZipEntry(bitcodeFile.getName()));
+                    while (true) {
+                        int count = inputStream.read(buffer);
+
+                        if (count == -1) {
+                            break;
+                        }
+
+                        digest.update(buffer, 0, count);
+                    }
+                }
+
+                final String digestString = new BigInteger(1, digest.digest()).toString(16);
+                final String entryName = String.format("%s_%s", digestString, bitcodeFile.getName());
+
+                try (InputStream inputStream = new FileInputStream(bitcodeFile)) {
+                    outputStream.putNextEntry(new ZipEntry(entryName));
 
                     while (true) {
                         int count = inputStream.read(buffer);
