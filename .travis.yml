@@ -52,5 +52,6 @@ env:
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
   - TEST_COMMAND='mx su-travis3'
+  - TEST_COMMAND='mx su-travis-jruby'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat

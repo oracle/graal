@@ -522,9 +522,18 @@ def runTestJRuby(args=None):
     else:
         mx.run(['git', 'clone', rubyUrl], cwd=suitesDir)
         mx.run(['git', 'checkout', rubyBranch], cwd=jrubyDir)
-    mx.run(['ruby', 'tool/jt.rb', 'build'], cwd=jrubyDir)
+    rubyGemsUrl = 'https://github.com/jruby/jruby-truffle-gem-test-pack.git'
+    jrubyGemsDir = join(suitesDir, 'jruby-truffle-gem-test-pack')
+    if os.path.isdir(jrubyGemsDir):
+        mx.run(['git', 'pull'], cwd=jrubyGemsDir)
+    else:
+        mx.run(['git', 'clone', rubyGemsUrl], cwd=suitesDir)
+    os.environ['GRAAL_HOME'] = _suite.dir
     os.environ['SULONG_DIR'] = _suite.dir
-    os.environ['SULONG_CLASSPATH'] = getClasspathOptions()[1]
+    os.environ['GEM_HOME'] = jrubyGemsDir + '/gems'
+    mx.run(['ruby', 'tool/jt.rb', 'build'], cwd=jrubyDir)
+    mx.run(['ruby', 'tool/jt.rb', 'build', 'cexts'], cwd=jrubyDir)
+    mx.run(['ruby', 'tool/jt.rb', 'test', 'specs', '--graal', ':capi'], cwd=jrubyDir)
     mx.run(['ruby', 'tool/jt.rb', 'test', 'cexts'], cwd=jrubyDir)
 
 def getCommonOptions(lib_args=None):
