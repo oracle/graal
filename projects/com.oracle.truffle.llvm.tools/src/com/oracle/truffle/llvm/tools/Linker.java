@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -41,6 +40,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class Linker {
 
@@ -62,7 +63,7 @@ public class Linker {
                     case "--help":
                     case "/?":
                     case "/help":
-                        help(System.err);
+                        help();
                         break;
 
                     case "-o":
@@ -88,17 +89,15 @@ public class Linker {
 
             link(outputFileName, bitcodeFileNames);
         } catch (Exception e) {
-            final PrintStream err = System.err;
-            err.println(e.getMessage());
+            LLVMLogger.error(e.getMessage());
             System.exit(1);
         }
 
     }
 
-    private static void help(PrintStream out) {
-        out.println("su-link [-o out.su] one.ll two.ll ...");
-        out.println();
-        out.println("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
+    private static void help() {
+        LLVMLogger.info("su-link [-o out.su] one.ll two.ll ...");
+        LLVMLogger.info("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
     }
 
     public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {
