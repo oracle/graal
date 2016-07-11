@@ -27,10 +27,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
@@ -43,17 +43,21 @@ public class LocationTest {
     public void testOnlyObjectLocationForObject() {
         DynamicObject object = rootShape.newInstance();
         object.define("obj", new Object());
-        Location location = object.getShape().getProperty("obj").getLocation();
+        LocationImpl location = (LocationImpl) object.getShape().getProperty("obj").getLocation();
         Assert.assertTrue(location instanceof ObjectLocation);
         Assert.assertFalse(location instanceof DualLocation);
+        Assert.assertEquals(1, location.objectFieldCount());
+        Assert.assertEquals(0, location.primitiveFieldCount());
     }
 
     @Test
     public void testDualLocationForPrimitive() {
         DynamicObject object = rootShape.newInstance();
         object.define("prim", 42);
-        Location location = object.getShape().getProperty("prim").getLocation();
+        LocationImpl location = (LocationImpl) object.getShape().getProperty("prim").getLocation();
         Assert.assertTrue(location instanceof DualLocation);
+        Assert.assertEquals(1, location.objectFieldCount());
+        Assert.assertEquals(1, location.primitiveFieldCount());
     }
 
 }
