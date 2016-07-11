@@ -23,7 +23,9 @@
 package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.source.Source;
-import java.net.URLClassLoader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
@@ -32,14 +34,9 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
         super(getFromTestClassloader(clazz));
     }
 
-    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-
     private static Class<?> getFromTestClassloader(Class<?> clazz) throws InitializationError {
         try {
-            // As of JDK9, unit tests are patched into any modules containing the Truffle API.
-            // This means tests can inject classes into Truffle API packages without any class
-            // loader tricks since Truffle and test classes are loaded by the same class loader.
-            ClassLoader testClassLoader = JDK8OrEarlier ? new TestClassLoader() : ClassLoader.getSystemClassLoader();
+            ClassLoader testClassLoader = new TestClassLoader();
             return Class.forName(clazz.getName(), true, testClassLoader);
         } catch (ClassNotFoundException e) {
             throw new InitializationError(e);
@@ -52,24 +49,47 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
         }
     }
 
-    private static class TestClassLoader extends URLClassLoader {
+    private static class TestClassLoader extends ClassLoader {
         TestClassLoader() {
-            super(((URLClassLoader) getSystemClassLoader()).getURLs());
         }
 
         @Override
         public Class<?> loadClass(String name) throws ClassNotFoundException {
             if (name.startsWith(Profile.class.getPackage().getName())) {
-                return super.findClass(name);
+                return findClass(name);
             }
             if (name.contains("ContextStore")) {
-                return super.findClass(name);
+                return findClass(name);
             }
             if (name.contains(Source.class.getPackage().getName())) {
-                return super.findClass(name);
+                return findClass(name);
             }
             return super.loadClass(name);
         }
-    }
 
+        @Override
+        protected Class<?> findClass(String name) throws ClassNotFoundException {
+            String res = name.replace('.', '/') + ".class";
+            InputStream is = getResourceAsStream(res);
+            if (is == null) {
+                throw new ClassNotFoundException(name);
+            }
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            byte[] arr = new byte[4096];
+            for (;;) {
+                int len;
+                try {
+                    len = is.read(arr);
+                } catch (IOException ex) {
+                    throw new ClassNotFoundException(name);
+                }
+                if (len < 0) {
+                    break;
+                }
+                os.write(arr, 0, len);
+            }
+            arr = os.toByteArray();
+            return defineClass(name, arr, 0, arr.length, getClass().getProtectionDomain());
+        }
+    }
 }

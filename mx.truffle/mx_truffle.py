@@ -77,8 +77,10 @@ def testdownstream(args):
     subprocess.check_call(['bin/jruby', 'tool/jt.rb', 'test', 'fast'], cwd=jruby_dir)
 
 def _truffle_gate_runner(args, tasks):
-    with Task('Truffle Javadoc', tasks) as t:
-        if t: mx.javadoc(['--unified'])
+    jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
+    if jdk.javaCompliance < '9':
+        with Task('Truffle Javadoc', tasks) as t:
+            if t: mx.javadoc(['--unified'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:

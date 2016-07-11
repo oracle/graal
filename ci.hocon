@@ -1,8 +1,9 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
+java9 : {name : labsjdk, version : "9-HSCOMPSNAPSHOT",    platformspecific: true}
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
-eclipse : {name: eclipse, version: "4.5.2", platformspecific: true}
+eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
 
 common : {
   packages : {
@@ -13,19 +14,13 @@ common : {
     maven : ">=3.3.9"
   }
 
-  # need pyhocon fix
   downloads : {
-    JDT : ${ecj}
     ECLIPSE : ${eclipse}
-    JAVA_HOME : ${java8}
-    EXTRA_JAVA_HOMES : { pathlist :[
-      ${java7}
-    ]}
   }
 
   environment : {
-    ECLIPSE_EXE : "$ECLIPSE/eclipse"
     PATH : "$JAVA_HOME/bin:$PATH"
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
   }
 
   timelimit : "30:00"
@@ -34,10 +29,6 @@ common : {
 solaris : {
   packages : {
     git : ">=1.8.3"
-  }
-
-  downloads : {
-    JAVA_HOME : ${java8}
   }
 
   environment : {
@@ -52,17 +43,13 @@ darwin : {
     "git" : ""
   }
 
-  downloads : {
-    JAVA_HOME : ${java8}
-  }
-
   environment : ${common.environment} {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
   }
 }
 
 
-deploy-dry-run : ${common} {
+deploy-dry-run : ${common} ${java8Downloads} {
   capabilities : [linux, amd64, gate]
   name : gate-deploy-dry-run
   setup : [
@@ -73,26 +60,57 @@ deploy-dry-run : ${common} {
   ]
 }
 
+java8Downloads : {
+  downloads : {
+    JDT : ${ecj}
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8}
+  }
+}
+
+java9Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+      ${java8}
+    ]}
+    JAVA_HOME : ${java9}
+  }
+}
+
+gateLite : {
+  run : [
+    ["mx", "build" ],
+    ["mx", "unittest", "--verbose" ]
+  ]
+}
 
 builds = [
-  ${common} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle"},
-  ${common} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-  ${common} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
+  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-8"},
+  ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-9"},
+  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
+  ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
   ${deploy-dry-run}
-  ${solaris} {run : [
-      ["mx", "build" ],
-      ["mx", "unittest", "--verbose" ]
-    ],
+  ${solaris} ${java8Downloads} ${gateLite} {
     capabilities : [solaris, sparcv9],
     targets : [ gate ],
-    name: "gate-solaris-lite"
+    name: "gate-solaris-lite-8"
   }
-  ${darwin} {run : [
-      ["mx", "build" ],
-      ["mx", "unittest", "--verbose" ]
-    ],
+  ${solaris} ${java9Downloads} ${gateLite} {
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
+    name: "gate-solaris-lite-9"
+  }
+  ${darwin} ${java8Downloads} ${gateLite} {
     capabilities : [darwin],
     targets : [ gate ],
-    name: "gate-mac-lite"
+    name: "gate-mac-lite-8"
+  }
+  ${darwin} ${java9Downloads} ${gateLite} {
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite-9"
   }
 ]
