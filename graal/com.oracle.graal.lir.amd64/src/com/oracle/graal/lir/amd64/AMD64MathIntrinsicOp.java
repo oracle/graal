@@ -36,13 +36,12 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.LIRInstruction.Temp;
 import com.oracle.graal.lir.asm.ArrayDataPointerConstant;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
