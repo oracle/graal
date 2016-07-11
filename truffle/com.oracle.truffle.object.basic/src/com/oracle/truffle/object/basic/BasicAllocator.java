@@ -170,7 +170,13 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
                     return dualLocation.changeType(Object.class);
                 }
             } else if (dualLocation.getType().isPrimitive()) {
-                return dualLocation.changeType(Object.class);
+                if (dualLocation.getType() == int.class && layout.isAllowedIntToLong() && value instanceof Long) {
+                    return dualLocation.changeType(long.class);
+                } else if (dualLocation.getType() == int.class && layout.isAllowedIntToDouble() && value instanceof Double) {
+                    return dualLocation.changeType(double.class);
+                } else {
+                    return dualLocation.changeType(Object.class);
+                }
             } else {
                 throw new UnsupportedOperationException();
             }
