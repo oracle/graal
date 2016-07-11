@@ -23,7 +23,9 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_DREM;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_EXP;
+import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_FREM;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_LOG10;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_POW;
@@ -241,6 +243,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(ARITHMETIC_LOG, c.arithmeticLogAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(ARITHMETIC_LOG10, c.arithmeticLog10Address, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(ARITHMETIC_POW, c.arithmeticPowAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(ARITHMETIC_FREM, c.fremAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(ARITHMETIC_DREM, c.dremAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+
         registerForeignCall(LOAD_AND_CLEAR_EXCEPTION, c.loadAndClearExceptionAddress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, any());
 
         registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, any());

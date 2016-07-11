@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
@@ -30,6 +29,7 @@ import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOp
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -51,6 +51,7 @@ import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
@@ -65,7 +66,7 @@ public class AMD64GraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
                 registerUnsafePlugins(invocationPlugins);
-                registerMathPlugins(invocationPlugins, arithmeticStubs);
+                registerMathPlugins(invocationPlugins, arch, arithmeticStubs);
             }
         });
     }
@@ -118,11 +119,11 @@ public class AMD64GraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean arithmeticStubs) {
+    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, boolean arithmeticStubs) {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
-        registerUnaryMath(r, "exp", EXP);
+        // registerUnaryMath(r, "exp", EXP);
 
         if (arithmeticStubs) {
             registerUnaryMath(r, "sin", SIN);
@@ -142,6 +143,11 @@ public class AMD64GraphBuilderPlugins {
             }
         });
 
+        if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
+            registerRound(r, "rint", RoundingMode.NEAREST);
+            registerRound(r, "ceil", RoundingMode.UP);
+            registerRound(r, "floor", RoundingMode.DOWN);
+        }
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
@@ -149,6 +155,16 @@ public class AMD64GraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.recursiveAppend(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerRound(Registration r, String name, RoundingMode mode) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg, mode)));
                 return true;
             }
         });

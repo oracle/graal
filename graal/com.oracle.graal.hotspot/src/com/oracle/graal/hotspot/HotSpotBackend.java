@@ -218,6 +218,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         };
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition

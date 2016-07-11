@@ -24,11 +24,21 @@ package com.oracle.graal.hotspot;
 
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 public interface HotSpotBackendFactory {
 
-    void register();
+    /**
+     * Gets the class describing the architecture the backend created by this factor is associated
+     * with.
+     */
+    Class<? extends Architecture> getArchitecture();
+
+    /**
+     * Determines if this backend factory is associated with a given compiler configuration factory.
+     */
+    boolean isAssociatedWith(CompilerConfigurationFactory factory);
 
     HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
 }

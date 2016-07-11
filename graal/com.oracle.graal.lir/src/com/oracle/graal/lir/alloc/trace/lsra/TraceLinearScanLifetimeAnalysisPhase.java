@@ -22,30 +22,25 @@
  */
 package com.oracle.graal.lir.alloc.trace.lsra;
 
+import static com.oracle.graal.lir.LIRValueUtil.asVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.finalizeFixedIntervals;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.getIntervalHint;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.numberInstruction;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.setHint;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.setSpillSlot;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitAlive;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitCallerSavedRegisters;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitInput;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitOutput;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitState;
-import static com.oracle.graal.lir.alloc.trace.lsra.IntervalBuilderUtil.visitTemp;
 import static com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan.isVariableOrRegister;
+import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 
+import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -60,63 +55,59 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.ValueProcedure;
+import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
-final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
+public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    TraceLinearScanAllocationContext context) {
-        TraceBuilderResult<?> traceBuilderResult = context.traceBuilderResult;
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+        TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
-        new Analyser(allocator.getIntervalData(), traceBuilderResult, allocator.sortedBlocks(), lirGenRes.getLIR(), allocator.neverSpillConstants(), allocator.getSpillMoveFactory(),
-                        allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters()).analyze();
+        new Analyser(allocator, traceBuilderResult).analyze();
     }
 
-    static final class Analyser {
+    public static final class Analyser {
         private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
-        private final IntervalData intervalData;
-        private final TraceBuilderResult<?> traceBuilderResult;
+        private final TraceLinearScan allocator;
+        private final TraceBuilderResult traceBuilderResult;
         private int numInstructions;
-        private final List<? extends AbstractBlockBase<?>> sortedBlocks;
-        private final LIR lir;
-        private final boolean neverSpillConstants;
-        private final MoveFactory spillMoveFactory;
-        private final RegisterArray callerSaveRegisters;
 
-        private Analyser(IntervalData intervalData, TraceBuilderResult<?> traceBuilderResult, List<? extends AbstractBlockBase<?>> sortedBlocks, LIR lir, boolean neverSpillConstants,
-                        MoveFactory moveFactory, RegisterArray callerSaveRegisters) {
-            this.intervalData = intervalData;
+        public Analyser(TraceLinearScan allocator, TraceBuilderResult traceBuilderResult) {
+            this.allocator = allocator;
             this.traceBuilderResult = traceBuilderResult;
-            this.sortedBlocks = sortedBlocks;
-            this.lir = lir;
-            this.neverSpillConstants = neverSpillConstants;
-            this.spillMoveFactory = moveFactory;
-            this.callerSaveRegisters = callerSaveRegisters;
         }
 
         private List<? extends AbstractBlockBase<?>> sortedBlocks() {
-            return sortedBlocks;
+            return allocator.sortedBlocks();
         }
 
         private LIR getLIR() {
-            return lir;
+            return allocator.getLIR();
         }
 
         private RegisterArray getCallerSavedRegisters() {
-            return callerSaveRegisters;
+            return allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
         }
 
-        private void analyze() {
+        public void analyze() {
             countInstructions();
             buildIntervals();
         }
@@ -135,7 +126,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
          */
         private void countInstructions() {
 
-            intervalData.initIntervals();
+            allocator.initIntervals();
 
             int numberInstructions = 0;
             for (AbstractBlockBase<?> block : sortedBlocks()) {
@@ -144,33 +135,51 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
             numInstructions = numberInstructions;
 
             // initialize with correct length
-            intervalData.initOpIdMaps(numberInstructions);
+            allocator.initOpIdMaps(numberInstructions);
         }
 
         private final InstructionValueConsumer outputConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                visitOutput(intervalData, op, operand, mode, flags, neverSpillConstants, spillMoveFactory);
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                    addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op));
+                    addRegisterHint(op, operand, mode, flags, true);
+                }
             }
         };
 
         private final InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                visitTemp(intervalData, op, operand, mode, flags);
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                    addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister);
+                    addRegisterHint(op, operand, mode, flags, false);
+                }
             }
         };
         private final InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                visitAlive(intervalData, op, operand, mode, flags);
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    int opId = op.id();
+                    int blockFrom = 0;
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, p);
+                    addRegisterHint(op, operand, mode, flags, false);
+                }
             }
         };
 
         private final InstructionValueConsumer inputConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                visitInput(intervalData, op, operand, mode, flags);
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    int blockFrom = 0;
+                    addUse((AllocatableValue) operand, blockFrom, opId, p);
+                    addRegisterHint(op, operand, mode, flags, false);
+                }
             }
 
         };
@@ -178,9 +187,288 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private final InstructionValueConsumer stateProc = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                visitState(intervalData, op, operand);
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    int blockFrom = 0;
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None);
+                }
             }
         };
+
+        private void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority) {
+            if (!allocator.isProcessed(operand)) {
+                return;
+            }
+            if (isRegister(operand)) {
+                addFixedUse(asRegisterValue(operand), from, to);
+            } else {
+                assert isVariable(operand) : operand;
+                addVariableUse(asVariable(operand), from, to, registerPriority);
+            }
+        }
+
+        private void addFixedUse(RegisterValue reg, int from, int to) {
+            FixedInterval interval = allocator.getOrCreateFixedInterval(reg);
+            interval.addRange(from, to);
+            if (Debug.isLogEnabled()) {
+                Debug.log("add fixed use: %s, at %d", interval, to);
+            }
+        }
+
+        private void addVariableUse(Variable operand, int from, int to, RegisterPriority registerPriority) {
+            TraceInterval interval = allocator.getOrCreateInterval(operand);
+            interval.addRange(from, to);
+
+            // Register use position at even instruction id.
+            interval.addUsePos(to & ~1, registerPriority);
+
+            if (Debug.isLogEnabled()) {
+                Debug.log("add use: %s, at %d (%s)", interval, to, registerPriority.name());
+            }
+        }
+
+        private void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority) {
+            if (!allocator.isProcessed(operand)) {
+                return;
+            }
+            if (isRegister(operand)) {
+                addFixedDef(asRegisterValue(operand), op);
+            } else {
+                assert isVariable(operand) : operand;
+                addVariableDef(asVariable(operand), op, registerPriority);
+            }
+        }
+
+        private void addFixedDef(RegisterValue reg, LIRInstruction op) {
+            FixedInterval interval = allocator.getOrCreateFixedInterval(reg);
+            int defPos = op.id();
+            if (interval.from() <= defPos) {
+                /*
+                 * Update the starting point (when a range is first created for a use, its start is
+                 * the beginning of the current block until a def is encountered).
+                 */
+                interval.setFrom(defPos);
+
+            } else {
+                /*
+                 * Dead value - make vacuous interval also add register priority for dead intervals
+                 */
+                interval.addRange(defPos, defPos + 1);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("Warning: def of operand %s at %d occurs without use", reg, defPos);
+                }
+            }
+            if (Debug.isLogEnabled()) {
+                Debug.log("add fixed def: %s, at %d", interval, defPos);
+            }
+        }
+
+        private void addVariableDef(Variable operand, LIRInstruction op, RegisterPriority registerPriority) {
+            int defPos = op.id();
+
+            TraceInterval interval = allocator.getOrCreateInterval(operand);
+
+            if (interval.isEmpty()) {
+                /*
+                 * Dead value - make vacuous interval also add register priority for dead intervals
+                 */
+                interval.addRange(defPos, defPos + 1);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("Warning: def of operand %s at %d occurs without use", operand, defPos);
+                }
+            } else {
+                /*
+                 * Update the starting point (when a range is first created for a use, its start is
+                 * the beginning of the current block until a def is encountered).
+                 */
+                interval.setFrom(defPos);
+            }
+            if (!(op instanceof LabelOp)) {
+                // no use positions for labels
+                interval.addUsePos(defPos, registerPriority);
+            }
+
+            changeSpillDefinitionPos(op, operand, interval, defPos);
+            if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal() && isStackSlot(operand)) {
+                // detection of method-parameters and roundfp-results
+                interval.setSpillState(SpillState.StartInMemory);
+            }
+            interval.addMaterializationValue(getMaterializedValue(op, operand, interval, allocator.neverSpillConstants(), allocator.getSpillMoveFactory()));
+
+            if (Debug.isLogEnabled()) {
+                Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
+            }
+        }
+
+        private void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority) {
+            if (!allocator.isProcessed(operand)) {
+                return;
+            }
+            if (isRegister(operand)) {
+                addFixedTemp(asRegisterValue(operand), tempPos);
+            } else {
+                assert isVariable(operand) : operand;
+                addVariableTemp(asVariable(operand), tempPos, registerPriority);
+            }
+        }
+
+        private void addFixedTemp(RegisterValue reg, int tempPos) {
+            FixedInterval interval = allocator.getOrCreateFixedInterval(reg);
+            interval.addRange(tempPos, tempPos + 1);
+            if (Debug.isLogEnabled()) {
+                Debug.log("add fixed temp: %s, at %d", interval, tempPos);
+            }
+        }
+
+        private void addVariableTemp(Variable operand, int tempPos, RegisterPriority registerPriority) {
+            TraceInterval interval = allocator.getOrCreateInterval(operand);
+
+            if (interval.isEmpty()) {
+                interval.addRange(tempPos, tempPos + 1);
+            } else if (interval.from() > tempPos) {
+                interval.setFrom(tempPos);
+            }
+
+            interval.addUsePos(tempPos, registerPriority);
+            interval.addMaterializationValue(null);
+
+            if (Debug.isLogEnabled()) {
+                Debug.log("add temp: %s tempPos %d (%s)", interval, tempPos, RegisterPriority.MustHaveRegister.name());
+            }
+        }
+
+        /**
+         * Eliminates moves from register to stack if the stack slot is known to be correct.
+         *
+         * @param op
+         * @param operand
+         */
+        private void changeSpillDefinitionPos(LIRInstruction op, AllocatableValue operand, TraceInterval interval, int defPos) {
+            assert interval.isSplitParent() : "can only be called for split parents";
+
+            switch (interval.spillState()) {
+                case NoDefinitionFound:
+                    // assert interval.spillDefinitionPos() == -1 : "must no be set before";
+                    interval.setSpillDefinitionPos(defPos);
+                    if (!(op instanceof LabelOp)) {
+                        // Do not update state for labels. This will be done afterwards.
+                        interval.setSpillState(SpillState.NoSpillStore);
+                    }
+                    break;
+
+                case NoSpillStore:
+                    assert defPos <= interval.spillDefinitionPos() : "positions are processed in reverse order when intervals are created";
+                    if (defPos < interval.spillDefinitionPos() - 2) {
+                        /*
+                         * Second definition found, so no spill optimization possible for this
+                         * interval.
+                         */
+                        interval.setSpillState(SpillState.NoOptimization);
+                    } else {
+                        // two consecutive definitions (because of two-operand LIR form)
+                        assert allocator.blockForId(defPos) == allocator.blockForId(interval.spillDefinitionPos()) : "block must be equal";
+                    }
+                    break;
+
+                case NoOptimization:
+                    // nothing to do
+                    break;
+
+                default:
+                    throw new BailoutException("other states not allowed at this time");
+            }
+        }
+
+        private void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
+            if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
+
+                ValueProcedure registerHintProc = new ValueProcedure() {
+                    @Override
+                    public Value doValue(Value registerHint, OperandMode valueMode, EnumSet<OperandFlag> valueFlags) {
+                        if (TraceLinearScan.isVariableOrRegister(registerHint)) {
+                            /*
+                             * TODO (je): clean up
+                             */
+                            final AllocatableValue fromValue;
+                            final AllocatableValue toValue;
+                            /* hints always point from def to use */
+                            if (hintAtDef) {
+                                fromValue = (AllocatableValue) registerHint;
+                                toValue = (AllocatableValue) targetValue;
+                            } else {
+                                fromValue = (AllocatableValue) targetValue;
+                                toValue = (AllocatableValue) registerHint;
+                            }
+                            Debug.log("addRegisterHint %s to %s", fromValue, toValue);
+                            final TraceInterval to;
+                            final IntervalHint from;
+                            if (isRegister(toValue)) {
+                                if (isRegister(fromValue)) {
+                                    // fixed to fixed move
+                                    return null;
+                                }
+                                from = getIntervalHint(toValue);
+                                to = allocator.getOrCreateInterval(fromValue);
+                            } else {
+                                to = allocator.getOrCreateInterval(toValue);
+                                from = getIntervalHint(fromValue);
+                            }
+
+                            to.setLocationHint(from);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("operation at opId %d: added hint from interval %s to %s", op.id(), from, to);
+                            }
+
+                            return registerHint;
+                        }
+                        return null;
+                    }
+                };
+                op.forEachRegisterHint(targetValue, mode, registerHintProc);
+            }
+        }
+
+        private static boolean optimizeMethodArgument(Value value) {
+            /*
+             * Object method arguments that are passed on the stack are currently not optimized
+             * because this requires that the runtime visits method arguments during stack walking.
+             */
+            return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && LIRKind.isValue(value);
+        }
+
+        /**
+         * Determines the register priority for an instruction's output/result operand.
+         */
+        private static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
+            if (op instanceof LabelOp) {
+                // skip method header
+                return RegisterPriority.None;
+            }
+            if (op instanceof ValueMoveOp) {
+                ValueMoveOp move = (ValueMoveOp) op;
+                if (optimizeMethodArgument(move.getInput())) {
+                    return RegisterPriority.None;
+                }
+            }
+
+            // all other operands require a register
+            return RegisterPriority.MustHaveRegister;
+        }
+
+        /**
+         * Determines the priority which with an instruction's input operand will be allocated a
+         * register.
+         */
+        private static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
+            if (flags.contains(OperandFlag.OUTGOING)) {
+                return RegisterPriority.None;
+            }
+            if (flags.contains(OperandFlag.STACK)) {
+                return RegisterPriority.ShouldHaveRegister;
+            }
+            // all other operands require a register
+            return RegisterPriority.MustHaveRegister;
+        }
 
         @SuppressWarnings("try")
         private void buildIntervals() {
@@ -210,7 +498,7 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                             // number instruction
                             instructionIndex--;
                             final int opId = instructionIndex << 1;
-                            numberInstruction(intervalData, block, op, instructionIndex);
+                            numberInstruction(block, op, instructionIndex);
 
                             try (Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op)) {
 
@@ -219,7 +507,14 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                                  * caller-save registers.
                                  */
                                 if (op.destroysCallerSavedRegisters()) {
-                                    visitCallerSavedRegisters(intervalData, callerSaveRegs, opId);
+                                    for (Register r : callerSaveRegs) {
+                                        if (allocator.attributes(r).isAllocatable()) {
+                                            addTemp(r.asValue(), opId, RegisterPriority.None);
+                                        }
+                                    }
+                                    if (Debug.isLogEnabled()) {
+                                        Debug.log("operation destroys all caller-save registers");
+                                    }
                                 }
 
                                 op.visitEachOutput(outputConsumer);
@@ -236,16 +531,16 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                                 op.visitEachState(stateProc);
                             }
 
-                        } // end of instruction iteration
+                        }   // end of instruction iteration
                     }
                     if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
-                        intervalData.printIntervals("After Block " + block);
+                        allocator.printIntervals("After Block " + block);
                     }
-                } // end of block iteration
+                }   // end of block iteration
                 assert instructionIndex == 0 : "not at start?" + instructionIndex;
 
                 // fix spill state for phi/sigma intervals
-                for (TraceInterval interval : intervalData.intervals()) {
+                for (TraceInterval interval : allocator.intervals()) {
                     if (interval != null && interval.spillState().equals(SpillState.NoDefinitionFound) && interval.spillDefinitionPos() != -1) {
                         // there was a definition in a phi/sigma
                         interval.setSpillState(SpillState.NoSpillStore);
@@ -254,19 +549,32 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
                 if (TraceRAuseInterTraceHints.getValue()) {
                     addInterTraceHints();
                 }
-                finalizeFixedIntervals(intervalData);
+                for (FixedInterval interval1 : allocator.fixedIntervals()) {
+                    if (interval1 != null) {
+                        /* We use [-1, 0] to avoid intersection with incoming values. */
+                        interval1.addRange(-1, 0);
+                    }
+                }
             }
+        }
+
+        private void numberInstruction(AbstractBlockBase<?> block, LIRInstruction op, int index) {
+            int opId = index << 1;
+            assert op.id() == -1 || op.id() == opId : "must match";
+            op.setId(opId);
+            allocator.putOpIdMaps(index, op, block);
+            assert allocator.instructionForId(opId) == op : "must match";
         }
 
         @SuppressWarnings("try")
         private void addInterTraceHints() {
-            try (Scope s = Debug.scope("InterTraceHints", intervalData)) {
+            try (Scope s = Debug.scope("InterTraceHints", allocator)) {
                 // set hints for phi/sigma intervals
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
-                    LabelOp label = SSIUtil.incoming(lir, block);
+                    LabelOp label = SSIUtil.incoming(getLIR(), block);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                         if (isAllocatedOrCurrent(block, pred)) {
-                            BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
+                            BlockEndOp outgoing = SSIUtil.outgoing(getLIR(), pred);
                             // do not look at phi variables as they are not same value!
                             for (int i = outgoing.getPhiSize(); i < outgoing.getOutgoingSize(); i++) {
                                 Value toValue = label.getIncomingValue(i);
@@ -290,20 +598,93 @@ final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocati
         private void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue) {
             assert isVariable(toValue) : "Wrong toValue: " + toValue;
             assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
-            TraceInterval to = intervalData.getOrCreateInterval(toValue);
+            TraceInterval to = allocator.getOrCreateInterval(toValue);
             if (isVariableOrRegister(fromValue)) {
-                IntervalHint from = getIntervalHint(intervalData, (AllocatableValue) fromValue);
+                IntervalHint from = getIntervalHint((AllocatableValue) fromValue);
                 setHint(label, to, from);
             } else if (isStackSlotValue(fromValue)) {
                 setSpillSlot(label, to, (AllocatableValue) fromValue);
             } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
                 ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
-                IntervalHint from = getIntervalHint(intervalData, shadowedRegisterValue.getRegister());
+                IntervalHint from = getIntervalHint(shadowedRegisterValue.getRegister());
                 setHint(label, to, from);
                 setSpillSlot(label, to, shadowedRegisterValue.getStackSlot());
             } else {
                 throw GraalError.shouldNotReachHere();
             }
         }
+
+        private static void setHint(final LIRInstruction op, TraceInterval to, IntervalHint from) {
+            IntervalHint currentHint = to.locationHint(false);
+            if (currentHint == null) {
+                /*
+                 * Update hint if there was none or if the hint interval starts after the hinted
+                 * interval.
+                 */
+                to.setLocationHint(from);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("operation at opId %d: added hint from interval %s to %s", op.id(), from, to);
+                }
+            }
+        }
+
+        private static void setSpillSlot(LIRInstruction op, TraceInterval interval, AllocatableValue spillSlot) {
+            if (interval.spillSlot() == null) {
+                interval.setSpillSlot(spillSlot);
+                interval.setSpillState(SpillState.StartInMemory);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("operation at opId %d: added spill slot %s to interval %s", op.id(), spillSlot, interval);
+                }
+            } else if (Debug.isLogEnabled()) {
+                Debug.log("operation at opId %d: has already a slot assigned %s", op.id(), interval.spillSlot());
+            }
+        }
+
+        private IntervalHint getIntervalHint(AllocatableValue from) {
+            if (isRegister(from)) {
+                return allocator.getOrCreateFixedInterval(asRegisterValue(from));
+            }
+            return allocator.getOrCreateInterval(from);
+        }
+
     }
+
+    /**
+     * Returns a value for a interval definition, which can be used for re-materialization.
+     *
+     * @param op An instruction which defines a value
+     * @param operand The destination operand of the instruction
+     * @param interval The interval for this defined value.
+     * @return Returns the value which is moved to the instruction and which can be reused at all
+     *         reload-locations in case the interval of this instruction is spilled. Currently this
+     *         can only be a {@link JavaConstant}.
+     */
+    private static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, TraceInterval interval, boolean neverSpillConstants, MoveFactory spillMoveFactory) {
+        if (op instanceof LoadConstantOp) {
+            LoadConstantOp move = (LoadConstantOp) op;
+            if (move.getConstant() instanceof JavaConstant) {
+                if (!neverSpillConstants) {
+                    if (!spillMoveFactory.allowConstantToStackMove(move.getConstant())) {
+                        return null;
+                    }
+                    /*
+                     * Check if the interval has any uses which would accept an stack location
+                     * (priority == ShouldHaveRegister). Rematerialization of such intervals can
+                     * result in a degradation, because rematerialization always inserts a constant
+                     * load, even if the value is not needed in a register.
+                     */
+                    int numUsePos = interval.numUsePos();
+                    for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
+                        TraceInterval.RegisterPriority priority = interval.getUsePosRegisterPriority(useIdx);
+                        if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
+                            return null;
+                        }
+                    }
+                }
+                return (JavaConstant) move.getConstant();
+            }
+        }
+        return null;
+    }
+
 }

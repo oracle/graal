@@ -35,7 +35,7 @@ import jdk.vm.ci.code.TargetDescription;
 public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
                     PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
         List<? extends AbstractBlockBase<?>> blocks = ir.codeEmittingOrder();
@@ -44,6 +44,9 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     private static void foldNullChecks(LIR ir, List<? extends AbstractBlockBase<?>> blocks, int implicitNullCheckLimit) {
         for (AbstractBlockBase<?> block : blocks) {
+            if (block == null) {
+                continue;
+            }
             List<LIRInstruction> list = ir.getLIRforBlock(block);
 
             if (!list.isEmpty()) {

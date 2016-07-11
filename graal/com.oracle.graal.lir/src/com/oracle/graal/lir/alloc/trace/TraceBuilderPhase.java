@@ -58,17 +58,18 @@ public class TraceBuilderPhase extends AllocationPhase {
     public static final int TRACE_DUMP_LEVEL = 3;
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        B startBlock = linearScanOrder.get(0);
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
+                    AllocationContext context) {
+        AbstractBlockBase<?> startBlock = linearScanOrder.get(0);
         LIR lir = lirGenRes.getLIR();
         assert startBlock.equals(lir.getControlFlowGraph().getStartBlock());
 
-        final TraceBuilderResult<B> traceBuilderResult = getTraceBuilderResult(lir, startBlock, linearScanOrder);
+        final TraceBuilderResult traceBuilderResult = getTraceBuilderResult(lir, startBlock, linearScanOrder);
 
         if (Debug.isLogEnabled(TRACE_LOG_LEVEL)) {
-            List<Trace<B>> traces = traceBuilderResult.getTraces();
+            List<Trace> traces = traceBuilderResult.getTraces();
             for (int i = 0; i < traces.size(); i++) {
-                Trace<B> trace = traces.get(i);
+                Trace trace = traces.get(i);
                 Debug.log(TRACE_LOG_LEVEL, "Trace %5d: %s%s", i, trace, isTrivialTrace(lirGenRes.getLIR(), trace) ? " (trivial)" : "");
             }
         }
@@ -77,7 +78,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         context.contextAdd(traceBuilderResult);
     }
 
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraceBuilderResult(LIR lir, B startBlock, List<B> blocks) {
+    private static TraceBuilderResult getTraceBuilderResult(LIR lir, AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks) {
         TraceBuilderResult.TrivialTracePredicate pred = getTrivialTracePredicate(lir);
 
         if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
@@ -92,7 +93,7 @@ public class TraceBuilderPhase extends AllocationPhase {
         }
         return new TrivialTracePredicate() {
             @Override
-            public <T extends AbstractBlockBase<T>> boolean isTrivialTrace(Trace<T> trace) {
+            public boolean isTrivialTrace(Trace trace) {
                 return TraceUtil.isTrivialTrace(lir, trace);
             }
         };

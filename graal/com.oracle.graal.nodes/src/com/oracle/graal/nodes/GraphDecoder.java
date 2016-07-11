@@ -75,6 +75,12 @@ public class GraphDecoder {
         public final LoopScope callerLoopScope;
         /** The target graph where decoded nodes are added to. */
         public final StructuredGraph graph;
+        /**
+         * Mark for nodes that were present before the decoding of this method started. Note that
+         * nodes that were decoded after the mark can still be part of an outer method, since
+         * floating nodes of outer methods are decoded lazily.
+         */
+        public final Graph.Mark methodStartMark;
         /** The encode graph that is decoded. */
         public final EncodedGraph encodedGraph;
         /** Access to the encoded graph. */
@@ -95,6 +101,7 @@ public class GraphDecoder {
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
             this.graph = graph;
+            this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
             this.cleanupTasks = new ArrayList<>();
@@ -323,8 +330,8 @@ public class GraphDecoder {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             decode(createInitialLoopScope(methodScope, null));
-            cleanupGraph(methodScope, null);
-            methodScope.graph.verify();
+            cleanupGraph(methodScope);
+            assert methodScope.graph.verify();
         } catch (Throwable ex) {
             Debug.handle(ex);
         }
@@ -620,7 +627,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
             List<ValueNode> newFrameStateValues = new ArrayList<>();
             for (ValueNode frameStateValue : frameState.values) {
-                if (frameStateValue == null || frameStateValue.isConstant()) {
+                if (frameStateValue == null || frameStateValue.isConstant() || !methodScope.graph.isNew(methodScope.methodStartMark, frameStateValue)) {
                     newFrameStateValues.add(frameStateValue);
 
                 } else {
@@ -1236,7 +1243,7 @@ public class GraphDecoder {
     }
 
     private static void insertLoopBegins(MethodScope methodScope, MergeNode merge, EndNode endNode, Set<LoopBeginNode> newLoopBegins) {
-        assert methodScope.loopExplosionMerges.contains(merge) : merge;
+        assert methodScope.loopExplosionMerges.isMarkedAndGrow(merge) : merge;
 
         merge.removeEnd(endNode);
         FixedNode afterMerge = merge.next();
@@ -1251,6 +1258,7 @@ public class GraphDecoder {
             newLoopBegin.setNext(afterMerge);
             newLoopBegin.setStateAfter(stateAfter);
             newLoopBegins.add(newLoopBegin);
+            methodScope.loopExplosionMerges.markAndGrow(newLoopBegin);
         }
         LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
         LoopEndNode loopEnd = methodScope.graph.add(new LoopEndNode(loopBegin));
@@ -1360,7 +1368,7 @@ public class GraphDecoder {
                 /* Skip over unnecessary BeginNodes, which will be deleted only later on. */
                 next = ((BeginNode) next).next();
 
-            } else if (next instanceof EndNode) {
+            } else if (next instanceof AbstractEndNode) {
                 /*
                  * A LoopExit needs a valid FrameState that captures the state at the point where we
                  * exit the loop. During graph decoding, we create a FrameState for every exploded
@@ -1368,9 +1376,9 @@ public class GraphDecoder {
                  * little bit: we need to insert the appropriate ProxyNodes for all values that are
                  * created inside the loop and that flow out of the loop.
                  */
-                EndNode loopExplosionEnd = (EndNode) next;
+                AbstractEndNode loopExplosionEnd = (AbstractEndNode) next;
                 AbstractMergeNode loopExplosionMerge = loopExplosionEnd.merge();
-                if (methodScope.loopExplosionMerges.contains(loopExplosionMerge)) {
+                if (methodScope.loopExplosionMerges.isMarkedAndGrow(loopExplosionMerge)) {
                     LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
                     next.replaceAtPredecessor(loopExit);
                     loopExit.setNext(next);
@@ -1426,7 +1434,7 @@ public class GraphDecoder {
                 realValue = ProxyPlaceholder.unwrap(value);
             }
 
-            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue)) {
+            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !methodScope.graph.isNew(methodScope.methodStartMark, realValue)) {
                 newValues.add(realValue);
             } else {
                 /*
@@ -1454,9 +1462,8 @@ public class GraphDecoder {
      * Removes unnecessary nodes from the graph after decoding.
      *
      * @param methodScope The current method.
-     * @param start Marker for the begin of the current method in the graph.
      */
-    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
+    protected void cleanupGraph(MethodScope methodScope) {
         assert verifyEdges(methodScope);
     }
 

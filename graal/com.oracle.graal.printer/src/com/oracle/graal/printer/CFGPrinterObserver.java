@@ -220,9 +220,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (isBlockList(object)) {
             cfgPrinter.printCFG(message, getBlockList(object), false);
         } else if (object instanceof Trace) {
-            cfgPrinter.printCFG(message, ((Trace<?>) object).getBlocks(), false);
-        } else if (object instanceof TraceBuilderResult<?>) {
-            cfgPrinter.printTraces(message, (TraceBuilderResult<?>) object);
+            cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
+        } else if (object instanceof TraceBuilderResult) {
+            cfgPrinter.printTraces(message, (TraceBuilderResult) object);
         }
 
         cfgPrinter.target = null;

@@ -46,7 +46,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
-public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends ValueSet<S>> {
+public abstract class LocationMarker<S extends ValueSet<S>> {
 
     private final LIR lir;
     private final BlockMap<S> liveInMap;
@@ -67,18 +67,17 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
 
     protected abstract void processState(LIRInstruction op, LIRFrameState info, S values);
 
-    @SuppressWarnings("unchecked")
     void build() {
         AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
-        UniqueWorkList<T> worklist = new UniqueWorkList<>(blocks.length);
+        UniqueWorkList worklist = new UniqueWorkList(blocks.length);
         for (int i = blocks.length - 1; i >= 0; i--) {
-            worklist.add((T) blocks[i]);
+            worklist.add(blocks[i]);
         }
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());
         }
         while (!worklist.isEmpty()) {
-            AbstractBlockBase<T> block = worklist.poll();
+            AbstractBlockBase<?> block = worklist.poll();
             processBlock(block, worklist);
         }
     }
@@ -86,9 +85,9 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
     /**
      * Merge outSet with in-set of successors.
      */
-    private boolean updateOutBlock(AbstractBlockBase<T> block) {
+    private boolean updateOutBlock(AbstractBlockBase<?> block) {
         S union = newLiveValueSet();
-        for (T succ : block.getSuccessors()) {
+        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
             union.putAll(liveInMap.get(succ));
         }
         S outSet = liveOutMap.get(block);
@@ -101,7 +100,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
     }
 
     @SuppressWarnings("try")
-    private void processBlock(AbstractBlockBase<T> block, UniqueWorkList<T> worklist) {
+    private void processBlock(AbstractBlockBase<?> block, UniqueWorkList worklist) {
         if (updateOutBlock(block)) {
             try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
                 currentSet = liveOutMap.get(block).copy();
@@ -112,7 +111,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
                 }
                 liveInMap.put(block, currentSet);
                 currentSet = null;
-                for (T b : block.getPredecessors()) {
+                for (AbstractBlockBase<?> b : block.getPredecessors()) {
                     worklist.add(b);
                 }
             }
