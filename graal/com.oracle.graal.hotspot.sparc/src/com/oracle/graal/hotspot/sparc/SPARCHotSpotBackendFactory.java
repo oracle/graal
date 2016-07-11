@@ -46,6 +46,7 @@ import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
 import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
 import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
+import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
@@ -134,6 +135,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected HotSpotRegistersProvider createRegisters() {
         return new HotSpotRegisters(SPARC.g2, SPARC.g6, SPARC.sp);
+    }
+
+    protected HotSpotNodeCostProvider createNodeCostProvider() {
+        return new SPARCHotSpotNodeCostProvider();
     }
 
     @SuppressWarnings("unused")

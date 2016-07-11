@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ReturnNode;
 
-public final class SPARCHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
+public class SPARCHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
 
     @Override
     public NodeCycles cycles(Node n) {
