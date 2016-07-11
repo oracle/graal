@@ -600,6 +600,7 @@ public final class Profiler {
          * Number of times the program element has been executed since the last time data was
          * {@linkplain #clear() cleared}.
          *
+         * @param kind specifies execution mode for results: slow-path, fast-path, or combined.
          * @since 0.15
          */
         public long getInvocations(TimeKind kind) {
@@ -619,6 +620,7 @@ public final class Profiler {
          * Total time in nanoseconds taken executing the program element since the last time data
          * was {@linkplain #clear() cleared}.
          *
+         * @param kind specifies execution mode for results: slow-path, fast-path, or combined.
          * @since 0.15
          */
         public long getTotalTime(TimeKind kind) {
@@ -638,6 +640,7 @@ public final class Profiler {
          * Self time in nanoseconds taken executing the program element since the last time data was
          * {@linkplain #clear() cleared}.
          *
+         * @param kind specifies execution mode for results: slow-path, fast-path, or combined.
          * @since 0.15
          */
         public long getSelfTime(TimeKind kind) {
