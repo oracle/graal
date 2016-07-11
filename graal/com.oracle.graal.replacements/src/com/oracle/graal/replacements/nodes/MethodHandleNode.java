@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 
@@ -32,9 +35,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedNode;
@@ -58,7 +59,7 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
+@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
     public static final NodeClass<MethodHandleNode> TYPE = NodeClass.create(MethodHandleNode.class);
 

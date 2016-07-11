@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.memory.MemoryMapNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -36,12 +37,12 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
+@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
     public static final NodeClass<ReturnNode> TYPE = NodeClass.create(ReturnNode.class);
     @OptionalInput ValueNode result;
-    @OptionalInput(InputType.Extension) MemoryMapNode memoryMap;
+    @OptionalInput(Extension) MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;

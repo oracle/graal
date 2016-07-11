@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -30,9 +33,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
@@ -46,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Count the number of trailing zeros using the {@code tzcntq} or {@code tzcntl} instructions.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_6, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_6, size = SIZE_1)
 public final class AMD64CountTrailingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
 

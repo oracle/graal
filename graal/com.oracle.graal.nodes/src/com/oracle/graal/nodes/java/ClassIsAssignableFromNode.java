@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_15;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_30;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.TriState;
  * against instances. This is used, for instance, to intrinsify
  * {@link Class#isAssignableFrom(Class)} .
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_15, size = NodeSize.SIZE_30)
+@NodeInfo(cycles = CYCLES_15, size = SIZE_30)
 public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
     public static final NodeClass<ClassIsAssignableFromNode> TYPE = NodeClass.create(ClassIsAssignableFromNode.class);

@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,10 +38,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -48,10 +50,10 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 
 // @formatter:off
 @NodeInfo(nameTemplate = "Alloc {i#virtualObjects}",
-          allowedUsageTypes = {InputType.Extension},
-          cycles = NodeCycles.CYCLES_UNKNOWN,
+          allowedUsageTypes = Extension,
+          cycles = CYCLES_UNKNOWN,
           cyclesRationale = "We don't know statically how many, and which, allocations are done.",
-          size = NodeSize.SIZE_UNKNOWN,
+          size = SIZE_UNKNOWN,
           sizeRationale = "We don't know statically how much code for which allocations has to be generated."
 )
 // @formatter:on
@@ -61,7 +63,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Input NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    @Input(InputType.Association) NodeInputList<MonitorIdNode> locks = new NodeInputList<>(this);
+    @Input(Association) NodeInputList<MonitorIdNode> locks = new NodeInputList<>(this);
     protected ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
     protected ArrayList<Boolean> ensureVirtual = new ArrayList<>();
 

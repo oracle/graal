@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.virtual;
 
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.ArrayLengthProvider;
@@ -39,12 +40,12 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
  * {@link VirtualObjectNode}.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     public static final NodeClass<AllocatedObjectNode> TYPE = NodeClass.create(AllocatedObjectNode.class);
     @Input VirtualObjectNode virtualObject;
-    @Input(InputType.Extension) CommitAllocationNode commit;
+    @Input(Extension) CommitAllocationNode commit;
 
     public AllocatedObjectNode(VirtualObjectNode virtualObject) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(virtualObject.type())));

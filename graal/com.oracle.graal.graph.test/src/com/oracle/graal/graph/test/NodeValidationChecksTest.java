@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.graph.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 
 public class NodeValidationChecksTest {
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
 

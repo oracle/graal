@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
@@ -29,7 +31,6 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.ConstantNode;
@@ -48,7 +49,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_1)
+@NodeInfo(cycles = CYCLES_1)
 public abstract class CompareNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode> {
 
     public static final NodeClass<CompareNode> TYPE = NodeClass.create(CompareNode.class);

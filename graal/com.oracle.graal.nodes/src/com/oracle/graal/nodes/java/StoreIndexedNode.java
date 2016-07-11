@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_8;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -44,12 +45,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
     public static final NodeClass<StoreIndexedNode> TYPE = NodeClass.create(StoreIndexedNode.class);
     @Input ValueNode value;
-    @OptionalInput(InputType.State) FrameState stateAfter;
+    @OptionalInput(State) FrameState stateAfter;
 
     @Override
     public FrameState stateAfter() {

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.GraalError;
@@ -29,9 +32,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -48,7 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Loads a method from the virtual method table of a given hub.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_3, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
 
     public static final NodeClass<LoadMethodNode> TYPE = NodeClass.create(LoadMethodNode.class);

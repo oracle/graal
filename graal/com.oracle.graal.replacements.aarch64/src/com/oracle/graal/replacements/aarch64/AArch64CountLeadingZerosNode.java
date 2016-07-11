@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
@@ -40,7 +41,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_6, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_6, size = SIZE_1)
 public final class AArch64CountLeadingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<AArch64CountLeadingZerosNode> TYPE = NodeClass.create(AArch64CountLeadingZerosNode.class);

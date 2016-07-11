@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -47,7 +48,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * A GuardedValueNode will only go away if its guard is null or {@link StructuredGraph#start()}.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     public static final NodeClass<GuardedValueNode> TYPE = NodeClass.create(GuardedValueNode.class);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -36,13 +38,11 @@ import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 
 public class TypedNodeIteratorTest {
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_UNKNOWN)
     static final class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);

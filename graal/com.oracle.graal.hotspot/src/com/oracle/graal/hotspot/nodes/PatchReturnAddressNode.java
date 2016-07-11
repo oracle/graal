@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -37,7 +38,7 @@ import com.oracle.graal.word.Word;
 /**
  * Modifies the return address of the current frame.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class PatchReturnAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<PatchReturnAddressNode> TYPE = NodeClass.create(PatchReturnAddressNode.class);

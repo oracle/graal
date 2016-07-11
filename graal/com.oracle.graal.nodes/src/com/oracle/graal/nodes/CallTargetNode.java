@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
@@ -41,7 +42,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo(allowedUsageTypes = {InputType.Extension}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(allowedUsageTypes = Extension, cycles = CYCLES_0, size = SIZE_0)
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     public static final NodeClass<CallTargetNode> TYPE = NodeClass.create(CallTargetNode.class);
 

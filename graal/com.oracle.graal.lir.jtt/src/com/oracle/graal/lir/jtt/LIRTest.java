@@ -23,6 +23,8 @@
 package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -35,9 +37,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.Value;
  */
 public abstract class LIRTest extends JTTTest {
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static final class LIRTestNode extends FixedWithNextNode implements LIRLowerable {
 
         public static final NodeClass<LIRTestNode> TYPE = NodeClass.create(LIRTestNode.class);
@@ -101,7 +101,7 @@ public abstract class LIRTest extends JTTTest {
         }
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static final class LIRValueNode extends FixedWithNextNode implements LIRLowerable {
 
         public static final NodeClass<LIRValueNode> TYPE = NodeClass.create(LIRValueNode.class);

@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.Value;
-import sun.misc.Unsafe;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -40,16 +39,19 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.Value;
+import sun.misc.Unsafe;
+
 /**
  * Represents the lowered version of an atomic read-and-write operation like
  * {@link Unsafe#getAndSetInt(Object, long, int)} .
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_2)
+@NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_8, size = SIZE_2)
 public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<LoweredAtomicReadAndWriteNode> TYPE = NodeClass.create(LoweredAtomicReadAndWriteNode.class);
     @Input ValueNode newValue;
-    @OptionalInput(InputType.State) FrameState stateAfter;
+    @OptionalInput(State) FrameState stateAfter;
 
     public LoweredAtomicReadAndWriteNode(AddressNode address, LocationIdentity location, ValueNode newValue, BarrierType barrierType) {
         super(TYPE, address, location, newValue.stamp().unrestricted(), barrierType);

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import java.lang.reflect.Method;
 
 import org.junit.Assert;
@@ -32,9 +35,7 @@ import com.oracle.graal.graph.Edges;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class EdgesTest extends GraalCompilerTest {
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         @Input NodeInputList<ValueNode> itail;

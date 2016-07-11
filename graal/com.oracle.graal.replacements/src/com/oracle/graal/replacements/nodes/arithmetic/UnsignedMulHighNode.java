@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_4;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_4;
+
 import java.util.function.BiFunction;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -30,9 +33,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.BinaryNode;
@@ -42,7 +43,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(shortName = "|*H|", cycles = NodeCycles.CYCLES_4/* mul + mov */, size = NodeSize.SIZE_4)
+@NodeInfo(shortName = "|*H|", cycles = CYCLES_4, cyclesRationale = "mul + mov", size = SIZE_4)
 public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<UnsignedMulHighNode> TYPE = NodeClass.create(UnsignedMulHighNode.class);

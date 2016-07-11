@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_8;
+
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -45,11 +47,11 @@ import com.oracle.graal.word.Word;
  * {@link StateSplit} and it {@linkplain #compareAndSwap(Address, Word, Word, LocationIdentity)}
  * returns either the expected value or the compared against value instead of a boolean.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_30, size = NodeSize.SIZE_8)
+@NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_30, size = SIZE_8)
 public final class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<DirectCompareAndSwapNode> TYPE = NodeClass.create(DirectCompareAndSwapNode.class);
-    @Input(InputType.Association) AddressNode address;
+    @Input(Association) AddressNode address;
     @Input ValueNode expectedValue;
     @Input ValueNode newValue;
 

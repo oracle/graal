@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -30,10 +33,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractStateSplit;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.FrameState;
@@ -51,11 +51,16 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+// @formatter:off
+@NodeInfo(cycles = CYCLES_UNKNOWN,
+          cyclesRationale = "We cannot estimate the time of a runtime call.",
+          size = SIZE_20,
+          sizeRationale = "Rough estimation for register handling & calling")
+// @formatter:on
 public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
     public static final NodeClass<RegisterFinalizerNode> TYPE = NodeClass.create(RegisterFinalizerNode.class);
-    @OptionalInput(InputType.State) FrameState deoptState;
+    @OptionalInput(State) FrameState deoptState;
     @Input ValueNode value;
 
     public RegisterFinalizerNode(ValueNode value) {

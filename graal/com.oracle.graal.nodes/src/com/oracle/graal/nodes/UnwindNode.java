@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_4;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
@@ -37,7 +38,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_4)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
 public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
 
     public static final NodeClass<UnwindNode> TYPE = NodeClass.create(UnwindNode.class);

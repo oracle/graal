@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
@@ -30,7 +32,6 @@ import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -38,7 +39,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_1)
+@NodeInfo(cycles = CYCLES_1)
 public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
     public static final NodeClass<NarrowNode> TYPE = NodeClass.create(NarrowNode.class);

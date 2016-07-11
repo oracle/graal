@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -33,13 +35,11 @@ import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 
 public class NodeMapTest {
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
 

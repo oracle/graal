@@ -35,13 +35,17 @@ public enum NodeCycles {
      */
     CYCLES_UNSET(0),
     /**
-     * Nodes for which, due to arbitrary reason, no estimation can be made either (1) statically
+     * Nodes for which, due to arbitrary reasons, no estimation can be made either (1) statically
      * without inspecting the properties of a node or (2) at all (like e.g. for an invocation).
      * <p>
      * Nodes annotated with {@code CYCLES_UNKNOWN} should specify the
      * {@link NodeInfo#cyclesRationale()} property to clarify why an estimation cannot be done.
      */
     CYCLES_UNKNOWN(0),
+    /**
+     * Nodes for which runtime information is irrelevant and can be ignored, e.g. for test nodes.
+     */
+    CYCLES_IGNORED(0),
     /**
      * Nodes that do not consume any CPU time during the "execution", e.g. Constants.
      */

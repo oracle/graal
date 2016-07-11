@@ -23,22 +23,23 @@
 
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.AddressNode.Address;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_2)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public final class PrefetchAllocateNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<PrefetchAllocateNode> TYPE = NodeClass.create(PrefetchAllocateNode.class);
-    @Input(InputType.Association) AddressNode address;
+    @Input(Association) AddressNode address;
 
     public PrefetchAllocateNode(ValueNode address) {
         super(TYPE, StampFactory.forVoid());

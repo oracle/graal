@@ -23,6 +23,10 @@
 package com.oracle.graal.nodes.memory;
 
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,22 +39,19 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(allowedUsageTypes = {InputType.Extension, InputType.Memory}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(allowedUsageTypes = {Extension, Memory}, cycles = CYCLES_0, size = SIZE_0)
 public final class MemoryMapNode extends FloatingNode implements MemoryMap, MemoryNode, LIRLowerable {
 
     public static final NodeClass<MemoryMapNode> TYPE = NodeClass.create(MemoryMapNode.class);
     protected final List<LocationIdentity> locationIdentities;
-    @Input(InputType.Memory) NodeInputList<ValueNode> nodes;
+    @Input(Memory) NodeInputList<ValueNode> nodes;
 
     private boolean checkOrder(Map<LocationIdentity, MemoryNode> mmap) {
         for (int i = 0; i < locationIdentities.size(); i++) {

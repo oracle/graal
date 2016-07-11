@@ -24,6 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import static com.oracle.graal.nodeinfo.InputType.Guard;
 import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
 import org.junit.Assert;
@@ -35,9 +37,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.StructuralInput.Guard;
 import com.oracle.graal.nodeinfo.StructuralInput.Memory;
 import com.oracle.graal.nodes.ConstantNode;
@@ -57,7 +57,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 
-    @NodeInfo(allowedUsageTypes = {Memory}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestMemory extends FixedWithNextNode implements MemoryNode {
         private static final NodeClass<TestMemory> TYPE = NodeClass.create(TestMemory.class);
 
@@ -69,7 +69,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
         public static native Memory memory();
     }
 
-    @NodeInfo(allowedUsageTypes = {Guard}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(allowedUsageTypes = {Guard}, cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestGuard extends FloatingNode implements GuardingNode {
         private static final NodeClass<TestGuard> TYPE = NodeClass.create(TestGuard.class);
 
@@ -84,7 +84,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
         public static native Guard guard(Memory memory);
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestValue extends FloatingNode {
         private static final NodeClass<TestValue> TYPE = NodeClass.create(TestValue.class);
 

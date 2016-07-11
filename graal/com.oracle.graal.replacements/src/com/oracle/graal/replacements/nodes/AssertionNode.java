@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
@@ -43,7 +44,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * fail if this has not happened by the time the node is lowered to LIR, while runtime assertions
  * may need to insert a check.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
+@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class AssertionNode extends FixedWithNextNode implements Lowerable, Canonicalizable, LIRLowerable {
 
     public static final NodeClass<AssertionNode> TYPE = NodeClass.create(AssertionNode.class);

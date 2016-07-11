@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -43,9 +46,7 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.IntegerBelowNode;
@@ -66,7 +67,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
  * of a comparison.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_2/* 2 jmps */)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_2, sizeRationale = "2 jmps")
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 

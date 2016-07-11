@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
@@ -71,9 +71,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * </ul>
  */
 //@formatter:off
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN,
+@NodeInfo(cycles = CYCLES_UNKNOWN,
           cyclesRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate",
-          size = NodeSize.SIZE_UNKNOWN,
+          size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
 public abstract class MacroNode extends FixedWithNextNode implements Lowerable {

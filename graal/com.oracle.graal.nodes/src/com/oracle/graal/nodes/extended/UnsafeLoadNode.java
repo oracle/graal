@@ -22,17 +22,14 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import static com.oracle.graal.nodeinfo.InputType.Condition;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_8;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
@@ -42,14 +39,18 @@ import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+
 /**
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = NodeSize.SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
     public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
-    @OptionalInput(InputType.Condition) LogicNode guardingCondition;
+    @OptionalInput(Condition) LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, accessKind, locationIdentity, null);

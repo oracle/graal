@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
@@ -38,7 +39,7 @@ import jdk.vm.ci.meta.JavaKind;
  * A high-level intrinsic for getting an address inside of an object. During lowering it will be
  * moved next to any uses to avoid creating a derived pointer that is live across a safepoint.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_3, size = NodeSize.SIZE_2)
+@NodeInfo(cycles = CYCLES_3, size = SIZE_2)
 public final class ComputeObjectAddressNode extends FixedWithNextNode implements Lowerable {
     public static final NodeClass<ComputeObjectAddressNode> TYPE = NodeClass.create(ComputeObjectAddressNode.class);
 

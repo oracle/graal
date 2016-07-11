@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_4;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.Node;
@@ -29,9 +32,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FloatingGuardedNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -49,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Read {@code Klass::_java_mirror} and incorporate non-null type information into stamp. This is
  * also used by {@link ClassGetHubNode} to eliminate chains of {@code klass._java_mirror._klass}.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_4, size = SIZE_1)
 public final class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     public static final NodeClass<HubGetClassNode> TYPE = NodeClass.create(HubGetClassNode.class);
     @Input protected ValueNode hub;

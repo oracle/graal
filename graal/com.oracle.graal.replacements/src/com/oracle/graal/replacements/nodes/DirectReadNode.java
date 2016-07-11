@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_4;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.ValueNode;
@@ -43,7 +44,7 @@ import jdk.vm.ci.meta.Value;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and takes a computed address instead of an object.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_2)
+@NodeInfo(cycles = CYCLES_4, size = SIZE_2)
 public final class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<DirectReadNode> TYPE = NodeClass.create(DirectReadNode.class);

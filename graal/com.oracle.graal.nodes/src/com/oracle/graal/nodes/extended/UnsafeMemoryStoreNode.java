@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractStateSplit;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
@@ -39,7 +40,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Store of a value at a location specified as an absolute address.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<UnsafeMemoryStoreNode> TYPE = NodeClass.create(UnsafeMemoryStoreNode.class);

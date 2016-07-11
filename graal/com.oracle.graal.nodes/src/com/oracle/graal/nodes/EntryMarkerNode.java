@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
@@ -36,7 +37,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * This node will be inserted at point specified by {@link StructuredGraph#getEntryBCI()}, usually
  * by the graph builder.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Association}, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(allowedUsageTypes = Association, cycles = CYCLES_0, size = SIZE_0)
 public final class EntryMarkerNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
     public static final NodeClass<EntryMarkerNode> TYPE = NodeClass.create(EntryMarkerNode.class);
 

@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.loop.InductionVariable;
 import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -213,7 +214,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         test("twoVariablesSnippet");
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.memory;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 import static com.oracle.graal.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import com.oracle.graal.compiler.common.LIRKind;
@@ -35,9 +37,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CanonicalizableLocation;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
-@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = NodeCycles.CYCLES_3, size = NodeSize.SIZE_1)
+@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_3, size = SIZE_1)
 public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);

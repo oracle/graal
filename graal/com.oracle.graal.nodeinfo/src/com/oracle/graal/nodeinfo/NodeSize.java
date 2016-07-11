@@ -35,13 +35,17 @@ public enum NodeSize {
      */
     SIZE_UNSET(0),
     /**
-     * Nodes for which, due to arbitrary reason, no estimation can be made either (1) statically
+     * Nodes for which, due to arbitrary reasons, no estimation can be made either (1) statically
      * without inspecting the properties of a node or (2) at all (like e.g. for an invocation).
      * <p>
      * Nodes annotated with {@code SIZE_UNKNOWN} should specify the {@link NodeInfo#sizeRationale()}
      * property to clarify why an estimation cannot be done.
      */
     SIZE_UNKNOWN(0),
+    /**
+     * Nodes for which code size information is irrelevant and can be ignored, e.g. for test nodes.
+     */
+    SIZE_IGNORED(0),
     /**
      * Nodes that do not require any code to be generated in order to be "executed", e.g. a phi
      * node.
