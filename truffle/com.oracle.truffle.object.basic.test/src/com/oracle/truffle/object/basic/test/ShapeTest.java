@@ -49,23 +49,24 @@ public class ShapeTest {
 
         Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
         Assert.assertEquals(id(aIntBObj) + "{" +
-                        "\"b\":Object@1,long@1,\n" +
+                        "\"b\":Object@1,\n" +
                         "\"a\":(int)long@0,Object@0" +
                         "\n}", aIntBObj.toString());
 
-        Shape bool = rootShape.addProperty(Property.create("b", rootShape.allocator().locationForType(boolean.class), 0));
-        Assert.assertEquals(id(bool) + "{\"b\":boolean@0\n}", bool.toString());
+        Shape bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
+        Assert.assertEquals(id(bool) + "{\"bool\":boolean@0\n}", bool.toString());
 
         Shape str = rootShape.addProperty(Property.create("str", rootShape.allocator().locationForType(String.class), 0));
         Assert.assertEquals(id(str) + "{\"str\":Object@0\n}", str.toString());
 
-        Shape aIntBObjCBoolDDouble = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0);
-        Assert.assertEquals(id(aIntBObjCBoolDDouble) + "{" +
-                        "\"d\":(double)long[0],Object@3,\n" +
-                        "\"c\":(boolean)long@2,Object@2,\n" +
-                        "\"b\":Object@1,long@1,\n" +
+        Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
+        Assert.assertEquals(id(shapeWithExtArray) + "{" +
+                        "\"e\":(long)long[0],Object[0],\n" +
+                        "\"d\":(double)long@2,Object@3,\n" +
+                        "\"c\":(boolean)long@1,Object@2,\n" +
+                        "\"b\":Object@1,\n" +
                         "\"a\":(int)long@0,Object@0" +
-                        "\n}", aIntBObjCBoolDDouble.toString());
+                        "\n}", shapeWithExtArray.toString());
     }
 
     private static String id(Shape shape) {
