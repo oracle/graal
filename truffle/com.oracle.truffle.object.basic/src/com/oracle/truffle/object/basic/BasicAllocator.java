@@ -86,7 +86,7 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
     public Location newObjectLocation(boolean useFinal, boolean nonNull) {
         if (ObjectStorageOptions.InObjectFields) {
             int insertPos = objectFieldSize;
-            while (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
+            if (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
                 return advance((Location) getLayout().getObjectFieldLocation(insertPos));
             }
         }
