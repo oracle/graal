@@ -57,27 +57,30 @@ public class Linker {
             while (n < args.length) {
                 final String arg = args[n];
 
-                switch (arg) {
-                    case "-h":
-                    case "-help":
-                    case "--help":
-                    case "/?":
-                    case "/help":
-                        help();
-                        break;
+                if (arg.length() > 0 && arg.charAt(0) == '-') {
+                    switch (arg) {
+                        case "-h":
+                        case "-help":
+                        case "--help":
+                        case "/?":
+                        case "/help":
+                            help();
+                            break;
 
-                    case "-o":
-                        if (n + 1 >= args.length) {
-                            throw new Exception("-o needs to be followed by a file name");
-                        }
+                        case "-o":
+                            if (n + 1 >= args.length) {
+                                throw new Exception("-o needs to be followed by a file name");
+                            }
 
-                        outputFileName = args[n + 1];
-                        n++;
-                        break;
+                            outputFileName = args[n + 1];
+                            n++;
+                            break;
 
-                    default:
-                        bitcodeFileNames.add(arg);
-                        break;
+                        default:
+                            throw new Exception("Unknown argument " + arg);
+                    }
+                } else {
+                    bitcodeFileNames.add(arg);
                 }
 
                 n++;
