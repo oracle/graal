@@ -80,7 +80,11 @@ class DefaultStrategy extends LayoutStrategy {
 
         @Override
         public Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-            return super.newDualLocationForValue(value);
+            if (value instanceof Integer || value instanceof Double || value instanceof Long || value instanceof Boolean) {
+                return super.newDualLocationForValue(value);
+            } else {
+                return newObjectLocation(useFinal, nonNull);
+            }
         }
 
         @Override
