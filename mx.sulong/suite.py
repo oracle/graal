@@ -6,7 +6,7 @@ suite = {
     "suites" : [
         {
            "name" : "graal-core",
-           "version" : "df73a946b4faa382191d0056a9ef5f6267a6a475",
+           "version" : "cdf83c8858780432d8c7c831394e32559ad1af0c",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -332,7 +332,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes",
-        "com.oracle.truffle.llvm.types",
         "LLVM_IR_PARSER",
         "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
        ],
