@@ -29,7 +29,8 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
 import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
 import com.oracle.graal.hotspot.CompilerConfigurationFactory;
-import com.oracle.graal.hotspot.DefaultCompilerConfigurationFactory;
+import com.oracle.graal.hotspot.EconomyCompilerConfigurationFactory;
+import com.oracle.graal.hotspot.CoreCompilerConfigurationFactory;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -79,7 +80,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
     public boolean isAssociatedWith(CompilerConfigurationFactory factory) {
-        return factory instanceof DefaultCompilerConfigurationFactory;
+        return factory instanceof CoreCompilerConfigurationFactory || factory instanceof EconomyCompilerConfigurationFactory;
     }
 
     @Override

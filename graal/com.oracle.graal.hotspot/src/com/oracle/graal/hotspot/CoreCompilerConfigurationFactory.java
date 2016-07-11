@@ -22,23 +22,23 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.compiler.phases.BasicCompilerConfiguration;
+import com.oracle.graal.compiler.phases.CoreCompilerConfiguration;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(CompilerConfigurationFactory.class)
-public class DefaultCompilerConfigurationFactory extends CompilerConfigurationFactory {
+public class CoreCompilerConfigurationFactory extends CompilerConfigurationFactory {
 
-    public static final String NAME = "default";
+    public static final String NAME = "basic";
 
     public static final int AUTO_SELECTION_PRIORITY = 2;
 
-    public DefaultCompilerConfigurationFactory() {
+    public CoreCompilerConfigurationFactory() {
         super(NAME, AUTO_SELECTION_PRIORITY);
     }
 
     @Override
     protected CompilerConfiguration createCompilerConfiguration() {
-        return new BasicCompilerConfiguration();
+        return new CoreCompilerConfiguration();
     }
 }

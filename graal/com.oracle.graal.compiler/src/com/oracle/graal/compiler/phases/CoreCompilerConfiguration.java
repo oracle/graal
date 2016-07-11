@@ -35,7 +35,7 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.LowTierContext;
 import com.oracle.graal.phases.tiers.MidTierContext;
 
-public class BasicCompilerConfiguration implements CompilerConfiguration {
+public class CoreCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public PhaseSuite<HighTierContext> createHighTier() {
