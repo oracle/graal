@@ -121,7 +121,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         } catch (LanguageError e) {
             throw new IOException(e);
         }
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(outer, node));
+        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode("", outer, node));
     }
 
     public static BaseNode parse(Source code) {
@@ -289,10 +289,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     private static class InstrumentationTestRootNode extends RootNode {
 
+        private final String name;
         @Children private final BaseNode[] expressions;
 
-        protected InstrumentationTestRootNode(SourceSection sourceSection, BaseNode... expressions) {
+        protected InstrumentationTestRootNode(String name, SourceSection sourceSection, BaseNode... expressions) {
             super(InstrumentationTestLanguage.class, sourceSection, null);
+            this.name = name;
             this.expressions = expressions;
         }
 
@@ -311,6 +313,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                 }
             }
             return null;
+        }
+
+        @Override
+        public String getName() {
+            return name;
         }
 
         @Override
@@ -396,7 +403,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         DefineNode(String identifier, SourceSection source, BaseNode[] children) {
             this.identifier = identifier;
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(source, children));
+            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(identifier, source, children));
             this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
         }
 

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -48,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -315,7 +317,8 @@ public final class Profiler {
         SourceSection sourceSection = context.getInstrumentedSourceSection();
         Counter counter = counters.get(sourceSection);
         if (counter == null) {
-            counter = new Counter(sourceSection);
+            final RootNode rootNode = context.getInstrumentedNode().getRootNode();
+            counter = new Counter(sourceSection, rootNode == null ? "<unknown>>" : rootNode.getName());
             counters.put(sourceSection, counter);
         }
         if (isTiming) {
@@ -561,6 +564,7 @@ public final class Profiler {
         }
 
         private final SourceSection sourceSection;
+        private final String name;
         private long interpretedInvocations;
         private long interpretedChildTime;
         private long interpretedTotalTime;
@@ -574,8 +578,9 @@ public final class Profiler {
          */
         private boolean compiled;
 
-        private Counter(SourceSection sourceSection) {
+        private Counter(SourceSection sourceSection, String name) {
             this.sourceSection = sourceSection;
+            this.name = name;
         }
 
         private void clear() {
@@ -594,6 +599,15 @@ public final class Profiler {
          */
         public SourceSection getSourceSection() {
             return sourceSection;
+        }
+
+        /**
+         * The name of the method/procedure being profiled.
+         *
+         * since 0.16
+         */
+        public String getName() {
+            return name;
         }
 
         /**
