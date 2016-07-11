@@ -582,7 +582,7 @@ def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, 
     """
     project = pathToProject.get(classpathEntry, None)
     if project:
-        concealed = project.get_concealed_imported_packages()
+        concealed = project.get_concealed_imported_packages(jdk)
         for concealingModule, packages in concealed.iteritems():
             for package in packages:
                 exports.setdefault(concealingModule + '/' + package, set()).add(module)
