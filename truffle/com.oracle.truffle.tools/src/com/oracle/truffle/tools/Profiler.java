@@ -554,9 +554,18 @@ public final class Profiler {
      */
     public static final class Counter {
 
+        /**
+         * Identifies the execution mode for timing results.
+         */
         public enum TimeKind {
+
+            /** Timing results includes both modes of operation. */
             INTERPRETED_AND_COMPILED,
+
+            /** Timing results include only slow-path execution. */
             INTERPRETED,
+
+            /** Timing results include only fast-path execution. */
             COMPILED
         }
 
