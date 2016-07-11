@@ -30,7 +30,6 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
@@ -178,7 +177,6 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         engine = null;
     }
 
-    @Ignore
     @Test
     public void testTimingEnabled() throws IOException {
 

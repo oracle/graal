@@ -458,10 +458,10 @@ public final class Profiler {
         protected void onDispose(VirtualFrame frame) {
             FrameDescriptor frameDescriptor = context.getInstrumentedNode().getRootNode().getFrameDescriptor();
             if (frameDescriptor.getIdentifiers().contains(KEY_TIME_STARTED)) {
-                frameDescriptor.removeFrameSlot(timeStartedSlot);
+                frameDescriptor.removeFrameSlot(KEY_TIME_STARTED);
             }
             if (frameDescriptor.getIdentifiers().contains(KEY_PARENT_COUNTER)) {
-                frameDescriptor.removeFrameSlot(parentCounterSlot);
+                frameDescriptor.removeFrameSlot(KEY_PARENT_COUNTER);
             }
         }
 
