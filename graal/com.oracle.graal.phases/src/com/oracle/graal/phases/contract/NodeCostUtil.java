@@ -65,7 +65,6 @@ public class NodeCostUtil {
             SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
             schedule.apply(graph);
             cfg = graph.getLastSchedule().getCFG();
-            cfg.computePostdominators();
             blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
         } else {
             cfg = ControlFlowGraph.compute(graph, true, true, false, false);

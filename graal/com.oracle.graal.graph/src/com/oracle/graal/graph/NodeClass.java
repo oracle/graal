@@ -83,7 +83,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Verifies that receivers of NodeInfo#size and NodeInfo#cycles do not have X_UNSET values.")
+        @Option(help = "Verifies that receivers of NodeInfo#size() and NodeInfo#cycles() do not have UNSET values.")
         public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new OptionValue<Boolean>(){
           @SuppressWarnings("all")
           protected Boolean defaultValue() {
@@ -251,7 +251,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         try (Debug.Scope scope = Debug.scope("NodeCosts")) {
             /*
-             * Note: We do not check for the existence of the node cost annotation during
+             * Note: We do not check for the existence of the node cost annotations during
              * construction as not every node needs to have them set. However if costs are queried,
              * after the construction of the node class, they must be properly set. This is
              * important as we can not trust our cost model if there are unspecified nodes. Nodes
@@ -285,7 +285,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public NodeCycles cycles(boolean assertSanity) {
         if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && cycles != NodeCycles.CYCLES_UNSET,
-                            "Missing NodeCycles specification of the NodeInfo annotation in the type tree of node %s", toString());
+                            "Missing NodeCycles specification in the @NodeInfo annotation of the node %s", toString());
         }
         return cycles;
     }
@@ -297,7 +297,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public NodeSize size(boolean assertSanity) {
         if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && size != NodeSize.SIZE_UNSET,
-                            "Missing NodeSize specification of the NodeInfo annotation in the type tree of node %s", toString());
+                            "Missing NodeSize specification in the @NodeInfo annotation of the node %s", toString());
         }
         return size;
     }
