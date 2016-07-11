@@ -88,26 +88,26 @@ gateLite : {
 }
 
 builds = [
-#  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-8"},
+  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-8"},
   ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-9"},
-#  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-#  ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
-#  ${deploy-dry-run}
-#  ${solaris} ${java8Downloads} ${gateLite} {
-#    capabilities : [solaris, sparcv9],
-#    targets : [ gate ],
-#    name: "gate-solaris-lite-8"
-#  }
+  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
+  ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
+  ${deploy-dry-run}
+  ${solaris} ${java8Downloads} ${gateLite} {
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
+    name: "gate-solaris-lite-8"
+  }
   ${solaris} ${java9Downloads} ${gateLite} {
     capabilities : [solaris, sparcv9],
     targets : [ gate ],
     name: "gate-solaris-lite-9"
   }
-#  ${darwin} ${java8Downloads} ${gateLite} {
-#    capabilities : [darwin],
-#    targets : [ gate ],
-#    name: "gate-mac-lite-8"
-#  }
+  ${darwin} ${java8Downloads} ${gateLite} {
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite-8"
+  }
   ${darwin} ${java9Downloads} ${gateLite} {
     capabilities : [darwin],
     targets : [ gate ],
