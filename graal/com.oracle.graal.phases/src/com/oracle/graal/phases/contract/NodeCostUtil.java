@@ -49,7 +49,7 @@ public class NodeCostUtil {
         double size = 0;
         try (Debug.Scope s = Debug.scope("NodeCostSummary")) {
             for (Node n : graph.getNodes()) {
-                size += nodeCostProvider.sizeNumeric(n);
+                size += nodeCostProvider.getEstimatedCodeSize(n);
             }
         }
         assert size >= 0D;
@@ -83,12 +83,12 @@ public class NodeCostUtil {
         try (Debug.Scope s = Debug.scope("NodeCostSummary")) {
             for (Block block : cfg.getBlocks()) {
                 for (Node n : blockToNodes.apply(block)) {
-                    double probWeighted = nodeCostProvider.cyclesNumeric(n) * block.probability();
+                    double probWeighted = nodeCostProvider.getEstimatedCPUCycles(n) * block.probability();
                     assert Double.isFinite(probWeighted);
                     weightedCycles += probWeighted;
                     if (Debug.isLogEnabled()) {
-                        Debug.log("Node %s contributes cycles:%f size:%d to graph %s [block prob:%f]", n, nodeCostProvider.cyclesNumeric(n) * block.probability(),
-                                        nodeCostProvider.sizeNumeric(n), graph, block.probability());
+                        Debug.log("Node %s contributes cycles:%f size:%d to graph %s [block prob:%f]", n, nodeCostProvider.getEstimatedCPUCycles(n) * block.probability(),
+                                        nodeCostProvider.getEstimatedCodeSize(n), graph, block.probability());
                     }
                 }
             }

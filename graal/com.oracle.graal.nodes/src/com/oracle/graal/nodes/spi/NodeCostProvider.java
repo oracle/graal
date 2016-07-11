@@ -28,30 +28,28 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.NodeSize;
 
 /**
- * A provider of node costs that allows different architectures to replace the default values for
- * {@link NodeCycles} and {@link NodeSize} for a {@link Node} IR node.
+ * A provider that enables overriding and customization of the {@link NodeCycles} and
+ * {@link NodeSize} values for a {@linkplain Node node}.
  */
 public interface NodeCostProvider {
 
     /**
-     * Returns a relative numeric value reflecting the estimated number of CPU cycles the execution
-     * of the parameter takes in the generated code.
+     * Gets the estimated size of machine code generated for {@code n}.
      */
-    int sizeNumeric(Node n);
+    int getEstimatedCodeSize(Node n);
 
     /**
-     * Returns a relative numeric value reflecting the code size that is necessary to represent this
-     * instruction in machine language.
+     * Gets the estimated execution cost for {@code n} in terms of CPU cycles.
      */
-    int cyclesNumeric(Node n);
+    int getEstimatedCPUCycles(Node n);
 
     /**
-     * {@linkplain NodeInfo#size()}.
+     * @see NodeInfo#size()
      */
     NodeSize size(Node n);
 
     /**
-     * {@linkplain NodeInfo#size()}.
+     * @see NodeInfo#cycles()
      */
     NodeCycles cycles(Node n);
 

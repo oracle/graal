@@ -98,7 +98,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         }
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+    @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
     private static class TestNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
         private static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
 

@@ -52,10 +52,10 @@ import com.oracle.graal.nodes.util.GraphUtil;
 // @formatter:off
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}",
           allowedUsageTypes = {InputType.Memory},
-          cycles = NodeCycles.CYCLES_UNKOWN,
+          cycles = NodeCycles.CYCLES_UNKNOWN,
           cyclesRationale = "We cannot estimate the runtime cost of a call, it is a blackhole." +
                             "However, we can estimate, dyanmically, the cost of the call operation itself based on the type of the call.",
-          size = NodeSize.SIZE_UNKOWN,
+          size = NodeSize.SIZE_UNKNOWN,
           sizeRationale = "We can only dyanmically, based on the type of the call (special, static, virtual, interface) decide" +
                           "how much code is generated for the call.")
 // @formatter:on

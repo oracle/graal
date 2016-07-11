@@ -71,9 +71,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * </ul>
  */
 //@formatter:off
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN,
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN,
           cyclesRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate",
-          size = NodeSize.SIZE_UNKOWN,
+          size = NodeSize.SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
 public abstract class MacroNode extends FixedWithNextNode implements Lowerable {

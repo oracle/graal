@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
 /**
  * Base class for nodes that modify a range of an array.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public abstract class ArrayRangeWriteNode extends AbstractMemoryCheckpoint {
 
     public static final NodeClass<ArrayRangeWriteNode> TYPE = NodeClass.create(ArrayRangeWriteNode.class);

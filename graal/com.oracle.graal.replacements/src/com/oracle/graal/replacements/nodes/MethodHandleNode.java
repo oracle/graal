@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
     public static final NodeClass<MethodHandleNode> TYPE = NodeClass.create(MethodHandleNode.class);
 

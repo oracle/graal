@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class HotSpotNodeCostProvider extends DefaultNodeCostProvider {
+public abstract class HotSpotNodeCostProvider extends DefaultNodeCostProvider {
 
     @Override
     public NodeSize size(Node n) {

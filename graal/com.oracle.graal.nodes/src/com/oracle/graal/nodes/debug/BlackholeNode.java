@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);

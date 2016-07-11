@@ -189,7 +189,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
  	    @Override
             public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }
         });
         ret.getHighTier().appendPhase(new Phase("CheckGraphPhase") {
@@ -213,7 +213,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
             @Override
             public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }
 
         });
@@ -226,7 +226,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
    	    @Override
             public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }
         });
         return ret;

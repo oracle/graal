@@ -34,7 +34,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.TargetDescription;
 
-public class AMD64HotSpotNodeCostProvider extends HotSpotNodeCostProvider {
+public final class AMD64HotSpotNodeCostProvider extends HotSpotNodeCostProvider {
     private final TargetDescription target;
 
     public AMD64HotSpotNodeCostProvider(TargetDescription target) {

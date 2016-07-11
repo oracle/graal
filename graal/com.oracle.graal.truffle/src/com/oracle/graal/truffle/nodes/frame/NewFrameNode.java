@@ -74,7 +74,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
  * class.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);

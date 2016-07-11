@@ -49,9 +49,9 @@ import com.oracle.graal.nodes.spi.VirtualizerTool;
 // @formatter:off
 @NodeInfo(nameTemplate = "Alloc {i#virtualObjects}",
           allowedUsageTypes = {InputType.Extension},
-          cycles = NodeCycles.CYCLES_UNKOWN,
+          cycles = NodeCycles.CYCLES_UNKNOWN,
           cyclesRationale = "We don't know statically how many, and which, allocations are done.",
-          size = NodeSize.SIZE_UNKOWN,
+          size = NodeSize.SIZE_UNKNOWN,
           sizeRationale = "We don't know statically how much code for which allocations has to be generated."
 )
 // @formatter:on

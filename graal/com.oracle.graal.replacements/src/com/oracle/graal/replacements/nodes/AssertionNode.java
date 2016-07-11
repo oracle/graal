@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * fail if this has not happened by the time the node is lowered to LIR, while runtime assertions
  * may need to insert a check.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class AssertionNode extends FixedWithNextNode implements Lowerable, Canonicalizable, LIRLowerable {
 
     public static final NodeClass<AssertionNode> TYPE = NodeClass.create(AssertionNode.class);

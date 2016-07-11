@@ -27,7 +27,7 @@ import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
 import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeSize;
 
-public class AArchHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
+public final class AArchHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
 
     @Override
     public NodeCycles cycles(Node n) {

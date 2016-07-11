@@ -23,8 +23,9 @@
 package com.oracle.graal.nodeinfo;
 
 public enum NodeSize {
-    SIZE_UNKOWN(0),
+
     SIZE_UNSET(0),
+    SIZE_UNKNOWN(0),
     SIZE_0(0),
     SIZE_1(1),
     SIZE_2(2),
@@ -43,19 +44,24 @@ public enum NodeSize {
     SIZE_200(200),
     SIZE_INFINITY(1000);
 
-    final int relativeSize;
+    final int estimatedCodeSize;
 
-    NodeSize(int relativeSize) {
-        this.relativeSize = relativeSize;
+    NodeSize(int estimatedCodeSize) {
+        this.estimatedCodeSize = estimatedCodeSize;
     }
 
-    public static int relativeSize(NodeSizeSupplier supplier) {
-        return supplier.getNodeSize().relativeSize;
+    public static int getEstimatedCodeSize(NodeSizeSupplier supplier) {
+        /*
+         * Note: We prohibit the access on the raw estimated code size value as custom node cost
+         * providers or architecture specific ones might override the default values.
+         */
+        return supplier.getNodeSize().estimatedCodeSize;
     }
 
+    @FunctionalInterface
     public interface NodeSizeSupplier {
         NodeSize getNodeSize();
     }
 
-    public static final int IGNORE_SIZE_CHECK_FACTOR = 0xFFFF;
+    public static final int IGNORE_SIZE_CONTRACT_FACTOR = 0xFFFF;
 }

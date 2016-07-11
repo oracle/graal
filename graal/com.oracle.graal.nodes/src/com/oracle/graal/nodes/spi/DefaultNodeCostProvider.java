@@ -34,20 +34,20 @@ import com.oracle.graal.nodes.java.AccessFieldNode;
 import com.oracle.graal.nodes.virtual.CommitAllocationNode;
 
 /*
- * (dl) Certain node costs can not, based on the meta information encoded in the node properties,
+ * Certain node costs can not, based on the meta information encoded in the node properties,
  * be computed before a real node is instantiated. E.g. the type of a call in Java heavily
  * influences the cost of an invocation and thus must be decided dynamically.
  */
-public class DefaultNodeCostProvider implements NodeCostProvider {
+public abstract class DefaultNodeCostProvider implements NodeCostProvider {
 
     @Override
-    public final int sizeNumeric(Node n) {
-        return NodeSize.relativeSize(() -> size(n));
+    public final int getEstimatedCodeSize(Node n) {
+        return NodeSize.getEstimatedCodeSize(() -> size(n));
     }
 
     @Override
-    public final int cyclesNumeric(Node n) {
-        return NodeCycles.relativeCycles(() -> cycles(n));
+    public final int getEstimatedCPUCycles(Node n) {
+        return NodeCycles.getEstimatedCPUCycles(() -> cycles(n));
     }
 
     @Override

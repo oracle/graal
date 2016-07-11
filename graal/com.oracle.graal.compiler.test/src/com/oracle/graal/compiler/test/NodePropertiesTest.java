@@ -316,7 +316,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
                 Canonicalizable.Binary<ValueNode> bc = (Canonicalizable.Binary<ValueNode>) node;
                 Node canonicalized = bc.canonical(tool, bc.getX(), bc.getY());
                 if (canonicalized != node) {
-                    savedCycles += nodeCostProvider.cyclesNumeric(node) - nodeCostProvider.cyclesNumeric(canonicalized);
+                    savedCycles += nodeCostProvider.getEstimatedCPUCycles(node) - nodeCostProvider.getEstimatedCPUCycles(canonicalized);
                 }
             }
         }

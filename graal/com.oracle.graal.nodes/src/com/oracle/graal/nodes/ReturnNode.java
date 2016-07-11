@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
     public static final NodeClass<ReturnNode> TYPE = NodeClass.create(ReturnNode.class);

@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 // @formatter:off
 @NodeInfo(cycles = NodeCycles.CYCLES_INFINITY,
           cyclesRationale = "The cycles for a deopt are as high as possible as we continue execution in the interpreter.",
-          size = NodeSize.SIZE_UNKOWN,
+          size = NodeSize.SIZE_UNKNOWN,
           sizeRationale = "Deopts carry the meta information necessary to map the state back in the interpreter, but they pollute the cost model," +
                           "thus we do not care about their size.")
 // @formatter:on

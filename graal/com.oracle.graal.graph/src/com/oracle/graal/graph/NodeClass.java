@@ -83,9 +83,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "")
-        // TODO (dl) set false, only check if verification is enabled, not for opt model
-        public static final OptionValue<Boolean> CheckNodeCosts = new OptionValue<>(true);
+        @Option(help = "Verifies that receivers of NodeInfo#size and NodeInfo#cycles do not have X_UNSET values.")
+        public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new OptionValue<Boolean>(){
+          @SuppressWarnings("all")
+          protected Boolean defaultValue() {
+              boolean assertionsEnabled = false;
+              assert assertionsEnabled = true;
+              return assertionsEnabled;
+          }
+        };
         // @formatter:on
     }
 
@@ -245,15 +251,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         try (Debug.Scope scope = Debug.scope("NodeCosts")) {
             /*
-             * Note: We do not assert the sanity of the node cost parameters as not every node has
-             * them set as not every node needs them. But if we use them, after we constructed the
-             * node class, they must be properly set as we can not trust our own model if there are
-             * nodes falling through the cost model. Thus every node that is queried for its costs
-             * must define them. Nodes that do not need it are e.g. abstractions like FixedNode or
-             * FloatingNode or ValueNode (although sub classes where costs are not specified will
-             * ask the superclass for their costs during node class initialization, this is the
-             * reason cycles and size getters internally can omit, even if verification is disabled,
-             * the cost specification).
+             * Note: We do not check for the existence of the node cost annotation during
+             * construction as not every node needs to have them set. However if costs are queried,
+             * after the construction of the node class, they must be properly set. This is
+             * important as we can not trust our cost model if there are unspecified nodes. Nodes
+             * that do not need cost annotations are e.g. abstractions like FixedNode or
+             * FloatingNode or ValueNode. Sub classes where costs are not specified will ask the
+             * superclass for their costs during node class initialization. Therefore getters for
+             * cycles and size can omit verification during creation.
              */
             NodeCycles c = info.cycles();
             if (c == NodeCycles.CYCLES_UNSET) {
@@ -278,7 +283,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final NodeSize size;
 
     public NodeCycles cycles(boolean assertSanity) {
-        if (Options.CheckNodeCosts.getValue() && assertSanity) {
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && cycles != NodeCycles.CYCLES_UNSET,
                             "Missing NodeCycles specification of the NodeInfo annotation in the type tree of node %s", toString());
         }
@@ -290,7 +295,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public NodeSize size(boolean assertSanity) {
-        if (Options.CheckNodeCosts.getValue() && assertSanity) {
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && size != NodeSize.SIZE_UNSET,
                             "Missing NodeSize specification of the NodeInfo annotation in the type tree of node %s", toString());
         }

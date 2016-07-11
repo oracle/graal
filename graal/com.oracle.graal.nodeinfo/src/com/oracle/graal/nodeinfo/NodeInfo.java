@@ -34,26 +34,28 @@ import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNSET;
 @Target(ElementType.TYPE)
 public @interface NodeInfo {
 
-    String shortName()
-
-    default "";
+    String shortName() default "";
 
     /**
      * The template used to build the {@link Verbosity#Name} version. Variable part are specified
      * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
      */
-    String nameTemplate()
-
-    default "";
+    String nameTemplate() default "";
 
     InputType[] allowedUsageTypes() default {};
 
     /**
-     * A relative estimate of the number of CPU cycles needed to execute this instruction. It should
-     * serve as an estimation for the execution time of a high level node. The real execution time
-     * needed for a certain high-level node depends on the target architecture and the low-level
-     * representation of the instruction. However, this enum gives a rough estimation that can be
-     * used in order to compare different instructions based on their execution costs.
+     * An estimation of the number of CPU cycles needed to execute this node. It should serve as an
+     * estimation for the execution time of a high level node. The real execution time needed for a
+     * certain high-level node depends on the target architecture and the low-level representation
+     * of the node. However, this enum gives a rough estimation that can be used in order to compare
+     * nodes based on their execution costs.
+     * <p>
+     * The default value of the annotation is {@link NodeCycles#CYCLES_UNSET}. It is not required
+     * for a node to specify a custom {@link NodeInfo#cycles()} value. However, if a node does not
+     * specify a custom value {@code != CYCLES_UNSET}, the value should never be used to argue about
+     * the node. Implementations of the cost logic might throw an exception if a node's
+     * {@link NodeCycles} value is used although it is {@link NodeCycles#CYCLES_UNSET}.
      */
     NodeCycles cycles() default CYCLES_UNSET;
 
@@ -63,12 +65,18 @@ public @interface NodeInfo {
     String cyclesRationale() default "";
 
     /**
-     * A relative estimate of the size needed to represent this instruction in machine code. It
-     * should work as an estimation for the number of bytes needed to represent this high-level node
-     * in machine code. The real number of bytes generated for the given high-level node depends the
-     * target architecture and the low-level representation of the instruction. However, this enum
-     * gives a rough estimation that can be used in order to compare different instructions based on
-     * their sizes.
+     * An estimation of the size needed to represent this node in machine code. It should work as an
+     * estimation for the number of machine words needed to represent this high-level node in
+     * machine code. The real size needed by the generated code for the given high-level node
+     * depends the target architecture and the low-level representation of the node. However, this
+     * enum gives a rough estimation that can be used in order to compare nodes based on their
+     * sizes.
+     * <p>
+     * The default value of the annotation is {@link NodeSize#SIZE_UNSET}. It is not required for a
+     * node to specify a custom {@link NodeInfo#size()} value. However, if a node does not specify a
+     * custom value {@code != SIZE_UNSET}, the value should never be used to argue about the node.
+     * Implementations of the cost logic might throw an exception if a node's {@link NodeSize} value
+     * is used although it is {@link NodeSize#SIZE_UNSET}.
      */
     NodeSize size() default SIZE_UNSET;
 

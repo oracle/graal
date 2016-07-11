@@ -54,7 +54,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
-@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
     public static final NodeClass<ForeignCallNode> TYPE = NodeClass.create(ForeignCallNode.class);
 

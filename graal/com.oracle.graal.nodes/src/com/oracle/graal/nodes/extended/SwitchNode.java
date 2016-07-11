@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.Constant;
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public abstract class SwitchNode extends ControlSplitNode {
 
     public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);

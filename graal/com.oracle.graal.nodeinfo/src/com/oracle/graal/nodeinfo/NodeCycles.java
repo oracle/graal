@@ -23,8 +23,9 @@
 package com.oracle.graal.nodeinfo;
 
 public enum NodeCycles {
-    CYCLES_UNKOWN(0),
+
     CYCLES_UNSET(0),
+    CYCLES_UNKNOWN(0),
     CYCLES_0(0),
     CYCLES_1(1),
     CYCLES_2(2),
@@ -45,20 +46,25 @@ public enum NodeCycles {
     CYCLES_500(500),
     CYCLES_INFINITY(1000);
 
-    final int relativeCycles;
+    final int estimatedCPUCycles;
 
-    NodeCycles(int relativeCycles) {
-        this.relativeCycles = relativeCycles;
+    NodeCycles(int estimatedCPUCycles) {
+        this.estimatedCPUCycles = estimatedCPUCycles;
     }
 
-    public static int relativeCycles(NodeCyclesSupplier supplier) {
-        return supplier.getNodeCycles().relativeCycles;
+    public static int getEstimatedCPUCycles(NodeCyclesSupplier supplier) {
+        /*
+         * Note: We prohibit the access on the raw estimated code size value as custom node cost
+         * providers or architecture specific ones might override the default values.
+         */
+        return supplier.getNodeCycles().estimatedCPUCycles;
     }
 
+    @FunctionalInterface
     public interface NodeCyclesSupplier {
         NodeCycles getNodeCycles();
     }
 
-    public static final int IGNORE_CYCLES_CHECK_FACTOR = 0xFFFF;
+    public static final int IGNORE_CYCLES_CONTRACT_FACTOR = 0xFFFF;
 
 }

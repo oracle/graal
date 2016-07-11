@@ -102,7 +102,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
          * We can introduce new deoptimization nodes that heavily increase code size as they come
          * with all their required meta data.
          */
-        return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+        return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
     }
 
     private void trySplitFixedGuard(FixedGuardNode fixedGuard, PhaseContext context) {

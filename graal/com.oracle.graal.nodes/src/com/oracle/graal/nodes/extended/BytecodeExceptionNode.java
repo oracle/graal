@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * A node that represents an exception thrown implicitly by a Java bytecode. It can be lowered to
  * either a {@linkplain ForeignCallDescriptor foreign} call or a pre-allocated exception object.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKOWN, size = NodeSize.SIZE_UNKOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN)
 public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<BytecodeExceptionNode> TYPE = NodeClass.create(BytecodeExceptionNode.class);
