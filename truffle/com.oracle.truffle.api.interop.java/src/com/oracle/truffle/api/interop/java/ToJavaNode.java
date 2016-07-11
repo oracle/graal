@@ -126,14 +126,11 @@ final class ToJavaNode extends Node {
     @TruffleBoundary
     private static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
         final SingleHandler handler = new SingleHandler(function);
-        if (functionalType == CallTarget.class) {
-            return functionalType.cast(handler);
-        }
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    private static final class SingleHandler implements InvocationHandler, CallTarget {
+    private static final class SingleHandler implements InvocationHandler {
         private final TruffleObject symbol;
         private CallTarget target;
 
@@ -143,12 +140,16 @@ final class ToJavaNode extends Node {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-            Object ret = call(arguments);
+            Object ret;
+            if (method.isVarArgs() && arguments.length == 1) {
+                ret = call((Object[]) arguments[0]);
+            } else {
+                ret = call(arguments);
+            }
             return toJava(ret, method);
         }
 
-        @Override
-        public Object call(Object... arguments) {
+        private Object call(Object[] arguments) {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {

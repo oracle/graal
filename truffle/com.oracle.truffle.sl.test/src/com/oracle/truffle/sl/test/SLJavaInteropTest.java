@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.CallTarget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -124,7 +123,7 @@ public class SLJavaInteropTest {
         PassInArray valuesIn = JavaInterop.asJavaFunction(PassInArray.class, (TruffleObject) value);
 
         try {
-            valuesIn.call("OK", "Fine");
+            valuesIn.call(new Object[]{"OK", "Fine"});
             assertEquals("Called with OK and null\n", os.toString("UTF-8"));
         } catch (IllegalStateException ex) {
             assertTrue(ex.getMessage(), ex.getMessage().contains("not a Truffle value"));
@@ -134,7 +133,7 @@ public class SLJavaInteropTest {
     }
 
     @Test
-    public void asFunctionWithCallTarget() throws Exception {
+    public void asFunctionWithVarArgs() throws Exception {
         String scriptText = "function values(a, b) {\n" + //
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
@@ -143,13 +142,17 @@ public class SLJavaInteropTest {
         PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
         final Object value = fn.get();
         assertTrue("It's truffle object", value instanceof TruffleObject);
-        CallTarget valuesIn = JavaInterop.asJavaFunction(CallTarget.class, (TruffleObject) value);
+        PassInVarArg valuesIn = JavaInterop.asJavaFunction(PassInVarArg.class, (TruffleObject) value);
 
         valuesIn.call("OK", "Fine");
         assertEquals("Called with OK and Fine\n", os.toString("UTF-8"));
     }
 
     interface PassInArray {
+        void call(Object[] arr);
+    }
+
+    interface PassInVarArg {
         void call(Object... arr);
     }
 }
