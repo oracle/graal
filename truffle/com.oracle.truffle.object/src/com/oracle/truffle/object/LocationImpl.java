@@ -27,21 +27,10 @@ import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.TypedLocation;
 
 public abstract class LocationImpl extends Location {
-
-    @Deprecated
-    public interface EffectivelyFinalLocation<T extends Location> {
-        T toNonFinalLocation();
-    }
-
-    @Deprecated
-    public interface TypedObjectLocation<T extends Location & ObjectLocation> extends ObjectLocation {
-        T toUntypedLocation();
-    }
 
     public interface InternalLongLocation extends LongLocation {
         void setLongInternal(DynamicObject store, long value);
