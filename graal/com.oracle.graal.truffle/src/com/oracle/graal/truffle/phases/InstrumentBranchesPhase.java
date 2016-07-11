@@ -165,16 +165,49 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        private String prettify(String key, Point p) {
-            if (TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue()) {
-                return key;
+        private static String prettify(String key, Point p) {
+            if (TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue() && TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                StringBuilder sb = new StringBuilder();
+                NodeSourcePosition pos = p.getPosition();
+                NodeSourcePosition lastPos = null;
+                int repetitions = 1;
+                while (pos != null) {
+                    if (lastPos == null) {
+                        lastPos = pos;
+                        MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
+                    } else if (!lastPos.getMethod().equals(pos.getMethod())) {
+                        if (repetitions > 1) {
+                            sb.append(" x" + repetitions);
+                            repetitions = 1;
+                        }
+                        sb.append(CodeUtil.NEW_LINE);
+                        lastPos = pos;
+                        MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
+                    } else if (lastPos.getBCI() != pos.getBCI()) {
+                        if (repetitions > 1) {
+                            sb.append(" x" + repetitions);
+                            repetitions = 1;
+                        }
+                        sb.append(" [bci: " + pos.getBCI() + "]");
+                    } else {
+                        repetitions++;
+                    }
+                    pos = pos.getCaller();
+                }
+                if (repetitions > 1) {
+                    sb.append(" x" + repetitions);
+                    repetitions = 1;
+                }
+                sb.append(CodeUtil.NEW_LINE);
+                return sb.toString();
             } else {
                 return key;
             }
         }
 
         public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + "\n" + entry.getValue()).collect(
+                            Collectors.toCollection(ArrayList::new));
         }
 
         public synchronized ArrayList<String> accessTableToHistogram() {
@@ -256,6 +289,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
             public long elseVisits() {
                 return ACCESS_TABLE[index * 2 + 1];
+            }
+
+            public NodeSourcePosition getPosition() {
+                return position;
             }
 
             public BranchState getBranchState() {
