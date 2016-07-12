@@ -58,6 +58,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -1312,6 +1313,19 @@ public class GraphDecoder {
             if (current == loopBegin) {
                 continue;
             }
+            if (!methodScope.graph.isNew(methodScope.methodStartMark, current)) {
+                /*
+                 * The current node is before the method that contains the exploded loop. The loop
+                 * must have a second entry point, i.e., it is an irreducible loop. Graal does not
+                 * support that.
+                 *
+                 * We could make the loop reducible by cloning Graal nodes, but for now we are not
+                 * doing it. Instead, we rely on higher-level code to make loops reducible (or have
+                 * higher-level code accept the fact that the method is not compilable).
+                 */
+                throw new BailoutException("Irreducible loops are not supported by Graal");
+            }
+
             for (Node pred : current.cfgPredecessors()) {
                 if (!visited.isMarked(pred)) {
                     visited.mark(pred);
