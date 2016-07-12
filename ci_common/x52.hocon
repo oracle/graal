@@ -10,11 +10,11 @@ x52.default : ${commonLinux} {
 }
 
 builds += [
-  ${bench-dacapo}              ${x52.default} { name: "bench-dacapo-linux-x52" }
-  ${bench-dacapo-timing}       ${x52.default} { name: "bench-dacapo-timing-linux-x52" }
-  ${bench-scala-dacapo}        ${x52.default} { name: "bench-scala-dacapo-linux-x52" }
-  ${bench-scala-dacapo-timing} ${x52.default} { name: "bench-scala-dacapo-timing-linux-x52" }
-  ${bench-specjvm2008}         ${x52.default} { name: "bench-specjvm2008-linux-x52" }
-  ${bench-specjbb2015}         ${x52.default} { name: "bench-specjbb2015-linux-x52" }
-  ${bench-micros-graal}        ${x52.default} { name: "bench-jmh-micros-graal-linux-x52" }
+  ${x52.default} ${bench-dacapo}              { name: "bench-dacapo-linux-x52" }
+  ${x52.default} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52" }
+  ${x52.default} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52" }
+  ${x52.default} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52" }
+  ${x52.default} ${bench-specjvm2008}         { name: "bench-specjvm2008-linux-x52" }
+  ${x52.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52" }
+  ${x52.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-linux-x52" }
 ]

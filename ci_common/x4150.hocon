@@ -10,5 +10,5 @@ x4150.default : ${commonLinux} {
 }
 
 builds += [
-  ${bench-specjbb2005} ${x4150.default} { name: "bench-specjbb2005-linux-x4150"}
+  ${x4150.default} ${bench-specjbb2005} { name: "bench-specjbb2005-linux-x4150"}
 ]
