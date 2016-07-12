@@ -66,9 +66,32 @@ public class PhaseSuite<C> extends BasePhase<C> {
         phases.add(phase);
     }
 
+    /**
+     * Returns a {@link ListIterator} at the position of the first phase which is an instance of
+     * {@code phaseClass} or null if no such phase can be found.
+     *
+     * Calling {@link ListIterator#previous()} would return the phase that was found.
+     *
+     * @param phaseClass the type of phase to look for.
+     */
     public final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass) {
+        return findPhase(phaseClass, false);
+    }
+
+    /**
+     * Returns a {@link ListIterator} at the position of the first phase which is an instance of
+     * {@code phaseClass} or, if {@code recursive} is true, is a {@link PhaseSuite} containing a
+     * phase which is an instance of {@code phaseClass}. This method returns null if no such phase
+     * can be found.
+     *
+     * Calling {@link ListIterator#previous()} would return the phase or phase suite that was found.
+     *
+     * @param phaseClass the type of phase to look for
+     * @param recursive whether to recursively look into phase suites.
+     */
+    public final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass, boolean recursive) {
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
-        if (findNextPhase(it, phaseClass)) {
+        if (findNextPhase(it, phaseClass, recursive)) {
             return it;
         } else {
             return null;
@@ -76,10 +99,20 @@ public class PhaseSuite<C> extends BasePhase<C> {
     }
 
     public static <C> boolean findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass) {
+        return findNextPhase(it, phaseClass, false);
+    }
+
+    public static <C> boolean findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass, boolean recursive) {
         while (it.hasNext()) {
             BasePhase<? super C> phase = it.next();
             if (phaseClass.isInstance(phase)) {
                 return true;
+            } else if (recursive && phase instanceof PhaseSuite) {
+                @SuppressWarnings("unchecked")
+                PhaseSuite<C> suite = (PhaseSuite<C>) phase;
+                if (suite.findPhase(phaseClass, true) != null) {
+                    return true;
+                }
             }
         }
         return false;
