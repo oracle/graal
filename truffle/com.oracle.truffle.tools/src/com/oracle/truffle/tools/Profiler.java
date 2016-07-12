@@ -75,8 +75,6 @@ import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
  */
 public final class Profiler {
 
-    private static final int MAX_CODE_LENGTH = 30;
-
     /**
      * Finds profiler associated with given engine. There is at most one profiler associated with
      * any {@link PolyglotEngine}. One can access it by calling this static method.
@@ -371,8 +369,8 @@ public final class Profiler {
         });
 
         out.println("Truffle profiler histogram for mode " + time);
-        out.println(String.format("%12s | %7s | %11s | %7s | %11s | %-30s | %s ", //
-                        "Invoc", "Total", "PerInvoc", "SelfTime", "PerInvoc", "Source", "Code"));
+        out.println(String.format("%12s | %7s | %11s | %7s | %11s | %-15s | %s ", //
+                        "Invoc", "Total", "PerInvoc", "SelfTime", "PerInvoc", "Name", "Source"));
         for (Counter counter : sortedCounters) {
             final long invocations = counter.getInvocations(time);
             if (invocations <= 0L) {
@@ -380,25 +378,12 @@ public final class Profiler {
             }
             double totalTimems = counter.getTotalTime(time) / 1000000.0d;
             double selfTimems = counter.getSelfTime(time) / 1000000.0d;
-            out.println(String.format("%12d |%6.0fms |%10.3fms |%7.0fms |%10.3fms | %-30s | %s", //
+            out.println(String.format("%12d |%6.0fms |%10.3fms |%7.0fms |%10.3fms | %-15s | %s", //
                             invocations, totalTimems, totalTimems / invocations,  //
                             selfTimems, selfTimems / invocations, //
-                            getShortDescription(counter.getSourceSection()), getShortSource(counter.getSourceSection())));
+                            counter.getName(), getShortDescription(counter.getSourceSection())));
         }
         out.println();
-    }
-
-    private static Object getShortSource(SourceSection sourceSection) {
-        if (sourceSection.getSource() == null) {
-            return "<unknown>";
-        }
-
-        String code = sourceSection.getCode();
-        if (code.length() > MAX_CODE_LENGTH) {
-            code = code.substring(0, MAX_CODE_LENGTH);
-        }
-
-        return code.replaceAll("\\n", "\\\\n");
     }
 
     // custom version of SourceSection#getShortDescription
@@ -412,22 +397,12 @@ public final class Profiler {
         } else {
             b.append("<unknown>");
         }
-        b.append(":line=");
-
+        b.append(":");
         if (sourceSection.getStartLine() == sourceSection.getEndLine()) {
             b.append(sourceSection.getStartLine());
-
         } else {
             b.append(sourceSection.getStartLine()).append("-").append(sourceSection.getEndLine());
         }
-
-        b.append(":chars=");
-        if (sourceSection.getCharIndex() == sourceSection.getEndColumn()) {
-            b.append(sourceSection.getCharIndex());
-        } else {
-            b.append(sourceSection.getCharIndex()).append("-").append(sourceSection.getEndColumn());
-        }
-
         return b.toString();
     }
 
