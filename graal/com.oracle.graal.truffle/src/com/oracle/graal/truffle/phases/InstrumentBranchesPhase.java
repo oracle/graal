@@ -60,6 +60,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
+    private static final String[] OMITTED_STACK_PATTERNS = new String[]{
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callProxy",
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callRoot",
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callInlined",
+                    "com.oracle.graal.truffle.OptimizedDirectCallNode.callProxy",
+                    "com.oracle.graal.truffle.OptimizedDirectCallNode.call"
+    };
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
@@ -171,11 +178,22 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 NodeSourcePosition pos = p.getPosition();
                 NodeSourcePosition lastPos = null;
                 int repetitions = 1;
-                while (pos != null) {
+
+                callerChainLoop: while (pos != null) {
+                    // Skip stack frame if it is a known pattern.
+                    for (String pattern : OMITTED_STACK_PATTERNS) {
+                        if (pos.getMethod().format("%H.%n(%p)").contains(pattern)) {
+                            pos = pos.getCaller();
+                            continue callerChainLoop;
+                        }
+                    }
+
                     if (lastPos == null) {
+                        // Always output first method.
                         lastPos = pos;
                         MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
                     } else if (!lastPos.getMethod().equals(pos.getMethod())) {
+                        // Output count for identical BCI outputs, and output next method.
                         if (repetitions > 1) {
                             sb.append(" x" + repetitions);
                             repetitions = 1;
@@ -184,12 +202,15 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                         lastPos = pos;
                         MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
                     } else if (lastPos.getBCI() != pos.getBCI()) {
+                        // Conflate identical BCI outputs.
                         if (repetitions > 1) {
                             sb.append(" x" + repetitions);
                             repetitions = 1;
                         }
+                        lastPos = pos;
                         sb.append(" [bci: " + pos.getBCI() + "]");
                     } else {
+                        // Identical BCI to the one seen previously.
                         repetitions++;
                     }
                     pos = pos.getCaller();
@@ -198,7 +219,6 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                     sb.append(" x" + repetitions);
                     repetitions = 1;
                 }
-                sb.append(CodeUtil.NEW_LINE);
                 return sb.toString();
             } else {
                 return key;
@@ -206,7 +226,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
         }
 
         public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + "\n" + entry.getValue()).collect(
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue()).collect(
                             Collectors.toCollection(ArrayList::new));
         }
 
