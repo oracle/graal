@@ -67,8 +67,8 @@ public class PhaseSuite<C> extends BasePhase<C> {
     }
 
     /**
-     * Returns a {@link ListIterator} at the position of the first phase which is an instance of {@code phaseClass}
-     * or null if no such phase can be found.
+     * Returns a {@link ListIterator} at the position of the first phase which is an instance of
+     * {@code phaseClass} or null if no such phase can be found.
      *
      * Calling {@link ListIterator#previous()} would return the phase that was found.
      *
@@ -78,11 +78,11 @@ public class PhaseSuite<C> extends BasePhase<C> {
         return findPhase(phaseClass, false);
     }
 
-
     /**
-     * Returns a {@link ListIterator} at the position of the first phase which is an instance of {@code phaseClass}
-     * or, if {@code recursive} is true, is a {@link PhaseSuite} containing a phase which is an instance of {@code phaseClass}.
-     * This method returns null if no such phase can be found.
+     * Returns a {@link ListIterator} at the position of the first phase which is an instance of
+     * {@code phaseClass} or, if {@code recursive} is true, is a {@link PhaseSuite} containing a
+     * phase which is an instance of {@code phaseClass}. This method returns null if no such phase
+     * can be found.
      *
      * Calling {@link ListIterator#previous()} would return the phase or phase suite that was found.
      *
