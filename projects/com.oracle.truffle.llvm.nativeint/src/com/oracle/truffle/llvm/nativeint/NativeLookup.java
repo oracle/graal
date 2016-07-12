@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.nativeint;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
@@ -57,7 +59,7 @@ public class NativeLookup {
 
     private static NativeFunctionInterface nfi;
 
-    private static NativeLibraryHandle[] libraryHandles;
+    private List<NativeLibraryHandle> libraryHandles;
 
     private final Map<LLVMFunctionDescriptor, Integer> nativeFunctionLookupStats;
 
@@ -76,7 +78,7 @@ public class NativeLookup {
         return nfi;
     }
 
-    private static NativeLibraryHandle[] getLibraryHandles() {
+    private List<NativeLibraryHandle> getLibraryHandles() {
         CompilerAsserts.neverPartOfCompilation();
         if (libraryHandles == null) {
             libraryHandles = getNativeFunctionHandles();
@@ -85,12 +87,16 @@ public class NativeLookup {
         return libraryHandles;
     }
 
-    private static NativeLibraryHandle[] getNativeFunctionHandles() {
+    private NativeLibraryHandle[] getLibraryHandlesArray() {
+        final List<NativeLibraryHandle> list = getLibraryHandles();
+        return list.toArray(new NativeLibraryHandle[list.size()]);
+    }
+
+    private static List<NativeLibraryHandle> getNativeFunctionHandles() {
         String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicLibraryPaths();
-        int i = 0;
-        NativeLibraryHandle[] handles = new NativeLibraryHandle[dynamicLibraryPaths.length];
+        List<NativeLibraryHandle> handles = new ArrayList<>();
         for (String library : dynamicLibraryPaths) {
-            handles[i++] = getNFI().getLibraryHandle(library);
+            handles.add(getNFI().getLibraryHandle(library));
         }
         return handles;
     }
@@ -105,13 +111,13 @@ public class NativeLookup {
     }
 
     // TODO extend foreign function interface API
-    private static long lookupSymbol(String name) {
+    private long lookupSymbol(String name) {
         try {
             Method method = HotSpotNativeFunctionInterface.class.getDeclaredMethod("lookupFunctionPointer", String.class, NativeLibraryHandle.class, boolean.class);
             HotSpotNativeFunctionInterface face = (HotSpotNativeFunctionInterface) getNFI();
             method.setAccessible(true);
             HotSpotNativeLibraryHandle handle;
-            if (getLibraryHandles().length == 0) {
+            if (getLibraryHandles().isEmpty()) {
                 handle = new HotSpotNativeLibraryHandle("", 0);
                 return ((HotSpotNativeFunctionPointer) method.invoke(face, name, handle, false)).getRawValue();
             } else {
@@ -131,6 +137,10 @@ public class NativeLookup {
             LLVMLogger.info("external symbol " + name + " could not be resolved!");
             return LOOKUP_FAILURE;
         }
+    }
+
+    public void addLibraryToNativeLookup(String library) {
+        getNativeFunctionHandles().add(getNFI().getLibraryHandle(library));
     }
 
     /**
@@ -168,7 +178,7 @@ public class NativeLookup {
         if (LLVMBaseOptionFacade.getDynamicLibraryPaths() == null) {
             functionHandle = getNFI().getFunctionHandle(functionName, retType, paramTypes);
         } else {
-            functionHandle = getNFI().getFunctionHandle(getLibraryHandles(), functionName, retType, paramTypes);
+            functionHandle = getNFI().getFunctionHandle(getLibraryHandlesArray(), functionName, retType, paramTypes);
         }
         if (LLVMBaseOptionFacade.printNativeCallStats() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
