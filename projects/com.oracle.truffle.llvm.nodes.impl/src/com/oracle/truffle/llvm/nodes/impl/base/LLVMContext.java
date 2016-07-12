@@ -96,6 +96,10 @@ public class LLVMContext extends ExecutionContext {
         return completeFunctionDescriptors[validFunctionIndex];
     }
 
+    public void addLibraryToNativeLookup(String library) {
+        nativeLookup.addLibraryToNativeLookup(library);
+    }
+
     public long getNativeHandle(String functionName) {
         return nativeLookup.getNativeHandle(functionName);
     }

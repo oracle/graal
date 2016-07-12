@@ -84,17 +84,17 @@ public class LLVM {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
                 parseDynamicBitcodeLibraries(context);
-                CallTarget mainFunction;
+                final CallTarget[] mainFunction = new CallTarget[]{null};
                 if (code.getMimeType().equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
                     LLVMParserResult parserResult = parseFile(code.getPath(), context);
-                    mainFunction = parserResult.getMainFunction();
+                    mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
 
                     try {
                         library.readContents(dependentLibrary -> {
-                            throw new UnsupportedOperationException();
+                            context.addLibraryToNativeLookup(dependentLibrary);
                         }, source -> {
                             LLVMParserResult parserResult;
                             try {
@@ -104,21 +104,23 @@ public class LLVM {
                             }
                             handleParserResult(context, parserResult);
                             if (parserResult.getMainFunction() != null) {
-                                throw new IllegalArgumentException("main function in library");
+                                mainFunction[0] = parserResult.getMainFunction();
                             }
                         });
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
                     }
 
-                    mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null));
+                    if (mainFunction[0] == null) {
+                        mainFunction[0] = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null));
+                    }
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
                 if (context.isParseOnly()) {
                     return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(mainFunction));
                 } else {
-                    return mainFunction;
+                    return mainFunction[0];
                 }
             }
 

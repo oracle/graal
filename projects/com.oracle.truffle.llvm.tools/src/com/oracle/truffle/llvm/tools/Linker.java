@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -50,6 +51,7 @@ public class Linker {
     public static void main(String[] args) {
         try {
             String outputFileName = null;
+            final Collection<String> libraryNames = new ArrayList<>();
             final Collection<String> bitcodeFileNames = new ArrayList<>();
 
             int n = 0;
@@ -57,27 +59,39 @@ public class Linker {
             while (n < args.length) {
                 final String arg = args[n];
 
-                switch (arg) {
-                    case "-h":
-                    case "-help":
-                    case "--help":
-                    case "/?":
-                    case "/help":
-                        help();
-                        break;
+                if (arg.length() > 0 && arg.charAt(0) == '-') {
+                    switch (arg) {
+                        case "-h":
+                        case "-help":
+                        case "--help":
+                        case "/?":
+                        case "/help":
+                            help();
+                            break;
 
-                    case "-o":
-                        if (n + 1 >= args.length) {
-                            throw new Exception("-o needs to be followed by a file name");
-                        }
+                        case "-l":
+                            if (n + 1 >= args.length) {
+                                throw new Exception("-l needs to be followed by a file name");
+                            }
 
-                        outputFileName = args[n + 1];
-                        n++;
-                        break;
+                            libraryNames.add(args[n + 1]);
+                            n++;
+                            break;
 
-                    default:
-                        bitcodeFileNames.add(arg);
-                        break;
+                        case "-o":
+                            if (n + 1 >= args.length) {
+                                throw new Exception("-o needs to be followed by a file name");
+                            }
+
+                            outputFileName = args[n + 1];
+                            n++;
+                            break;
+
+                        default:
+                            throw new Exception("Unknown argument " + arg);
+                    }
+                } else {
+                    bitcodeFileNames.add(arg);
                 }
 
                 n++;
@@ -87,7 +101,7 @@ public class Linker {
                 outputFileName = "out.su";
             }
 
-            link(outputFileName, bitcodeFileNames);
+            link(outputFileName, libraryNames, bitcodeFileNames);
         } catch (Exception e) {
             LLVMLogger.error(e.getMessage());
             System.exit(1);
@@ -96,14 +110,26 @@ public class Linker {
     }
 
     private static void help() {
-        LLVMLogger.info("su-link [-o out.su] one.ll two.ll ...");
+        LLVMLogger.info("su-link [-o out.su] [-l one.so -l two.so ...] one.ll two.ll ...");
         LLVMLogger.info("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
     }
 
-    public static void link(String outputFileName, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {
+    public static void link(String outputFileName, Collection<String> libraryNames, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {
         final byte[] buffer = new byte[BUFFER_SIZE];
 
         try (ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(outputFileName))) {
+            outputStream.putNextEntry(new ZipEntry("libs"));
+
+            final PrintStream libsStream = new PrintStream(outputStream);
+
+            for (String libraryName : libraryNames) {
+                libsStream.println(libraryName);
+            }
+
+            libsStream.flush();
+
+            outputStream.closeEntry();
+
             for (String bitcodeFileName : bitcodeFileNames) {
                 final File bitcodeFile = new File(bitcodeFileName);
 
@@ -136,6 +162,8 @@ public class Linker {
 
                         outputStream.write(buffer, 0, count);
                     }
+
+                    outputStream.closeEntry();
                 }
             }
         }
