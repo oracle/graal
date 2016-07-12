@@ -3,6 +3,8 @@ x52.c2 : {
   targets: [weekly]
   capabilities: [linux, x52]
   environment : {
+    XMX          : "64g"
+    XMS          : "64g"
     JVM_CONFIG :  "default"
     JVM        :  "server"
     MACHINE_NAME: "x52"

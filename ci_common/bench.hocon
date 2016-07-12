@@ -1,6 +1,6 @@
 # DaCapo-related targets
 
-bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx64g", "-Xms64g", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
+bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
   mx-benchmark : ["mx", "benchmark", "--results-file", "bench-results.json"]
@@ -31,7 +31,7 @@ bench-dacapo: ${bench-common-8} {
   ]
 }
 
-bench-dacapo-timing: ${commonLinux} ${bench-common-8} {
+bench-dacapo-timing: ${bench-common-8} {
   targets: [daily]
   run: [
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
@@ -57,9 +57,13 @@ bench-scala-dacapo-timing: ${bench-common-8} {
 # SPECjbb2005-related targets
 
 bench-specjbb2005: ${bench-common-8} {
+  targets: [bench, post-merge]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
+  run: [
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
+  ]
   timelimit: "2:00:00"
 }
 
