@@ -24,6 +24,7 @@ package com.oracle.graal.lir;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph;
@@ -50,6 +51,10 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     private final AbstractBlockBase<?>[] codeEmittingOrder;
 
+    /**
+     * Map from {@linkplain AbstractBlockBase block} to {@linkplain LIRInstruction}s. Note that we
+     * are using {@link ArrayList} instead of {@link List} to avoid interface dispatch.
+     */
     private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
 
     private boolean hasArgInCallerFrame;
@@ -92,7 +97,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     }
 
     /**
-     * Gets the linear scan ordering of blocks as a list.
+     * Gets the linear scan ordering of blocks as an array.
      *
      * @return the blocks in linear scan order
      */
