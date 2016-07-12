@@ -122,6 +122,9 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return true;
     }
 
+    /**
+     * @return sorted list of {@link CompilerConfigurationFactory}s
+     */
     private static List<CompilerConfigurationFactory> getAllCandidates() {
         List<CompilerConfigurationFactory> candidates = new ArrayList<>();
         for (CompilerConfigurationFactory candidate : GraalServices.load(CompilerConfigurationFactory.class)) {
@@ -167,7 +170,6 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 if (candidates.isEmpty()) {
                     throw new GraalError("No %s providers found", CompilerConfigurationFactory.class.getName());
                 }
-                Collections.sort(candidates);
                 factory = candidates.get(0);
             }
         }
