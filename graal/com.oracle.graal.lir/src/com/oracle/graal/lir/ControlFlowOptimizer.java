@@ -43,10 +43,9 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
      * Performs control flow optimizations on the given LIR graph.
      */
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer(lir).deleteEmptyBlocks(codeEmittingOrder);
+        new Optimizer(lir).deleteEmptyBlocks(lir.codeEmittingOrder());
     }
 
     private static final class Optimizer {
@@ -93,10 +92,10 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             }
         }
 
-        private void deleteEmptyBlocks(List<? extends AbstractBlockBase<?>> blocks) {
+        private void deleteEmptyBlocks(AbstractBlockBase<?>[] blocks) {
             assert verifyBlocks(lir, blocks);
-            for (int i = 0; i < blocks.size(); i++) {
-                AbstractBlockBase<?> block = blocks.get(i);
+            for (int i = 0; i < blocks.length; i++) {
+                AbstractBlockBase<?> block = blocks[i];
                 if (canDeleteBlock(block)) {
 
                     block.delete();
@@ -107,7 +106,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     }
 
                     BLOCKS_DELETED.increment();
-                    blocks.set(i, null);
+                    blocks[i] = null;
                 }
             }
             assert verifyBlocks(lir, blocks);

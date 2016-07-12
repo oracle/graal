@@ -25,8 +25,6 @@ package com.oracle.graal.compiler.common.alloc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Iterator;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -41,12 +39,12 @@ public final class TraceBuilderResult {
     private final ArrayList<Trace> traces;
     private final int[] blockToTrace;
 
-    static TraceBuilderResult create(List<? extends AbstractBlockBase<?>> blocks, ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
+    static TraceBuilderResult create(AbstractBlockBase<?>[] blocks, ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
         connect(traces, blockToTrace);
         ArrayList<Trace> newTraces = reorderTraces(traces, blockToTrace, pred);
         TraceBuilderResult traceBuilderResult = new TraceBuilderResult(newTraces, blockToTrace);
         traceBuilderResult.numberTraces();
-        assert verify(traceBuilderResult, blocks.size());
+        assert verify(traceBuilderResult, blocks.length);
         return traceBuilderResult;
     }
 
@@ -71,25 +69,21 @@ public final class TraceBuilderResult {
     }
 
     public boolean incomingEdges(Trace trace) {
-        int traceNr = trace.getId();
-        Iterator<AbstractBlockBase<?>> traceIt = getTraces().get(traceNr).getBlocks().iterator();
-        return incomingEdges(traceNr, traceIt);
+        return incomingEdges(trace.getId(), trace.getBlocks(), 0);
     }
 
     public boolean incomingSideEdges(Trace trace) {
-        int traceNr = trace.getId();
-        Iterator<AbstractBlockBase<?>> traceIt = getTraces().get(traceNr).getBlocks().iterator();
-        if (!traceIt.hasNext()) {
+        AbstractBlockBase<?>[] traceArr = trace.getBlocks();
+        if (traceArr.length <= 0) {
             return false;
         }
-        traceIt.next();
-        return incomingEdges(traceNr, traceIt);
+        return incomingEdges(trace.getId(), traceArr, 1);
     }
 
-    private boolean incomingEdges(int traceNr, Iterator<AbstractBlockBase<?>> trace) {
+    private boolean incomingEdges(int traceNr, AbstractBlockBase<?>[] trace, int index) {
         /* TODO (je): not efficient. find better solution. */
-        while (trace.hasNext()) {
-            AbstractBlockBase<?> block = trace.next();
+        for (int i = index; i < trace.length; i++) {
+            AbstractBlockBase<?> block = trace[1];
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 if (getTraceForBlock(pred).getId() != traceNr) {
                     return true;
@@ -204,7 +198,7 @@ public final class TraceBuilderResult {
     }
 
     private static int getTraceIndex(Trace trace, int[] blockToTrace) {
-        return blockToTrace[trace.getBlocks().get(0).getId()];
+        return blockToTrace[trace.getBlocks()[0].getId()];
     }
 
 }

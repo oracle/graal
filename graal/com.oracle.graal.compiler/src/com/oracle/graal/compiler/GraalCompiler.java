@@ -273,8 +273,8 @@ public class GraalCompiler {
             assert startBlock.getPredecessorCount() == 0;
 
             LIR lir = null;
-            List<Block> codeEmittingOrder = null;
-            List<Block> linearScanOrder = null;
+            AbstractBlockBase<?>[] codeEmittingOrder = null;
+            AbstractBlockBase<?>[] linearScanOrder = null;
             try (Scope s = Debug.scope("ComputeLinearScanOrder", lir)) {
                 codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
                 linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
@@ -292,11 +292,11 @@ public class GraalCompiler {
 
             // LIR generation
             LIRGenerationContext context = new LIRGenerationContext(lirGen, nodeLirGen, graph, schedule);
-            LIR_GENERATION_PHASE.apply(backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            LIR_GENERATION_PHASE.apply(backend.getTarget(), lirGenRes, context);
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
                 Debug.dump(Debug.BASIC_LOG_LEVEL, lir, "After LIR generation");
-                LIRGenerationResult result = emitLowLevel(backend.getTarget(), codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
+                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
                 Debug.dump(Debug.BASIC_LOG_LEVEL, lir, "Before code generation");
                 return result;
             } catch (Throwable e) {
@@ -318,16 +318,16 @@ public class GraalCompiler {
         return method.format("%H.%n(%p)");
     }
 
-    public static LIRGenerationResult emitLowLevel(TargetDescription target, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen, LIRSuites lirSuites, RegisterAllocationConfig registerAllocationConfig) {
+    public static LIRGenerationResult emitLowLevel(TargetDescription target, LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen, LIRSuites lirSuites,
+                    RegisterAllocationConfig registerAllocationConfig) {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
-        lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
+        lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, preAllocOptContext);
 
         AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory(), registerAllocationConfig);
-        lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
+        lirSuites.getAllocationStage().apply(target, lirGenRes, allocContext);
 
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen);
-        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
+        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, postAllocOptContext);
 
         return lirGenRes;
     }

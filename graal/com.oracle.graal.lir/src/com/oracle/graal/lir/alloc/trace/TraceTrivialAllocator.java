@@ -52,11 +52,11 @@ import jdk.vm.ci.meta.Value;
 final class TraceTrivialAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
         LIR lir = lirGenRes.getLIR();
         TraceBuilderResult resultTraces = context.resultTraces;
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
-        AbstractBlockBase<?> block = trace.getBlocks().get(0);
+        AbstractBlockBase<?> block = trace.getBlocks()[0];
 
         AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
 

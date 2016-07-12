@@ -41,7 +41,7 @@ import com.oracle.graal.debug.Indent;
  */
 public final class BiDirectionalTraceBuilder {
 
-    public static TraceBuilderResult computeTraces(AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks, TrivialTracePredicate pred) {
+    public static TraceBuilderResult computeTraces(AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] blocks, TrivialTracePredicate pred) {
         return new BiDirectionalTraceBuilder(blocks).build(startBlock, blocks, pred);
     }
 
@@ -49,14 +49,14 @@ public final class BiDirectionalTraceBuilder {
     private final BitSet processed;
     private final int[] blockToTrace;
 
-    private BiDirectionalTraceBuilder(List<? extends AbstractBlockBase<?>> blocks) {
-        processed = new BitSet(blocks.size());
+    private BiDirectionalTraceBuilder(AbstractBlockBase<?>[] blocks) {
+        processed = new BitSet(blocks.length);
         worklist = createQueue(blocks);
-        blockToTrace = new int[blocks.size()];
+        blockToTrace = new int[blocks.length];
     }
 
-    private static Deque<AbstractBlockBase<?>> createQueue(List<? extends AbstractBlockBase<?>> blocks) {
-        ArrayList<AbstractBlockBase<?>> queue = new ArrayList<>(blocks);
+    private static Deque<AbstractBlockBase<?>> createQueue(AbstractBlockBase<?>[] blocks) {
+        List<AbstractBlockBase<?>> queue = Arrays.asList(blocks);
         queue.sort(BiDirectionalTraceBuilder::compare);
         return new ArrayDeque<>(queue);
     }
@@ -70,10 +70,10 @@ public final class BiDirectionalTraceBuilder {
     }
 
     @SuppressWarnings("try")
-    private TraceBuilderResult build(AbstractBlockBase<?> startBlock, List<? extends AbstractBlockBase<?>> blocks, TrivialTracePredicate pred) {
+    private TraceBuilderResult build(AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] blocks, TrivialTracePredicate pred) {
         try (Indent indent = Debug.logAndIndent("BiDirectionalTraceBuilder: start trace building")) {
             ArrayList<Trace> traces = buildTraces();
-            assert traces.get(0).getBlocks().get(0).equals(startBlock) : "The first traces always contains the start block";
+            assert traces.get(0).getBlocks()[0].equals(startBlock) : "The first traces always contains the start block";
             return TraceBuilderResult.create(blocks, traces, blockToTrace, pred);
         }
     }

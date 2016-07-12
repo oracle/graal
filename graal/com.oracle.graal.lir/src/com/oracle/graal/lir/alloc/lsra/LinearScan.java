@@ -132,7 +132,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final List<? extends AbstractBlockBase<?>> sortedBlocks;
+    private final AbstractBlockBase<?>[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -179,7 +179,7 @@ public class LinearScan {
     private int numVariables;
     private final boolean neverSpillConstants;
 
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks,
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
@@ -363,11 +363,11 @@ public class LinearScan {
 
     // access to block list (sorted in linear scan order)
     public int blockCount() {
-        return sortedBlocks.size();
+        return sortedBlocks.length;
     }
 
     public AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks.get(index);
+        return sortedBlocks[index];
     }
 
     /**
@@ -651,8 +651,7 @@ public class LinearScan {
     }
 
     @SuppressWarnings("try")
-    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -660,17 +659,17 @@ public class LinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             AllocationContext context = new AllocationContext(spillMoveFactory, registerAllocationConfig);
 
-            createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            createLifetimeAnalysisPhase().apply(target, lirGenRes, context);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals)) {
                 sortIntervalsBeforeAllocation();
 
-                createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                createRegisterAllocationPhase().apply(target, lirGenRes, context);
 
                 if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
-                    createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                    createOptimizeSpillPositionPhase().apply(target, lirGenRes, context);
                 }
-                createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                createResolveDataFlowPhase().apply(target, lirGenRes, context);
 
                 sortIntervalsAfterAllocation();
 
@@ -678,8 +677,8 @@ public class LinearScan {
                     verify();
                 }
                 beforeSpillMoveElimination();
-                createSpillMoveEliminationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-                createAssignLocationsPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
+                createAssignLocationsPhase().apply(target, lirGenRes, context);
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();
@@ -913,7 +912,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public List<? extends AbstractBlockBase<?>> sortedBlocks() {
+    public AbstractBlockBase<?>[] sortedBlocks() {
         return sortedBlocks;
     }
 
