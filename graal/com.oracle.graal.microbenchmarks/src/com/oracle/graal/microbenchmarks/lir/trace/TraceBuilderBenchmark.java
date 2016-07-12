@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.microbenchmarks.lir.trace;
 
-import java.util.Arrays;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Warmup;
@@ -46,12 +44,12 @@ public class TraceBuilderBenchmark extends GraalBenchmark {
 
     @Benchmark
     public TraceBuilderResult uniDirectionalTraceBuilder(State s) {
-        return UniDirectionalTraceBuilder.computeTraces(s.cfg.getStartBlock(), Arrays.asList(s.cfg.getBlocks()), TraceBuilderPhase.getTrivialTracePredicate(s.getLIR()));
+        return UniDirectionalTraceBuilder.computeTraces(s.cfg.getStartBlock(), s.cfg.getBlocks(), TraceBuilderPhase.getTrivialTracePredicate(s.getLIR()));
     }
 
     @Benchmark
     public TraceBuilderResult biDirectionalTraceBuilder(State s) {
-        return BiDirectionalTraceBuilder.computeTraces(s.cfg.getStartBlock(), Arrays.asList(s.cfg.getBlocks()), TraceBuilderPhase.getTrivialTracePredicate(s.getLIR()));
+        return BiDirectionalTraceBuilder.computeTraces(s.cfg.getStartBlock(), s.cfg.getBlocks(), TraceBuilderPhase.getTrivialTracePredicate(s.getLIR()));
     }
 
 }

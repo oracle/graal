@@ -27,8 +27,6 @@ import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.domi
 import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
-import java.util.List;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
@@ -55,8 +53,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         optimizeSpillPosition();
         allocator.printIntervals("After optimize spill position");
     }
@@ -64,7 +61,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     @SuppressWarnings("try")
     private void optimizeSpillPosition() {
         try (Indent indent0 = Debug.logAndIndent("OptimizeSpillPositions")) {
-            LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.getLIR().linearScanOrder().size()];
+            LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.getLIR().linearScanOrder().length];
             for (Interval interval : allocator.intervals()) {
                 optimizeInterval(insertionBuffers, interval);
             }
@@ -196,8 +193,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
         public AbstractBlockBase<?> next() {
             AbstractBlockBase<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
-            if (nextBlockIndex < allocator.sortedBlocks().size()) {
-                block = allocator.sortedBlocks().get(nextBlockIndex);
+            if (nextBlockIndex < allocator.sortedBlocks().length) {
+                block = allocator.sortedBlocks()[nextBlockIndex];
                 if (range.to <= allocator.getFirstLirInstructionId(block)) {
                     range = range.next;
                     if (range == Range.EndMarker) {

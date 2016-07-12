@@ -40,9 +40,11 @@ import com.oracle.graal.lir.asm.ArrayDataPointerConstant;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
@@ -66,10 +68,18 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value xmm5Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value xmm6Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value xmm7Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm8Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value xmm9Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr1Temp = Value.ILLEGAL;
     @Temp({REG, ILLEGAL}) protected Value gpr2Temp = Value.ILLEGAL;
-    @Temp({REG, ILLEGAL}) protected Value gpr3Temp = Value.ILLEGAL;
+    @Temp protected AllocatableValue rcxTemp;
     @Temp({REG, ILLEGAL}) protected Value gpr4Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr5Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr6Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr7Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr8Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr9Temp = Value.ILLEGAL;
+    @Temp({REG, ILLEGAL}) protected Value gpr10Temp = Value.ILLEGAL;
     @Temp({STACK, ILLEGAL}) protected Value stackTemp = Value.ILLEGAL;
 
     public AMD64MathIntrinsicOp(LIRGeneratorTool tool, IntrinsicOpcode opcode, Value result, Value input, Value stackTemp) {
@@ -77,7 +87,12 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
-        if (opcode == IntrinsicOpcode.LOG || opcode == IntrinsicOpcode.LOG10) {
+        if (opcode == IntrinsicOpcode.LOG || opcode == IntrinsicOpcode.LOG10 ||
+                        opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
+            this.gpr1Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            this.gpr2Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            this.rcxTemp = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.QWORD));
+            this.gpr4Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.xmm1Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm2Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm3Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
@@ -85,10 +100,17 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             this.xmm5Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm6Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm7Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
-            this.gpr1Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr2Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr3Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
-            this.gpr4Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+
+            if (opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
+                this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr6Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr7Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr8Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr9Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr10Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.xmm8Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+                this.xmm9Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            }
         }
         this.stackTemp = stackTemp;
     }
@@ -107,13 +129,13 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                 log10Intrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
                 break;
             case SIN:
-                masm.fsin(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
+                sinIntrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
                 break;
             case COS:
-                masm.fcos(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
+                cosIntrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
                 break;
             case TAN:
-                masm.ftan(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
+                tanIntrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -276,7 +298,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
 
         Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
@@ -630,7 +652,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
         Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
-        Register gpr3 = asRegister(gpr3Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
         Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
 
         Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
@@ -830,5 +852,2553 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.divsd(dest, temp1);
 
         masm.bind(bb8);
+    }
+
+    /*
+     * Copyright (c) 2014, 2016, Intel Corporation. All rights reserved. Intel Math Library (LIBM)
+     * Source Code
+     *
+     * ALGORITHM DESCRIPTION - SIN() ---------------------
+     *
+     * 1. RANGE REDUCTION
+     *
+     * We perform an initial range reduction from X to r with
+     *
+     * X =~= N * pi/32 + r
+     *
+     * so that |r| <= pi/64 + epsilon. We restrict inputs to those where |N| <= 932560. Beyond this,
+     * the range reduction is insufficiently accurate. For extremely small inputs, denormalization
+     * can occur internally, impacting performance. This means that the main path is actually only
+     * taken for 2^-252 <= |X| < 90112.
+     *
+     * To avoid branches, we perform the range reduction to full accuracy each time.
+     *
+     * X - N * (P_1 + P_2 + P_3)
+     *
+     * where P_1 and P_2 are 32-bit numbers (so multiplication by N is exact) and P_3 is a 53-bit
+     * number. Together, these approximate pi well enough for all cases in the restricted range.
+     *
+     * The main reduction sequence is:
+     *
+     * y = 32/pi * x N = integer(y) (computed by adding and subtracting off SHIFTER)
+     *
+     * m_1 = N * P_1 m_2 = N * P_2 r_1 = x - m_1 r = r_1 - m_2 (this r can be used for most of the
+     * calculation)
+     *
+     * c_1 = r_1 - r m_3 = N * P_3 c_2 = c_1 - m_2 c = c_2 - m_3
+     *
+     * 2. MAIN ALGORITHM
+     *
+     * The algorithm uses a table lookup based on B = M * pi / 32 where M = N mod 64. The stored
+     * values are: sigma closest power of 2 to cos(B) C_hl 53-bit cos(B) - sigma S_hi + S_lo 2 *
+     * 53-bit sin(B)
+     *
+     * The computation is organized as follows:
+     *
+     * sin(B + r + c) = [sin(B) + sigma * r] + r * (cos(B) - sigma) + sin(B) * [cos(r + c) - 1] +
+     * cos(B) * [sin(r + c) - r]
+     *
+     * which is approximately:
+     *
+     * [S_hi + sigma * r] + C_hl * r + S_lo + S_hi * [(cos(r) - 1) - r * c] + (C_hl + sigma) *
+     * [(sin(r) - r) + c]
+     *
+     * and this is what is actually computed. We separate this sum into four parts:
+     *
+     * hi + med + pols + corr
+     *
+     * where
+     *
+     * hi = S_hi + sigma r med = C_hl * r pols = S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r)
+     * corr = S_lo + c * ((C_hl + sigma) - S_hi * r)
+     *
+     * 3. POLYNOMIAL
+     *
+     * The polynomial S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r) can be rearranged freely,
+     * since it is quite small, so we exploit parallelism to the fullest.
+     *
+     * psc4 = SC_4 * r_1 msc4 = psc4 * r r2 = r * r msc2 = SC_2 * r2 r4 = r2 * r2 psc3 = SC_3 + msc4
+     * psc1 = SC_1 + msc2 msc3 = r4 * psc3 sincospols = psc1 + msc3 pols = sincospols * <S_hi * r^2
+     * | (C_hl + sigma) * r^3>
+     *
+     * 4. CORRECTION TERM
+     *
+     * This is where the "c" component of the range reduction is taken into account; recall that
+     * just "r" is used for most of the calculation.
+     *
+     * -c = m_3 - c_2 -d = S_hi * r - (C_hl + sigma) corr = -c * -d + S_lo
+     *
+     * 5. COMPENSATED SUMMATIONS
+     *
+     * The two successive compensated summations add up the high and medium parts, leaving just the
+     * low parts to add up at the end.
+     *
+     * rs = sigma * r res_int = S_hi + rs k_0 = S_hi - res_int k_2 = k_0 + rs med = C_hl * r res_hi
+     * = res_int + med k_1 = res_int - res_hi k_3 = k_1 + med
+     *
+     * 6. FINAL SUMMATION
+     *
+     * We now add up all the small parts:
+     *
+     * res_lo = pols(hi) + pols(lo) + corr + k_1 + k_3
+     *
+     * Now the overall result is just:
+     *
+     * res_hi + res_lo
+     *
+     * 7. SMALL ARGUMENTS
+     *
+     * If |x| < SNN (SNN meaning the smallest normal number), we simply perform 0.1111111 cdots 1111
+     * * x. For SNN <= |x|, we do 2^-55 * (2^55 * x - x).
+     *
+     * Special cases: sin(NaN) = quiet NaN, and raise invalid exception sin(INF) = NaN and raise
+     * invalid exception sin(+/-0) = +/-0
+     *
+     */
+
+    public int[] oneHalf = {
+                    0x00000000, 0x3fe00000, 0x00000000, 0x3fe00000
+    };
+
+    public int[] pTwo = {
+                    0x1a600000, 0x3d90b461, 0x1a600000, 0x3d90b461
+    };
+
+    public int[] scFour = {
+                    0xa556c734, 0x3ec71de3, 0x1a01a01a, 0x3efa01a0
+    };
+
+    public int[] cTable = {
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x3ff00000, 0x176d6d31, 0xbf73b92e,
+                    0xbc29b42c, 0x3fb917a6, 0xe0000000, 0xbc3e2718, 0x00000000,
+                    0x3ff00000, 0x011469fb, 0xbf93ad06, 0x3c69a60b, 0x3fc8f8b8,
+                    0xc0000000, 0xbc626d19, 0x00000000, 0x3ff00000, 0x939d225a,
+                    0xbfa60bea, 0x2ed59f06, 0x3fd29406, 0xa0000000, 0xbc75d28d,
+                    0x00000000, 0x3ff00000, 0x866b95cf, 0xbfb37ca1, 0xa6aea963,
+                    0x3fd87de2, 0xe0000000, 0xbc672ced, 0x00000000, 0x3ff00000,
+                    0x73fa1279, 0xbfbe3a68, 0x3806f63b, 0x3fde2b5d, 0x20000000,
+                    0x3c5e0d89, 0x00000000, 0x3ff00000, 0x5bc57974, 0xbfc59267,
+                    0x39ae68c8, 0x3fe1c73b, 0x20000000, 0x3c8b25dd, 0x00000000,
+                    0x3ff00000, 0x53aba2fd, 0xbfcd0dfe, 0x25091dd6, 0x3fe44cf3,
+                    0x20000000, 0x3c68076a, 0x00000000, 0x3ff00000, 0x99fcef32,
+                    0x3fca8279, 0x667f3bcd, 0x3fe6a09e, 0x20000000, 0xbc8bdd34,
+                    0x00000000, 0x3fe00000, 0x94247758, 0x3fc133cc, 0x6b151741,
+                    0x3fe8bc80, 0x20000000, 0xbc82c5e1, 0x00000000, 0x3fe00000,
+                    0x9ae68c87, 0x3fac73b3, 0x290ea1a3, 0x3fea9b66, 0xe0000000,
+                    0x3c39f630, 0x00000000, 0x3fe00000, 0x7f909c4e, 0xbf9d4a2c,
+                    0xf180bdb1, 0x3fec38b2, 0x80000000, 0xbc76e0b1, 0x00000000,
+                    0x3fe00000, 0x65455a75, 0xbfbe0875, 0xcf328d46, 0x3fed906b,
+                    0x20000000, 0x3c7457e6, 0x00000000, 0x3fe00000, 0x76acf82d,
+                    0x3fa4a031, 0x56c62dda, 0x3fee9f41, 0xe0000000, 0x3c8760b1,
+                    0x00000000, 0x3fd00000, 0x0e5967d5, 0xbfac1d1f, 0xcff75cb0,
+                    0x3fef6297, 0x20000000, 0x3c756217, 0x00000000, 0x3fd00000,
+                    0x0f592f50, 0xbf9ba165, 0xa3d12526, 0x3fefd88d, 0x40000000,
+                    0xbc887df6, 0x00000000, 0x3fc00000, 0x00000000, 0x00000000,
+                    0x00000000, 0x3ff00000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x0f592f50, 0x3f9ba165, 0xa3d12526, 0x3fefd88d,
+                    0x40000000, 0xbc887df6, 0x00000000, 0xbfc00000, 0x0e5967d5,
+                    0x3fac1d1f, 0xcff75cb0, 0x3fef6297, 0x20000000, 0x3c756217,
+                    0x00000000, 0xbfd00000, 0x76acf82d, 0xbfa4a031, 0x56c62dda,
+                    0x3fee9f41, 0xe0000000, 0x3c8760b1, 0x00000000, 0xbfd00000,
+                    0x65455a75, 0x3fbe0875, 0xcf328d46, 0x3fed906b, 0x20000000,
+                    0x3c7457e6, 0x00000000, 0xbfe00000, 0x7f909c4e, 0x3f9d4a2c,
+                    0xf180bdb1, 0x3fec38b2, 0x80000000, 0xbc76e0b1, 0x00000000,
+                    0xbfe00000, 0x9ae68c87, 0xbfac73b3, 0x290ea1a3, 0x3fea9b66,
+                    0xe0000000, 0x3c39f630, 0x00000000, 0xbfe00000, 0x94247758,
+                    0xbfc133cc, 0x6b151741, 0x3fe8bc80, 0x20000000, 0xbc82c5e1,
+                    0x00000000, 0xbfe00000, 0x99fcef32, 0xbfca8279, 0x667f3bcd,
+                    0x3fe6a09e, 0x20000000, 0xbc8bdd34, 0x00000000, 0xbfe00000,
+                    0x53aba2fd, 0x3fcd0dfe, 0x25091dd6, 0x3fe44cf3, 0x20000000,
+                    0x3c68076a, 0x00000000, 0xbff00000, 0x5bc57974, 0x3fc59267,
+                    0x39ae68c8, 0x3fe1c73b, 0x20000000, 0x3c8b25dd, 0x00000000,
+                    0xbff00000, 0x73fa1279, 0x3fbe3a68, 0x3806f63b, 0x3fde2b5d,
+                    0x20000000, 0x3c5e0d89, 0x00000000, 0xbff00000, 0x866b95cf,
+                    0x3fb37ca1, 0xa6aea963, 0x3fd87de2, 0xe0000000, 0xbc672ced,
+                    0x00000000, 0xbff00000, 0x939d225a, 0x3fa60bea, 0x2ed59f06,
+                    0x3fd29406, 0xa0000000, 0xbc75d28d, 0x00000000, 0xbff00000,
+                    0x011469fb, 0x3f93ad06, 0x3c69a60b, 0x3fc8f8b8, 0xc0000000,
+                    0xbc626d19, 0x00000000, 0xbff00000, 0x176d6d31, 0x3f73b92e,
+                    0xbc29b42c, 0x3fb917a6, 0xe0000000, 0xbc3e2718, 0x00000000,
+                    0xbff00000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0xbff00000, 0x176d6d31,
+                    0x3f73b92e, 0xbc29b42c, 0xbfb917a6, 0xe0000000, 0x3c3e2718,
+                    0x00000000, 0xbff00000, 0x011469fb, 0x3f93ad06, 0x3c69a60b,
+                    0xbfc8f8b8, 0xc0000000, 0x3c626d19, 0x00000000, 0xbff00000,
+                    0x939d225a, 0x3fa60bea, 0x2ed59f06, 0xbfd29406, 0xa0000000,
+                    0x3c75d28d, 0x00000000, 0xbff00000, 0x866b95cf, 0x3fb37ca1,
+                    0xa6aea963, 0xbfd87de2, 0xe0000000, 0x3c672ced, 0x00000000,
+                    0xbff00000, 0x73fa1279, 0x3fbe3a68, 0x3806f63b, 0xbfde2b5d,
+                    0x20000000, 0xbc5e0d89, 0x00000000, 0xbff00000, 0x5bc57974,
+                    0x3fc59267, 0x39ae68c8, 0xbfe1c73b, 0x20000000, 0xbc8b25dd,
+                    0x00000000, 0xbff00000, 0x53aba2fd, 0x3fcd0dfe, 0x25091dd6,
+                    0xbfe44cf3, 0x20000000, 0xbc68076a, 0x00000000, 0xbff00000,
+                    0x99fcef32, 0xbfca8279, 0x667f3bcd, 0xbfe6a09e, 0x20000000,
+                    0x3c8bdd34, 0x00000000, 0xbfe00000, 0x94247758, 0xbfc133cc,
+                    0x6b151741, 0xbfe8bc80, 0x20000000, 0x3c82c5e1, 0x00000000,
+                    0xbfe00000, 0x9ae68c87, 0xbfac73b3, 0x290ea1a3, 0xbfea9b66,
+                    0xe0000000, 0xbc39f630, 0x00000000, 0xbfe00000, 0x7f909c4e,
+                    0x3f9d4a2c, 0xf180bdb1, 0xbfec38b2, 0x80000000, 0x3c76e0b1,
+                    0x00000000, 0xbfe00000, 0x65455a75, 0x3fbe0875, 0xcf328d46,
+                    0xbfed906b, 0x20000000, 0xbc7457e6, 0x00000000, 0xbfe00000,
+                    0x76acf82d, 0xbfa4a031, 0x56c62dda, 0xbfee9f41, 0xe0000000,
+                    0xbc8760b1, 0x00000000, 0xbfd00000, 0x0e5967d5, 0x3fac1d1f,
+                    0xcff75cb0, 0xbfef6297, 0x20000000, 0xbc756217, 0x00000000,
+                    0xbfd00000, 0x0f592f50, 0x3f9ba165, 0xa3d12526, 0xbfefd88d,
+                    0x40000000, 0x3c887df6, 0x00000000, 0xbfc00000, 0x00000000,
+                    0x00000000, 0x00000000, 0xbff00000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x0f592f50, 0xbf9ba165, 0xa3d12526,
+                    0xbfefd88d, 0x40000000, 0x3c887df6, 0x00000000, 0x3fc00000,
+                    0x0e5967d5, 0xbfac1d1f, 0xcff75cb0, 0xbfef6297, 0x20000000,
+                    0xbc756217, 0x00000000, 0x3fd00000, 0x76acf82d, 0x3fa4a031,
+                    0x56c62dda, 0xbfee9f41, 0xe0000000, 0xbc8760b1, 0x00000000,
+                    0x3fd00000, 0x65455a75, 0xbfbe0875, 0xcf328d46, 0xbfed906b,
+                    0x20000000, 0xbc7457e6, 0x00000000, 0x3fe00000, 0x7f909c4e,
+                    0xbf9d4a2c, 0xf180bdb1, 0xbfec38b2, 0x80000000, 0x3c76e0b1,
+                    0x00000000, 0x3fe00000, 0x9ae68c87, 0x3fac73b3, 0x290ea1a3,
+                    0xbfea9b66, 0xe0000000, 0xbc39f630, 0x00000000, 0x3fe00000,
+                    0x94247758, 0x3fc133cc, 0x6b151741, 0xbfe8bc80, 0x20000000,
+                    0x3c82c5e1, 0x00000000, 0x3fe00000, 0x99fcef32, 0x3fca8279,
+                    0x667f3bcd, 0xbfe6a09e, 0x20000000, 0x3c8bdd34, 0x00000000,
+                    0x3fe00000, 0x53aba2fd, 0xbfcd0dfe, 0x25091dd6, 0xbfe44cf3,
+                    0x20000000, 0xbc68076a, 0x00000000, 0x3ff00000, 0x5bc57974,
+                    0xbfc59267, 0x39ae68c8, 0xbfe1c73b, 0x20000000, 0xbc8b25dd,
+                    0x00000000, 0x3ff00000, 0x73fa1279, 0xbfbe3a68, 0x3806f63b,
+                    0xbfde2b5d, 0x20000000, 0xbc5e0d89, 0x00000000, 0x3ff00000,
+                    0x866b95cf, 0xbfb37ca1, 0xa6aea963, 0xbfd87de2, 0xe0000000,
+                    0x3c672ced, 0x00000000, 0x3ff00000, 0x939d225a, 0xbfa60bea,
+                    0x2ed59f06, 0xbfd29406, 0xa0000000, 0x3c75d28d, 0x00000000,
+                    0x3ff00000, 0x011469fb, 0xbf93ad06, 0x3c69a60b, 0xbfc8f8b8,
+                    0xc0000000, 0x3c626d19, 0x00000000, 0x3ff00000, 0x176d6d31,
+                    0xbf73b92e, 0xbc29b42c, 0xbfb917a6, 0xe0000000, 0x3c3e2718,
+                    0x00000000, 0x3ff00000
+    };
+
+    public int[] scTwo = {
+                    0x11111111, 0x3f811111, 0x55555555, 0x3fa55555
+    };
+
+    public int[] scThree = {
+                    0x1a01a01a, 0xbf2a01a0, 0x16c16c17, 0xbf56c16c
+    };
+
+    public int[] scOne = {
+                    0x55555555, 0xbfc55555, 0x00000000, 0xbfe00000
+    };
+
+    public int[] piInvTable = {
+                    0x00000000, 0x00000000, 0xa2f9836e, 0x4e441529, 0xfc2757d1,
+                    0xf534ddc0, 0xdb629599, 0x3c439041, 0xfe5163ab, 0xdebbc561,
+                    0xb7246e3a, 0x424dd2e0, 0x06492eea, 0x09d1921c, 0xfe1deb1c,
+                    0xb129a73e, 0xe88235f5, 0x2ebb4484, 0xe99c7026, 0xb45f7e41,
+                    0x3991d639, 0x835339f4, 0x9c845f8b, 0xbdf9283b, 0x1ff897ff,
+                    0xde05980f, 0xef2f118b, 0x5a0a6d1f, 0x6d367ecf, 0x27cb09b7,
+                    0x4f463f66, 0x9e5fea2d, 0x7527bac7, 0xebe5f17b, 0x3d0739f7,
+                    0x8a5292ea, 0x6bfb5fb1, 0x1f8d5d08, 0x56033046, 0xfc7b6bab,
+                    0xf0cfbc21
+    };
+
+    public int[] piFour = {
+                    0x40000000, 0x3fe921fb, 0x18469899, 0x3e64442d
+    };
+
+    public int[] piThirtyTwoInv = {
+                    0x6dc9c883, 0x40245f30
+    };
+
+    public int[] shifter = {
+                    0x00000000, 0x43380000
+    };
+
+    public int[] signMask = {
+                    0x00000000, 0x80000000
+    };
+
+    public int[] pThree = {
+                    0x2e037073, 0x3b63198a
+    };
+
+    public int[] allOnes = {
+                    0xffffffff, 0x3fefffff
+    };
+
+    public int[] twoPowFiftyFive = {
+                    0x00000000, 0x43600000
+    };
+
+    public int[] twoPowFiftyFiveM = {
+                    0x00000000, 0x3c800000
+    };
+
+    public int[] pOne = {
+                    0x54400000, 0x3fb921fb
+    };
+
+    public void sinIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        ArrayDataPointerConstant oneHalfPtr = new ArrayDataPointerConstant(oneHalf, 16);
+        ArrayDataPointerConstant pTwoPtr = new ArrayDataPointerConstant(pTwo, 16);
+        ArrayDataPointerConstant scFourPtr = new ArrayDataPointerConstant(scFour, 16);
+        ArrayDataPointerConstant cTablePtr = new ArrayDataPointerConstant(cTable, 16);
+        ArrayDataPointerConstant scTwoPtr = new ArrayDataPointerConstant(scTwo, 16);
+        ArrayDataPointerConstant scThreePtr = new ArrayDataPointerConstant(scThree, 16);
+        ArrayDataPointerConstant scOnePtr = new ArrayDataPointerConstant(scOne, 16);
+        ArrayDataPointerConstant piInvTablePtr = new ArrayDataPointerConstant(piInvTable, 16);
+        ArrayDataPointerConstant piFourPtr = new ArrayDataPointerConstant(piFour, 16);
+        ArrayDataPointerConstant piThirtyTwoInvPtr = new ArrayDataPointerConstant(piThirtyTwoInv, 8);
+        ArrayDataPointerConstant shifterPtr = new ArrayDataPointerConstant(shifter, 8);
+        ArrayDataPointerConstant signMaskPtr = new ArrayDataPointerConstant(signMask, 8);
+        ArrayDataPointerConstant pThreePtr = new ArrayDataPointerConstant(pThree, 8);
+        ArrayDataPointerConstant allOnesPtr = new ArrayDataPointerConstant(allOnes, 8);
+        ArrayDataPointerConstant twoPowFiftyFivePtr = new ArrayDataPointerConstant(twoPowFiftyFive, 8);
+        ArrayDataPointerConstant twoPowFiftyFiveMPtr = new ArrayDataPointerConstant(twoPowFiftyFiveM, 8);
+        ArrayDataPointerConstant pOnePtr = new ArrayDataPointerConstant(pOne, 8);
+
+        Label bb0 = new Label();
+        Label bb1 = new Label();
+        Label bb2 = new Label();
+        Label bb4 = new Label();
+        Label bb5 = new Label();
+        Label bb6 = new Label();
+        Label bb8 = new Label();
+        Label bb9 = new Label();
+        Label bb10 = new Label();
+        Label bb11 = new Label();
+        Label bb12 = new Label();
+        Label bb13 = new Label();
+        Label bb14 = new Label();
+        Label bb15 = new Label();
+
+        Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
+        Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
+        Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
+        Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
+        Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
+        Register gpr7 = asRegister(gpr7Temp, AMD64Kind.QWORD);
+        Register gpr8 = asRegister(gpr8Temp, AMD64Kind.QWORD);
+        Register gpr9 = asRegister(gpr9Temp, AMD64Kind.QWORD);
+        Register gpr10 = asRegister(gpr10Temp, AMD64Kind.QWORD);
+
+        Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
+        Register temp2 = asRegister(xmm2Temp, AMD64Kind.DOUBLE);
+        Register temp3 = asRegister(xmm3Temp, AMD64Kind.DOUBLE);
+        Register temp4 = asRegister(xmm4Temp, AMD64Kind.DOUBLE);
+        Register temp5 = asRegister(xmm5Temp, AMD64Kind.DOUBLE);
+        Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
+        Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
+        Register temp8 = asRegister(xmm8Temp, AMD64Kind.DOUBLE);
+        Register temp9 = asRegister(xmm9Temp, AMD64Kind.DOUBLE);
+
+        AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
+
+        masm.movsd(stackSlot, value);
+        if (dest.encoding != value.encoding) {
+            masm.movdqu(dest, value);
+        }
+
+        masm.leaq(gpr1, stackSlot);
+        masm.movl(gpr1, new AMD64Address(gpr1, 4));
+        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));   // 0x6dc9c883,
+                                                                                              // 0x40245f30
+        masm.movdq(temp2, (AMD64Address) crb.recordDataReferenceInCode(shifterPtr));          // 0x00000000,
+                                                                                              // 0x43380000
+
+        masm.andl(gpr1, 2147418112);
+        masm.subl(gpr1, 808452096);
+        masm.cmpl(gpr1, 281346048);
+        masm.jcc(ConditionFlag.Above, bb0);
+
+        masm.mulsd(temp1, dest);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));         // 0x00000000,
+                                                                                              // 0x3fe00000,
+                                                                                              // 0x00000000,
+                                                                                              // 0x3fe00000
+        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));         // 0x00000000,
+                                                                                              // 0x80000000
+        masm.pand(temp4, dest);
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.cvttsd2sil(gpr4, temp1);
+        masm.cvtsi2sdl(temp1, gpr4);
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));            // 0x1a600000,
+                                                                                              // 0x3d90b461,
+                                                                                              // 0x1a600000,
+                                                                                              // 0x3d90b461
+        masm.movq(gpr7, 0x3fb921fb54400000L);
+        masm.movdq(temp3, gpr7);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));          // 0xa556c734,
+                                                                                              // 0x3ec71de3,
+                                                                                              // 0x1a01a01a,
+                                                                                              // 0x3efa01a0
+        masm.pshufd(temp4, dest, 0x44);
+        masm.mulsd(temp3, temp1);
+        if (masm.supports(CPUFeature.SSE3)) {
+            masm.movddup(temp1, temp1);
+        } else {
+            masm.movlhps(temp1, temp1);
+        }
+        masm.andl(gpr4, 63);
+        masm.shll(gpr4, 5);
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.addq(gpr1, gpr4);
+        masm.movdqu(temp8, new AMD64Address(gpr1, 0));
+        masm.mulpd(temp6, temp1);
+        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));           // 0x2e037073,
+                                                                                              // 0x3b63198a
+        masm.subsd(temp4, temp3);
+        masm.subsd(dest, temp3);
+        if (masm.supports(CPUFeature.SSE3)) {
+            masm.movddup(temp3, temp4);
+        } else {
+            masm.movdqu(temp3, temp4);
+            masm.movlhps(temp3, temp3);
+        }
+        masm.subsd(temp4, temp6);
+        masm.pshufd(dest, dest, 0x44);
+        masm.pshufd(temp7, temp8, 0xE);
+        masm.movdqu(temp2, temp8);
+        masm.movdqu(temp9, temp7);
+        masm.mulpd(temp5, dest);
+        masm.subpd(dest, temp6);
+        masm.mulsd(temp7, temp4);
+        masm.subsd(temp3, temp4);
+        masm.mulpd(temp5, dest);
+        masm.mulpd(dest, dest);
+        masm.subsd(temp3, temp6);
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));           // 0x11111111,
+                                                                                              // 0x3f811111,
+                                                                                              // 0x55555555,
+                                                                                              // 0x3fa55555
+        masm.subsd(temp1, temp3);
+        masm.movdq(temp3, new AMD64Address(gpr1, 24));
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp7, temp2);
+        masm.mulsd(temp2, temp4);
+        masm.mulpd(temp6, dest);
+        masm.mulsd(temp3, temp4);
+        masm.mulpd(temp2, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));          // 0x1a01a01a,
+                                                                                              // 0xbf2a01a0,
+                                                                                              // 0x16c16c17,
+                                                                                              // 0xbf56c16c
+        masm.mulsd(temp4, temp8);
+        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));            // 0x55555555,
+                                                                                              // 0xbfc55555,
+                                                                                              // 0x00000000,
+                                                                                              // 0xbfe00000
+        masm.mulpd(temp5, dest);
+        masm.movdqu(dest, temp3);
+        masm.addsd(temp3, temp9);
+        masm.mulpd(temp1, temp7);
+        masm.movdqu(temp7, temp4);
+        masm.addsd(temp4, temp3);
+        masm.addpd(temp6, temp5);
+        masm.subsd(temp9, temp3);
+        masm.subsd(temp3, temp4);
+        masm.addsd(temp1, new AMD64Address(gpr1, 16));
+        masm.mulpd(temp6, temp2);
+        masm.addsd(temp9, dest);
+        masm.addsd(temp3, temp7);
+        masm.addsd(temp1, temp9);
+        masm.addsd(temp1, temp3);
+        masm.addsd(temp1, temp6);
+        masm.unpckhpd(temp6, temp6);
+        masm.movdqu(dest, temp4);
+        masm.addsd(temp1, temp6);
+        masm.addsd(dest, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb14);
+        masm.xorpd(temp1, temp1);
+        masm.xorpd(dest, dest);
+        masm.divsd(dest, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb0);
+        masm.jcc(ConditionFlag.Greater, bb1);
+
+        masm.shrl(gpr1, 20);
+        masm.cmpl(gpr1, 3325);
+        masm.jcc(ConditionFlag.NotEqual, bb2);
+
+        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(allOnesPtr));           // 0xffffffff,
+                                                                                              // 0x3fefffff
+        masm.jmp(bb15);
+
+        masm.bind(bb2);
+        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFivePtr));  // 0x00000000,
+                                                                                              // 0x43600000
+        masm.mulsd(temp3, dest);
+        masm.subsd(temp3, dest);
+        masm.mulsd(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFiveMPtr)); // 0x00000000,
+                                                                                              // 0x3c800000
+        masm.jmp(bb15);
+
+        masm.bind(bb1);
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
+        masm.subl(gpr3, 16224);
+        masm.shrl(gpr3, 7);
+        masm.andl(gpr3, 65532);
+        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.addq(gpr3, gpr10);
+        masm.movdq(gpr1, dest);
+        masm.movl(gpr9, new AMD64Address(gpr3, 20));
+        masm.movl(gpr7, new AMD64Address(gpr3, 24));
+        masm.movl(gpr4, gpr1);
+        masm.shrq(gpr1, 21);
+        masm.orl(gpr1, Integer.MIN_VALUE);
+        masm.shrl(gpr1, 11);
+        masm.movl(gpr8, gpr9);
+        masm.imulq(gpr9, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.imulq(gpr7, gpr1);
+        masm.movl(gpr5, new AMD64Address(gpr3, 16));
+        masm.movl(gpr6, new AMD64Address(gpr3, 12));
+        masm.movl(gpr10, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr8, gpr9);
+        masm.addq(gpr10, gpr7);
+        masm.movl(gpr7, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr8, gpr10);
+        masm.movl(gpr9, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr9, gpr1);
+        masm.movl(gpr10, gpr6);
+        masm.imulq(gpr6, gpr4);
+        masm.movl(gpr2, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr8, gpr2);
+        masm.movl(gpr2, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr9, gpr5);
+        masm.addq(gpr9, gpr8);
+        masm.shlq(gpr2, 32);
+        masm.orq(gpr7, gpr2);
+        masm.imulq(gpr10, gpr1);
+        masm.movl(gpr8, new AMD64Address(gpr3, 8));
+        masm.movl(gpr5, new AMD64Address(gpr3, 4));
+        masm.movl(gpr2, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr9, gpr2);
+        masm.movl(gpr2, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr10, gpr6);
+        masm.addq(gpr10, gpr9);
+        masm.movq(gpr6, gpr8);
+        masm.imulq(gpr8, gpr4);
+        masm.imulq(gpr6, gpr1);
+        masm.movl(gpr9, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr10, gpr9);
+        masm.movl(gpr9, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr6, gpr8);
+        masm.addq(gpr6, gpr10);
+        masm.movq(gpr8, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.shlq(gpr9, 32);
+        masm.orq(gpr9, gpr2);
+        masm.movl(gpr1, new AMD64Address(gpr3, 0));
+        masm.movl(gpr10, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr6, gpr10);
+        masm.movl(gpr10, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr8, gpr5);
+        masm.addq(gpr8, gpr6);
+        masm.imulq(gpr4, gpr1);
+        masm.pextrw(gpr2, dest, 3);
+        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.subq(gpr3, gpr6);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, 19);
+        masm.movl(gpr5, 32768);
+        masm.andl(gpr5, gpr2);
+        masm.shrl(gpr2, 4);
+        masm.andl(gpr2, 2047);
+        masm.subl(gpr2, 1023);
+        masm.subl(gpr3, gpr2);
+        masm.addq(gpr8, gpr4);
+        masm.movl(gpr4, gpr3);
+        masm.addl(gpr4, 32);
+        masm.cmpl(gpr3, 1);
+        masm.jcc(ConditionFlag.Less, bb4);
+
+        masm.negl(gpr3);
+        masm.addl(gpr3, 29);
+        masm.shll(gpr8);
+        masm.movl(gpr6, gpr8);
+        masm.andl(gpr8, 536870911);
+        masm.testl(gpr8, 268435456);
+        masm.jcc(ConditionFlag.NotEqual, bb5);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+
+        masm.bind(bb6);
+
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.Equal, bb8);
+
+        masm.bind(bb9);
+        masm.bsrq(gpr10, gpr8);
+        masm.movl(gpr3, 29);
+        masm.subl(gpr3, gpr10);
+        masm.jcc(ConditionFlag.LessEqual, bb10);
+
+        masm.shlq(gpr8);
+        masm.movq(gpr1, gpr9);
+        masm.shlq(gpr9);
+        masm.addl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shrq(gpr1);
+        masm.shrq(gpr7);
+        masm.orq(gpr8, gpr1);
+        masm.orq(gpr9, gpr7);
+
+        masm.bind(bb11);
+        masm.cvtsi2sdq(dest, gpr8);
+        masm.shrq(gpr9, 1);
+        masm.cvtsi2sdq(temp3, gpr9);
+        masm.xorpd(temp4, temp4);
+        masm.shll(gpr4, 4);
+        masm.negl(gpr4);
+        masm.addl(gpr4, 16368);
+        masm.orl(gpr4, gpr5);
+        masm.xorl(gpr4, gpr2);
+        masm.pinsrw(temp4, gpr4, 3);
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(piFourPtr));
+        masm.movdqu(temp2, new AMD64Address(gpr1, 0));                                        // 0x40000000,
+                                                                                              // 0x3fe921fb,
+                                                                                              // 0x18469899,
+                                                                                              // 0x3e64442d
+        masm.xorpd(temp5, temp5);
+        masm.subl(gpr4, 1008);
+        masm.pinsrw(temp5, gpr4, 3);
+        masm.mulsd(dest, temp4);
+        masm.shll(gpr5, 16);
+        masm.sarl(gpr5, 31);
+        masm.mulsd(temp3, temp5);
+        masm.movdqu(temp1, dest);
+        masm.pshufd(temp6, temp2, 0xE);
+        masm.mulsd(dest, temp2);
+        masm.shrl(gpr6, 29);
+        masm.addsd(temp1, temp3);
+        masm.mulsd(temp3, temp2);
+        masm.addl(gpr6, gpr5);
+        masm.xorl(gpr6, gpr5);
+        masm.mulsd(temp6, temp1);
+        masm.movl(gpr1, gpr6);
+        masm.addsd(temp6, temp3);
+        masm.movdqu(temp2, dest);
+        masm.addsd(dest, temp6);
+        masm.subsd(temp2, dest);
+        masm.addsd(temp6, temp2);
+
+        masm.bind(bb12);
+        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));   // 0x6dc9c883,
+                                                                                              // 0x40245f30
+        masm.mulsd(temp1, dest);
+        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));          // 0x00000000,
+                                                                                              // 0x3fe00000,
+                                                                                              // 0x00000000,
+                                                                                              // 0x3fe00000
+        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));         // 0x00000000,
+                                                                                              // 0x80000000
+        masm.pand(temp4, dest);
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.cvttsd2sil(gpr4, temp1);
+        masm.cvtsi2sdl(temp1, gpr4);
+        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));             // 0x54400000,
+                                                                                              // 0x3fb921fb
+        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));            // 0x1a600000,
+                                                                                              // 0x3d90b461,
+                                                                                              // 0x1a600000,
+                                                                                              // 0x3d90b461
+        masm.mulsd(temp3, temp1);
+        masm.unpcklpd(temp1, temp1);
+        masm.shll(gpr1, 3);
+        masm.addl(gpr4, 1865216);
+        masm.movdqu(temp4, dest);
+        masm.addl(gpr4, gpr1);
+        masm.andl(gpr4, 63);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));          // 0x54400000,
+                                                                                              // 0x3fb921fb
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.shll(gpr4, 5);
+        masm.addq(gpr1, gpr4);
+        masm.movdqu(temp8, new AMD64Address(gpr1, 0));
+        masm.mulpd(temp2, temp1);
+        masm.subsd(dest, temp3);
+        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));           // 0x2e037073,
+                                                                                              // 0x3b63198a
+        masm.subsd(temp4, temp3);
+        masm.unpcklpd(dest, dest);
+        masm.movdqu(temp3, temp4);
+        masm.subsd(temp4, temp2);
+        masm.mulpd(temp5, dest);
+        masm.subpd(dest, temp2);
+        masm.pshufd(temp7, temp8, 0xE);
+        masm.movdqu(temp9, temp7);
+        masm.mulsd(temp7, temp4);
+        masm.subsd(temp3, temp4);
+        masm.mulpd(temp5, dest);
+        masm.mulpd(dest, dest);
+        masm.subsd(temp3, temp2);
+        masm.movdqu(temp2, temp8);
+        masm.subsd(temp1, temp3);
+        masm.movdq(temp3, new AMD64Address(gpr1, 24));
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp7, temp2);
+        masm.subsd(temp1, temp6);
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));           // 0x11111111,
+                                                                                              // 0x3f811111,
+                                                                                              // 0x55555555,
+                                                                                              // 0x3fa55555
+        masm.mulsd(temp2, temp4);
+        masm.mulpd(temp6, dest);
+        masm.mulsd(temp3, temp4);
+        masm.mulpd(temp2, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));          // 0x1a01a01a,
+                                                                                              // 0xbf2a01a0,
+                                                                                              // 0x16c16c17,
+                                                                                              // 0xbf56c16c
+        masm.mulsd(temp4, temp8);
+        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));            // 0x55555555,
+                                                                                              // 0xbfc55555,
+                                                                                              // 0x00000000,
+                                                                                              // 0xbfe00000
+        masm.mulpd(temp5, dest);
+        masm.movdqu(dest, temp3);
+        masm.addsd(temp3, temp9);
+        masm.mulpd(temp1, temp7);
+        masm.movdqu(temp7, temp4);
+        masm.addsd(temp4, temp3);
+        masm.addpd(temp6, temp5);
+        masm.subsd(temp9, temp3);
+        masm.subsd(temp3, temp4);
+        masm.addsd(temp1, new AMD64Address(gpr1, 16));
+        masm.mulpd(temp6, temp2);
+        masm.addsd(temp9, dest);
+        masm.addsd(temp3, temp7);
+        masm.addsd(temp1, temp9);
+        masm.addsd(temp1, temp3);
+        masm.addsd(temp1, temp6);
+        masm.unpckhpd(temp6, temp6);
+        masm.movdqu(dest, temp4);
+        masm.addsd(temp1, temp6);
+        masm.addsd(dest, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb8);
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.movl(gpr7, 0);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb9);
+
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb9);
+
+        masm.xorpd(dest, dest);
+        masm.xorpd(temp6, temp6);
+        masm.jmp(bb12);
+
+        masm.bind(bb10);
+        masm.jcc(ConditionFlag.Equal, bb11);
+
+        masm.negl(gpr3);
+        masm.shrq(gpr9);
+        masm.movq(gpr1, gpr8);
+        masm.shrq(gpr8);
+        masm.subl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shlq(gpr1);
+        masm.orq(gpr9, gpr1);
+        masm.jmp(bb11);
+
+        masm.bind(bb4);
+        masm.negl(gpr3);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr8);
+        masm.movq(gpr6, gpr8);
+        masm.testl(gpr8, Integer.MIN_VALUE);
+        masm.jcc(ConditionFlag.NotEqual, bb13);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shrq(gpr6, 3);
+        masm.jmp(bb6);
+
+        masm.bind(bb5);
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 536870912);
+        masm.shrl(gpr2);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr2, 32);
+        masm.addl(gpr6, 536870912);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.jmp(bb6);
+
+        masm.bind(bb13);
+        masm.shrl(gpr8);
+        masm.movq(gpr2, 0x100000000L);
+        masm.shrq(gpr2);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.shrq(gpr6, 3);
+        masm.addl(gpr6, 536870912);
+        masm.jmp(bb6);
+
+        masm.bind(bb15);
+    }
+
+    /*
+     * Copyright (c) 2014, 2016, Intel Corporation. All rights reserved. Intel Math Library (LIBM)
+     * Source Code
+     *
+     * ALGORITHM DESCRIPTION - COS() ---------------------
+     *
+     * 1. RANGE REDUCTION
+     *
+     * We perform an initial range reduction from X to r with
+     *
+     * X =~= N * pi/32 + r
+     *
+     * so that |r| <= pi/64 + epsilon. We restrict inputs to those where |N| <= 932560. Beyond this,
+     * the range reduction is insufficiently accurate. For extremely small inputs, denormalization
+     * can occur internally, impacting performance. This means that the main path is actually only
+     * taken for 2^-252 <= |X| < 90112.
+     *
+     * To avoid branches, we perform the range reduction to full accuracy each time.
+     *
+     * X - N * (P_1 + P_2 + P_3)
+     *
+     * where P_1 and P_2 are 32-bit numbers (so multiplication by N is exact) and P_3 is a 53-bit
+     * number. Together, these approximate pi well enough for all cases in the restricted range.
+     *
+     * The main reduction sequence is:
+     *
+     * y = 32/pi * x N = integer(y) (computed by adding and subtracting off SHIFTER)
+     *
+     * m_1 = N * P_1 m_2 = N * P_2 r_1 = x - m_1 r = r_1 - m_2 (this r can be used for most of the
+     * calculation)
+     *
+     * c_1 = r_1 - r m_3 = N * P_3 c_2 = c_1 - m_2 c = c_2 - m_3
+     *
+     * 2. MAIN ALGORITHM
+     *
+     * The algorithm uses a table lookup based on B = M * pi / 32 where M = N mod 64. The stored
+     * values are: sigma closest power of 2 to cos(B) C_hl 53-bit cos(B) - sigma S_hi + S_lo 2 *
+     * 53-bit sin(B)
+     *
+     * The computation is organized as follows:
+     *
+     * sin(B + r + c) = [sin(B) + sigma * r] + r * (cos(B) - sigma) + sin(B) * [cos(r + c) - 1] +
+     * cos(B) * [sin(r + c) - r]
+     *
+     * which is approximately:
+     *
+     * [S_hi + sigma * r] + C_hl * r + S_lo + S_hi * [(cos(r) - 1) - r * c] + (C_hl + sigma) *
+     * [(sin(r) - r) + c]
+     *
+     * and this is what is actually computed. We separate this sum into four parts:
+     *
+     * hi + med + pols + corr
+     *
+     * where
+     *
+     * hi = S_hi + sigma r med = C_hl * r pols = S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r)
+     * corr = S_lo + c * ((C_hl + sigma) - S_hi * r)
+     *
+     * 3. POLYNOMIAL
+     *
+     * The polynomial S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r) can be rearranged freely,
+     * since it is quite small, so we exploit parallelism to the fullest.
+     *
+     * psc4 = SC_4 * r_1 msc4 = psc4 * r r2 = r * r msc2 = SC_2 * r2 r4 = r2 * r2 psc3 = SC_3 + msc4
+     * psc1 = SC_1 + msc2 msc3 = r4 * psc3 sincospols = psc1 + msc3 pols = sincospols * <S_hi * r^2
+     * | (C_hl + sigma) * r^3>
+     *
+     * 4. CORRECTION TERM
+     *
+     * This is where the "c" component of the range reduction is taken into account; recall that
+     * just "r" is used for most of the calculation.
+     *
+     * -c = m_3 - c_2 -d = S_hi * r - (C_hl + sigma) corr = -c * -d + S_lo
+     *
+     * 5. COMPENSATED SUMMATIONS
+     *
+     * The two successive compensated summations add up the high and medium parts, leaving just the
+     * low parts to add up at the end.
+     *
+     * rs = sigma * r res_int = S_hi + rs k_0 = S_hi - res_int k_2 = k_0 + rs med = C_hl * r res_hi
+     * = res_int + med k_1 = res_int - res_hi k_3 = k_1 + med
+     *
+     * 6. FINAL SUMMATION
+     *
+     * We now add up all the small parts:
+     *
+     * res_lo = pols(hi) + pols(lo) + corr + k_1 + k_3
+     *
+     * Now the overall result is just:
+     *
+     * res_hi + res_lo
+     *
+     * 7. SMALL ARGUMENTS
+     *
+     * Inputs with |X| < 2^-252 are treated specially as 1 - |x|.
+     *
+     * Special cases: cos(NaN) = quiet NaN, and raise invalid exception cos(INF) = NaN and raise
+     * invalid exception cos(0) = 1
+     *
+     */
+
+    public int[] one = {
+                    0x00000000, 0x3ff00000
+    };
+
+    public void cosIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        ArrayDataPointerConstant oneHalfPtr = new ArrayDataPointerConstant(oneHalf, 16);
+        ArrayDataPointerConstant pTwoPtr = new ArrayDataPointerConstant(pTwo, 16);
+        ArrayDataPointerConstant scFourPtr = new ArrayDataPointerConstant(scFour, 16);
+        ArrayDataPointerConstant cTablePtr = new ArrayDataPointerConstant(cTable, 16);
+        ArrayDataPointerConstant scTwoPtr = new ArrayDataPointerConstant(scTwo, 16);
+        ArrayDataPointerConstant scThreePtr = new ArrayDataPointerConstant(scThree, 16);
+        ArrayDataPointerConstant scOnePtr = new ArrayDataPointerConstant(scOne, 16);
+        ArrayDataPointerConstant piInvTablePtr = new ArrayDataPointerConstant(piInvTable, 16);
+        ArrayDataPointerConstant piFourPtr = new ArrayDataPointerConstant(piFour, 16);
+        ArrayDataPointerConstant piThirtyTwoInvPtr = new ArrayDataPointerConstant(piThirtyTwoInv, 8);
+        ArrayDataPointerConstant signMaskPtr = new ArrayDataPointerConstant(signMask, 8);
+        ArrayDataPointerConstant pThreePtr = new ArrayDataPointerConstant(pThree, 8);
+        ArrayDataPointerConstant pOnePtr = new ArrayDataPointerConstant(pOne, 8);
+        ArrayDataPointerConstant onePtr = new ArrayDataPointerConstant(one, 8);
+
+        Label bb0 = new Label();
+        Label bb1 = new Label();
+        Label bb3 = new Label();
+        Label bb4 = new Label();
+        Label bb5 = new Label();
+        Label bb6 = new Label();
+        Label bb7 = new Label();
+        Label bb8 = new Label();
+        Label bb9 = new Label();
+        Label bb10 = new Label();
+        Label bb11 = new Label();
+        Label bb12 = new Label();
+        Label bb13 = new Label();
+        Label bb14 = new Label();
+
+        Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
+        Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
+        Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
+        Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
+        Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
+        Register gpr7 = asRegister(gpr7Temp, AMD64Kind.QWORD);
+        Register gpr8 = asRegister(gpr8Temp, AMD64Kind.QWORD);
+        Register gpr9 = asRegister(gpr9Temp, AMD64Kind.QWORD);
+        Register gpr10 = asRegister(gpr10Temp, AMD64Kind.QWORD);
+
+        Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
+        Register temp2 = asRegister(xmm2Temp, AMD64Kind.DOUBLE);
+        Register temp3 = asRegister(xmm3Temp, AMD64Kind.DOUBLE);
+        Register temp4 = asRegister(xmm4Temp, AMD64Kind.DOUBLE);
+        Register temp5 = asRegister(xmm5Temp, AMD64Kind.DOUBLE);
+        Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
+        Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
+        Register temp8 = asRegister(xmm8Temp, AMD64Kind.DOUBLE);
+        Register temp9 = asRegister(xmm9Temp, AMD64Kind.DOUBLE);
+
+        AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
+
+        masm.movdq(stackSlot, value);
+        if (dest.encoding != value.encoding) {
+            masm.movdqu(dest, value);
+        }
+
+        masm.leaq(gpr1, stackSlot);
+        masm.movl(gpr1, new AMD64Address(gpr1, 4));
+        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr)); // 0x6dc9c883,
+                                                                                            // 0x40245f30
+
+        masm.andl(gpr1, 2147418112);
+        masm.subl(gpr1, 808452096);
+        masm.cmpl(gpr1, 281346048);
+        masm.jcc(ConditionFlag.Above, bb0);
+
+        masm.mulsd(temp1, dest);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));       // 0x00000000,
+                                                                                            // 0x3fe00000,
+                                                                                            // 0x00000000,
+                                                                                            // 0x3fe00000
+        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));       // 0x00000000,
+                                                                                            // 0x80000000
+        masm.pand(temp4, dest);
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.cvttsd2sil(gpr4, temp1);
+        masm.cvtsi2sdl(temp1, gpr4);
+        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));          // 0x1a600000,
+                                                                                            // 0x3d90b461,
+                                                                                            // 0x1a600000,
+                                                                                            // 0x3d90b461
+        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));           // 0x54400000,
+                                                                                            // 0x3fb921fb
+        masm.mulsd(temp3, temp1);
+        masm.unpcklpd(temp1, temp1);
+        masm.addq(gpr4, 1865232);
+        masm.movdqu(temp4, dest);
+        masm.andq(gpr4, 63);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));        // 0xa556c734,
+                                                                                            // 0x3ec71de3,
+                                                                                            // 0x1a01a01a,
+                                                                                            // 0x3efa01a0
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.shlq(gpr4, 5);
+        masm.addq(gpr1, gpr4);
+        masm.movdqu(temp8, new AMD64Address(gpr1, 0));
+        masm.mulpd(temp2, temp1);
+        masm.subsd(dest, temp3);
+        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));         // 0x2e037073,
+                                                                                            // 0x3b63198a
+        masm.subsd(temp4, temp3);
+        masm.unpcklpd(dest, dest);
+        masm.movdqu(temp3, temp4);
+        masm.subsd(temp4, temp2);
+        masm.mulpd(temp5, dest);
+        masm.subpd(dest, temp2);
+        masm.pshufd(temp7, temp8, 0xE);
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));         // 0x11111111,
+                                                                                            // 0x3f811111,
+                                                                                            // 0x55555555,
+                                                                                            // 0x3fa55555
+        masm.mulsd(temp7, temp4);
+        masm.subsd(temp3, temp4);
+        masm.mulpd(temp5, dest);
+        masm.mulpd(dest, dest);
+        masm.subsd(temp3, temp2);
+        masm.movdqu(temp2, temp8);
+        masm.subsd(temp1, temp3);
+        masm.movdq(temp3, new AMD64Address(gpr1, 24));
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp7, temp2);
+        masm.mulsd(temp2, temp4);
+        masm.mulpd(temp6, dest);
+        masm.mulsd(temp3, temp4);
+        masm.mulpd(temp2, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));        // 0x1a01a01a,
+                                                                                            // 0xbf2a01a0,
+                                                                                            // 0x16c16c17,
+                                                                                            // 0xbf56c16c
+        masm.mulsd(temp4, temp8);
+        masm.pshufd(temp9, temp8, 0xE);
+        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));          // 0x55555555,
+                                                                                            // 0xbfc55555,
+                                                                                            // 0x00000000,
+                                                                                            // 0xbfe00000
+        masm.mulpd(temp5, dest);
+        masm.movdqu(dest, temp3);
+        masm.addsd(temp3, temp9);
+        masm.mulpd(temp1, temp7);
+        masm.movdqu(temp7, temp4);
+        masm.addsd(temp4, temp3);
+        masm.addpd(temp6, temp5);
+        masm.subsd(temp9, temp3);
+        masm.subsd(temp3, temp4);
+        masm.addsd(temp1, new AMD64Address(gpr1, 16));
+        masm.mulpd(temp6, temp2);
+        masm.addsd(dest, temp9);
+        masm.addsd(temp3, temp7);
+        masm.addsd(dest, temp1);
+        masm.addsd(dest, temp3);
+        masm.addsd(dest, temp6);
+        masm.unpckhpd(temp6, temp6);
+        masm.addsd(dest, temp6);
+        masm.addsd(dest, temp4);
+        masm.jmp(bb13);
+
+        masm.bind(bb14);
+        masm.xorpd(temp1, temp1);
+        masm.xorpd(dest, dest);
+        masm.divsd(dest, temp1);
+        masm.jmp(bb13);
+
+        masm.bind(bb0);
+        masm.jcc(ConditionFlag.Greater, bb1);
+
+        masm.pextrw(gpr1, dest, 3);
+        masm.andl(gpr1, 32767);
+        masm.pinsrw(dest, gpr1, 3);
+        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(onePtr));            // 0x00000000,
+                                                                                            // 0x3ff00000
+        masm.subsd(temp1, dest);
+        masm.movdqu(dest, temp1);
+        masm.jmp(bb13);
+
+        masm.bind(bb1);
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
+        masm.subl(gpr3, 16224);
+        masm.shrl(gpr3, 7);
+        masm.andl(gpr3, 65532);
+        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.addq(gpr3, gpr10);
+        masm.movdq(gpr1, dest);
+        masm.movl(gpr9, new AMD64Address(gpr3, 20));
+        masm.movl(gpr7, new AMD64Address(gpr3, 24));
+        masm.movl(gpr4, gpr1);
+        masm.shrq(gpr1, 21);
+        masm.orl(gpr1, Integer.MIN_VALUE);
+        masm.shrl(gpr1, 11);
+        masm.movl(gpr8, gpr9);
+        masm.imulq(gpr9, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.imulq(gpr7, gpr1);
+        masm.movl(gpr5, new AMD64Address(gpr3, 16));
+        masm.movl(gpr6, new AMD64Address(gpr3, 12));
+        masm.movl(gpr10, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr8, gpr9);
+        masm.addq(gpr10, gpr7);
+        masm.movl(gpr7, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr8, gpr10);
+        masm.movl(gpr9, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr9, gpr1);
+        masm.movl(gpr10, gpr6);
+        masm.imulq(gpr6, gpr4);
+        masm.movl(gpr2, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr8, gpr2);
+        masm.movl(gpr2, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr9, gpr5);
+        masm.addq(gpr9, gpr8);
+        masm.shlq(gpr2, 32);
+        masm.orq(gpr7, gpr2);
+        masm.imulq(gpr10, gpr1);
+        masm.movl(gpr8, new AMD64Address(gpr3, 8));
+        masm.movl(gpr5, new AMD64Address(gpr3, 4));
+        masm.movl(gpr2, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr9, gpr2);
+        masm.movl(gpr2, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr10, gpr6);
+        masm.addq(gpr10, gpr9);
+        masm.movq(gpr6, gpr8);
+        masm.imulq(gpr8, gpr4);
+        masm.imulq(gpr6, gpr1);
+        masm.movl(gpr9, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr10, gpr9);
+        masm.movl(gpr9, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr6, gpr8);
+        masm.addq(gpr6, gpr10);
+        masm.movq(gpr8, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.shlq(gpr9, 32);
+        masm.orq(gpr9, gpr2);
+        masm.movl(gpr1, new AMD64Address(gpr3, 0));
+        masm.movl(gpr10, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr6, gpr10);
+        masm.movl(gpr10, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr8, gpr5);
+        masm.addq(gpr8, gpr6);
+        masm.imulq(gpr4, gpr1);
+        masm.pextrw(gpr2, dest, 3);
+        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.subq(gpr3, gpr6);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, 19);
+        masm.movl(gpr5, 32768);
+        masm.andl(gpr5, gpr2);
+        masm.shrl(gpr2, 4);
+        masm.andl(gpr2, 2047);
+        masm.subl(gpr2, 1023);
+        masm.subl(gpr3, gpr2);
+        masm.addq(gpr8, gpr4);
+        masm.movl(gpr4, gpr3);
+        masm.addl(gpr4, 32);
+        masm.cmpl(gpr3, 1);
+        masm.jcc(ConditionFlag.Less, bb3);
+
+        masm.negl(gpr3);
+        masm.addl(gpr3, 29);
+        masm.shll(gpr8);
+        masm.movl(gpr6, gpr8);
+        masm.andl(gpr8, 536870911);
+        masm.testl(gpr8, 268435456);
+        masm.jcc(ConditionFlag.NotEqual, bb4);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+
+        masm.bind(bb5);
+
+        masm.bind(bb6);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.Equal, bb7);
+
+        masm.bind(bb8);
+        masm.bsrq(gpr10, gpr8);
+        masm.movl(gpr3, 29);
+        masm.subl(gpr3, gpr10);
+        masm.jcc(ConditionFlag.LessEqual, bb9);
+
+        masm.shlq(gpr8);
+        masm.movq(gpr1, gpr9);
+        masm.shlq(gpr9);
+        masm.addl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shrq(gpr1);
+        masm.shrq(gpr7);
+        masm.orq(gpr8, gpr1);
+        masm.orq(gpr9, gpr7);
+
+        masm.bind(bb10);
+        masm.cvtsi2sdq(dest, gpr8);
+        masm.shrq(gpr9, 1);
+        masm.cvtsi2sdq(temp3, gpr9);
+        masm.xorpd(temp4, temp4);
+        masm.shll(gpr4, 4);
+        masm.negl(gpr4);
+        masm.addl(gpr4, 16368);
+        masm.orl(gpr4, gpr5);
+        masm.pinsrw(temp4, gpr4, 3);
+        masm.leaq(gpr2, (AMD64Address) crb.recordDataReferenceInCode(piFourPtr));
+        masm.movdqu(temp2, new AMD64Address(gpr2, 0));                                      // 0x40000000,
+                                                                                            // 0x3fe921fb,
+                                                                                            // 0x18469899,
+                                                                                            // 0x3e64442d
+        masm.xorl(gpr4, gpr2);
+        masm.xorpd(temp5, temp5);
+        masm.subl(gpr4, 1008);
+        masm.pinsrw(temp5, gpr4, 3);
+        masm.mulsd(dest, temp4);
+        masm.shll(gpr5, 16);
+        masm.sarl(gpr5, 31);
+        masm.mulsd(temp3, temp5);
+        masm.movdqu(temp1, dest);
+        masm.mulsd(dest, temp2);
+        masm.pshufd(temp6, temp2, 0xE);
+        masm.shrl(gpr6, 29);
+        masm.addsd(temp1, temp3);
+        masm.mulsd(temp3, temp2);
+        masm.addl(gpr6, gpr5);
+        masm.xorl(gpr6, gpr5);
+        masm.mulsd(temp6, temp1);
+        masm.movl(gpr1, gpr6);
+        masm.addsd(temp6, temp3);
+        masm.movdqu(temp2, dest);
+        masm.addsd(dest, temp6);
+        masm.subsd(temp2, dest);
+        masm.addsd(temp6, temp2);
+
+        masm.bind(bb11);
+        masm.movq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));  // 0x6dc9c883,
+                                                                                            // 0x40245f30
+        masm.mulsd(temp1, dest);
+        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));        // 0x00000000,
+                                                                                            // 0x3fe00000,
+                                                                                            // 0x00000000,
+                                                                                            // 0x3fe00000
+        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));       // 0x00000000,
+                                                                                            // 0x80000000
+        masm.pand(temp4, dest);
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.cvttsd2siq(gpr4, temp1);
+        masm.cvtsi2sdq(temp1, gpr4);
+        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));           // 0x54400000,
+                                                                                            // 0x3fb921fb
+        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));          // 0x1a600000,
+                                                                                            // 0x3d90b461,
+                                                                                            // 0x1a600000,
+                                                                                            // 0x3d90b461
+        masm.mulsd(temp3, temp1);
+        masm.unpcklpd(temp1, temp1);
+        masm.shll(gpr1, 3);
+        masm.addl(gpr4, 1865232);
+        masm.movdqu(temp4, dest);
+        masm.addl(gpr4, gpr1);
+        masm.andl(gpr4, 63);
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));        // 0xa556c734,
+                                                                                            // 0x3ec71de3,
+                                                                                            // 0x1a01a01a,
+                                                                                            // 0x3efa01a0
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.shll(gpr4, 5);
+        masm.addq(gpr1, gpr4);
+        masm.movdqu(temp8, new AMD64Address(gpr1, 0));
+        masm.mulpd(temp2, temp1);
+        masm.subsd(dest, temp3);
+        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));         // 0x2e037073,
+                                                                                            // 0x3b63198a
+        masm.subsd(temp4, temp3);
+        masm.unpcklpd(dest, dest);
+        masm.movdqu(temp3, temp4);
+        masm.subsd(temp4, temp2);
+        masm.mulpd(temp5, dest);
+        masm.pshufd(temp7, temp8, 0xE);
+        masm.movdqu(temp9, temp7);
+        masm.subpd(dest, temp2);
+        masm.mulsd(temp7, temp4);
+        masm.subsd(temp3, temp4);
+        masm.mulpd(temp5, dest);
+        masm.mulpd(dest, dest);
+        masm.subsd(temp3, temp2);
+        masm.movdqu(temp2, temp8);
+        masm.subsd(temp1, temp3);
+        masm.movdq(temp3, new AMD64Address(gpr1, 24));
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp7, temp2);
+        masm.subsd(temp1, temp6);
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));         // 0x11111111,
+                                                                                            // 0x3f811111,
+                                                                                            // 0x55555555,
+                                                                                            // 0x3fa55555
+        masm.mulsd(temp2, temp4);
+        masm.mulpd(temp6, dest);
+        masm.mulsd(temp3, temp4);
+        masm.mulpd(temp2, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));        // 0x1a01a01a,
+                                                                                            // 0xbf2a01a0,
+                                                                                            // 0x16c16c17,
+                                                                                            // 0xbf56c16c
+        masm.mulsd(temp4, temp8);
+        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));          // 0x55555555,
+                                                                                            // 0xbfc55555,
+                                                                                            // 0x00000000,
+                                                                                            // 0xbfe00000
+        masm.mulpd(temp5, dest);
+        masm.movdqu(dest, temp3);
+        masm.addsd(temp3, temp9);
+        masm.mulpd(temp1, temp7);
+        masm.movdqu(temp7, temp4);
+        masm.addsd(temp4, temp3);
+        masm.addpd(temp6, temp5);
+        masm.subsd(temp9, temp3);
+        masm.subsd(temp3, temp4);
+        masm.addsd(temp1, new AMD64Address(gpr1, 16));
+        masm.mulpd(temp6, temp2);
+        masm.addsd(temp9, dest);
+        masm.addsd(temp3, temp7);
+        masm.addsd(temp1, temp9);
+        masm.addsd(temp1, temp3);
+        masm.addsd(temp1, temp6);
+        masm.unpckhpd(temp6, temp6);
+        masm.movdqu(dest, temp4);
+        masm.addsd(temp1, temp6);
+        masm.addsd(dest, temp1);
+        masm.jmp(bb13);
+
+        masm.bind(bb7);
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.movl(gpr7, 0);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb8);
+
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb8);
+
+        masm.xorpd(dest, dest);
+        masm.xorpd(temp6, temp6);
+        masm.jmp(bb11);
+
+        masm.bind(bb9);
+        masm.jcc(ConditionFlag.Equal, bb10);
+
+        masm.negl(gpr3);
+        masm.shrq(gpr9);
+        masm.movq(gpr1, gpr8);
+        masm.shrq(gpr8);
+        masm.subl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shlq(gpr1);
+        masm.orq(gpr9, gpr1);
+        masm.jmp(bb10);
+
+        masm.bind(bb3);
+        masm.negl(gpr3);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr8);
+        masm.movq(gpr6, gpr8);
+        masm.testl(gpr8, Integer.MIN_VALUE);
+        masm.jcc(ConditionFlag.NotEqual, bb12);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shrq(gpr6, 3);
+        masm.jmp(bb6);
+
+        masm.bind(bb4);
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 536870912);
+        masm.shrl(gpr2);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr2, 32);
+        masm.addl(gpr6, 536870912);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.jmp(bb5);
+
+        masm.bind(bb12);
+        masm.shrl(gpr8);
+        masm.movq(gpr2, 0x100000000L);
+        masm.shrq(gpr2);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.shrq(gpr6, 3);
+        masm.addl(gpr6, 536870912);
+        masm.jmp(bb6);
+
+        masm.bind(bb13);
+    }
+
+    /*
+     * Copyright (c) 2014, 2016, Intel Corporation. All rights reserved. Intel Math Library (LIBM)
+     * Source Code
+     *
+     * ALGORITHM DESCRIPTION - TAN() ---------------------
+     *
+     * Polynomials coefficients and other constants.
+     *
+     * Note that in this algorithm, there is a different polynomial for each breakpoint, so there
+     * are 32 sets of polynomial coefficients as well as 32 instances of the other constants.
+     *
+     * The polynomial coefficients and constants are offset from the start of the main block as
+     * follows:
+     *
+     * 0: c8 | c0 16: c9 | c1 32: c10 | c2 48: c11 | c3 64: c12 | c4 80: c13 | c5 96: c14 | c6 112:
+     * c15 | c7 128: T_hi 136: T_lo 144: Sigma 152: T_hl 160: Tau 168: Mask 176: (end of block)
+     *
+     * The total table size is therefore 5632 bytes.
+     *
+     * Note that c0 and c1 are always zero. We could try storing other constants here, and just
+     * loading the low part of the SIMD register in these cases, after ensuring the high part is
+     * zero.
+     *
+     * The higher terms of the polynomial are computed in the *low* part of the SIMD register. This
+     * is so we can overlap the multiplication by r^8 and the unpacking of the other part.
+     *
+     * The constants are: T_hi + T_lo = accurate constant term in power series Sigma + T_hl =
+     * accurate coefficient of r in power series (Sigma=1 bit) Tau = multiplier for the reciprocal,
+     * always -1 or 0
+     *
+     * The basic reconstruction formula using these constants is:
+     *
+     * High = tau * recip_hi + t_hi Med = (sgn * r + t_hl * r)_hi Low = (sgn * r + t_hl * r)_lo +
+     * tau * recip_lo + T_lo + (T_hl + sigma) * c + pol
+     *
+     * where pol = c0 + c1 * r + c2 * r^2 + ... + c15 * r^15
+     *
+     * (c0 = c1 = 0, but using them keeps SIMD regularity)
+     *
+     * We then do a compensated sum High + Med, add the low parts together and then do the final
+     * sum.
+     *
+     * Here recip_hi + recip_lo is an accurate reciprocal of the remainder modulo pi/2
+     *
+     * Special cases: tan(NaN) = quiet NaN, and raise invalid exception tan(INF) = NaN and raise
+     * invalid exception tan(+/-0) = +/-0
+     *
+     */
+
+    private static int[] oneHalfTan = {
+                    0x00000000, 0x3fe00000, 0x00000000, 0x3fe00000
+    };
+
+    private static int[] mulSixteen = {
+                    0x00000000, 0x40300000, 0x00000000, 0x3ff00000
+    };
+
+    private static int[] signMaskTan = {
+                    0x00000000, 0x80000000, 0x00000000, 0x80000000
+    };
+
+    private static int[] piThirtyTwoInvTan = {
+                    0x6dc9c883, 0x3fe45f30, 0x6dc9c883, 0x40245f30
+    };
+
+    private static int[] pOneTan = {
+                    0x54444000, 0x3fb921fb, 0x54440000, 0x3fb921fb
+    };
+
+    private static int[] pTwoTan = {
+                    0x67674000, 0xbd32e7b9, 0x4c4c0000, 0x3d468c23
+    };
+
+    private static int[] pThreeTan = {
+                    0x3707344a, 0x3aa8a2e0, 0x03707345, 0x3ae98a2e
+    };
+
+    private static int[] cTableTan = {
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x882c10fa,
+                    0x3f9664f4, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x55e6c23d, 0x3f8226e3, 0x55555555,
+                    0x3fd55555, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x0e157de0, 0x3f6d6d3d, 0x11111111, 0x3fc11111, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x452b75e3, 0x3f57da36,
+                    0x1ba1ba1c, 0x3faba1ba, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x3ff00000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x4e435f9b,
+                    0x3f953f83, 0x00000000, 0x00000000, 0x3c6e8e46, 0x3f9b74ea,
+                    0x00000000, 0x00000000, 0xda5b7511, 0x3f85ad63, 0xdc230b9b,
+                    0x3fb97558, 0x26cb3788, 0x3f881308, 0x76fc4985, 0x3fd62ac9,
+                    0x77bb08ba, 0x3f757c85, 0xb6247521, 0x3fb1381e, 0x5922170c,
+                    0x3f754e95, 0x8746482d, 0x3fc27f83, 0x11055b30, 0x3f64e391,
+                    0x3e666320, 0x3fa3e609, 0x0de9dae3, 0x3f6301df, 0x1f1dca06,
+                    0x3fafa8ae, 0x8c5b2da2, 0x3fb936bb, 0x4e88f7a5, 0x3c587d05,
+                    0x00000000, 0x3ff00000, 0xa8935dd9, 0x3f83dde2, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x5a279ea3, 0x3faa3407,
+                    0x00000000, 0x00000000, 0x432d65fa, 0x3fa70153, 0x00000000,
+                    0x00000000, 0x891a4602, 0x3f9d03ef, 0xd62ca5f8, 0x3fca77d9,
+                    0xb35f4628, 0x3f97a265, 0x433258fa, 0x3fd8cf51, 0xb58fd909,
+                    0x3f8f88e3, 0x01771cea, 0x3fc2b154, 0xf3562f8e, 0x3f888f57,
+                    0xc028a723, 0x3fc7370f, 0x20b7f9f0, 0x3f80f44c, 0x214368e9,
+                    0x3fb6dfaa, 0x28891863, 0x3f79b4b6, 0x172dbbf0, 0x3fb6cb8e,
+                    0xe0553158, 0x3fc975f5, 0x593fe814, 0x3c2ef5d3, 0x00000000,
+                    0x3ff00000, 0x03dec550, 0x3fa44203, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x9314533e, 0x3fbb8ec5, 0x00000000,
+                    0x00000000, 0x09aa36d0, 0x3fb6d3f4, 0x00000000, 0x00000000,
+                    0xdcb427fd, 0x3fb13950, 0xd87ab0bb, 0x3fd5335e, 0xce0ae8a5,
+                    0x3fabb382, 0x79143126, 0x3fddba41, 0x5f2b28d4, 0x3fa552f1,
+                    0x59f21a6d, 0x3fd015ab, 0x22c27d95, 0x3fa0e984, 0xe19fc6aa,
+                    0x3fd0576c, 0x8f2c2950, 0x3f9a4898, 0xc0b3f22c, 0x3fc59462,
+                    0x1883a4b8, 0x3f94b61c, 0x3f838640, 0x3fc30eb8, 0x355c63dc,
+                    0x3fd36a08, 0x1dce993d, 0xbc6d704d, 0x00000000, 0x3ff00000,
+                    0x2b82ab63, 0x3fb78e92, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x56f37042, 0x3fccfc56, 0x00000000, 0x00000000,
+                    0xaa563951, 0x3fc90125, 0x00000000, 0x00000000, 0x3d0e7c5d,
+                    0x3fc50533, 0x9bed9b2e, 0x3fdf0ed9, 0x5fe7c47c, 0x3fc1f250,
+                    0x96c125e5, 0x3fe2edd9, 0x5a02bbd8, 0x3fbe5c71, 0x86362c20,
+                    0x3fda08b7, 0x4b4435ed, 0x3fb9d342, 0x4b494091, 0x3fd911bd,
+                    0xb56658be, 0x3fb5e4c7, 0x93a2fd76, 0x3fd3c092, 0xda271794,
+                    0x3fb29910, 0x3303df2b, 0x3fd189be, 0x99fcef32, 0x3fda8279,
+                    0xb68c1467, 0x3c708b2f, 0x00000000, 0x3ff00000, 0x980c4337,
+                    0x3fc5f619, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0xcc03e501, 0x3fdff10f, 0x00000000, 0x00000000, 0x44a4e845,
+                    0x3fddb63b, 0x00000000, 0x00000000, 0x3768ad9f, 0x3fdb72a4,
+                    0x3dd01cca, 0x3fe5fdb9, 0xa61d2811, 0x3fd972b2, 0x5645ad0b,
+                    0x3fe977f9, 0xd013b3ab, 0x3fd78ca3, 0xbf0bf914, 0x3fe4f192,
+                    0x4d53e730, 0x3fd5d060, 0x3f8b9000, 0x3fe49933, 0xe2b82f08,
+                    0x3fd4322a, 0x5936a835, 0x3fe27ae1, 0xb1c61c9b, 0x3fd2b3fb,
+                    0xef478605, 0x3fe1659e, 0x190834ec, 0x3fe11ab7, 0xcdb625ea,
+                    0xbc8e564b, 0x00000000, 0x3ff00000, 0xb07217e3, 0x3fd248f1,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x2b2c49d0,
+                    0x3ff2de9c, 0x00000000, 0x00000000, 0x2655bc98, 0x3ff33e58,
+                    0x00000000, 0x00000000, 0xff691fa2, 0x3ff3972e, 0xe93463bd,
+                    0x3feeed87, 0x070e10a0, 0x3ff3f5b2, 0xf4d790a4, 0x3ff20c10,
+                    0xa04e8ea3, 0x3ff4541a, 0x386accd3, 0x3ff1369e, 0x222a66dd,
+                    0x3ff4b521, 0x22a9777e, 0x3ff20817, 0x52a04a6e, 0x3ff5178f,
+                    0xddaa0031, 0x3ff22137, 0x4447d47c, 0x3ff57c01, 0x1e9c7f1d,
+                    0x3ff29311, 0x2ab7f990, 0x3fe561b8, 0x209c7df1, 0x3c87a8c5,
+                    0x00000000, 0x3ff00000, 0x4170bcc6, 0x3fdc92d8, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0xc7ab4d5a, 0x40085e24,
+                    0x00000000, 0x00000000, 0xe93ea75d, 0x400b963d, 0x00000000,
+                    0x00000000, 0x94a7f25a, 0x400f37e2, 0x4b6261cb, 0x3ff5f984,
+                    0x5a9dd812, 0x4011aab0, 0x74c30018, 0x3ffaf5a5, 0x7f2ce8e3,
+                    0x4013fe8b, 0xfe8e54fa, 0x3ffd7334, 0x670d618d, 0x4016a10c,
+                    0x4db97058, 0x4000e012, 0x24df44dd, 0x40199c5f, 0x697d6ece,
+                    0x4003006e, 0x83298b82, 0x401cfc4d, 0x19d490d6, 0x40058c19,
+                    0x2ae42850, 0x3fea4300, 0x118e20e6, 0xbc7a6db8, 0x00000000,
+                    0x40000000, 0xe33345b8, 0xbfd4e526, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x65965966, 0x40219659, 0x00000000,
+                    0x00000000, 0x882c10fa, 0x402664f4, 0x00000000, 0x00000000,
+                    0x83cd3723, 0x402c8342, 0x00000000, 0x40000000, 0x55e6c23d,
+                    0x403226e3, 0x55555555, 0x40055555, 0x34451939, 0x40371c96,
+                    0xaaaaaaab, 0x400aaaaa, 0x0e157de0, 0x403d6d3d, 0x11111111,
+                    0x40111111, 0xa738201f, 0x4042bbce, 0x05b05b06, 0x4015b05b,
+                    0x452b75e3, 0x4047da36, 0x1ba1ba1c, 0x401ba1ba, 0x00000000,
+                    0x3ff00000, 0x00000000, 0x00000000, 0x00000000, 0x40000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x4f48b8d3, 0xbf33eaf9, 0x00000000, 0x00000000,
+                    0x0cf7586f, 0x3f20b8ea, 0x00000000, 0x00000000, 0xd0258911,
+                    0xbf0abaf3, 0x23e49fe9, 0xbfab5a8c, 0x2d53222e, 0x3ef60d15,
+                    0x21169451, 0x3fa172b2, 0xbb254dbc, 0xbee1d3b5, 0xdbf93b8e,
+                    0xbf84c7db, 0x05b4630b, 0x3ecd3364, 0xee9aada7, 0x3f743924,
+                    0x794a8297, 0xbeb7b7b9, 0xe015f797, 0xbf5d41f5, 0xe41a4a56,
+                    0x3ea35dfb, 0xe4c2a251, 0x3f49a2ab, 0x5af9e000, 0xbfce49ce,
+                    0x8c743719, 0x3d1eb860, 0x00000000, 0x00000000, 0x1b4863cf,
+                    0x3fd78294, 0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8,
+                    0x535ad890, 0xbf2b9320, 0x00000000, 0x00000000, 0x018fdf1f,
+                    0x3f16d61d, 0x00000000, 0x00000000, 0x0359f1be, 0xbf0139e4,
+                    0xa4317c6d, 0xbfa67e17, 0x82672d0f, 0x3eebb405, 0x2f1b621e,
+                    0x3f9f455b, 0x51ccf238, 0xbed55317, 0xf437b9ac, 0xbf804bee,
+                    0xc791a2b5, 0x3ec0e993, 0x919a1db2, 0x3f7080c2, 0x336a5b0e,
+                    0xbeaa48a2, 0x0a268358, 0xbf55a443, 0xdfd978e4, 0x3e94b61f,
+                    0xd7767a58, 0x3f431806, 0x2aea0000, 0xbfc9bbe8, 0x7723ea61,
+                    0xbd3a2369, 0x00000000, 0x00000000, 0xdf7796ff, 0x3fd6e642,
+                    0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8, 0xb9ff07ce,
+                    0xbf231c78, 0x00000000, 0x00000000, 0xa5517182, 0x3f0ff0e0,
+                    0x00000000, 0x00000000, 0x790b4cbc, 0xbef66191, 0x848a46c6,
+                    0xbfa21ac0, 0xb16435fa, 0x3ee1d3ec, 0x2a1aa832, 0x3f9c71ea,
+                    0xfdd299ef, 0xbec9dd1a, 0x3f8dbaaf, 0xbf793363, 0x309fc6ea,
+                    0x3eb415d6, 0xbee60471, 0x3f6b83ba, 0x94a0a697, 0xbe9dae11,
+                    0x3e5c67b3, 0xbf4fd07b, 0x9a8f3e3e, 0x3e86bd75, 0xa4beb7a4,
+                    0x3f3d1eb1, 0x29cfc000, 0xbfc549ce, 0xbf159358, 0xbd397b33,
+                    0x00000000, 0x00000000, 0x871fee6c, 0x3fd666f0, 0x00000000,
+                    0x3ff00000, 0x00000000, 0xfffffff8, 0x7d98a556, 0xbf1a3958,
+                    0x00000000, 0x00000000, 0x9d88dc01, 0x3f0704c2, 0x00000000,
+                    0x00000000, 0x73742a2b, 0xbeed054a, 0x58844587, 0xbf9c2a13,
+                    0x55688a79, 0x3ed7a326, 0xee33f1d6, 0x3f9a48f4, 0xa8dc9888,
+                    0xbebf8939, 0xaad4b5b8, 0xbf72f746, 0x9102efa1, 0x3ea88f82,
+                    0xdabc29cf, 0x3f678228, 0x9289afb8, 0xbe90f456, 0x741fb4ed,
+                    0xbf46f3a3, 0xa97f6663, 0x3e79b4bf, 0xca89ff3f, 0x3f36db70,
+                    0xa8a2a000, 0xbfc0ee13, 0x3da24be1, 0xbd338b9f, 0x00000000,
+                    0x00000000, 0x11cd6c69, 0x3fd601fd, 0x00000000, 0x3ff00000,
+                    0x00000000, 0xfffffff8, 0x1a154b97, 0xbf116b01, 0x00000000,
+                    0x00000000, 0x2d427630, 0x3f0147bf, 0x00000000, 0x00000000,
+                    0xb93820c8, 0xbee264d4, 0xbb6cbb18, 0xbf94ab8c, 0x888d4d92,
+                    0x3ed0568b, 0x60730f7c, 0x3f98b19b, 0xe4b1fb11, 0xbeb2f950,
+                    0x22cf9f74, 0xbf6b21cd, 0x4a3ff0a6, 0x3e9f499e, 0xfd2b83ce,
+                    0x3f64aad7, 0x637b73af, 0xbe83487c, 0xe522591a, 0xbf3fc092,
+                    0xa158e8bc, 0x3e6e3aae, 0xe5e82ffa, 0x3f329d2f, 0xd636a000,
+                    0xbfb9477f, 0xc2c2d2bc, 0xbd135ef9, 0x00000000, 0x00000000,
+                    0xf2fdb123, 0x3fd5b566, 0x00000000, 0x3ff00000, 0x00000000,
+                    0xfffffff8, 0xc41acb64, 0xbf05448d, 0x00000000, 0x00000000,
+                    0xdbb03d6f, 0x3efb7ad2, 0x00000000, 0x00000000, 0x9e42962d,
+                    0xbed5aea5, 0x2579f8ef, 0xbf8b2398, 0x288a1ed9, 0x3ec81441,
+                    0xb0198dc5, 0x3f979a3a, 0x2fdfe253, 0xbea57cd3, 0x5766336f,
+                    0xbf617caa, 0x600944c3, 0x3e954ed6, 0xa4e0aaf8, 0x3f62c646,
+                    0x6b8fb29c, 0xbe74e3a3, 0xdc4c0409, 0xbf33f952, 0x9bffe365,
+                    0x3e6301ec, 0xb8869e44, 0x3f2fc566, 0xe1e04000, 0xbfb0cc62,
+                    0x016b907f, 0xbd119cbc, 0x00000000, 0x00000000, 0xe6b9d8fa,
+                    0x3fd57fb3, 0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8,
+                    0x5daf22a6, 0xbef429d7, 0x00000000, 0x00000000, 0x06bca545,
+                    0x3ef7a27d, 0x00000000, 0x00000000, 0x7211c19a, 0xbec41c3e,
+                    0x956ed53e, 0xbf7ae3f4, 0xee750e72, 0x3ec3901b, 0x91d443f5,
+                    0x3f96f713, 0x36661e6c, 0xbe936e09, 0x506f9381, 0xbf5122e8,
+                    0xcb6dd43f, 0x3e9041b9, 0x6698b2ff, 0x3f61b0c7, 0x576bf12b,
+                    0xbe625a8a, 0xe5a0e9dc, 0xbf23499d, 0x110384dd, 0x3e5b1c2c,
+                    0x68d43db6, 0x3f2cb899, 0x6ecac000, 0xbfa0c414, 0xcd7dd58c,
+                    0x3d13500f, 0x00000000, 0x00000000, 0x85a2c8fb, 0x3fd55fe0,
+                    0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x2bf70ebe, 0x3ef66a8f,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0xd644267f, 0x3ec22805, 0x16c16c17, 0x3f96c16c,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0xc4e09162,
+                    0x3e8d6db2, 0xbc011567, 0x3f61566a, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x1f79955c, 0x3e57da4e, 0x9334ef0b,
+                    0x3f2bbd77, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x55555555, 0x3fd55555, 0x00000000,
+                    0x3ff00000, 0x00000000, 0xfffffff8, 0x5daf22a6, 0x3ef429d7,
+                    0x00000000, 0x00000000, 0x06bca545, 0x3ef7a27d, 0x00000000,
+                    0x00000000, 0x7211c19a, 0x3ec41c3e, 0x956ed53e, 0x3f7ae3f4,
+                    0xee750e72, 0x3ec3901b, 0x91d443f5, 0x3f96f713, 0x36661e6c,
+                    0x3e936e09, 0x506f9381, 0x3f5122e8, 0xcb6dd43f, 0x3e9041b9,
+                    0x6698b2ff, 0x3f61b0c7, 0x576bf12b, 0x3e625a8a, 0xe5a0e9dc,
+                    0x3f23499d, 0x110384dd, 0x3e5b1c2c, 0x68d43db6, 0x3f2cb899,
+                    0x6ecac000, 0x3fa0c414, 0xcd7dd58c, 0xbd13500f, 0x00000000,
+                    0x00000000, 0x85a2c8fb, 0x3fd55fe0, 0x00000000, 0x3ff00000,
+                    0x00000000, 0xfffffff8, 0xc41acb64, 0x3f05448d, 0x00000000,
+                    0x00000000, 0xdbb03d6f, 0x3efb7ad2, 0x00000000, 0x00000000,
+                    0x9e42962d, 0x3ed5aea5, 0x2579f8ef, 0x3f8b2398, 0x288a1ed9,
+                    0x3ec81441, 0xb0198dc5, 0x3f979a3a, 0x2fdfe253, 0x3ea57cd3,
+                    0x5766336f, 0x3f617caa, 0x600944c3, 0x3e954ed6, 0xa4e0aaf8,
+                    0x3f62c646, 0x6b8fb29c, 0x3e74e3a3, 0xdc4c0409, 0x3f33f952,
+                    0x9bffe365, 0x3e6301ec, 0xb8869e44, 0x3f2fc566, 0xe1e04000,
+                    0x3fb0cc62, 0x016b907f, 0x3d119cbc, 0x00000000, 0x00000000,
+                    0xe6b9d8fa, 0x3fd57fb3, 0x00000000, 0x3ff00000, 0x00000000,
+                    0xfffffff8, 0x1a154b97, 0x3f116b01, 0x00000000, 0x00000000,
+                    0x2d427630, 0x3f0147bf, 0x00000000, 0x00000000, 0xb93820c8,
+                    0x3ee264d4, 0xbb6cbb18, 0x3f94ab8c, 0x888d4d92, 0x3ed0568b,
+                    0x60730f7c, 0x3f98b19b, 0xe4b1fb11, 0x3eb2f950, 0x22cf9f74,
+                    0x3f6b21cd, 0x4a3ff0a6, 0x3e9f499e, 0xfd2b83ce, 0x3f64aad7,
+                    0x637b73af, 0x3e83487c, 0xe522591a, 0x3f3fc092, 0xa158e8bc,
+                    0x3e6e3aae, 0xe5e82ffa, 0x3f329d2f, 0xd636a000, 0x3fb9477f,
+                    0xc2c2d2bc, 0x3d135ef9, 0x00000000, 0x00000000, 0xf2fdb123,
+                    0x3fd5b566, 0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8,
+                    0x7d98a556, 0x3f1a3958, 0x00000000, 0x00000000, 0x9d88dc01,
+                    0x3f0704c2, 0x00000000, 0x00000000, 0x73742a2b, 0x3eed054a,
+                    0x58844587, 0x3f9c2a13, 0x55688a79, 0x3ed7a326, 0xee33f1d6,
+                    0x3f9a48f4, 0xa8dc9888, 0x3ebf8939, 0xaad4b5b8, 0x3f72f746,
+                    0x9102efa1, 0x3ea88f82, 0xdabc29cf, 0x3f678228, 0x9289afb8,
+                    0x3e90f456, 0x741fb4ed, 0x3f46f3a3, 0xa97f6663, 0x3e79b4bf,
+                    0xca89ff3f, 0x3f36db70, 0xa8a2a000, 0x3fc0ee13, 0x3da24be1,
+                    0x3d338b9f, 0x00000000, 0x00000000, 0x11cd6c69, 0x3fd601fd,
+                    0x00000000, 0x3ff00000, 0x00000000, 0xfffffff8, 0xb9ff07ce,
+                    0x3f231c78, 0x00000000, 0x00000000, 0xa5517182, 0x3f0ff0e0,
+                    0x00000000, 0x00000000, 0x790b4cbc, 0x3ef66191, 0x848a46c6,
+                    0x3fa21ac0, 0xb16435fa, 0x3ee1d3ec, 0x2a1aa832, 0x3f9c71ea,
+                    0xfdd299ef, 0x3ec9dd1a, 0x3f8dbaaf, 0x3f793363, 0x309fc6ea,
+                    0x3eb415d6, 0xbee60471, 0x3f6b83ba, 0x94a0a697, 0x3e9dae11,
+                    0x3e5c67b3, 0x3f4fd07b, 0x9a8f3e3e, 0x3e86bd75, 0xa4beb7a4,
+                    0x3f3d1eb1, 0x29cfc000, 0x3fc549ce, 0xbf159358, 0x3d397b33,
+                    0x00000000, 0x00000000, 0x871fee6c, 0x3fd666f0, 0x00000000,
+                    0x3ff00000, 0x00000000, 0xfffffff8, 0x535ad890, 0x3f2b9320,
+                    0x00000000, 0x00000000, 0x018fdf1f, 0x3f16d61d, 0x00000000,
+                    0x00000000, 0x0359f1be, 0x3f0139e4, 0xa4317c6d, 0x3fa67e17,
+                    0x82672d0f, 0x3eebb405, 0x2f1b621e, 0x3f9f455b, 0x51ccf238,
+                    0x3ed55317, 0xf437b9ac, 0x3f804bee, 0xc791a2b5, 0x3ec0e993,
+                    0x919a1db2, 0x3f7080c2, 0x336a5b0e, 0x3eaa48a2, 0x0a268358,
+                    0x3f55a443, 0xdfd978e4, 0x3e94b61f, 0xd7767a58, 0x3f431806,
+                    0x2aea0000, 0x3fc9bbe8, 0x7723ea61, 0x3d3a2369, 0x00000000,
+                    0x00000000, 0xdf7796ff, 0x3fd6e642, 0x00000000, 0x3ff00000,
+                    0x00000000, 0xfffffff8, 0x4f48b8d3, 0x3f33eaf9, 0x00000000,
+                    0x00000000, 0x0cf7586f, 0x3f20b8ea, 0x00000000, 0x00000000,
+                    0xd0258911, 0x3f0abaf3, 0x23e49fe9, 0x3fab5a8c, 0x2d53222e,
+                    0x3ef60d15, 0x21169451, 0x3fa172b2, 0xbb254dbc, 0x3ee1d3b5,
+                    0xdbf93b8e, 0x3f84c7db, 0x05b4630b, 0x3ecd3364, 0xee9aada7,
+                    0x3f743924, 0x794a8297, 0x3eb7b7b9, 0xe015f797, 0x3f5d41f5,
+                    0xe41a4a56, 0x3ea35dfb, 0xe4c2a251, 0x3f49a2ab, 0x5af9e000,
+                    0x3fce49ce, 0x8c743719, 0xbd1eb860, 0x00000000, 0x00000000,
+                    0x1b4863cf, 0x3fd78294, 0x00000000, 0x3ff00000, 0x00000000,
+                    0xfffffff8, 0x65965966, 0xc0219659, 0x00000000, 0x00000000,
+                    0x882c10fa, 0x402664f4, 0x00000000, 0x00000000, 0x83cd3723,
+                    0xc02c8342, 0x00000000, 0xc0000000, 0x55e6c23d, 0x403226e3,
+                    0x55555555, 0x40055555, 0x34451939, 0xc0371c96, 0xaaaaaaab,
+                    0xc00aaaaa, 0x0e157de0, 0x403d6d3d, 0x11111111, 0x40111111,
+                    0xa738201f, 0xc042bbce, 0x05b05b06, 0xc015b05b, 0x452b75e3,
+                    0x4047da36, 0x1ba1ba1c, 0x401ba1ba, 0x00000000, 0xbff00000,
+                    0x00000000, 0x00000000, 0x00000000, 0x40000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0xc7ab4d5a, 0xc0085e24, 0x00000000, 0x00000000, 0xe93ea75d,
+                    0x400b963d, 0x00000000, 0x00000000, 0x94a7f25a, 0xc00f37e2,
+                    0x4b6261cb, 0xbff5f984, 0x5a9dd812, 0x4011aab0, 0x74c30018,
+                    0x3ffaf5a5, 0x7f2ce8e3, 0xc013fe8b, 0xfe8e54fa, 0xbffd7334,
+                    0x670d618d, 0x4016a10c, 0x4db97058, 0x4000e012, 0x24df44dd,
+                    0xc0199c5f, 0x697d6ece, 0xc003006e, 0x83298b82, 0x401cfc4d,
+                    0x19d490d6, 0x40058c19, 0x2ae42850, 0xbfea4300, 0x118e20e6,
+                    0x3c7a6db8, 0x00000000, 0x40000000, 0xe33345b8, 0xbfd4e526,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x2b2c49d0,
+                    0xbff2de9c, 0x00000000, 0x00000000, 0x2655bc98, 0x3ff33e58,
+                    0x00000000, 0x00000000, 0xff691fa2, 0xbff3972e, 0xe93463bd,
+                    0xbfeeed87, 0x070e10a0, 0x3ff3f5b2, 0xf4d790a4, 0x3ff20c10,
+                    0xa04e8ea3, 0xbff4541a, 0x386accd3, 0xbff1369e, 0x222a66dd,
+                    0x3ff4b521, 0x22a9777e, 0x3ff20817, 0x52a04a6e, 0xbff5178f,
+                    0xddaa0031, 0xbff22137, 0x4447d47c, 0x3ff57c01, 0x1e9c7f1d,
+                    0x3ff29311, 0x2ab7f990, 0xbfe561b8, 0x209c7df1, 0xbc87a8c5,
+                    0x00000000, 0x3ff00000, 0x4170bcc6, 0x3fdc92d8, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000, 0xcc03e501, 0xbfdff10f,
+                    0x00000000, 0x00000000, 0x44a4e845, 0x3fddb63b, 0x00000000,
+                    0x00000000, 0x3768ad9f, 0xbfdb72a4, 0x3dd01cca, 0xbfe5fdb9,
+                    0xa61d2811, 0x3fd972b2, 0x5645ad0b, 0x3fe977f9, 0xd013b3ab,
+                    0xbfd78ca3, 0xbf0bf914, 0xbfe4f192, 0x4d53e730, 0x3fd5d060,
+                    0x3f8b9000, 0x3fe49933, 0xe2b82f08, 0xbfd4322a, 0x5936a835,
+                    0xbfe27ae1, 0xb1c61c9b, 0x3fd2b3fb, 0xef478605, 0x3fe1659e,
+                    0x190834ec, 0xbfe11ab7, 0xcdb625ea, 0x3c8e564b, 0x00000000,
+                    0x3ff00000, 0xb07217e3, 0x3fd248f1, 0x00000000, 0x00000000,
+                    0x00000000, 0x00000000, 0x56f37042, 0xbfccfc56, 0x00000000,
+                    0x00000000, 0xaa563951, 0x3fc90125, 0x00000000, 0x00000000,
+                    0x3d0e7c5d, 0xbfc50533, 0x9bed9b2e, 0xbfdf0ed9, 0x5fe7c47c,
+                    0x3fc1f250, 0x96c125e5, 0x3fe2edd9, 0x5a02bbd8, 0xbfbe5c71,
+                    0x86362c20, 0xbfda08b7, 0x4b4435ed, 0x3fb9d342, 0x4b494091,
+                    0x3fd911bd, 0xb56658be, 0xbfb5e4c7, 0x93a2fd76, 0xbfd3c092,
+                    0xda271794, 0x3fb29910, 0x3303df2b, 0x3fd189be, 0x99fcef32,
+                    0xbfda8279, 0xb68c1467, 0xbc708b2f, 0x00000000, 0x3ff00000,
+                    0x980c4337, 0x3fc5f619, 0x00000000, 0x00000000, 0x00000000,
+                    0x00000000, 0x9314533e, 0xbfbb8ec5, 0x00000000, 0x00000000,
+                    0x09aa36d0, 0x3fb6d3f4, 0x00000000, 0x00000000, 0xdcb427fd,
+                    0xbfb13950, 0xd87ab0bb, 0xbfd5335e, 0xce0ae8a5, 0x3fabb382,
+                    0x79143126, 0x3fddba41, 0x5f2b28d4, 0xbfa552f1, 0x59f21a6d,
+                    0xbfd015ab, 0x22c27d95, 0x3fa0e984, 0xe19fc6aa, 0x3fd0576c,
+                    0x8f2c2950, 0xbf9a4898, 0xc0b3f22c, 0xbfc59462, 0x1883a4b8,
+                    0x3f94b61c, 0x3f838640, 0x3fc30eb8, 0x355c63dc, 0xbfd36a08,
+                    0x1dce993d, 0x3c6d704d, 0x00000000, 0x3ff00000, 0x2b82ab63,
+                    0x3fb78e92, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                    0x5a279ea3, 0xbfaa3407, 0x00000000, 0x00000000, 0x432d65fa,
+                    0x3fa70153, 0x00000000, 0x00000000, 0x891a4602, 0xbf9d03ef,
+                    0xd62ca5f8, 0xbfca77d9, 0xb35f4628, 0x3f97a265, 0x433258fa,
+                    0x3fd8cf51, 0xb58fd909, 0xbf8f88e3, 0x01771cea, 0xbfc2b154,
+                    0xf3562f8e, 0x3f888f57, 0xc028a723, 0x3fc7370f, 0x20b7f9f0,
+                    0xbf80f44c, 0x214368e9, 0xbfb6dfaa, 0x28891863, 0x3f79b4b6,
+                    0x172dbbf0, 0x3fb6cb8e, 0xe0553158, 0xbfc975f5, 0x593fe814,
+                    0xbc2ef5d3, 0x00000000, 0x3ff00000, 0x03dec550, 0x3fa44203,
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x4e435f9b,
+                    0xbf953f83, 0x00000000, 0x00000000, 0x3c6e8e46, 0x3f9b74ea,
+                    0x00000000, 0x00000000, 0xda5b7511, 0xbf85ad63, 0xdc230b9b,
+                    0xbfb97558, 0x26cb3788, 0x3f881308, 0x76fc4985, 0x3fd62ac9,
+                    0x77bb08ba, 0xbf757c85, 0xb6247521, 0xbfb1381e, 0x5922170c,
+                    0x3f754e95, 0x8746482d, 0x3fc27f83, 0x11055b30, 0xbf64e391,
+                    0x3e666320, 0xbfa3e609, 0x0de9dae3, 0x3f6301df, 0x1f1dca06,
+                    0x3fafa8ae, 0x8c5b2da2, 0xbfb936bb, 0x4e88f7a5, 0xbc587d05,
+                    0x00000000, 0x3ff00000, 0xa8935dd9, 0x3f83dde2, 0x00000000,
+                    0x00000000, 0x00000000, 0x00000000
+    };
+
+    private static int[] maskThirtyFiveTan = {
+                    0xfffc0000, 0xffffffff, 0x00000000, 0x00000000
+    };
+
+    private static int[] qElevenTan = {
+                    0xb8fe4d77, 0x3f82609a
+    };
+
+    private static int[] qNineTan = {
+                    0xbf847a43, 0x3f9664a0
+    };
+
+    private static int[] qSevenTan = {
+                    0x52c4c8ab, 0x3faba1ba
+    };
+
+    private static int[] qFiveTan = {
+                    0x11092746, 0x3fc11111
+    };
+
+    private static int[] qThreeTan = {
+                    0x55555612, 0x3fd55555
+    };
+
+    private static int[] piInvTableTan = {
+                    0x00000000, 0x00000000, 0xa2f9836e, 0x4e441529, 0xfc2757d1,
+                    0xf534ddc0, 0xdb629599, 0x3c439041, 0xfe5163ab, 0xdebbc561,
+                    0xb7246e3a, 0x424dd2e0, 0x06492eea, 0x09d1921c, 0xfe1deb1c,
+                    0xb129a73e, 0xe88235f5, 0x2ebb4484, 0xe99c7026, 0xb45f7e41,
+                    0x3991d639, 0x835339f4, 0x9c845f8b, 0xbdf9283b, 0x1ff897ff,
+                    0xde05980f, 0xef2f118b, 0x5a0a6d1f, 0x6d367ecf, 0x27cb09b7,
+                    0x4f463f66, 0x9e5fea2d, 0x7527bac7, 0xebe5f17b, 0x3d0739f7,
+                    0x8a5292ea, 0x6bfb5fb1, 0x1f8d5d08, 0x56033046, 0xfc7b6bab,
+                    0xf0cfbc21
+    };
+
+    private static int[] piFourTan = {
+                    0x00000000, 0x3fe921fb, 0x4611a626, 0x3e85110b
+    };
+
+    private static int[] qqTwoTan = {
+                    0x676733af, 0x3d32e7b9
+    };
+
+    private static int[] oneTan = {
+                    0x00000000, 0x3ff00000
+    };
+
+    private static int[] twoPowFiftyFiveTan = {
+                    0x00000000, 0x43600000
+    };
+
+    private static int[] twoPowMFiftyFiveTan = {
+                    0x00000000, 0x3c800000
+    };
+
+    public void tanIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        ArrayDataPointerConstant oneHalfTanPtr = new ArrayDataPointerConstant(oneHalfTan, 16);
+        ArrayDataPointerConstant mulSixteenPtr = new ArrayDataPointerConstant(mulSixteen, 16);
+        ArrayDataPointerConstant signMaskTanPtr = new ArrayDataPointerConstant(signMaskTan, 16);
+        ArrayDataPointerConstant piThirtyTwoInvTanPtr = new ArrayDataPointerConstant(piThirtyTwoInvTan, 16);
+        ArrayDataPointerConstant pOneTanPtr = new ArrayDataPointerConstant(pOneTan, 16);
+        ArrayDataPointerConstant pTwoTanPtr = new ArrayDataPointerConstant(pTwoTan, 16);
+        ArrayDataPointerConstant pThreeTanPtr = new ArrayDataPointerConstant(pThreeTan, 16);
+        ArrayDataPointerConstant cTableTanPtr = new ArrayDataPointerConstant(cTableTan, 16);
+        ArrayDataPointerConstant maskThirtyFiveTanPtr = new ArrayDataPointerConstant(maskThirtyFiveTan, 16);
+        ArrayDataPointerConstant qElevenTanPtr = new ArrayDataPointerConstant(qElevenTan, 16);
+        ArrayDataPointerConstant qNineTanPtr = new ArrayDataPointerConstant(qNineTan, 16);
+        ArrayDataPointerConstant qSevenTanPtr = new ArrayDataPointerConstant(qSevenTan, 8);
+        ArrayDataPointerConstant qFiveTanPtr = new ArrayDataPointerConstant(qFiveTan, 16);
+        ArrayDataPointerConstant qThreeTanPtr = new ArrayDataPointerConstant(qThreeTan, 16);
+        ArrayDataPointerConstant piInvTableTanPtr = new ArrayDataPointerConstant(piInvTableTan, 16);
+        ArrayDataPointerConstant piFourTanPtr = new ArrayDataPointerConstant(piFourTan, 8);
+        ArrayDataPointerConstant qqTwoTanPtr = new ArrayDataPointerConstant(qqTwoTan, 8);
+        ArrayDataPointerConstant oneTanPtr = new ArrayDataPointerConstant(oneTan, 8);
+        ArrayDataPointerConstant twoPowFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowFiftyFiveTan, 8);
+        ArrayDataPointerConstant twoPowMFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowMFiftyFiveTan, 8);
+
+        Label bb0 = new Label();
+        Label bb1 = new Label();
+        Label bb2 = new Label();
+        Label bb3 = new Label();
+        Label bb5 = new Label();
+        Label bb6 = new Label();
+        Label bb8 = new Label();
+        Label bb9 = new Label();
+        Label bb10 = new Label();
+        Label bb11 = new Label();
+        Label bb12 = new Label();
+        Label bb13 = new Label();
+        Label bb14 = new Label();
+        Label bb15 = new Label();
+
+        Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
+        Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
+        Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
+        Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
+        Register gpr6 = asRegister(gpr6Temp, AMD64Kind.QWORD);
+        Register gpr7 = asRegister(gpr7Temp, AMD64Kind.QWORD);
+        Register gpr8 = asRegister(gpr8Temp, AMD64Kind.QWORD);
+        Register gpr9 = asRegister(gpr9Temp, AMD64Kind.QWORD);
+        Register gpr10 = asRegister(gpr10Temp, AMD64Kind.QWORD);
+
+        Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
+        Register temp2 = asRegister(xmm2Temp, AMD64Kind.DOUBLE);
+        Register temp3 = asRegister(xmm3Temp, AMD64Kind.DOUBLE);
+        Register temp4 = asRegister(xmm4Temp, AMD64Kind.DOUBLE);
+        Register temp5 = asRegister(xmm5Temp, AMD64Kind.DOUBLE);
+        Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
+        Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
+
+        if (dest.encoding != value.encoding) {
+            masm.movdqu(dest, value);
+        }
+
+        masm.pextrw(gpr1, dest, 3);
+        masm.andl(gpr1, 32767);
+        masm.subl(gpr1, 16314);
+        masm.cmpl(gpr1, 270);
+        masm.jcc(ConditionFlag.Above, bb0);
+
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfTanPtr));        // 0x00000000,
+                                                                                                // 0x3fe00000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x3fe00000
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(mulSixteenPtr));        // 0x00000000,
+                                                                                                // 0x40300000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.unpcklpd(dest, dest);
+        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskTanPtr));       // 0x00000000,
+                                                                                                // 0x80000000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x80000000
+        masm.andpd(temp4, dest);
+        masm.movdqu(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvTanPtr)); // 0x6dc9c883,
+                                                                                                // 0x3fe45f30,
+                                                                                                // 0x6dc9c883,
+                                                                                                // 0x40245f30
+        masm.mulpd(temp1, dest);
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.movdqu(temp7, temp1);
+        masm.unpckhpd(temp7, temp7);
+        masm.cvttsd2sil(gpr4, temp7);
+        masm.cvttpd2dq(temp1, temp1);
+        masm.cvtdq2pd(temp1, temp1);
+        masm.mulpd(temp1, temp6);
+        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOneTanPtr));           // 0x54444000,
+                                                                                                // 0x3fb921fb,
+                                                                                                // 0x54440000,
+                                                                                                // 0x3fb921fb
+        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(qqTwoTanPtr));           // 0x676733af,
+                                                                                                // 0x3d32e7b9
+        masm.addq(gpr4, 469248);
+        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(pTwoTanPtr));           // 0x67674000,
+                                                                                                // 0xbd32e7b9,
+                                                                                                // 0x4c4c0000,
+                                                                                                // 0x3d468c23
+        masm.mulpd(temp3, temp1);
+        masm.andq(gpr4, 31);
+        masm.mulsd(temp5, temp1);
+        masm.movq(gpr3, gpr4);
+        masm.mulpd(temp4, temp1);
+        masm.shlq(gpr3, 1);
+        masm.subpd(dest, temp3);
+        masm.mulpd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreeTanPtr));          // 0x3707344a,
+                                                                                                // 0x3aa8a2e0,
+                                                                                                // 0x03707345,
+                                                                                                // 0x3ae98a2e
+        masm.addq(gpr4, gpr3);
+        masm.shlq(gpr3, 2);
+        masm.addq(gpr4, gpr3);
+        masm.addsd(temp5, dest);
+        masm.movdqu(temp2, dest);
+        masm.subpd(dest, temp4);
+        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.shlq(gpr4, 4);
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTableTanPtr));
+        masm.andpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(maskThirtyFiveTanPtr));  // 0xfffc0000,
+                                                                                                // 0xffffffff,
+                                                                                                // 0x00000000,
+                                                                                                // 0x00000000
+        masm.movdqu(temp3, dest);
+        masm.addq(gpr1, gpr4);
+        masm.subpd(temp2, dest);
+        masm.unpckhpd(dest, dest);
+        masm.divsd(temp6, temp5);
+        masm.subpd(temp2, temp4);
+        masm.movdqu(temp7, new AMD64Address(gpr1, 16));
+        masm.subsd(temp3, temp5);
+        masm.mulpd(temp7, dest);
+        masm.subpd(temp2, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 48));
+        masm.mulpd(temp1, dest);
+        masm.movdqu(temp4, new AMD64Address(gpr1, 96));
+        masm.mulpd(temp4, dest);
+        masm.addsd(temp2, temp3);
+        masm.movdqu(temp3, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp7, new AMD64Address(gpr1, 0));
+        masm.addpd(temp1, new AMD64Address(gpr1, 32));
+        masm.mulpd(temp1, dest);
+        masm.addpd(temp4, new AMD64Address(gpr1, 80));
+        masm.addpd(temp7, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 112));
+        masm.mulpd(temp1, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp4, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 64));
+        masm.mulpd(temp1, dest);
+        masm.addpd(temp7, temp1);
+        masm.movdqu(temp1, temp3);
+        masm.mulpd(temp3, dest);
+        masm.mulsd(dest, dest);
+        masm.mulpd(temp1, new AMD64Address(gpr1, 144));
+        masm.mulpd(temp4, temp3);
+        masm.movdqu(temp3, temp1);
+        masm.addpd(temp7, temp4);
+        masm.movdqu(temp4, temp1);
+        masm.mulsd(dest, temp7);
+        masm.unpckhpd(temp7, temp7);
+        masm.addsd(dest, temp7);
+        masm.unpckhpd(temp1, temp1);
+        masm.addsd(temp3, temp1);
+        masm.subsd(temp4, temp3);
+        masm.addsd(temp1, temp4);
+        masm.movdqu(temp4, temp2);
+        masm.movdq(temp7, new AMD64Address(gpr1, 144));
+        masm.unpckhpd(temp2, temp2);
+        masm.addsd(temp7, new AMD64Address(gpr1, 152));
+        masm.mulsd(temp7, temp2);
+        masm.addsd(temp7, new AMD64Address(gpr1, 136));
+        masm.addsd(temp7, temp1);
+        masm.addsd(dest, temp7);
+        masm.movdq(temp7, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.mulsd(temp4, temp6);
+        masm.movdq(temp2, new AMD64Address(gpr1, 168));
+        masm.andpd(temp2, temp6);
+        masm.mulsd(temp5, temp2);
+        masm.mulsd(temp6, new AMD64Address(gpr1, 160));
+        masm.subsd(temp7, temp5);
+        masm.subsd(temp2, new AMD64Address(gpr1, 128));
+        masm.subsd(temp7, temp4);
+        masm.mulsd(temp7, temp6);
+        masm.movdqu(temp4, temp3);
+        masm.subsd(temp3, temp2);
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp4, temp2);
+        masm.addsd(dest, temp4);
+        masm.subsd(dest, temp7);
+        masm.addsd(dest, temp3);
+        masm.jmp(bb15);
+
+        masm.bind(bb0);
+        masm.jcc(ConditionFlag.Greater, bb1);
+
+        masm.pextrw(gpr1, dest, 3);
+        masm.movl(gpr4, gpr1);
+        masm.andl(gpr1, 32752);
+        masm.jcc(ConditionFlag.Equal, bb2);
+
+        masm.andl(gpr4, 32767);
+        masm.cmpl(gpr4, 15904);
+        masm.jcc(ConditionFlag.Below, bb3);
+
+        masm.movdqu(temp2, dest);
+        masm.movdqu(temp3, dest);
+        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(qElevenTanPtr));         // 0xb8fe4d77,
+                                                                                                // 0x3f82609a
+        masm.mulsd(temp2, dest);
+        masm.mulsd(temp3, temp2);
+        masm.mulsd(temp1, temp2);
+        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qNineTanPtr));           // 0xbf847a43,
+                                                                                                // 0x3f9664a0
+        masm.mulsd(temp1, temp2);
+        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qSevenTanPtr));          // 0x52c4c8ab,
+                                                                                                // 0x3faba1ba
+        masm.mulsd(temp1, temp2);
+        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qFiveTanPtr));           // 0x11092746,
+                                                                                                // 0x3fc11111
+        masm.mulsd(temp1, temp2);
+        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qThreeTanPtr));          // 0x55555612,
+                                                                                                // 0x3fd55555
+        masm.mulsd(temp1, temp3);
+        masm.addsd(dest, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb3);
+        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFiveTanPtr)); // 0x00000000,
+                                                                                                // 0x43600000
+        masm.mulsd(temp3, dest);
+        masm.addsd(dest, temp3);
+        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(twoPowMFiftyFiveTanPtr)); // 0x00000000,
+                                                                                                // 0x3c800000
+        masm.jmp(bb15);
+
+        masm.bind(bb14);
+        masm.xorpd(temp1, temp1);
+        masm.xorpd(dest, dest);
+        masm.divsd(dest, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb2);
+        masm.movdqu(temp1, dest);
+        masm.mulsd(temp1, temp1);
+        masm.jmp(bb15);
+
+        masm.bind(bb1);
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.Equal, bb14);
+
+        masm.subl(gpr3, 16224);
+        masm.shrl(gpr3, 7);
+        masm.andl(gpr3, 65532);
+        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTableTanPtr));
+        masm.addq(gpr3, gpr10);
+        masm.movdq(gpr1, dest);
+        masm.movl(gpr9, new AMD64Address(gpr3, 20));
+        masm.movl(gpr7, new AMD64Address(gpr3, 24));
+        masm.movl(gpr4, gpr1);
+        masm.shrq(gpr1, 21);
+        masm.orl(gpr1, Integer.MIN_VALUE);
+        masm.shrl(gpr1, 11);
+        masm.movl(gpr8, gpr9);
+        masm.imulq(gpr9, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.imulq(gpr7, gpr1);
+        masm.movl(gpr5, new AMD64Address(gpr3, 16));
+        masm.movl(gpr6, new AMD64Address(gpr3, 12));
+        masm.movl(gpr10, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr8, gpr9);
+        masm.addq(gpr10, gpr7);
+        masm.movl(gpr7, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr8, gpr10);
+        masm.movl(gpr9, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr9, gpr1);
+        masm.movl(gpr10, gpr6);
+        masm.imulq(gpr6, gpr4);
+        masm.movl(gpr2, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr8, gpr2);
+        masm.movl(gpr2, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr9, gpr5);
+        masm.addq(gpr9, gpr8);
+        masm.shlq(gpr2, 32);
+        masm.orq(gpr7, gpr2);
+        masm.imulq(gpr10, gpr1);
+        masm.movl(gpr8, new AMD64Address(gpr3, 8));
+        masm.movl(gpr5, new AMD64Address(gpr3, 4));
+        masm.movl(gpr2, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr9, gpr2);
+        masm.movl(gpr2, gpr9);
+        masm.shrq(gpr9, 32);
+        masm.addq(gpr10, gpr6);
+        masm.addq(gpr10, gpr9);
+        masm.movq(gpr6, gpr8);
+        masm.imulq(gpr8, gpr4);
+        masm.imulq(gpr6, gpr1);
+        masm.movl(gpr9, gpr8);
+        masm.shrq(gpr8, 32);
+        masm.addq(gpr10, gpr9);
+        masm.movl(gpr9, gpr10);
+        masm.shrq(gpr10, 32);
+        masm.addq(gpr6, gpr8);
+        masm.addq(gpr6, gpr10);
+        masm.movq(gpr8, gpr5);
+        masm.imulq(gpr5, gpr4);
+        masm.imulq(gpr8, gpr1);
+        masm.shlq(gpr9, 32);
+        masm.orq(gpr9, gpr2);
+        masm.movl(gpr1, new AMD64Address(gpr3, 0));
+        masm.movl(gpr10, gpr5);
+        masm.shrq(gpr5, 32);
+        masm.addq(gpr6, gpr10);
+        masm.movl(gpr10, gpr6);
+        masm.shrq(gpr6, 32);
+        masm.addq(gpr8, gpr5);
+        masm.addq(gpr8, gpr6);
+        masm.imulq(gpr4, gpr1);
+        masm.pextrw(gpr2, dest, 3);
+        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTableTanPtr));
+        masm.subq(gpr3, gpr6);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, gpr3);
+        masm.addl(gpr3, 19);
+        masm.movl(gpr5, 32768);
+        masm.andl(gpr5, gpr2);
+        masm.shrl(gpr2, 4);
+        masm.andl(gpr2, 2047);
+        masm.subl(gpr2, 1023);
+        masm.subl(gpr3, gpr2);
+        masm.addq(gpr8, gpr4);
+        masm.movl(gpr4, gpr3);
+        masm.addl(gpr4, 32);
+        masm.cmpl(gpr3, 0);
+        masm.jcc(ConditionFlag.Less, bb5);
+
+        masm.negl(gpr3);
+        masm.addl(gpr3, 29);
+        masm.shll(gpr8);
+        masm.movl(gpr6, gpr8);
+        masm.andl(gpr8, 1073741823);
+        masm.testl(gpr8, 536870912);
+        masm.jcc(ConditionFlag.NotEqual, bb6);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+
+        masm.bind(bb8);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.Equal, bb9);
+
+        masm.bind(bb10);
+        masm.bsrq(gpr10, gpr8);
+        masm.movl(gpr3, 29);
+        masm.subl(gpr3, gpr10);
+        masm.jcc(ConditionFlag.LessEqual, bb11);
+
+        masm.shlq(gpr8);
+        masm.movq(gpr1, gpr9);
+        masm.shlq(gpr9);
+        masm.addl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shrq(gpr1);
+        masm.shrq(gpr7);
+        masm.orq(gpr8, gpr1);
+        masm.orq(gpr9, gpr7);
+
+        masm.bind(bb12);
+        masm.cvtsi2sdq(dest, gpr8);
+        masm.shrq(gpr9, 1);
+        masm.cvtsi2sdq(temp3, gpr9);
+        masm.xorpd(temp4, temp4);
+        masm.shll(gpr4, 4);
+        masm.negl(gpr4);
+        masm.addl(gpr4, 16368);
+        masm.orl(gpr4, gpr5);
+        masm.xorl(gpr4, gpr2);
+        masm.pinsrw(temp4, gpr4, 3);
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(piFourTanPtr));
+        masm.movdq(temp2, new AMD64Address(gpr1, 0));                                           // 0x00000000,
+                                                                                                // 0x3fe921fb,
+        masm.movdq(temp7, new AMD64Address(gpr1, 8));                                           // 0x4611a626,
+                                                                                                // 0x3e85110b
+        masm.xorpd(temp5, temp5);
+        masm.subl(gpr4, 1008);
+        masm.pinsrw(temp5, gpr4, 3);
+        masm.mulsd(dest, temp4);
+        masm.shll(gpr5, 16);
+        masm.sarl(gpr5, 31);
+        masm.mulsd(temp3, temp5);
+        masm.movdqu(temp1, dest);
+        masm.mulsd(dest, temp2);
+        masm.shrl(gpr6, 30);
+        masm.addsd(temp1, temp3);
+        masm.mulsd(temp3, temp2);
+        masm.addl(gpr6, gpr5);
+        masm.xorl(gpr6, gpr5);
+        masm.mulsd(temp7, temp1);
+        masm.movl(gpr1, gpr6);
+        masm.addsd(temp7, temp3);
+        masm.movdqu(temp2, dest);
+        masm.addsd(dest, temp7);
+        masm.subsd(temp2, dest);
+        masm.addsd(temp7, temp2);
+        masm.movdqu(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvTanPtr)); // 0x6dc9c883,
+                                                                                                // 0x3fe45f30,
+                                                                                                // 0x6dc9c883,
+                                                                                                // 0x40245f30
+        if (masm.supports(CPUFeature.SSE3)) {
+            masm.movddup(dest, dest);
+        } else {
+            masm.movlhps(dest, dest);
+        }
+        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskTanPtr));       // 0x00000000,
+                                                                                                // 0x80000000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x80000000
+        masm.andpd(temp4, dest);
+        masm.mulpd(temp1, dest);
+        if (masm.supports(CPUFeature.SSE3)) {
+            masm.movddup(temp7, temp7);
+        } else {
+            masm.movlhps(temp7, temp7);
+        }
+        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfTanPtr));        // 0x00000000,
+                                                                                                // 0x3fe00000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x3fe00000
+        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(mulSixteenPtr));        // 0x00000000,
+                                                                                                // 0x40300000,
+                                                                                                // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.por(temp5, temp4);
+        masm.addpd(temp1, temp5);
+        masm.movdqu(temp5, temp1);
+        masm.unpckhpd(temp5, temp5);
+        masm.cvttsd2sil(gpr4, temp5);
+        masm.cvttpd2dq(temp1, temp1);
+        masm.cvtdq2pd(temp1, temp1);
+        masm.mulpd(temp1, temp6);
+        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOneTanPtr));           // 0x54444000,
+                                                                                                // 0x3fb921fb,
+                                                                                                // 0x54440000,
+                                                                                                // 0x3fb921fb
+        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(qqTwoTanPtr));           // 0x676733af,
+                                                                                                // 0x3d32e7b9
+        masm.shll(gpr1, 4);
+        masm.addl(gpr4, 469248);
+        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(pTwoTanPtr));           // 0x67674000,
+                                                                                                // 0xbd32e7b9,
+                                                                                                // 0x4c4c0000,
+                                                                                                // 0x3d468c23
+        masm.mulpd(temp3, temp1);
+        masm.addl(gpr4, gpr1);
+        masm.andl(gpr4, 31);
+        masm.mulsd(temp5, temp1);
+        masm.movl(gpr3, gpr4);
+        masm.mulpd(temp4, temp1);
+        masm.shll(gpr3, 1);
+        masm.subpd(dest, temp3);
+        masm.mulpd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreeTanPtr));          // 0x3707344a,
+                                                                                                // 0x3aa8a2e0,
+                                                                                                // 0x03707345,
+                                                                                                // 0x3ae98a2e
+        masm.addl(gpr4, gpr3);
+        masm.shll(gpr3, 2);
+        masm.addl(gpr4, gpr3);
+        masm.addsd(temp5, dest);
+        masm.movdqu(temp2, dest);
+        masm.subpd(dest, temp4);
+        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.shll(gpr4, 4);
+        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTableTanPtr));
+        masm.andpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(maskThirtyFiveTanPtr));  // 0xfffc0000,
+                                                                                                // 0xffffffff,
+                                                                                                // 0x00000000,
+                                                                                                // 0x00000000
+        masm.movdqu(temp3, dest);
+        masm.addq(gpr1, gpr4);
+        masm.subpd(temp2, dest);
+        masm.unpckhpd(dest, dest);
+        masm.divsd(temp6, temp5);
+        masm.subpd(temp2, temp4);
+        masm.subsd(temp3, temp5);
+        masm.subpd(temp2, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 48));
+        masm.addpd(temp2, temp7);
+        masm.movdqu(temp7, new AMD64Address(gpr1, 16));
+        masm.mulpd(temp7, dest);
+        masm.movdqu(temp4, new AMD64Address(gpr1, 96));
+        masm.mulpd(temp1, dest);
+        masm.mulpd(temp4, dest);
+        masm.addsd(temp2, temp3);
+        masm.movdqu(temp3, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp7, new AMD64Address(gpr1, 0));
+        masm.addpd(temp1, new AMD64Address(gpr1, 32));
+        masm.mulpd(temp1, dest);
+        masm.addpd(temp4, new AMD64Address(gpr1, 80));
+        masm.addpd(temp7, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 112));
+        masm.mulpd(temp1, dest);
+        masm.mulpd(dest, dest);
+        masm.addpd(temp4, temp1);
+        masm.movdqu(temp1, new AMD64Address(gpr1, 64));
+        masm.mulpd(temp1, dest);
+        masm.addpd(temp7, temp1);
+        masm.movdqu(temp1, temp3);
+        masm.mulpd(temp3, dest);
+        masm.mulsd(dest, dest);
+        masm.mulpd(temp1, new AMD64Address(gpr1, 144));
+        masm.mulpd(temp4, temp3);
+        masm.movdqu(temp3, temp1);
+        masm.addpd(temp7, temp4);
+        masm.movdqu(temp4, temp1);
+        masm.mulsd(dest, temp7);
+        masm.unpckhpd(temp7, temp7);
+        masm.addsd(dest, temp7);
+        masm.unpckhpd(temp1, temp1);
+        masm.addsd(temp3, temp1);
+        masm.subsd(temp4, temp3);
+        masm.addsd(temp1, temp4);
+        masm.movdqu(temp4, temp2);
+        masm.movdq(temp7, new AMD64Address(gpr1, 144));
+        masm.unpckhpd(temp2, temp2);
+        masm.addsd(temp7, new AMD64Address(gpr1, 152));
+        masm.mulsd(temp7, temp2);
+        masm.addsd(temp7, new AMD64Address(gpr1, 136));
+        masm.addsd(temp7, temp1);
+        masm.addsd(dest, temp7);
+        masm.movdq(temp7, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+                                                                                                // 0x3ff00000
+        masm.mulsd(temp4, temp6);
+        masm.movdq(temp2, new AMD64Address(gpr1, 168));
+        masm.andpd(temp2, temp6);
+        masm.mulsd(temp5, temp2);
+        masm.mulsd(temp6, new AMD64Address(gpr1, 160));
+        masm.subsd(temp7, temp5);
+        masm.subsd(temp2, new AMD64Address(gpr1, 128));
+        masm.subsd(temp7, temp4);
+        masm.mulsd(temp7, temp6);
+        masm.movdqu(temp4, temp3);
+        masm.subsd(temp3, temp2);
+        masm.addsd(temp2, temp3);
+        masm.subsd(temp4, temp2);
+        masm.addsd(dest, temp4);
+        masm.subsd(dest, temp7);
+        masm.addsd(dest, temp3);
+        masm.jmp(bb15);
+
+        masm.bind(bb9);
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.movl(gpr7, 0);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb10);
+
+        masm.addl(gpr4, 64);
+        masm.movq(gpr8, gpr9);
+        masm.movq(gpr9, gpr7);
+        masm.cmpq(gpr8, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb10);
+
+        masm.jmp(bb12);
+
+        masm.bind(bb11);
+        masm.jcc(ConditionFlag.Equal, bb12);
+
+        masm.negl(gpr3);
+        masm.shrq(gpr9);
+        masm.movq(gpr1, gpr8);
+        masm.shrq(gpr8);
+        masm.subl(gpr4, gpr3);
+        masm.negl(gpr3);
+        masm.addl(gpr3, 64);
+        masm.shlq(gpr1);
+        masm.orq(gpr9, gpr1);
+        masm.jmp(bb12);
+
+        masm.bind(bb5);
+        masm.notl(gpr3);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr8);
+        masm.movq(gpr6, gpr8);
+        masm.testl(gpr8, Integer.MIN_VALUE);
+        masm.jcc(ConditionFlag.NotEqual, bb13);
+
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 0);
+        masm.shrq(gpr6, 2);
+        masm.jmp(bb8);
+
+        masm.bind(bb6);
+        masm.shrl(gpr8);
+        masm.movl(gpr2, 1073741824);
+        masm.shrl(gpr2);
+        masm.shlq(gpr8, 32);
+        masm.orq(gpr8, gpr10);
+        masm.shlq(gpr2, 32);
+        masm.addl(gpr6, 1073741824);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.jmp(bb8);
+
+        masm.bind(bb13);
+        masm.shrl(gpr8);
+        masm.movq(gpr2, 0x100000000L);
+        masm.shrq(gpr2);
+        masm.movl(gpr3, 0);
+        masm.movl(gpr10, 0);
+        masm.subq(gpr3, gpr7);
+        masm.sbbq(gpr10, gpr9);
+        masm.sbbq(gpr2, gpr8);
+        masm.movq(gpr7, gpr3);
+        masm.movq(gpr9, gpr10);
+        masm.movq(gpr8, gpr2);
+        masm.movl(gpr2, 32768);
+        masm.shrq(gpr6, 2);
+        masm.addl(gpr6, 1073741824);
+        masm.jmp(bb8);
+
+        masm.bind(bb15);
     }
 }

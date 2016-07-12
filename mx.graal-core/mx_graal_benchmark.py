@@ -108,12 +108,17 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 
 
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']))
-mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-client', '-XX:-EnableJVMCI']))
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']))
-mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-client', '-XX:+EnableJVMCI']))
+
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal']))
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'graal-core-tracera', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal',
                                                              '-Dgraal.TraceRA=true']))
+
+# On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
+# force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
+# This behavior is the closest we can get to the -client vm configuration.
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:TieredStopAtLevel=1']))
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']))
 
 
 class TimingBenchmarkMixin(object):

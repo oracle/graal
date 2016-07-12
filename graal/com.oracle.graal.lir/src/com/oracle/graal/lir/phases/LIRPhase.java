@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.lir.phases;
 
-import java.util.List;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
@@ -112,17 +110,15 @@ public abstract class LIRPhase<C> {
         memUseTracker = statistics.memUseTracker;
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    C context) {
-        apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
+        apply(target, lirGenRes, context, true);
     }
 
     @SuppressWarnings("try")
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    C context, boolean dumpLIR) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context, boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
-                run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                run(target, lirGenRes, context);
                 if (dumpLIR && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
                     Debug.dump(Debug.BASIC_LOG_LEVEL, lirGenRes.getLIR(), "%s", getName());
                 }
@@ -132,8 +128,7 @@ public abstract class LIRPhase<C> {
         }
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                    C context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, C context);
 
     public static CharSequence createName(Class<?> clazz) {
         String className = clazz.getName();

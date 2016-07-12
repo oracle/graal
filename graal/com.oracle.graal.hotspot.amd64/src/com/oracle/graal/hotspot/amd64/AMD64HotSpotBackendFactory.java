@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static jdk.vm.ci.common.InitTimer.timer;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -149,7 +150,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                     HotSpotMetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes,
                     HotSpotStampProvider stampProvider) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
-        AMD64GraphBuilderPlugins.register(plugins, (AMD64) target.arch);
+        AMD64GraphBuilderPlugins.register(plugins, (AMD64) target.arch, GraalArithmeticStubs.getValue());
         return plugins;
     }
 

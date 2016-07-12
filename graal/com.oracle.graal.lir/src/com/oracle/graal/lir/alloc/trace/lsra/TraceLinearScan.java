@@ -31,7 +31,6 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -110,7 +109,7 @@ public final class TraceLinearScan implements IntervalDumper {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final ArrayList<? extends AbstractBlockBase<?>> sortedBlocks;
+    private final AbstractBlockBase<?>[] sortedBlocks;
 
     /**
      * Intervals sorted by {@link TraceInterval#from()}.
@@ -135,8 +134,8 @@ public final class TraceLinearScan implements IntervalDumper {
 
     private final LIRGenerationResult res;
 
-    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace trace,
-                    TraceBuilderResult traceBuilderResult, boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
+    public TraceLinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, Trace trace, TraceBuilderResult traceBuilderResult,
+                    boolean neverSpillConstants, AllocatableValue[] cachedStackSlots) {
         this.res = res;
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -284,11 +283,11 @@ public final class TraceLinearScan implements IntervalDumper {
 
     // access to block list (sorted in linear scan order)
     public int blockCount() {
-        return sortedBlocks.size();
+        return sortedBlocks().length;
     }
 
     public AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks.get(index);
+        return sortedBlocks()[index];
     }
 
     int numLoops() {
@@ -569,8 +568,7 @@ public final class TraceLinearScan implements IntervalDumper {
     }
 
     @SuppressWarnings("try")
-    public void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+    public void allocate(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -578,7 +576,7 @@ public final class TraceLinearScan implements IntervalDumper {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
-            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+            TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, trace, context, false);
 
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", this)) {
 
@@ -588,20 +586,20 @@ public final class TraceLinearScan implements IntervalDumper {
                 sortIntervalsBeforeAllocation();
                 sortFixedIntervalsBeforeAllocation();
 
-                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+                TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, trace, context, false);
                 printIntervals("After register allocation");
 
                 // resolve intra-trace data-flow
-                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+                TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, trace, context, false);
                 Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                 // eliminate spill moves
                 if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
-                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+                    TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, trace, context, false);
                     Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                 }
 
-                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, codeEmittingOrder, trace, context, false);
+                TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, trace, context, false);
 
                 if (DetailedAsserts.getValue()) {
                     verifyIntervals();
@@ -760,7 +758,7 @@ public final class TraceLinearScan implements IntervalDumper {
             otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
             TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedInts, otherIntervals);
 
-            for (AbstractBlockBase<?> block : sortedBlocks) {
+            for (AbstractBlockBase<?> block : sortedBlocks()) {
                 List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
 
                 for (int j = 0; j < instructions.size(); j++) {
@@ -808,7 +806,7 @@ public final class TraceLinearScan implements IntervalDumper {
         return frameMapBuilder;
     }
 
-    public ArrayList<? extends AbstractBlockBase<?>> sortedBlocks() {
+    public AbstractBlockBase<?>[] sortedBlocks() {
         return sortedBlocks;
     }
 
@@ -1056,8 +1054,7 @@ public final class TraceLinearScan implements IntervalDumper {
                     }
 
                     try (Indent indent2 = Debug.logAndIndent("Basic Blocks")) {
-                        for (int i = 0; i < sortedBlocks.size(); i++) {
-                            AbstractBlockBase<?> block = sortedBlocks.get(i);
+                        for (AbstractBlockBase<?> block : sortedBlocks) {
                             Debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                         }
                     }

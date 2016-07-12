@@ -53,7 +53,9 @@ class JVMCIVersionCheck {
         if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
             errorMessage.format("Download the latest JVMCI JDK 8 from http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html");
         } else {
-            errorMessage.format("Download the latest JDK 9 EA from https://jdk9.java.net/download/");
+            // TODO: uncomment once a suitable EA is available
+            // errorMessage.format("Download the latest JDK 9 EA from
+            // https://jdk9.java.net/download/");
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
@@ -95,6 +97,10 @@ class JVMCIVersionCheck {
             failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
                             "Cannot read JVMCI version from java.vm.version property: %s.%n", vmVersion);
         } else {
+            if (vmVersion.contains("HSCOMPSNAPSHOT")) {
+                // The snapshot of http://hg.openjdk.java.net/jdk9/hs-comp tip is expected to work
+                return;
+            }
             // http://openjdk.java.net/jeps/223
             // Only support EA builds until GA is available
             if (vmVersion.startsWith("9-ea+")) {

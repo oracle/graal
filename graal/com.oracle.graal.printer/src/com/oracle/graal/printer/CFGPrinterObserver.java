@@ -30,7 +30,6 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,8 +44,8 @@ import com.oracle.graal.compiler.gen.NodeLIRBuilder;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.java.BciBlockMapping;
@@ -198,7 +197,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 StructuredGraph graph = (StructuredGraph) object;
                 cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             }
-            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()), true);
+            cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
@@ -217,8 +216,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
                 delayedIntervals = (IntervalDumper) object;
             }
-        } else if (isBlockList(object)) {
-            cfgPrinter.printCFG(message, getBlockList(object), false);
+        } else if (object instanceof AbstractBlockBase<?>[]) {
+            cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
         } else if (object instanceof Trace) {
             cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
         } else if (object instanceof TraceBuilderResult) {
@@ -231,15 +230,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
 
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<? extends AbstractBlockBase<?>> getBlockList(Object object) {
-        return (List<? extends AbstractBlockBase<?>>) object;
-    }
-
-    private static boolean isBlockList(Object object) {
-        return object instanceof List<?> && ((List<?>) object).size() > 0 && ((List<?>) object).get(0) instanceof AbstractBlockBase<?>;
     }
 
     private static long timestamp;

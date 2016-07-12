@@ -93,7 +93,7 @@ public final class LIRVerifier {
         this.beforeRegisterAllocation = beforeRegisterAllocation;
         this.lir = lir;
         this.frameMap = frameMap;
-        this.blockLiveOut = new BitSet[lir.linearScanOrder().size()];
+        this.blockLiveOut = new BitSet[lir.linearScanOrder().length];
         this.variableDefinitions = new Object[lir.numVariables()];
     }
 

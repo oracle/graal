@@ -24,12 +24,9 @@ package com.oracle.graal.compiler.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
@@ -66,7 +63,7 @@ public class MatchRuleTest extends LIRTest {
         getLIRSuites().getPreAllocationOptimizationStage().appendPhase(new CheckPhase());
         compile(getResolvedJavaMethod("test1Snippet"), null);
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder().get(0))) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
             if (ins instanceof MemoryConstOp && ((MemoryConstOp) ins).getOpcode().toString().equals("CMP")) {
                 assertFalse("MemoryConstOp expected only once in first block", found);
                 found = true;
@@ -88,8 +85,7 @@ public class MatchRuleTest extends LIRTest {
 
     public static class CheckPhase extends LIRPhase<PreAllocationOptimizationContext> {
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, List<? extends AbstractBlockBase<?>> linearScanOrder,
-                        PreAllocationOptimizationContext context) {
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
             lir = lirGenRes.getLIR();
         }
     }

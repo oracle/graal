@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.Value;
 public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanAllocationPhase {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<? extends AbstractBlockBase<?>> codeEmittingOrder, Trace trace, TraceLinearScanAllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceLinearScanAllocationContext context) {
         TraceBuilderResult traceBuilderResult = context.resultTraces;
         TraceLinearScan allocator = context.allocator;
         new Analyser(allocator, traceBuilderResult).analyze();
@@ -95,7 +95,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             this.traceBuilderResult = traceBuilderResult;
         }
 
-        private List<? extends AbstractBlockBase<?>> sortedBlocks() {
+        private AbstractBlockBase<?>[] sortedBlocks() {
             return allocator.sortedBlocks();
         }
 
@@ -480,10 +480,9 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 int instructionIndex = numInstructions;
 
                 // iterate all blocks in reverse order
-                List<? extends AbstractBlockBase<?>> blocks = sortedBlocks();
-                ListIterator<? extends AbstractBlockBase<?>> blockIt = blocks.listIterator(blocks.size());
-                while (blockIt.hasPrevious()) {
-                    final AbstractBlockBase<?> block = blockIt.previous();
+                AbstractBlockBase<?>[] blocks = sortedBlocks();
+                for (int i = blocks.length - 1; i >= 0; i--) {
+                    final AbstractBlockBase<?> block = blocks[i];
 
                     try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
