@@ -49,7 +49,7 @@ public class CompileTheWorldOptions {
     @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
     public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
     @Option(help = "Option value overrides to use during compile the world. For example, " +
-                   "to disable inlining and partial escape analysis specify '-PartialEscapeAnalysis -Inline'. " +
+                   "to disable inlining and partial escape analysis specify 'PartialEscapeAnalysis=false Inline=false'. " +
                    "The format for each option is the same as on the command line just without the '-Dgraal.' prefix.", type = OptionType.Debug)
     public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
 

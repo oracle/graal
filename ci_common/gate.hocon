@@ -9,6 +9,24 @@ gateTest : {
   ]
 }
 
+gateTestCTW : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,ctw"]
+  ]
+}
+
+gateTestBenchmark : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,benchmarktest"]
+  ]
+}
+
 gateBootstrap : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -18,11 +36,26 @@ gateBootstrap : {
   ]
 }
 
-gateTest8      : ${gateTest} ${java8Downloads}
-gateTest8Debug : ${gateTest} ${java8DownloadsDebug}
-gateTest9      : ${gateTest} ${java9Downloads}
-gateBootstrap8 : ${gateBootstrap} ${java8Downloads}
-gateBootstrap9 : ${gateBootstrap} ${java9Downloads}
+gateBootstrapLite : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,bootstraplite"]
+  ]
+}
+
+gateTest8               : ${gateTest} ${java8Downloads}
+gateTestCTW8            : ${gateTestCTW} ${java8Downloads}
+gateTest8Debug          : ${gateTest} ${java8DownloadsDebug}
+gateTest9               : ${gateTest} ${java9Downloads}
+gateTestBenchmark8      : ${gateTestBenchmark} ${java8Downloads}
+gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8DownloadsDebug}
+gateTestBenchmark9      : ${gateTestBenchmark} ${java9Downloads}
+gateBootstrap8          : ${gateBootstrap} ${java8Downloads}
+gateBootstrap9          : ${gateBootstrap} ${java9Downloads}
+gateBootstrapLite8      : ${gateBootstrapLite} ${java8Downloads}
+gateBootstrapLite9      : ${gateBootstrapLite} ${java9Downloads}
 
 gateStyle : ${java8Downloads} {
   downloads : {

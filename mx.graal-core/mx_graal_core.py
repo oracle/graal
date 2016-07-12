@@ -211,7 +211,7 @@ def _is_jvmci_enabled(vmargs):
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
-    defaultCtwopts = '-Inline'
+    defaultCtwopts = 'Inline=false'
 
     parser = ArgumentParser(prog='mx ctw')
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
@@ -220,6 +220,10 @@ def ctw(args, extraVMarguments=None):
         parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
+
+    if args.ctwopts:
+        # Replace spaces with '#' since it cannot contain spaces
+        vmargs.append('-Dgraal.CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause VM crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
@@ -304,9 +308,11 @@ class MicrobenchRun:
             if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
-    test = 'test'
-    bootstrap = 'bootstrap'
-    fulltest = 'fulltest'
+    bootstrap = ['bootstrap', 'fulltest']
+    bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
+    test = ['test', 'fulltest']
+    benchmarktest = ['benchmarktest', 'fulltest']
+    ctw = ['ctw', 'fulltest']
 
 def _noneAsEmptyList(a):
     if not a or not any(a):
@@ -353,12 +359,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
 
     # Run microbench in hosted mode (only for testing the JMH setup)
-    for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=[GraalTags.fulltest])]:
+    for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=GraalTags.benchmarktest)]:
         r.run(tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
 
     # Run ctw against rt.jar on hosted
-    with Task('CTW:hosted', tasks, tags=[GraalTags.fulltest]) as t:
-        if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-XX:-UseJVMCICompiler', '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
+    with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
+        if t: ctw(['--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler', '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -375,11 +381,10 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'lusearch':   4,
         'pmd':        1,
         'sunflow':    2,
-        'tradebeans': 1,
         'xalan':      1,
     }
     for name, iterations in sorted(dacapos.iteritems()):
-        with Task('DaCapo:' + name, tasks, tags=[GraalTags.fulltest]) as t:
+        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
@@ -394,40 +399,40 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
-        'tmt':        1,
+        'tmt':        1
     }
     for name, iterations in sorted(scala_dacapos.iteritems()):
-        with Task('ScalaDaCapo:' + name, tasks, tags=[GraalTags.fulltest]) as t:
+        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # ensure -Xbatch still works
-    with Task('DaCapo_pmd:BatchMode', tasks, tags=[GraalTags.fulltest]) as t:
+    with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
         if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
-    with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=[GraalTags.fulltest]) as t:
+    with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
         if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
-    with Task('XCompMode:product', tasks, tags=[GraalTags.fulltest]) as t:
+    with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=[GraalTags.test]),
+    UnitTestRun('UnitTests', [], tags=GraalTags.test),
 ]
 
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true'], tags=[GraalTags.bootstrap]),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true'], tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
 ]
 
 def _graal_gate_runner(args, tasks):
