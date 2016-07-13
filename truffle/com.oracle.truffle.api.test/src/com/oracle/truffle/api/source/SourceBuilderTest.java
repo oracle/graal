@@ -75,25 +75,6 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void relativeFile() throws IOException {
-        File relative = null;
-        for (File f : new File(".").listFiles()) {
-            if (f.isFile() && f.canRead()) {
-                relative = f;
-                break;
-            }
-        }
-        if (relative == null) {
-            // skip the test
-            return;
-        }
-        Source direct = Source.fromFileName(relative.getPath());
-        Source fromBuilder = SourceSnippets.likeFileName(relative.getPath());
-        assertEquals("Both sources are equal", direct, fromBuilder);
-    }
-
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
@@ -254,13 +235,6 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void relativeURL() throws Exception {
-        URL resource = SourceSnippets.class.getResource("sample.js");
-        assertNotNull("Sample js file found", resource);
-        SourceSnippets.fromURL();
-    }
-
-    @Test
     public void jarURLGetsAName() throws IOException {
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
@@ -278,32 +252,6 @@ public class SourceBuilderTest {
         assertEquals("x.js", s.getName());
 
         sample.delete();
-    }
-
-    @Test
-    public void relativeURLWithOwnContent() throws Exception {
-        URL resource = SourceSnippets.class.getResource("sample.js");
-        assertNotNull("Sample js file found", resource);
-        SourceSnippets.fromURLWithOwnContent();
-    }
-
-    public void fileSample() throws Exception {
-        File sample = File.createTempFile("sample", ".java");
-        sample.deleteOnExit();
-        SourceSnippets.fromFile(sample.getParentFile(), sample.getName());
-        sample.delete();
-    }
-
-    @Test
-    public void stringSample() throws Exception {
-        Source source = SourceSnippets.fromAString();
-        assertNotNull("Every source must have URI", source.getURI());
-    }
-
-    @Test
-    public void readerSample() throws Exception {
-        Source source = SourceSnippets.fromReader();
-        assertNotNull("Every source must have URI", source.getURI());
     }
 
     @Test
