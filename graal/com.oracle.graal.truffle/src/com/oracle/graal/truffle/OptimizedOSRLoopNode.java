@@ -176,11 +176,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                         // loop is done. No further repetitions necessary.
                         return true;
                     } else {
-                        invalidate(this, "OSR compilation got invalidated");
+                        invalidateOSRTarget(this, "OSR compilation got invalidated");
                         return false;
                     }
                 } else if (!target.isCompiling()) {
-                    invalidate(this, "OSR compilation failed or cancelled");
+                    invalidateOSRTarget(this, "OSR compilation failed or cancelled");
                     return false;
                 } else {
                     iterations++;
@@ -260,11 +260,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     @Override
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        invalidate(newNode, reason);
+        invalidateOSRTarget(newNode, reason);
         return false;
     }
 
-    private void invalidate(Object source, CharSequence reason) {
+    private void invalidateOSRTarget(Object source, CharSequence reason) {
         OptimizedCallTarget target = this.compiledOSRLoop;
         if (target != null) {
             int invalidationBackoff = getInvalidationBackoff();
