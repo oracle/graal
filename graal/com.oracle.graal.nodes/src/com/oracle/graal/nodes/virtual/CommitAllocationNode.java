@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.virtual;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -214,6 +215,19 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
             lockIndexes = newLockIndexes;
             ensureVirtual = newEnsureVirtual;
         }
+    }
+
+    public HashMap<VirtualObjectNode, Object[]> getVirtualObjectsArrays() {
+        HashMap<VirtualObjectNode, Object[]> arrayValues = new HashMap<>();
+        int pos = 0;
+        for (int i = 0; i < virtualObjects.size(); i++) {
+            VirtualObjectNode virtualObject = virtualObjects.get(i);
+            int entryCount = virtualObject.entryCount();
+            ValueNode[] array = values.subList(pos, pos + entryCount).toArray(new ValueNode[entryCount]);
+            arrayValues.put(virtualObject, array);
+            pos += entryCount;
+        }
+        return arrayValues;
     }
 
 }
