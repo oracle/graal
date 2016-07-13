@@ -28,7 +28,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.ShapeImpl;
-import com.oracle.truffle.object.Locations.DualLocation;
+import com.oracle.truffle.object.basic.BasicLocations.PrimitiveLocationDecorator;
 
 public abstract class DOTestAsserts {
 
@@ -47,10 +47,8 @@ public abstract class DOTestAsserts {
     }
 
     public static void assertSameLocation(Location location1, Location location2) {
-        Assert.assertNotEquals(Object.class, ((DualLocation) location1).getType());
-        Assert.assertNotEquals(Object.class, ((DualLocation) location2).getType());
         Assert.assertEquals(
-                        ((DualLocation) location1).getPrimitiveLocation(),
-                        ((DualLocation) location2).getPrimitiveLocation());
+                        ((PrimitiveLocationDecorator) location1).getInternalLocation(),
+                        ((PrimitiveLocationDecorator) location2).getInternalLocation());
     }
 }

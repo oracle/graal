@@ -557,6 +557,10 @@ public abstract class BasicLocations {
             longLocation.setLongInternal(store, value);
         }
 
+        InternalLongLocation getInternalLocation() {
+            return longLocation;
+        }
+
         @Override
         public final int primitiveFieldCount() {
             return ((LocationImpl) longLocation).primitiveFieldCount();

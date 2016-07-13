@@ -32,7 +32,6 @@ import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
-import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.DirectReplacePropertyTransition;
@@ -96,7 +95,12 @@ public abstract class LayoutStrategy {
 
     protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property oldProperty, Object value, int flags) {
         Location oldLocation = oldProperty.getLocation();
-        Location newLocation = oldShape.allocator().existingLocationForValue(value, oldLocation, oldShape);
+        Location newLocation;
+        if (oldLocation.canSet(value)) {
+            newLocation = oldLocation;
+        } else {
+            newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
+        }
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, flags);
         ShapeImpl newShape = oldShape.replaceProperty(oldProperty, newProperty);
         return newShape;
@@ -240,11 +244,7 @@ public abstract class LayoutStrategy {
             Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
             if (append) {
                 oldProperty = shape.getProperty(oldProperty.getKey());
-                if (oldProperty.getLocation() instanceof DualLocation && newProperty.getLocation() instanceof DualLocation) {
-                    newProperty = newProperty.relocate(((DualLocation) oldProperty.getLocation()).changeType(((DualLocation) newProperty.getLocation()).getType()));
-                } else {
-                    newProperty = newProperty.relocate(shape.allocator().moveLocation(newProperty.getLocation()));
-                }
+                newProperty = newProperty.relocate(shape.allocator().moveLocation(newProperty.getLocation()));
             }
             return directReplaceProperty(shape, oldProperty, newProperty);
         } else {

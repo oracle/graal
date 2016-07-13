@@ -58,8 +58,8 @@ public class LocationTest {
         object.define("prim", 42);
         Location location = object.getShape().getProperty("prim").getLocation();
         Assert.assertEquals(int.class, ((TypedLocation) location).getType());
-        DOTestAsserts.assertLocationFields(location, 1, 1);
-        DOTestAsserts.assertShapeFields(object, 1, 1);
+        DOTestAsserts.assertLocationFields(location, 1, 0);
+        DOTestAsserts.assertShapeFields(object, 1, 0);
     }
 
     @Test
@@ -68,13 +68,13 @@ public class LocationTest {
         object.define("foo", 42);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
-        DOTestAsserts.assertLocationFields(location1, 1, 1);
-        DOTestAsserts.assertShapeFields(object, 1, 1);
+        DOTestAsserts.assertLocationFields(location1, 1, 0);
+        DOTestAsserts.assertShapeFields(object, 1, 0);
 
         object.set("foo", new Object());
         Location location2 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
-        DOTestAsserts.assertLocationFields(location2, 1, 1);
+        DOTestAsserts.assertLocationFields(location2, 0, 1);
         DOTestAsserts.assertShapeFields(object, 1, 1);
     }
 
@@ -84,13 +84,13 @@ public class LocationTest {
         object.define("foo", 42L);
         Location location1 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(long.class, ((TypedLocation) location1).getType());
-        DOTestAsserts.assertLocationFields(location1, 1, 1);
-        DOTestAsserts.assertShapeFields(object, 1, 1);
+        DOTestAsserts.assertLocationFields(location1, 1, 0);
+        DOTestAsserts.assertShapeFields(object, 1, 0);
 
         object.set("foo", 3.14);
         Location location2 = object.getShape().getProperty("foo").getLocation();
         Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
-        DOTestAsserts.assertLocationFields(location2, 1, 1);
+        DOTestAsserts.assertLocationFields(location2, 0, 1);
         DOTestAsserts.assertShapeFields(object, 1, 1);
     }
 

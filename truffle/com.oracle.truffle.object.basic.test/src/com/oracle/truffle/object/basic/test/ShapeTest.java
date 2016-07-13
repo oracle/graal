@@ -42,15 +42,21 @@ public class ShapeTest {
         Assert.assertEquals(id(rootShape) + "{}", rootShape.toString());
 
         Shape aInt = rootShape.defineProperty("a", 1, 0);
-        Assert.assertEquals(id(aInt) + "{\"a\":(int)long@0,Object@0" + "\n}", aInt.toString());
+        Assert.assertEquals(id(aInt) + "{\"a\":int@0" + "\n}", aInt.toString());
 
         Shape aObj = aInt.defineProperty("a", new Object(), 0);
-        Assert.assertEquals(id(aObj) + "{\"a\":Object@0,long@0" + "\n}", aObj.toString());
+        Assert.assertEquals(id(aObj) + "{\"a\":Object@0" + "\n}", aObj.toString());
+
+        Shape aObjBInt = aObj.defineProperty("b", 2, 0);
+        Assert.assertEquals(id(aObjBInt) + "{" +
+                        "\"b\":int@1,\n" +
+                        "\"a\":Object@0" +
+                        "\n}", aObjBInt.toString());
 
         Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
         Assert.assertEquals(id(aIntBObj) + "{" +
-                        "\"b\":Object@1,\n" +
-                        "\"a\":(int)long@0,Object@0" +
+                        "\"b\":Object@0,\n" +
+                        "\"a\":int@0" +
                         "\n}", aIntBObj.toString());
 
         Shape bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
@@ -61,11 +67,11 @@ public class ShapeTest {
 
         Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
         Assert.assertEquals(id(shapeWithExtArray) + "{" +
-                        "\"e\":(long)long[0],Object[0],\n" +
-                        "\"d\":(double)long@2,Object@3,\n" +
-                        "\"c\":(boolean)long@1,Object@2,\n" +
-                        "\"b\":Object@1,\n" +
-                        "\"a\":(int)long@0,Object@0" +
+                        "\"e\":long[0],\n" +
+                        "\"d\":double@2,\n" +
+                        "\"c\":boolean@1,\n" +
+                        "\"b\":Object@0,\n" +
+                        "\"a\":int@0" +
                         "\n}", shapeWithExtArray.toString());
     }
 
