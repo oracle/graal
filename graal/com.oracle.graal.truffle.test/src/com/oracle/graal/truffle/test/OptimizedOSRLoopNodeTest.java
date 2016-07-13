@@ -145,16 +145,13 @@ public class OptimizedOSRLoopNodeTest {
         executeNoCallTarget(rootNode, OSR_THRESHOLD + 1);
         assertCompiled(rootNode.getOSRTarget());
         executeNoCallTarget(rootNode, 1);
-        assertNotCompiled(rootNode.getOSRTarget()); // now
-                                                    // deoptimized
+        assertNotCompiled(rootNode.getOSRTarget()); // now deoptimized
         executeNoCallTarget(rootNode, OSR_THRESHOLD + 1);
         assertCompiled(rootNode.getOSRTarget());
-        executeNoCallTarget(rootNode, 1); // maybe
-                                          // deoptimizing
+        executeNoCallTarget(rootNode, 1); // maybe deoptimizing
         executeNoCallTarget(rootNode, OSR_THRESHOLD + 1);
         assertCompiled(rootNode.getOSRTarget());
-        executeNoCallTarget(rootNode, 1); // not
-                                          // deoptimizing
+        executeNoCallTarget(rootNode, 1); // not deoptimizing
         assertCompiled(rootNode.getOSRTarget());
         Assert.assertTrue(rootNode.wasRepeatingCalledCompiled());
     }
