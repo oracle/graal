@@ -38,8 +38,8 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.TypedLocation;
-import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
+import com.oracle.truffle.object.basic.DOTestAsserts;
 
 @RunWith(Parameterized.class)
 public class ImplicitCastTest {
@@ -72,15 +72,14 @@ public class ImplicitCastTest {
         Shape rootShape = layout.createShape(new ObjectType());
         DynamicObject object = rootShape.newInstance();
         object.define("a", intVal);
-        Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location instanceof DualLocation);
-        Assert.assertEquals(int.class, ((TypedLocation) location).getType());
+        Location location1 = object.getShape().getProperty("a").getLocation();
+        Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
 
         object.define("a", otherVal);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location2 instanceof DualLocation);
         Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
+        DOTestAsserts.assertSameLocation(location1, location2);
     }
 
     @Test
@@ -88,15 +87,35 @@ public class ImplicitCastTest {
         Shape rootShape = layout.createShape(new ObjectType());
         DynamicObject object = rootShape.newInstance();
         object.define("a", otherVal);
-        Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location instanceof DualLocation);
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location).getType());
+        Location location1 = object.getShape().getProperty("a").getLocation();
+        Assert.assertEquals(otherPrimClass, ((TypedLocation) location1).getType());
 
         object.define("a", intVal);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location2 instanceof DualLocation);
         Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
+        DOTestAsserts.assertSameLocation(location1, location2);
+    }
+
+    @Test
+    public void testIntOtherDoesNotGoBack() {
+        Shape rootShape = layout.createShape(new ObjectType());
+        DynamicObject object = rootShape.newInstance();
+        object.define("a", intVal);
+        Location location1 = object.getShape().getProperty("a").getLocation();
+        Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
+
+        object.define("a", otherVal);
+        Location location2 = object.getShape().getProperty("a").getLocation();
+        Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
+        Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
+        DOTestAsserts.assertSameLocation(location1, location2);
+
+        object.define("a", intVal);
+        Location location3 = object.getShape().getProperty("a").getLocation();
+        Assert.assertEquals(otherPrimClass, ((TypedLocation) location3).getType());
+        Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
+        DOTestAsserts.assertSameLocation(location2, location3);
     }
 
     @Test
@@ -106,7 +125,6 @@ public class ImplicitCastTest {
         object.define("a", intVal);
         object.define("a", "");
         Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location instanceof DualLocation);
         Assert.assertEquals(Object.class, ((TypedLocation) location).getType());
         Assert.assertEquals(String.class, object.get("a").getClass());
     }
@@ -119,7 +137,6 @@ public class ImplicitCastTest {
         object.define("a", otherVal);
         object.define("a", "");
         Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertTrue(location instanceof DualLocation);
         Assert.assertEquals(Object.class, ((TypedLocation) location).getType());
         Assert.assertEquals(String.class, object.get("a").getClass());
     }

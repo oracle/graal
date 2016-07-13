@@ -27,11 +27,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.LocationImpl;
-import com.oracle.truffle.object.Locations.DualLocation;
+import com.oracle.truffle.api.object.TypedLocation;
+import com.oracle.truffle.object.basic.DOTestAsserts;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class LocationTest {
@@ -43,21 +45,80 @@ public class LocationTest {
     public void testOnlyObjectLocationForObject() {
         DynamicObject object = rootShape.newInstance();
         object.define("obj", new Object());
-        LocationImpl location = (LocationImpl) object.getShape().getProperty("obj").getLocation();
+        Location location = object.getShape().getProperty("obj").getLocation();
         Assert.assertTrue(location instanceof ObjectLocation);
-        Assert.assertFalse(location instanceof DualLocation);
-        Assert.assertEquals(1, location.objectFieldCount());
-        Assert.assertEquals(0, location.primitiveFieldCount());
+        DOTestAsserts.assertLocationFields(location, 0, 1);
+        DOTestAsserts.assertShapeFields(object, 0, 1);
     }
 
     @Test
-    public void testDualLocationForPrimitive() {
+    public void testOnlyPrimLocationForPrimitive() {
         DynamicObject object = rootShape.newInstance();
         object.define("prim", 42);
-        LocationImpl location = (LocationImpl) object.getShape().getProperty("prim").getLocation();
-        Assert.assertTrue(location instanceof DualLocation);
-        Assert.assertEquals(1, location.objectFieldCount());
-        Assert.assertEquals(1, location.primitiveFieldCount());
+        Location location = object.getShape().getProperty("prim").getLocation();
+        Assert.assertEquals(int.class, ((TypedLocation) location).getType());
+        DOTestAsserts.assertLocationFields(location, 1, 1);
+        DOTestAsserts.assertShapeFields(object, 1, 1);
+    }
+
+    @Test
+    public void testPrim2Object() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("foo", 42);
+        Location location1 = object.getShape().getProperty("foo").getLocation();
+        Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
+        DOTestAsserts.assertLocationFields(location1, 1, 1);
+        DOTestAsserts.assertShapeFields(object, 1, 1);
+
+        object.set("foo", new Object());
+        Location location2 = object.getShape().getProperty("foo").getLocation();
+        Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
+        DOTestAsserts.assertLocationFields(location2, 1, 1);
+        DOTestAsserts.assertShapeFields(object, 1, 1);
+    }
+
+    @Test
+    public void testUnrelatedPrimitivesGoToObject() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("foo", 42L);
+        Location location1 = object.getShape().getProperty("foo").getLocation();
+        Assert.assertEquals(long.class, ((TypedLocation) location1).getType());
+        DOTestAsserts.assertLocationFields(location1, 1, 1);
+        DOTestAsserts.assertShapeFields(object, 1, 1);
+
+        object.set("foo", 3.14);
+        Location location2 = object.getShape().getProperty("foo").getLocation();
+        Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
+        DOTestAsserts.assertLocationFields(location2, 1, 1);
+        DOTestAsserts.assertShapeFields(object, 1, 1);
+    }
+
+    @Test
+    public void testChangeFlagsReuseLocation() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("foo", 42);
+        Location location = object.getShape().getProperty("foo").getLocation();
+
+        object.define("foo", 43, 111);
+        Assert.assertEquals(43, object.get("foo"));
+        Property newProperty = object.getShape().getProperty("foo");
+        Assert.assertEquals(111, newProperty.getFlags());
+        Location newLocation = newProperty.getLocation();
+        Assert.assertSame(location, newLocation);
+    }
+
+    @Test
+    public void testChangeFlagsChangeLocation() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("foo", 42);
+        Location location = object.getShape().getProperty("foo").getLocation();
+
+        object.define("foo", "str", 111);
+        Assert.assertEquals("str", object.get("foo"));
+        Property newProperty = object.getShape().getProperty("foo");
+        Assert.assertEquals(111, newProperty.getFlags());
+        Location newLocation = newProperty.getLocation();
+        Assert.assertNotSame(location, newLocation);
     }
 
 }
