@@ -219,6 +219,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm",
         "com.oracle.truffle.llvm.tools",
+        "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.test",
@@ -481,6 +482,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
         "graal-core:GRAAL_API",
         "graal-core:GRAAL_COMPILER",
         "graal-core:GRAAL_HOTSPOT",

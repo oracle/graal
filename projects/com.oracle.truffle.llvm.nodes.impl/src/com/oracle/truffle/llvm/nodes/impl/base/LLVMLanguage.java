@@ -103,8 +103,11 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
+        String atname = "@" + globalName; // for interop
         for (LLVMFunctionDescriptor descr : context.getFunctionRegistry().getFunctionDescriptors()) {
             if (descr != null && descr.getName().equals(globalName)) {
+                return descr;
+            } else if (descr != null && descr.getName().equals(atname)) {
                 return descr;
             }
         }
