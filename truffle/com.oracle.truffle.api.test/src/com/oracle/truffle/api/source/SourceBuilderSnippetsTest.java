@@ -26,13 +26,28 @@ import java.io.File;
 import java.net.URL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class SourceBuilderSnippetsTest {
+    private static boolean loadedOK;
+
+    @BeforeClass
+    public static void isAvailable() {
+        try {
+            loadedOK = SourceSnippets.loaded;
+        } catch (LinkageError ex) {
+            // ignore
+        }
+    }
 
     @SuppressWarnings(value = "deprecation")
     @Test
     public void relativeFile() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         File relative = null;
         for (File f : new File(".").listFiles()) {
             if (f.isFile() && f.canRead()) {
@@ -51,6 +66,10 @@ public class SourceBuilderSnippetsTest {
 
     @Test
     public void relativeURL() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         URL resource = SourceSnippets.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
         SourceSnippets.fromURL();
@@ -58,12 +77,20 @@ public class SourceBuilderSnippetsTest {
 
     @Test
     public void relativeURLWithOwnContent() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         URL resource = SourceSnippets.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
         SourceSnippets.fromURLWithOwnContent();
     }
 
     public void fileSample() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         File sample = File.createTempFile("sample", ".java");
         sample.deleteOnExit();
         SourceSnippets.fromFile(sample.getParentFile(), sample.getName());
@@ -72,12 +99,20 @@ public class SourceBuilderSnippetsTest {
 
     @Test
     public void stringSample() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         Source source = SourceSnippets.fromAString();
         assertNotNull("Every source must have URI", source.getURI());
     }
 
     @Test
     public void readerSample() throws Exception {
+        if (!loadedOK) {
+            return;
+        }
+
         Source source = SourceSnippets.fromReader();
         assertNotNull("Every source must have URI", source.getURI());
     }
