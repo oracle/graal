@@ -217,6 +217,13 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         }
     }
 
+    /**
+     * For all the virtual object nodes that depends on commit allocation, this method maps the node
+     * with its values. For example, a commit allocation could depend on a {@link VirtualArrayNode}
+     * with many {@link ValueNode}. The hash table will contain the corresponding
+     * {@link VirtualArrayNode} as a key with the array of {@link ValueNode}. This array can be used
+     * to inspect those {@link ValueNode}.
+     */
     public HashMap<VirtualObjectNode, Object[]> getVirtualObjectsArrays() {
         HashMap<VirtualObjectNode, Object[]> arrayValues = new HashMap<>();
         int pos = 0;
