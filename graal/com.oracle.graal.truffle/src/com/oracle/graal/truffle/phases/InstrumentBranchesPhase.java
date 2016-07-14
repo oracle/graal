@@ -50,6 +50,7 @@ import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -59,6 +60,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
+    private static final String[] OMITTED_STACK_PATTERNS = new String[]{
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callProxy",
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callRoot",
+                    "com.oracle.graal.truffle.OptimizedCallTarget.callInlined",
+                    "com.oracle.graal.truffle.OptimizedDirectCallNode.callProxy",
+                    "com.oracle.graal.truffle.OptimizedDirectCallNode.call"
+    };
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
@@ -164,8 +172,62 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        private static String prettify(String key, Point p) {
+            if (TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue() && TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                StringBuilder sb = new StringBuilder();
+                NodeSourcePosition pos = p.getPosition();
+                NodeSourcePosition lastPos = null;
+                int repetitions = 1;
+
+                callerChainLoop: while (pos != null) {
+                    // Skip stack frame if it is a known pattern.
+                    for (String pattern : OMITTED_STACK_PATTERNS) {
+                        if (pos.getMethod().format("%H.%n(%p)").contains(pattern)) {
+                            pos = pos.getCaller();
+                            continue callerChainLoop;
+                        }
+                    }
+
+                    if (lastPos == null) {
+                        // Always output first method.
+                        lastPos = pos;
+                        MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
+                    } else if (!lastPos.getMethod().equals(pos.getMethod())) {
+                        // Output count for identical BCI outputs, and output next method.
+                        if (repetitions > 1) {
+                            sb.append(" x" + repetitions);
+                            repetitions = 1;
+                        }
+                        sb.append(CodeUtil.NEW_LINE);
+                        lastPos = pos;
+                        MetaUtil.appendLocation(sb, pos.getMethod(), pos.getBCI());
+                    } else if (lastPos.getBCI() != pos.getBCI()) {
+                        // Conflate identical BCI outputs.
+                        if (repetitions > 1) {
+                            sb.append(" x" + repetitions);
+                            repetitions = 1;
+                        }
+                        lastPos = pos;
+                        sb.append(" [bci: " + pos.getBCI() + "]");
+                    } else {
+                        // Identical BCI to the one seen previously.
+                        repetitions++;
+                    }
+                    pos = pos.getCaller();
+                }
+                if (repetitions > 1) {
+                    sb.append(" x" + repetitions);
+                    repetitions = 1;
+                }
+                return sb.toString();
+            } else {
+                return key;
+            }
+        }
+
         public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> entry.getKey() + "\n" + entry.getValue()).collect(Collectors.toCollection(ArrayList::new));
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue()).collect(
+                            Collectors.toCollection(ArrayList::new));
         }
 
         public synchronized ArrayList<String> accessTableToHistogram() {
@@ -201,7 +263,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 return existing;
             } else if (tableCount < ACCESS_TABLE.length) {
                 int index = tableCount++;
-                Point p = new Point(index);
+                Point p = new Point(index, n.getNodeSourcePosition());
                 pointMap.put(key, p);
                 return p;
             } else {
@@ -234,9 +296,11 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
         private static class Point {
             private int index;
+            private NodeSourcePosition position;
 
-            Point(int index) {
+            Point(int index, NodeSourcePosition position) {
                 this.index = index;
+                this.position = position;
             }
 
             public long ifVisits() {
@@ -245,6 +309,10 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
             public long elseVisits() {
                 return ACCESS_TABLE[index * 2 + 1];
+            }
+
+            public NodeSourcePosition getPosition() {
+                return position;
             }
 
             public BranchState getBranchState() {

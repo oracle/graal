@@ -35,6 +35,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -53,6 +54,11 @@ import sun.misc.Unsafe;
 public class NativeFunctionInterfaceTest {
 
     private static final Unsafe unsafe = initUnsafe();
+
+    // https://bugs.openjdk.java.net/browse/JDK-8146156
+    private static String formatString(String format, Object... args) {
+        return String.format(Locale.getDefault(), format, args);
+    }
 
     private static Unsafe initUnsafe() {
         try {
@@ -134,7 +140,7 @@ public class NativeFunctionInterfaceTest {
         assumeTrue(nfi.isDefaultLibrarySearchSupported());
         String formatString = "AB %f%f";
         long formatCString = writeCString("AB %f%f", malloc(formatString.length() + 1));
-        String referenceString = String.format(formatString, 1.0D, 1.0D);
+        String referenceString = formatString(formatString, 1.0D, 1.0D);
         int bufferLength = referenceString.length() + 1;
         long buffer = malloc(bufferLength);
 
@@ -181,7 +187,7 @@ public class NativeFunctionInterfaceTest {
         String formatString = formatStringBuf.toString();
         long formatCString = writeCString(formatString, malloc(formatString.length() + 1));
 
-        String referenceString = String.format(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
+        String referenceString = formatString(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
                         dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11]);
         int bufferLength = referenceString.length() + 1;
 
@@ -222,7 +228,7 @@ public class NativeFunctionInterfaceTest {
         String formatString = formatStringBuf.toString();
         long formatCString = writeCString(formatString, malloc(formatString.length() + 1));
 
-        String referenceString = String.format(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
+        String referenceString = formatString(formatString, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], dval[0], dval[1], dval[2], dval[3],
                         dval[4], dval[5], dval[6], dval[7], dval[8], dval[9], dval[10], dval[11], cval[0], cval[1], cval[2], cval[3], cval[4], cval[5], cval[6], cval[7], cval[8], cval[9], cval[10],
                         cval[11]);
         int bufferLength = referenceString.length() + 1;
@@ -266,7 +272,7 @@ public class NativeFunctionInterfaceTest {
         String formatString = "AB %f%f";
         long formatCString = writeCString("AB %f%f", malloc(formatString.length() + 1));
 
-        String expected = String.format(formatString, 1.0D, 1.0D);
+        String expected = formatString(formatString, 1.0D, 1.0D);
         int bufferLength = expected.length() + 1;
         byte[] buffer = new byte[bufferLength];
 
@@ -312,7 +318,7 @@ public class NativeFunctionInterfaceTest {
     private static String getVMLibPath() {
         String vm = getVMName();
 
-        String path = String.format("%s%c%s%c%s", getProperty("sun.boot.library.path"), separatorChar, vm, separatorChar, mapLibraryName("jvm"));
+        String path = formatString("%s%c%s%c%s", getProperty("sun.boot.library.path"), separatorChar, vm, separatorChar, mapLibraryName("jvm"));
         // Only continue if the library file exists
         Assume.assumeTrue(new File(path).exists());
         return path;
@@ -333,7 +339,7 @@ public class NativeFunctionInterfaceTest {
     }
 
     private static String getJavaLibPath() {
-        String path = String.format("%s%c%s", getProperty("sun.boot.library.path"), separatorChar, mapLibraryName("java"));
+        String path = formatString("%s%c%s", getProperty("sun.boot.library.path"), separatorChar, mapLibraryName("java"));
         Assume.assumeTrue(new File(path).exists());
         return path;
     }

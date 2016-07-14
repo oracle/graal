@@ -93,15 +93,18 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
         boolean instrumentFlag = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
+        boolean prettyFlag = TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue();
         String filterFlag = TruffleCompilerOptions.TruffleInstrumentBranchesFilter.getValue();
         try {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+            TruffleCompilerOptions.TruffleInstrumentBranchesPretty.setValue(false);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue("*.*.execute");
             OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
             Assert.assertTrue(target.isValid());
             target.call();
         } finally {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
+            TruffleCompilerOptions.TruffleInstrumentBranchesPretty.setValue(prettyFlag);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue(filterFlag);
         }
         String stackOutput = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
@@ -117,9 +120,11 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
         boolean instrumentFlag = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
+        boolean prettyFlag = TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue();
         String filterFlag = TruffleCompilerOptions.TruffleInstrumentBranchesFilter.getValue();
         try {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+            TruffleCompilerOptions.TruffleInstrumentBranchesPretty.setValue(false);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue("*.*.execute");
             OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
             Assert.assertTrue(target.isValid());
@@ -128,6 +133,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
             target.call();
         } finally {
             TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
+            TruffleCompilerOptions.TruffleInstrumentBranchesPretty.setValue(prettyFlag);
             TruffleCompilerOptions.TruffleInstrumentBranchesFilter.setValue(filterFlag);
         }
         String stackOutput1 = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
