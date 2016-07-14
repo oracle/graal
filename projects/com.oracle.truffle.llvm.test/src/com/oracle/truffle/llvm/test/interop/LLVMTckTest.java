@@ -36,7 +36,6 @@ import java.io.IOException;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
@@ -56,7 +55,6 @@ import com.oracle.truffle.tck.TruffleTCK;
 public class LLVMTckTest extends TruffleTCK {
     private static final String PATH = LLVMPaths.LOCAL_TESTS + "/../interoptests";
     private static final String FILENAME = "tck";
-    private final Builder builder = PolyglotEngine.newBuilder();
 
     @Test
     public void testVerifyPresence() {
@@ -66,7 +64,7 @@ public class LLVMTckTest extends TruffleTCK {
     }
 
     @Override
-    protected PolyglotEngine prepareVM() throws Exception {
+    protected PolyglotEngine prepareVM(Builder builder) throws Exception {
         PolyglotEngine engine = builder.build();
         try {
             File cFile = new File(PATH, FILENAME + ".c");
@@ -177,9 +175,5 @@ public class LLVMTckTest extends TruffleTCK {
     @Override
     protected String complexSumReal() {
         return null;
-    }
-
-    @Override
-    protected void assertDouble(String msg, double expectedValue, double actualValue) {
     }
 }

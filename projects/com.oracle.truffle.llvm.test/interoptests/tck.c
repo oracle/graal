@@ -35,31 +35,52 @@ typedef struct complex {
 	double	imaginary;
 } COMPLEX;
 
+typedef struct compound {
+	int     (*fourtyTwo)(void);
+	int     (*plus)(int, int);
+	void*   (*returnsNull)(void);
+	struct compound* (*returnsThis)(void);
+} COMPOUND;
+
+typedef struct values {
+	char    byteValue;
+	short   shortValue;
+	int     intValue;
+	long    longValue;
+	float   floatValue;
+	double  doubleValue;
+	char    charValue;
+	int     booleanValue;
+} VALUES;
+
 int fourtyTwo(void)
 {
 	return 42;
 }
 
-int plus(int a, int b)
+double plus(double a, double b)
 {
 	return a + b;
 }
 
-int identity(int x)
+void* identity(void* x)
 {
 	return x;
 }
 
-int apply(int (*f)(int a, int b)) {
+int apply(int (*f)(int a, int b))
+{
 	return f(18, 32) + 10;
 }
 
 static int cnt_value = 0;
-int cnt() {
+int cnt(void)
+{
 	return cnt_value;
 }
 
-int count() {
+int count(void)
+{
 	cnt_value = cnt() + 1;
 	return cnt();
 }
@@ -69,23 +90,25 @@ void* returnsNull(void)
 	return NULL;
 }
 
-void complexAdd(COMPLEX* a, COMPLEX* b) {
+void complexAdd(COMPLEX* a, COMPLEX* b)
+{
 	a->real = a->real + b->real;
 	a->imaginary = a->imaginary + b->imaginary;
 }
 
-/*
-function compoundObject() {
-	obj = new();
+COMPOUND compoundObject(void)
+{
+	COMPOUND obj;
 	obj.fourtyTwo = fourtyTwo;
 	obj.plus = plus;
 	obj.returnsNull = returnsNull;
-	obj.returnsThis = obj;
+	//obj.returnsThis = obj;
 	return obj;
 }
 
-function valuesObject() {
-	obj = new();
+VALUES valuesObject(void)
+{
+	VALUES obj;
 	obj.byteValue = 0;
 	obj.shortValue = 0;
 	obj.intValue = 0;
@@ -96,7 +119,6 @@ function valuesObject() {
 	obj.booleanValue = (1 == 0);
 	return obj;
 }
-*/
 
 int main(void) {
 	return 0;
