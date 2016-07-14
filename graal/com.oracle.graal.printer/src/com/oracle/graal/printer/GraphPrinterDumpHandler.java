@@ -97,6 +97,8 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     protected void createPrinter() {
         if (Options.PrintIdealGraphFile.getValue()) {
             initializeFilePrinter();
+        } else if (Options.PrintCanonicalGraphStrings.getValue()) {
+            initializeStringPrinter();
         } else {
             initializeNetworkPrinter();
         }
@@ -108,6 +110,17 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             dumpIds = Arrays.copyOf(dumpIds, depth);
         }
         return dumpIds[depth - 1]++;
+    }
+
+    private void initializeStringPrinter() {
+        // If this is the first time I have constructed a FilePrinterPath,
+        // get a time stamp in a (weak) attempt to make unique file names.
+        if (dumpIgvTimestamp == 0) {
+            dumpIgvTimestamp = System.currentTimeMillis();
+        }
+        // Construct the path to the directory.
+        Path path = Paths.get(Options.DumpPath.getValue(), "graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet());
+        printer = new CanonicalStringGraphPrinter(path);
     }
 
     private void initializeFilePrinter() {

@@ -94,12 +94,14 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> InterceptBailout = new OptionValue<>(false);
         @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
         public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
-        @Option(help = "Output probabilities for fixed nodes during binary graph dumping", type = OptionType.Debug)
-        public static final OptionValue<Boolean> PrintGraphProbabilities = new OptionValue<>(false);
+
         @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintCFG = new OptionValue<>(false);
         @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintBackendCFG = new OptionValue<>(true);
+
+        @Option(help = "Output probabilities for fixed nodes during binary graph dumping", type = OptionType.Debug)
+        public static final OptionValue<Boolean> PrintGraphProbabilities = new OptionValue<>(false);
         @Option(help = "Enable dumping to the IdealGraphVisualizer.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintIdealGraph = new OptionValue<>(true);
         @Option(help = "Dump IdealGraphVisualizer output in binary format", type = OptionType.Debug)
@@ -107,7 +109,7 @@ public class GraalDebugConfig implements DebugConfig {
         @Option(help = "Print Ideal graphs as opposed to sending them over the network.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintIdealGraphFile = new OptionValue<>(false);
         @Option(help = "The directory into which to dump the Ideal graph files.")
-        public static final OptionValue<String> DumpPath = new OptionValue<>("");
+        public static final OptionValue<String> DumpPath = new OptionValue<>(".");
         @Option(help = "", type = OptionType.Debug)
         public static final OptionValue<String> PrintIdealGraphAddress = new OptionValue<>("127.0.0.1");
         @Option(help = "", type = OptionType.Debug)
@@ -118,6 +120,15 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> PrintIdealGraphSchedule = new OptionValue<>(false);
         @Option(help = "Enable dumping Truffle ASTs to the IdealGraphVisualizer.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintTruffleTrees = new OptionValue<>(true);
+
+        @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> PrintCanonicalGraphStrings = new OptionValue<>(false);
+        @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
+        public static final OptionValue<Integer> PrintCanonicalGraphStringFlavor = new OptionValue<>(0);
+        @Option(help = "Exclude virtual nodes when dumping canonical text for graphs.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> CanonicalGraphStringsExcludeVirtuals = new OptionValue<>(true);
+        @Option(help = "Exclude virtual nodes when dumping canonical text for graphs.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> CanonicalGraphStringsCheckConstants = new OptionValue<>(false);
 
         @Option(help = "Enable per method metrics that are collected across all compilations of a method." +
                        "Pattern for scope(s) in which method metering is enabled (see DebugFilter and Debug.metric).", type = OptionType.Debug)
