@@ -49,9 +49,6 @@ import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
 
 @SuppressWarnings({"static-method"})
 public final class LLVMInteropTest {
-
-    private static final String PATH = LLVMPaths.LOCAL_TESTS + "/../interoptests";
-
     @Test
     public void test001() {
         Runner runner = new Runner("interop001");
@@ -425,9 +422,9 @@ public final class LLVMInteropTest {
         int run() {
             final PolyglotEngine engine = builder.build();
             try {
-                File cFile = new File(PATH, fileName + ".c");
-                File bcFile = File.createTempFile(PATH + "/" + "bc_" + fileName, ".ll");
-                File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + fileName, ".ll");
+                File cFile = new File(LLVMPaths.INTEROP_TESTS, fileName + ".c");
+                File bcFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bc_" + fileName, ".ll");
+                File bcOptFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bcopt_" + fileName, ".ll");
                 Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
                 Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
                 return engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);

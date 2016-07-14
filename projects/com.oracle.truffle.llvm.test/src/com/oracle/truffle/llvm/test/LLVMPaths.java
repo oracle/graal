@@ -71,6 +71,9 @@ public final class LLVMPaths {
 
     public static final File BENCHMARK_GAME_SUITE = new File(EXTERNAL_TEST_SUITES, "benchmarkgame/");
 
+    // Interop test suites
+    public static final String INTEROP_TESTS = LOCAL_TESTS + "/../interoptests";
+
     static {
         TEMP_DIRECTORY.mkdir();
     }

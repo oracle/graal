@@ -49,12 +49,7 @@ import com.oracle.truffle.llvm.tools.Opt.OptOptions;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
 import com.oracle.truffle.tck.TruffleTCK;
 
-/**
- * This is the way to verify your language implementation is compatible.
- *
- */
 public class LLVMTckTest extends TruffleTCK {
-    private static final String PATH = LLVMPaths.LOCAL_TESTS + "/../interoptests";
     private static final String FILENAME = "tck";
 
     @Test
@@ -68,9 +63,9 @@ public class LLVMTckTest extends TruffleTCK {
     protected PolyglotEngine prepareVM(Builder builder) throws Exception {
         PolyglotEngine engine = builder.build();
         try {
-            File cFile = new File(PATH, FILENAME + ".c");
-            File bcFile = File.createTempFile(PATH + "/" + "bc_" + FILENAME, ".ll");
-            File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + FILENAME, ".ll");
+            File cFile = new File(LLVMPaths.INTEROP_TESTS, FILENAME + ".c");
+            File bcFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bc_" + FILENAME, ".ll");
+            File bcOptFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bcopt_" + FILENAME, ".ll");
             Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
             Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
             engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
