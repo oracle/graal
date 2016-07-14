@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static org.junit.Assert.assertSame;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.IntStream;
-
-import static org.junit.Assert.assertSame;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -314,7 +314,7 @@ public class OptimizedOSRLoopNodeTest {
     }
 
     /*
-     * Test usage and compilation of the osr loop on multiple threads.
+     * Test that we are not crashing in multi threaded environments.
      */
     @Theory
     public void testThreadSafety(OSRLoopFactory factory) {
@@ -322,13 +322,13 @@ public class OptimizedOSRLoopNodeTest {
         IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
             TestRootNode rootNode = new TestRootNode(factory, new TestRepeatingNode());
             IntStream.generate(() -> threshold).limit(10).parallel().forEach(k -> executeNoCallTarget(rootNode, threshold + 1));
-            assertCompiled(rootNode.getOSRTarget());
+            waitForCompiled(rootNode.getOSRTarget());
         });
 
         IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
             TestRootNode rootNode = new TestRootNode(factory, new TestRepeatingNode());
             IntStream.generate(() -> threshold).limit(10).parallel().forEach(k -> executeNoCallTarget(rootNode, threshold));
-            assertNotCompiled(rootNode.getOSRTarget());
+            waitForCompiled(rootNode.getOSRTarget());
         });
     }
 
@@ -550,6 +550,16 @@ public class OptimizedOSRLoopNodeTest {
             Assert.fail("timeout");
         }
         Assert.assertTrue(target.isValid());
+    }
+
+    private static void waitForCompiled(OptimizedCallTarget target) {
+        if (target != null) {
+            try {
+                runtime.waitForCompilation(target, 10000);
+            } catch (ExecutionException | TimeoutException e) {
+                Assert.fail("timeout");
+            }
+        }
     }
 
     private static void assertNotCompiled(OptimizedCallTarget target) {
