@@ -34,6 +34,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -185,5 +186,230 @@ public class LLVMTckTest extends TruffleTCK {
     @Override
     protected String complexSumReal() {
         return "complexSumReal";
+    }
+
+    // Disabled tests
+    @Override
+    @Ignore
+    @Test
+    public void testRootNodeName() throws Exception {
+        super.testRootNodeName();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testMaxOrMinValue() throws Exception {
+        super.testMaxOrMinValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testMaxOrMinValue2() throws Exception {
+        super.testMaxOrMinValue2();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
+        super.testSumRealOfComplexNumbersAsStructuredDataRowBased();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws Exception {
+        super.testSumRealOfComplexNumbersAsStructuredDataColumnBased();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testSumRealOfComplexNumbersA() throws Exception {
+        super.testSumRealOfComplexNumbersA();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testSumRealOfComplexNumbersB() throws Exception {
+        super.testSumRealOfComplexNumbersB();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testCopyComplexNumbersA() throws Exception {
+        super.testCopyComplexNumbersA();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testCopyComplexNumbersB() throws Exception {
+        super.testCopyComplexNumbersB();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testCopyStructuredComplexToComplexNumbersA() throws Exception {
+        super.testCopyStructuredComplexToComplexNumbersA();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testAddComplexNumbersWithMethod() throws Exception {
+        super.testAddComplexNumbersWithMethod();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void multiplyTwoVariables() throws Exception {
+        super.multiplyTwoVariables();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testNullInCompoundObject() throws Exception {
+        super.testNullInCompoundObject();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testFortyTwoWithCompoundObject() throws Exception {
+        super.testFortyTwoWithCompoundObject();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPlusWithIntsOnCompoundObject() throws Exception {
+        super.testPlusWithIntsOnCompoundObject();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteBooleanValue() throws Exception {
+        super.readWriteBooleanValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteByteValue() throws Exception {
+        super.readWriteByteValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteShortValue() throws Exception {
+        super.readWriteShortValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteCharValue() throws Exception {
+        super.readWriteCharValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteIntValue() throws Exception {
+        super.readWriteIntValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteFloatValue() throws Exception {
+        super.readWriteFloatValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void readWriteDoubleValue() throws Exception {
+        super.readWriteDoubleValue();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeByte() throws Exception {
+        super.testPrimitiveReturnTypeByte();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeShort() throws Exception {
+        super.testPrimitiveReturnTypeShort();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeInt() throws Exception {
+        super.testPrimitiveReturnTypeInt();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeLong() throws Exception {
+        super.testPrimitiveReturnTypeLong();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeFloat() throws Exception {
+        super.testPrimitiveReturnTypeFloat();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testPrimitiveReturnTypeDouble() throws Exception {
+        super.testPrimitiveReturnTypeDouble();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testInvalidTestMethod() throws Exception {
+        super.testInvalidTestMethod();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testEvaluateSource() throws Exception {
+        super.testEvaluateSource();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void timeOutTest() throws Exception {
+        super.timeOutTest();
+    }
+
+    @Override
+    @Ignore
+    @Test
+    public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
+        super.testCoExistanceOfMultipleLanguageInstances();
     }
 }
