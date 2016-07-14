@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 public final class ToLLVMNode extends Node {
 
@@ -56,6 +57,40 @@ public final class ToLLVMNode extends Node {
             convertedValue = value;
         }
         return convertedValue;
+    }
+
+    public Object convert(VirtualFrame frame, Object value, LLVMRuntimeType type) {
+        Class<?> t;
+        switch (type) {
+            case I1:
+                t = boolean.class;
+                break;
+            case I8:
+                t = byte.class;
+                break;
+            case I16:
+                t = short.class;
+                break;
+            case I32:
+                t = int.class;
+                break;
+            case I64:
+                t = long.class;
+                break;
+            case FLOAT:
+                t = float.class;
+                break;
+            case DOUBLE:
+                t = double.class;
+                break;
+            case ADDRESS:
+            case FUNCTION_ADDRESS:
+                t = TruffleObject.class;
+                break;
+            default:
+                throw UnsupportedTypeException.raise(new Object[]{type});
+        }
+        return convert(frame, value, t);
     }
 
     private static boolean isPrimitiveType(Class<?> clazz) {

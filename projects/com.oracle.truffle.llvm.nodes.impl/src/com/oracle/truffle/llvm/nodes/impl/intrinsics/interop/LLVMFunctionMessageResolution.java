@@ -36,10 +36,20 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 @MessageResolution(receiverType = LLVMFunctionDescriptor.class, language = LLVMLanguage.class)
 public class LLVMFunctionMessageResolution {
+
+    @Resolve(message = "IS_NULL")
+    public abstract static class ForeignIsNullNode extends Node {
+
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress object) {
+            return LLVMAddress.NULL_POINTER.equals(object);
+        }
+
+    }
 
     @Resolve(message = "IS_EXECUTABLE")
     public abstract static class ForeignIsExecutableNode extends Node {
@@ -57,8 +67,16 @@ public class LLVMFunctionMessageResolution {
         @Child private Node findContextNode;
         @Child private LLVMForeignCallNode executeNode;
 
+        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
+
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
-            return getHelperNode().executeCall(frame, object, arguments);
+            Object[] args = new Object[arguments.length];
+            for (int i = 0; i < arguments.length; i++) {
+                args[i] = toLLVM.convert(frame, arguments[i], object.getParameterTypes()[i]);
+            }
+            Object result = getHelperNode().executeCall(frame, object, args);
+            return toNull.executeConvert(result);
         }
 
         private LLVMForeignCallNode getHelperNode() {
