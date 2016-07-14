@@ -15,7 +15,7 @@ dist: trusty
 
 env:
   global:
-#    - MX_BINARY_SUITES="truffle" (GR-997)
+    - MX_BINARY_SUITES="truffle"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
