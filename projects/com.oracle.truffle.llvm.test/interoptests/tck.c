@@ -33,11 +33,12 @@
 typedef struct complex {
 	double	real;
 	double	imaginary;
+	struct complex (*add)(struct complex*);
 } COMPLEX;
 
 typedef struct compound {
 	int     (*fourtyTwo)(void);
-	int     (*plus)(int, int);
+	double  (*plus)(double, double);
 	void*   (*returnsNull)(void);
 	struct compound* (*returnsThis)(void);
 } COMPOUND;
@@ -50,7 +51,7 @@ typedef struct values {
 	float   floatValue;
 	double  doubleValue;
 	char    charValue;
-	int     booleanValue;
+	bool    booleanValue;
 } VALUES;
 
 int fourtyTwo(void)
@@ -74,15 +75,9 @@ int apply(int (*f)(int a, int b))
 }
 
 static int cnt_value = 0;
-int cnt(void)
-{
-	return cnt_value;
-}
-
 int count(void)
 {
-	cnt_value = cnt() + 1;
-	return cnt();
+	return ++cnt_value;
 }
 
 void* returnsNull(void)
@@ -94,6 +89,25 @@ void complexAdd(COMPLEX* a, COMPLEX* b)
 {
 	a->real = a->real + b->real;
 	a->imaginary = a->imaginary + b->imaginary;
+}
+
+void complexAddWithMethod(COMPLEX* a, COMPLEX* b)
+{
+	a->add(b);
+}
+
+double complexSumReal(COMPLEX* array)
+{
+	double result = 0;
+	for(int i = 0; i < truffle_get_size(array); i++)
+		result += array[i].real;
+	return result;
+}
+
+void complexCopy(COMPLEX* dst, COMPLEX* src)
+{
+	for(int i = 0; i < truffle_get_size(dst); i++)
+		dst[i] = src[i];
 }
 
 COMPOUND compoundObject(void)
@@ -118,6 +132,17 @@ VALUES valuesObject(void)
 	obj.charValue = '0';
 	obj.booleanValue = (1 == 0);
 	return obj;
+}
+
+void addToArray(int* array, int index, int value)
+{
+	array[index] += value;
+}
+
+void countUpWhile(int (*fn)(int)) {
+	int counter = 0;
+	while(fn(counter))
+		counter++;
 }
 
 int main(void) {

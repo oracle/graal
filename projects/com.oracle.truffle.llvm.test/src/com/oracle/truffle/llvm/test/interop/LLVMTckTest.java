@@ -153,6 +153,16 @@ public class LLVMTckTest extends TruffleTCK {
     }
 
     @Override
+    protected String addToArray() {
+        return "addToArray";
+    }
+
+    @Override
+    protected String countUpWhile() {
+        return "countUpWhile";
+    }
+
+    @Override
     protected String globalObject() {
         return null;
     }
@@ -164,16 +174,16 @@ public class LLVMTckTest extends TruffleTCK {
 
     @Override
     protected String complexCopy() {
-        return null;
+        return "complexCopy";
     }
 
     @Override
     protected String complexAddWithMethod() {
-        return null;
+        return "complexAddWithMethod";
     }
 
     @Override
     protected String complexSumReal() {
-        return null;
+        return "complexSumReal";
     }
 }
