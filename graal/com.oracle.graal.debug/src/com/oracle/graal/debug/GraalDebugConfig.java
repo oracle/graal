@@ -116,6 +116,9 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Integer> PrintBinaryGraphPort = new OptionValue<>(4445);
         @Option(help = "", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintIdealGraphSchedule = new OptionValue<>(false);
+        @Option(help = "Enable dumping Truffle ASTs to the IdealGraphVisualizer.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> PrintTruffleTrees = new OptionValue<>(true);
+
         @Option(help = "Enable per method metrics that are collected across all compilations of a method." +
                        "Pattern for scope(s) in which method metering is enabled (see DebugFilter and Debug.metric).", type = OptionType.Debug)
         public static final OptionValue<String> MethodMeter = new OptionValue<>(null);
