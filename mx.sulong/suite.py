@@ -257,6 +257,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.runtime",
         "truffle:TRUFFLE_API",
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
       "javaCompliance" : "1.8",

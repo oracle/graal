@@ -48,9 +48,10 @@ public abstract class LLVMMemMove {
                     @NodeChild(type = LLVMI32Node.class, value = "align"), @NodeChild(type = LLVMI1Node.class, value = "isVolatile")})
     public abstract static class LLVMMemMoveI64 extends LLVMNode {
 
+        @SuppressWarnings("unused")
         @Specialization
         public void executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
-            LLVMHeap.memMove(dest, source, length, align, isVolatile);
+            LLVMHeap.memMove(dest, source, length);
         }
 
     }
