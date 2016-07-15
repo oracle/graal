@@ -49,18 +49,18 @@ public final class LLVMHeap extends LLVMMemory {
     }
 
     public static LLVMAddress allocateMemory(long size) {
-        long allocateMemory = UNSAFE.allocateMemory(size);
+        long allocateMemory = (long) mallocHandle.call(size);
         return LLVMAddress.fromLong(allocateMemory);
     }
 
     public static LLVMAddress allocateZeroedMemory(long l) {
-        long allocateMemory = UNSAFE.allocateMemory(l);
+        long allocateMemory = allocateMemory(l).getVal();
         UNSAFE.setMemory(allocateMemory, l, (byte) 0);
         return LLVMAddress.fromLong(allocateMemory);
     }
 
     public static void freeMemory(LLVMAddress addr) {
-        UNSAFE.freeMemory(extractAddrNullPointerAllowed(addr));
+        freeHandle.call(addr.getVal());
     }
 
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length) {
@@ -86,12 +86,16 @@ public final class LLVMHeap extends LLVMMemory {
     private static final NativeFunctionHandle memMoveHandle;
     private static final NativeFunctionHandle memSetHandle;
     private static final NativeFunctionHandle memCopyHandle;
+    private static final NativeFunctionHandle freeHandle;
+    private static final NativeFunctionHandle mallocHandle;
 
     static {
         final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
         memMoveHandle = nfi.getFunctionHandle("memmove", void.class, long.class, long.class, long.class);
         memCopyHandle = nfi.getFunctionHandle("memcpy", void.class, long.class, long.class, long.class);
         memSetHandle = nfi.getFunctionHandle("memset", void.class, long.class, int.class, long.class);
+        freeHandle = nfi.getFunctionHandle("free", void.class, long.class);
+        mallocHandle = nfi.getFunctionHandle("malloc", long.class, long.class);
     }
 
     public static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
