@@ -71,11 +71,12 @@ public class LLVMFunctionMessageResolution {
         @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
 
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
-            Object[] args = new Object[arguments.length];
-            for (int i = 0; i < arguments.length; i++) {
-                args[i] = toLLVM.convert(frame, arguments[i], object.getParameterTypes()[i]);
+            if (arguments.length > 0 && arguments.length == object.getParameterTypes().length) {
+                for (int i = 0; i < arguments.length; i++) {
+                    arguments[i] = toLLVM.convert(frame, arguments[i], object.getParameterTypes()[i]);
+                }
             }
-            Object result = getHelperNode().executeCall(frame, object, args);
+            Object result = getHelperNode().executeCall(frame, object, arguments);
             return toNull.executeConvert(result);
         }
 
