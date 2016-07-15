@@ -2,6 +2,18 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.20
+15-Jul-2016
+* This release removes many deprecated APIs and is thus slightly incompatible
+* [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
+`eval` method and few similar ones no longer declare `throws IOException`.
+The I/O now only occurs when operating with [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).
+The evaluation of already loaded sources doesn't need to perform any I/O operations and
+thus it makes little sense to require callers to handle the `IOException`.
+This change is binary compatible, yet it is source *incompatible* change.
+You may need to [adjust your sources](https://github.com/graalvm/fastr/commit/09ab156925d24bd28837907cc2ad336679afc7a2)
+to compile.
+
 ## Version 0.15
 1-Jul-2016
 * [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) shall be
