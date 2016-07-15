@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.types.memory;
 
+import com.oracle.nfi.NativeFunctionInterfaceRuntime;
+import com.oracle.nfi.api.NativeFunctionHandle;
+import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public final class LLVMHeap extends LLVMMemory {
@@ -80,18 +83,15 @@ public final class LLVMHeap extends LLVMMemory {
         memSet(target, value, length);
     }
 
-    public static void memMove(LLVMAddress dest, LLVMAddress source, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
-        memMove(dest, source, length);
+    private static final NativeFunctionHandle memMoveHandle;
+
+    static {
+        final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
+        memMoveHandle = nfi.getFunctionHandle("memcpy", void.class, long.class, long.class, long.class);
     }
 
-    private static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
-        byte[] bytes = new byte[(int) length];
-        for (int i = 0; i < length; i++) {
-            bytes[i] = LLVMMemory.getI8(source.increment(i));
-        }
-        for (int i = 0; i < length; i++) {
-            LLVMMemory.putI8(dest.increment(i), bytes[i]);
-        }
+    public static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
+        memMoveHandle.call(dest.getVal(), source.getVal(), length);
     }
 
     // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
