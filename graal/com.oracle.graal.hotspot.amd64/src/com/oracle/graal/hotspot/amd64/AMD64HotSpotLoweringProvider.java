@@ -71,7 +71,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     }
 
     @Override
-    protected ForeignCallDescriptor foreignCallForUnaryOperation(UnaryOperation operation) {
+    protected ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
         if (GraalArithmeticStubs.getValue()) {
             switch (operation) {
                 case LOG:

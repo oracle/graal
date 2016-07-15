@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_COS;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_SIN;
-import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_TAN;
-
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -57,7 +53,7 @@ public class AMD64MathSubstitutions {
         if (Math.abs(x) < PI_4) {
             return UnaryMathIntrinsicNode.compute(x, UnaryOperation.SIN);
         } else {
-            return callDouble1(ARITHMETIC_SIN, x);
+            return callDouble1(UnaryOperation.SIN.foreignCallDescriptor, x);
         }
     }
 
@@ -66,7 +62,7 @@ public class AMD64MathSubstitutions {
         if (Math.abs(x) < PI_4) {
             return UnaryMathIntrinsicNode.compute(x, UnaryOperation.COS);
         } else {
-            return callDouble1(ARITHMETIC_COS, x);
+            return callDouble1(UnaryOperation.COS.foreignCallDescriptor, x);
         }
     }
 
@@ -75,7 +71,7 @@ public class AMD64MathSubstitutions {
         if (Math.abs(x) < PI_4) {
             return UnaryMathIntrinsicNode.compute(x, UnaryOperation.TAN);
         } else {
-            return callDouble1(ARITHMETIC_TAN, x);
+            return callDouble1(UnaryOperation.TAN.foreignCallDescriptor, x);
         }
     }
 

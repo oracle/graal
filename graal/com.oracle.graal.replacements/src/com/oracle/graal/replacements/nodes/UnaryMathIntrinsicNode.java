@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -49,12 +50,18 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
     protected final UnaryOperation operation;
 
     public enum UnaryOperation {
-        LOG,
-        LOG10,
-        SIN,
-        COS,
-        TAN,
-        EXP
+        LOG(new ForeignCallDescriptor("arithmeticLog", double.class, double.class)),
+        LOG10(new ForeignCallDescriptor("arithmeticLog10", double.class, double.class)),
+        SIN(new ForeignCallDescriptor("arithmeticSin", double.class, double.class)),
+        COS(new ForeignCallDescriptor("arithmeticCos", double.class, double.class)),
+        TAN(new ForeignCallDescriptor("arithmeticTan", double.class, double.class)),
+        EXP(new ForeignCallDescriptor("arithmeticExp", double.class, double.class));
+
+        public final ForeignCallDescriptor foreignCallDescriptor;
+
+        UnaryOperation(ForeignCallDescriptor foreignCallDescriptor) {
+            this.foreignCallDescriptor = foreignCallDescriptor;
+        }
     }
 
     public UnaryOperation getOperation() {
