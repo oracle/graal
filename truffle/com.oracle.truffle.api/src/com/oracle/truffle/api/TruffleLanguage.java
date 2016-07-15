@@ -590,11 +590,7 @@ public abstract class TruffleLanguage<C> {
                 }
                 cache.put(source, target);
             }
-            try {
-                return target.call();
-            } catch (ThreadDeath ex) {
-                throw ex;
-            }
+            return target.call();
         }
 
         @Override
