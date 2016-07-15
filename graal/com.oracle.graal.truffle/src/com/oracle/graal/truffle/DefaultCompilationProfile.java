@@ -101,9 +101,6 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
                 }
             }
         }
-        if (CompilerDirectives.inInterpreter() && !callTarget.isValid()) {
-            interpreterCall(callTarget);
-        }
     }
 
     @Override
@@ -114,9 +111,6 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             argumentTypesAssumption.invalidate();
             profiledArgumentTypes = null;
-        }
-        if (CompilerDirectives.inInterpreter() && !callTarget.isValid()) {
-            interpreterCall(callTarget);
         }
     }
 
@@ -225,7 +219,8 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         ensureProfiling(1, replaceBackoff);
     }
 
-    private void interpreterCall(OptimizedCallTarget callTarget) {
+    @Override
+    void interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++interpreterCallCount;
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
 

@@ -44,6 +44,10 @@ public class VoidCompilationProfile extends AbstractCompilationProfile {
     }
 
     @Override
+    void interpreterCall(OptimizedCallTarget callTarget) {
+    }
+
+    @Override
     public <E extends Throwable> E profileExceptionType(E ex) {
         return ex;
     }

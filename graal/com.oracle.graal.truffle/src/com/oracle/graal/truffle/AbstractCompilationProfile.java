@@ -50,6 +50,8 @@ public abstract class AbstractCompilationProfile {
 
     abstract void reportNodeReplaced();
 
+    abstract void interpreterCall(OptimizedCallTarget callTarget);
+
     abstract void reportInvalidated();
 
     public Map<String, Object> getDebugProperties() {
