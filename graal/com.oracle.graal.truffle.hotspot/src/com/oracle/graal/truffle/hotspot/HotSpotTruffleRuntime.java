@@ -173,8 +173,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
-        RootCallTarget target = super.createCallTargetImpl(source, rootNode, speculationLog);
+    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
+        RootCallTarget target = super.createCallTargetImpl(source, rootNode);
         callTargets.put(target, null);
         return target;
     }
