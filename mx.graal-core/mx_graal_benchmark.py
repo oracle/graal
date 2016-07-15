@@ -126,7 +126,7 @@ class TimingBenchmarkMixin(object):
     name_re = re.compile(r"(?P<name>GraalCompiler|BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm")
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.Time=GraalCompiler,BackEnd,FrontEnd', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Complete',
+        vmArgs = ['-Dgraal.Time=', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
                   '-Dgraal.DebugValueFile=' + TimingBenchmarkMixin.debug_values_file] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
@@ -156,7 +156,6 @@ class TimingBenchmarkMixin(object):
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
-              "extra.value.path": ("<scope>", mx_benchmark.Rule.crop_front("<...>")),
               "extra.value.name": ("<name>", str),
               "metric.name": ("compile-time", str),
               "metric.value": ("<value>", int),
