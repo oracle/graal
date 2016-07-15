@@ -74,9 +74,9 @@ public final class LLVMHeap extends LLVMMemory {
         memCopy(target, source, length);
     }
 
-    public static void memSet(LLVMAddress target, byte value, long length) {
+    public static void memSet(LLVMAddress target, int value, long length) {
         long targetAddress = LLVMMemory.extractAddr(target);
-        UNSAFE.setMemory(targetAddress, length, value);
+        memSetHandle.call(targetAddress, value, length);
     }
 
     public static void memSet(LLVMAddress target, byte value, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
@@ -84,10 +84,12 @@ public final class LLVMHeap extends LLVMMemory {
     }
 
     private static final NativeFunctionHandle memMoveHandle;
+    private static final NativeFunctionHandle memSetHandle;
 
     static {
         final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-        memMoveHandle = nfi.getFunctionHandle("memcpy", void.class, long.class, long.class, long.class);
+        memMoveHandle = nfi.getFunctionHandle("memmove", void.class, long.class, long.class, long.class);
+        memSetHandle = nfi.getFunctionHandle("memset", void.class, long.class, int.class, long.class);
     }
 
     public static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
