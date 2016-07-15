@@ -80,7 +80,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         assert stamp != null && stamp.isCompatible(value) : stamp + " " + value;
         this.value = value;
         this.stableDimension = stableDimension;
-        this.isDefaultStable = isDefaultStable;
+        if (stableDimension == 0) {
+            /*
+             * Ensure that isDefaultStable has a canonical value to avoid having two constant nodes
+             * that only differ in this field. The value of isDefaultStable is only used when we
+             * have a stable array dimension.
+             */
+            this.isDefaultStable = false;
+        } else {
+            this.isDefaultStable = isDefaultStable;
+        }
     }
 
     /**
