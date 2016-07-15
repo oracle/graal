@@ -82,7 +82,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         numberInstructions();
         allocator.printLir("Before register allocation", true);
         computeLocalLiveSets();

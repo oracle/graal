@@ -71,13 +71,13 @@ public final class ComputeBlockOrder {
      *
      * @return sorted list of blocks
      */
-    public static <T extends AbstractBlockBase<T>> List<T> computeLinearScanOrder(int blockCount, T startBlock) {
+    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int blockCount, T startBlock) {
         List<T> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
         computeLinearScanOrder(order, worklist, visitedBlocks);
         assert checkOrder(order, blockCount);
-        return order;
+        return order.toArray(new AbstractBlockBase<?>[0]);
     }
 
     /**
@@ -85,13 +85,13 @@ public final class ComputeBlockOrder {
      *
      * @return sorted list of blocks
      */
-    public static <T extends AbstractBlockBase<T>> List<T> computeCodeEmittingOrder(int blockCount, T startBlock) {
+    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeCodeEmittingOrder(int blockCount, T startBlock) {
         List<T> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
         computeCodeEmittingOrder(order, worklist, visitedBlocks);
         assert checkOrder(order, blockCount);
-        return order;
+        return order.toArray(new AbstractBlockBase<?>[0]);
     }
 
     /**

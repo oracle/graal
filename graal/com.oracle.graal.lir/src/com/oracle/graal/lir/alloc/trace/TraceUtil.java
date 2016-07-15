@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.Value;
 
 public class TraceUtil {
 
-    public static AbstractBlockBase<?> getBestTraceInterPredecessor(TraceBuilderResult<?> traceResult, AbstractBlockBase<?> block) {
+    public static AbstractBlockBase<?> getBestTraceInterPredecessor(TraceBuilderResult traceResult, AbstractBlockBase<?> block) {
         AbstractBlockBase<?> bestPred = null;
         int bestTraceId = traceResult.getTraceForBlock(block).getId();
         for (AbstractBlockBase<?> pred : block.getPredecessors()) {
@@ -59,11 +59,11 @@ public class TraceUtil {
         return (ShadowedRegisterValue) value;
     }
 
-    public static boolean isTrivialTrace(LIR lir, Trace<? extends AbstractBlockBase<?>> trace) {
+    public static boolean isTrivialTrace(LIR lir, Trace trace) {
         if (trace.size() != 1) {
             return false;
         }
-        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks().iterator().next());
+        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks()[0]);
         if (instructions.size() != 2) {
             return false;
         }

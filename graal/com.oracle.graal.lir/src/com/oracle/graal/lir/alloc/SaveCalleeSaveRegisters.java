@@ -47,8 +47,7 @@ import jdk.vm.ci.meta.PlatformKind;
 public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PreAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
         FrameMapBuilder frameMapBuilder = lirGenRes.getFrameMapBuilder();
         RegisterArray calleeSaveRegisters = frameMapBuilder.getCodeCache().getRegisterConfig().getCalleeSaveRegisters();
         if (calleeSaveRegisters == null || calleeSaveRegisters.size() == 0) {
@@ -58,6 +57,9 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         RegisterMap<Variable> savedRegisters = saveAtEntry(lir, context.lirGen, calleeSaveRegisters, target.arch);
 
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             if (block.getSuccessorCount() == 0) {
                 restoreAtExit(lir, context.lirGen.getSpillMoveFactory(), savedRegisters, block);
             }

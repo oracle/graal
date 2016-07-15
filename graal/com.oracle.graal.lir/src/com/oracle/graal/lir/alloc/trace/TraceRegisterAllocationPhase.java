@@ -25,8 +25,6 @@ package com.oracle.graal.lir.alloc.trace;
 import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.List;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
@@ -81,19 +79,19 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
     @Override
     @SuppressWarnings("try")
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
         assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
-        TraceBuilderResult<B> resultTraces = getTraces(context);
+        TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
-            for (Trace<B> trace : resultTraces.getTraces()) {
+            for (Trace trace : resultTraces.getTraces()) {
                 try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
                     tracesCounter.increment();
                     if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
@@ -101,11 +99,10 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                        TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, codeEmittingOrder, trace, traceContext, false);
+                        TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, trace, traceContext, false);
                     } else {
-                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false,
-                                        cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, cachedStackSlots);
+                        allocator.allocate(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig);
                     }
                     Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
@@ -118,13 +115,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
             Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After trace allocation");
         }
 
-        TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, traceContext);
+        TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, traceContext);
         deconstructSSIForm(lir);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
-        return context.contextLookup(TraceBuilderResult.class);
     }
 
     /**

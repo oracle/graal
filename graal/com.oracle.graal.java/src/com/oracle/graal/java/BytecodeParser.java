@@ -1775,7 +1775,12 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private void beforeReturn(ValueNode x, JavaKind kind) {
         if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
-            ValueNode receiver = frameState.loadLocal(0, JavaKind.Object);
+            /*
+             * Get the receiver from the initial state since bytecode rewriting could do arbitrary
+             * things to the state of the locals.
+             */
+            ValueNode receiver = graph.start().stateAfter().localAt(0);
+            assert receiver != null && receiver.getStackKind() == JavaKind.Object;
             if (RegisterFinalizerNode.mayHaveFinalizer(receiver, graph.getAssumptions())) {
                 append(new RegisterFinalizerNode(receiver));
             }

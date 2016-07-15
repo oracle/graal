@@ -26,8 +26,6 @@ import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.EnumSet;
-import java.util.List;
-
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -45,7 +43,7 @@ import jdk.vm.ci.meta.Value;
 public class AllocationStageVerifier extends AllocationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         verifyLIR(lirGenRes.getLIR());
 
     }

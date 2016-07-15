@@ -77,8 +77,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PreAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
         LIRGeneratorTool lirGen = context.lirGen;
         new Optimization(lirGenRes.getLIR(), lirGen).apply();
     }

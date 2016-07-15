@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
-import java.util.List;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
@@ -41,7 +39,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 public final class SSALinearScan extends LinearScan {
 
-    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks,
+    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
                     boolean neverSpillConstants) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }

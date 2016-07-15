@@ -183,6 +183,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Method filter for methods in which to add branch instrumentation.")
     public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(null);
 
+    @Option(help = "Prettify stack traces for branch-instrumented callsites.")
+    public static final OptionValue<Boolean> TruffleInstrumentBranchesPretty = new OptionValue<>(true);
+
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionValue<Integer> TruffleInstrumentBranchesCount = new OptionValue<>(10000);
 

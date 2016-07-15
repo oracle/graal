@@ -266,7 +266,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     @Override
     protected Suites createSuites() {
         Suites ret = super.createSuites();
-        ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class);
+        ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         PhaseSuite.findNextPhase(iter, CanonicalizerPhase.class);
         iter.add(additionalPhase());
         return ret;

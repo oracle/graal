@@ -33,7 +33,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
 
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
@@ -49,6 +48,7 @@ import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.LIRGenerationPhase;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugEnvironment;
@@ -316,8 +316,8 @@ public abstract class GraalCompilerState {
     private NodeLIRBuilderTool nodeLirGen;
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
-    private List<Block> codeEmittingOrder;
-    private List<Block> linearScanOrder;
+    private AbstractBlockBase<?>[] codeEmittingOrder;
+    private AbstractBlockBase<?>[] linearScanOrder;
 
     /**
      * Copies the {@link #originalGraph original graph} and prepares the {@link #request}.
@@ -399,7 +399,7 @@ public abstract class GraalCompilerState {
      */
     protected final void lirGeneration() {
         LIRGenerationContext context = new LIRGenerationContext(lirGenTool, nodeLirGen, request.graph, schedule);
-        new LIRGenerationPhase().apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        new LIRGenerationPhase().apply(request.backend.getTarget(), lirGenRes, context);
     }
 
     /**
@@ -415,7 +415,7 @@ public abstract class GraalCompilerState {
      * Executes a {@link LIRPhase} within a given {@code context}.
      */
     protected <C> void applyLIRPhase(LIRPhase<C> phase, C context) {
-        phase.apply(request.backend.getTarget(), lirGenRes, codeEmittingOrder, linearScanOrder, context);
+        phase.apply(request.backend.getTarget(), lirGenRes, context);
     }
 
     /**

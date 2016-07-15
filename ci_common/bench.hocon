@@ -1,0 +1,105 @@
+# DaCapo-related targets
+
+bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
+
+bench-jvmci : {
+  mx-benchmark : ["mx", "benchmark", "--results-file", "bench-results.json"]
+  mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
+  mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
+  mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
+  mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
+  mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
+  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
+  mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
+}
+
+bench-common-8 : ${java8Downloads} {
+  setup: [
+    ["mx", "build"]
+  ]
+  teardown : [
+    ${bench-jvmci.mx-teardown}
+  ]
+}
+
+bench-dacapo: ${bench-common-8} {
+  targets : [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-dacapo-timing: ${bench-common-8} {
+  targets: [daily]
+  run: [
+    ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+# Scala DaCapo-related targets
+
+bench-scala-dacapo: ${bench-common-8} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-timing: ${bench-common-8} {
+  targets: [daily]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+# SPECjbb2005-related targets
+
+bench-specjbb2005: ${bench-common-8} {
+  targets: [bench, post-merge]
+  downloads: {
+    SPECJBB2005: { name: specjbb2005, version: "1.07" }
+  }
+  run: [
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
+  ]
+  timelimit: "2:00:00"
+}
+
+# SPECJvm2008-related targets
+
+bench-specjvm2008: ${bench-common-8} {
+  targets: [bench, post-merge]
+  downloads: {
+    SPECJVM2008: { name: specjvm2008, version: "1.01" }
+  }
+  run: [
+    ${bench-jvmci.mx-specjvm2008} ${bench-arguments} [
+      "--", "-it", "240s", "-wt", "120s"
+    ]
+  ]
+  timelimit: "2:50:00"
+}
+
+# SPECjbb2015-related targets
+
+bench-specjbb2015: ${bench-common-8} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
+  ]
+  downloads: {
+    SPECJBB2015: { name: specjbb2015, version: "1.00" }
+  }
+  timelimit: "3:00:00"
+}
+
+# JMH micros graal
+
+bench-micros-graal: ${bench-common-8} {
+  targets: [weekly]
+  run: [
+    ${bench-jvmci.mx-micros-graal} ${bench-arguments}
+  ]
+}

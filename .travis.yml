@@ -1,15 +1,11 @@
 language: java
 python:
   - "2.7"
-jdk:
-  - oraclejdk8
 addons:
   apt:
     packages:
       - python-pip
       - python-virtualenv
-      - oracle-java8-installer
-      - build-essential
       - wget
       - mercurial
 
@@ -19,19 +15,18 @@ dist: trusty
 
 env:
   global:
-    - DEFAULT_VM="jvmci"
-    - MX_BINARY_SUITES="jvmci,truffle"
+    - MX_BINARY_SUITES="truffle"
   matrix:
-    - GATE="style,fullbuild"
+    - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstrap"
-    - JDK="jdk9" GATE="build,test"
-    - JDK="jdk9" GATE="build,bootstrap"
+#    - JDK="jdk9" GATE="build,test"
+#    - JDK="jdk9" GATE="build,bootstrap"
 install:
   - |
       export MX_PATH=$TRAVIS_BUILD_DIR/../mx
       git clone https://github.com/graalvm/mx.git $MX_PATH
-      export PATH=$MX_PATH/../mx:$PATH
+      export PATH=$PATH:$MX_PATH
   - |
       if [[ $GATE == *style* ]]
       then
@@ -41,7 +36,7 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=$TRAVIS_BUILD_DIR/../eclipse.tar.gz
-        wget https://lafo.ssw.uni-linz.ac.at/slavefiles/gate/eclipse-jdk8-linux-x86_64.tar.gz -O $ECLIPSE_TAR
+        wget http://lafo.ssw.uni-linz.ac.at/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz -O $ECLIPSE_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xf $ECLIPSE_TAR
         export ECLIPSE_EXE=$TRAVIS_BUILD_DIR/../eclipse/eclipse
       fi
@@ -49,7 +44,15 @@ install:
       if [[ $GATE == *fullbuild* ]]
       then
         export JDT=$MX_PATH/ecj.jar
-        wget http://ftp.halifax.rwth-aachen.de/eclipse//eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar -O $JDT
+        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O $JDT
+      fi
+  - |
+      if [ "$JDK" == "jdk8" ]
+      then
+        JDK_TAR=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.17-linux-amd64.tar.gz
+        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.17/jdk1.8.0_91-jvmci-0.17-linux-amd64.tar.gz -O $JDK_TAR
+        tar -C $TRAVIS_BUILD_DIR/.. -xzf $JDK_TAR
+        export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.17
       fi
   - |
       if [ "$JDK" == "jdk9" ]

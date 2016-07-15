@@ -158,10 +158,13 @@ class CFGPrinter extends CompilationPrinter {
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
-    public void printCFG(String label, List<? extends AbstractBlockBase<?>> blocks, boolean printNodes) {
+    public void printCFG(String label, AbstractBlockBase<?>[] blocks, boolean printNodes) {
         if (lir == null) {
             latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
             for (AbstractBlockBase<?> abstractBlock : blocks) {
+                if (abstractBlock == null) {
+                    continue;
+                }
                 Block block = (Block) abstractBlock;
                 Node cur = block.getBeginNode();
                 while (true) {
@@ -222,6 +225,9 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printBlock(AbstractBlockBase<?> block, boolean printNodes) {
+        if (block == null) {
+            return;
+        }
         printBlockProlog(block);
         if (printNodes) {
             assert block instanceof Block;
@@ -633,24 +639,24 @@ class CFGPrinter extends CompilationPrinter {
         printBlockEpilog(block);
     }
 
-    public void printTraces(String label, TraceBuilderResult<?> traces) {
+    public void printTraces(String label, TraceBuilderResult traces) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
 
-        for (Trace<?> trace : traces.getTraces()) {
+        for (Trace trace : traces.getTraces()) {
             printTrace(trace, traces);
         }
 
         end("cfg");
     }
 
-    private void printTrace(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+    private void printTrace(Trace trace, TraceBuilderResult traceBuilderResult) {
         printTraceProlog(trace, traceBuilderResult);
         printTraceInstructions(trace, traceBuilderResult);
         printTraceEpilog();
     }
 
-    private void printTraceProlog(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+    private void printTraceProlog(Trace trace, TraceBuilderResult traceBuilderResult) {
         begin("block");
 
         out.print("name \"").print(traceToString(trace)).println('"');
@@ -658,13 +664,13 @@ class CFGPrinter extends CompilationPrinter {
         out.println("to_bci -1");
 
         out.print("predecessors ");
-        for (Trace<?> pred : getPredecessors(trace, traceBuilderResult)) {
+        for (Trace pred : getPredecessors(trace, traceBuilderResult)) {
             out.print("\"").print(traceToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (Trace<?> succ : getSuccessors(trace, traceBuilderResult)) {
+        for (Trace succ : getSuccessors(trace, traceBuilderResult)) {
             // if (!succ.isExceptionEntry()) {
             out.print("\"").print(traceToString(succ)).print("\" ");
             // }
@@ -681,7 +687,7 @@ class CFGPrinter extends CompilationPrinter {
         // TODO(je) add support for loop infos
     }
 
-    private void printTraceInstructions(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+    private void printTraceInstructions(Trace trace, TraceBuilderResult traceBuilderResult) {
         if (lir == null) {
             return;
         }
@@ -702,7 +708,7 @@ class CFGPrinter extends CompilationPrinter {
         end("IR");
     }
 
-    private void printBlockInstruction(AbstractBlockBase<?> block, TraceBuilderResult<?> traceBuilderResult) {
+    private void printBlockInstruction(AbstractBlockBase<?> block, TraceBuilderResult traceBuilderResult) {
         out.print("nr ").print(block.toString()).print(COLUMN_END).print(" instruction ");
 
         if (block.getPredecessorCount() > 0) {
@@ -719,7 +725,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println(COLUMN_END);
     }
 
-    private void printBlockListWithTrace(List<? extends AbstractBlockBase<?>> blocks, TraceBuilderResult<?> traceBuilderResult) {
+    private void printBlockListWithTrace(List<? extends AbstractBlockBase<?>> blocks, TraceBuilderResult traceBuilderResult) {
         Iterator<? extends AbstractBlockBase<?>> it = blocks.iterator();
         printBlockWithTrace(it.next(), traceBuilderResult);
         while (it.hasNext()) {
@@ -728,7 +734,7 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private void printBlockWithTrace(AbstractBlockBase<?> block, TraceBuilderResult<?> traceBuilderResult) {
+    private void printBlockWithTrace(AbstractBlockBase<?> block, TraceBuilderResult traceBuilderResult) {
         out.print(block.toString());
         out.print("[T").print(traceBuilderResult.getTraceForBlock(block).getId()).print("]");
     }
@@ -741,43 +747,43 @@ class CFGPrinter extends CompilationPrinter {
         return dst.isLoopHeader() && dst.getLoop().equals(src.getLoop());
     }
 
-    private static List<Trace<?>> getSuccessors(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+    private static List<Trace> getSuccessors(Trace trace, TraceBuilderResult traceBuilderResult) {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> s : block.getSuccessors()) {
-                Trace<?> otherTrace = traceBuilderResult.getTraceForBlock(s);
+                Trace otherTrace = traceBuilderResult.getTraceForBlock(s);
                 int otherTraceId = otherTrace.getId();
                 if (trace.getId() != otherTraceId || isLoopBackEdge(block, s)) {
                     bs.set(otherTraceId);
                 }
             }
         }
-        List<Trace<?>> succ = new ArrayList<>();
+        List<Trace> succ = new ArrayList<>();
         for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
             succ.add(traceBuilderResult.getTraces().get(i));
         }
         return succ;
     }
 
-    private static List<Trace<?>> getPredecessors(Trace<?> trace, TraceBuilderResult<?> traceBuilderResult) {
+    private static List<Trace> getPredecessors(Trace trace, TraceBuilderResult traceBuilderResult) {
         BitSet bs = new BitSet(traceBuilderResult.getTraces().size());
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
             for (AbstractBlockBase<?> p : block.getPredecessors()) {
-                Trace<?> otherTrace = traceBuilderResult.getTraceForBlock(p);
+                Trace otherTrace = traceBuilderResult.getTraceForBlock(p);
                 int otherTraceId = otherTrace.getId();
                 if (trace.getId() != otherTraceId || isLoopBackEdge(p, block)) {
                     bs.set(traceBuilderResult.getTraceForBlock(p).getId());
                 }
             }
         }
-        List<Trace<?>> pred = new ArrayList<>();
+        List<Trace> pred = new ArrayList<>();
         for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
             pred.add(traceBuilderResult.getTraces().get(i));
         }
         return pred;
     }
 
-    private static String traceToString(Trace<?> trace) {
+    private static String traceToString(Trace trace) {
         return new StringBuilder("T").append(trace.getId()).toString();
     }
 

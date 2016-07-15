@@ -22,53 +22,77 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import java.util.List;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.DebugCloseable;
+import com.oracle.graal.debug.DebugMemUseTracker;
+import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.phases.LIRPhase.LIRPhaseStatistics;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public abstract class TraceAllocationPhase extends LIRPhase<TraceAllocationPhase.TraceAllocationContext> {
+public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceAllocationContext> {
 
-    public static final class TraceAllocationContext {
+    public static class TraceAllocationContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
-        public final TraceBuilderResult<?> resultTraces;
+        public final TraceBuilderResult resultTraces;
 
-        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult<?> resultTraces) {
+        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult resultTraces) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
             this.resultTraces = resultTraces;
         }
     }
 
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context,
-                    boolean dumpLIR) {
-        apply(target, lirGenRes, codeEmittingOrder, trace.getBlocks(), context, dumpLIR);
+    private CharSequence name;
+
+    /**
+     * Records time spent within {@link #apply}.
+     */
+    private final DebugTimer timer;
+
+    /**
+     * Records memory usage within {@link #apply}.
+     */
+    private final DebugMemUseTracker memUseTracker;
+
+    public TraceAllocationPhase() {
+        LIRPhaseStatistics statistics = LIRPhase.statisticsClassValue.get(getClass());
+        timer = statistics.timer;
+        memUseTracker = statistics.memUseTracker;
     }
 
-    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context) {
-        apply(target, lirGenRes, codeEmittingOrder, trace.getBlocks(), context);
+    public final CharSequence getName() {
+        if (name == null) {
+            name = LIRPhase.createName(getClass());
+        }
+        return name;
     }
 
-    @Override
-    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> sortedBlocks,
-                    TraceAllocationContext context) {
-        TraceBuilderResult<B> resultTraces = getTraceBuilderResult(context);
-        Trace<B> trace = resultTraces.getTraceForBlock(sortedBlocks.get(0));
-        run(target, lirGenRes, codeEmittingOrder, trace, context);
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context) {
+        apply(target, lirGenRes, trace, context, true);
     }
 
-    @SuppressWarnings("unchecked")
-    private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraceBuilderResult(TraceAllocationContext context) {
-        return (TraceBuilderResult<B>) context.resultTraces;
+    @SuppressWarnings("try")
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context, boolean dumpLIR) {
+        try (Scope s = Debug.scope(getName(), this)) {
+            try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
+                run(target, lirGenRes, trace, context);
+                if (dumpLIR && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
+                    Debug.dump(Debug.BASIC_LOG_LEVEL, lirGenRes.getLIR(), "%s", getName());
+                }
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
-    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, Trace<B> trace, TraceAllocationContext context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context);
 }

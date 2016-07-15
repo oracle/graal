@@ -452,11 +452,19 @@ public class StandardGraphBuilderPlugins {
         r.register1("<init>", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
-                if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                    b.add(new RegisterFinalizerNode(object));
+                /*
+                 * Object.<init> is a common instrumentation point so only perform this rewrite if
+                 * the current definition is the normal empty method with a single return bytecode.
+                 * The finalizer registration will instead be performed by the BytecodeParser.
+                 */
+                if (targetMethod.getCodeSize() == 1) {
+                    ValueNode object = receiver.get();
+                    if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
+                        b.add(new RegisterFinalizerNode(object));
+                    }
+                    return true;
                 }
-                return true;
+                return false;
             }
         });
         r.register1("getClass", Receiver.class, new InvocationPlugin() {

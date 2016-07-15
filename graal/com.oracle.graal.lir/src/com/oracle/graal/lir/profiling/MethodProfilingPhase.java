@@ -45,8 +45,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
     public static final String ITERATION_GROUP = "METHOD_ITERATION_COUNTER";
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         BenchmarkCounterFactory counterFactory = context.counterFactory;
         new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
     }

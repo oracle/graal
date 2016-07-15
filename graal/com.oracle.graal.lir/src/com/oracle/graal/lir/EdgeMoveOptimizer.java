@@ -55,15 +55,14 @@ import jdk.vm.ci.code.TargetDescription;
 public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
         Optimizer optimizer = new Optimizer(ir);
 
-        List<? extends AbstractBlockBase<?>> blockList = ir.linearScanOrder();
+        AbstractBlockBase<?>[] blockList = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
-        for (int i = blockList.size() - 1; i >= 1; i--) {
-            AbstractBlockBase<?> block = blockList.get(i);
+        for (int i = blockList.length - 1; i >= 1; i--) {
+            AbstractBlockBase<?> block = blockList[i];
 
             if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);

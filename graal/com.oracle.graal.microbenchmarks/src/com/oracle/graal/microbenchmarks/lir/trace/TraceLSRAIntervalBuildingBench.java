@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.microbenchmarks.lir.trace;
 
-import java.util.List;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
@@ -32,7 +30,6 @@ import org.openjdk.jmh.annotations.Setup;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
@@ -60,22 +57,16 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
 
         @Override
         @SuppressWarnings("try")
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                        AllocationContext context) {
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
             MoveFactory spillMoveFactory = context.spillMoveFactory;
             RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
-            TraceBuilderResult<B> resultTraces = getTraces(context);
+            TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
-            for (Trace<B> trace : resultTraces.getTraces()) {
+            for (Trace trace : resultTraces.getTraces()) {
                 allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, null);
                 Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(allocator, resultTraces);
                 a.analyze();
             }
-        }
-
-        @SuppressWarnings("unchecked")
-        private static <B extends AbstractBlockBase<B>> TraceBuilderResult<B> getTraces(AllocationContext context) {
-            return context.contextLookup(TraceBuilderResult.class);
         }
     }
 

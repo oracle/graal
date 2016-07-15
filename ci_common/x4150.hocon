@@ -1,0 +1,14 @@
+x4150.default : ${commonLinux} {
+  capabilities: [linux, x4150]
+  environment : {
+    XMX         : "64g"
+    XMS         : "64g"
+    JVM_CONFIG  : ${jvm-config.default}
+    JVM         : "server"
+    MACHINE_NAME: "x4150"
+  }
+}
+
+builds += [
+  ${x4150.default} ${bench-specjbb2005} { name: "bench-specjbb2005-linux-x4150"}
+]

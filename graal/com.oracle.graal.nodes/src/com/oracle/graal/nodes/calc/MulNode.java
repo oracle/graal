@@ -72,7 +72,13 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         }
 
         if (forX.isConstant() && !forY.isConstant()) {
-            return canonical(tool, forY, forX);
+            // we try to swap and canonicalize
+            ValueNode improvement = canonical(tool, forY, forX);
+            if (improvement != this) {
+                return improvement;
+            }
+            // if this fails we only swap
+            return new MulNode(forY, forX);
         }
         if (forY.isConstant()) {
             BinaryOp<Mul> op = getOp(forX, forY);

@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIR.verifyBlocks;
 
-import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -44,13 +43,12 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
      * Performs control flow optimizations on the given LIR graph.
      */
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer<B>(lir).deleteEmptyBlocks(codeEmittingOrder);
+        new Optimizer(lir).deleteEmptyBlocks(lir.codeEmittingOrder());
     }
 
-    private static final class Optimizer<B extends AbstractBlockBase<B>> {
+    private static final class Optimizer {
 
         private final LIR lir;
 
@@ -67,8 +65,8 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          * @param block the block checked for deletion
          * @return whether the block can be deleted
          */
-        private boolean canDeleteBlock(B block) {
-            if (block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
+        private boolean canDeleteBlock(AbstractBlockBase<?> block) {
+            if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
                 return false;
             }
 
@@ -84,7 +82,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
         }
 
-        private void alignBlock(B block) {
+        private void alignBlock(AbstractBlockBase<?> block) {
             if (!block.isAligned()) {
                 block.setAlign(true);
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
@@ -94,22 +92,21 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             }
         }
 
-        private void deleteEmptyBlocks(List<B> blocks) {
+        private void deleteEmptyBlocks(AbstractBlockBase<?>[] blocks) {
             assert verifyBlocks(lir, blocks);
-            Iterator<B> iterator = blocks.iterator();
-            while (iterator.hasNext()) {
-                B block = iterator.next();
+            for (int i = 0; i < blocks.length; i++) {
+                AbstractBlockBase<?> block = blocks[i];
                 if (canDeleteBlock(block)) {
 
                     block.delete();
                     // adjust successor and predecessor lists
-                    B other = block.getSuccessors()[0];
+                    AbstractBlockBase<?> other = block.getSuccessors()[0];
                     if (block.isAligned()) {
                         alignBlock(other);
                     }
 
                     BLOCKS_DELETED.increment();
-                    iterator.remove();
+                    blocks[i] = null;
                 }
             }
             assert verifyBlocks(lir, blocks);

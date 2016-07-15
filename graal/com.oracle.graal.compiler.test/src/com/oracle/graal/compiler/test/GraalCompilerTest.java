@@ -176,7 +176,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Suites createSuites() {
         Suites ret = backend.getSuites().getDefaultSuites().copy();
-        ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class);
+        ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         PhaseSuite.findNextPhase(iter, CanonicalizerPhase.class);
         iter.add(new Phase("ComputeLoopFrequenciesPhase") {
 

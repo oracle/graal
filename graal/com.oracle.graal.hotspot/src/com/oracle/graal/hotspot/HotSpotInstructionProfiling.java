@@ -54,8 +54,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                    PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         BenchmarkCounterFactory counterFactory = context.counterFactory;
         new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
     }
@@ -115,6 +114,9 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof InstructionCounterOp) {
                     InstructionCounterOp currentOp = (InstructionCounterOp) inst;

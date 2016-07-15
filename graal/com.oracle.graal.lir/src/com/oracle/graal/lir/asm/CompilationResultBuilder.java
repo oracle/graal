@@ -388,9 +388,10 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        List<? extends AbstractBlockBase<?>> order = lir.codeEmittingOrder();
-        assert order.get(currentBlockIndex) == edge.getSourceBlock();
-        return currentBlockIndex < order.size() - 1 && order.get(currentBlockIndex + 1) == edge.getTargetBlock();
+        AbstractBlockBase<?>[] order = lir.codeEmittingOrder();
+        assert order[currentBlockIndex] == edge.getSourceBlock();
+        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(order, currentBlockIndex);
+        return nextBlock == edge.getTargetBlock();
     }
 
     /**
@@ -403,6 +404,7 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
         frameContext.enter(this);
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
             emitBlock(b);
             currentBlockIndex++;
         }
@@ -411,6 +413,9 @@ public class CompilationResultBuilder {
     }
 
     private void emitBlock(AbstractBlockBase<?> block) {
+        if (block == null) {
+            return;
+        }
         if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
@@ -429,7 +434,7 @@ public class CompilationResultBuilder {
                     afterOp.accept(op);
                 }
             } catch (GraalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + Arrays.toString(lir.codeEmittingOrder()));
             }
         }
     }

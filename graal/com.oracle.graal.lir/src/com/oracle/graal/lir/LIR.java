@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -42,21 +44,25 @@ public final class LIR extends LIRGenerator.VariableProvider {
     /**
      * The linear-scan ordered list of blocks.
      */
-    private final List<? extends AbstractBlockBase<?>> linearScanOrder;
+    private final AbstractBlockBase<?>[] linearScanOrder;
 
     /**
      * The order in which the code is emitted.
      */
-    private final List<? extends AbstractBlockBase<?>> codeEmittingOrder;
+    private final AbstractBlockBase<?>[] codeEmittingOrder;
 
-    private final BlockMap<List<LIRInstruction>> lirInstructions;
+    /**
+     * Map from {@linkplain AbstractBlockBase block} to {@linkplain LIRInstruction}s. Note that we
+     * are using {@link ArrayList} instead of {@link List} to avoid interface dispatch.
+     */
+    private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
 
     private boolean hasArgInCallerFrame;
 
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(AbstractControlFlowGraph<?> cfg, List<? extends AbstractBlockBase<?>> linearScanOrder, List<? extends AbstractBlockBase<?>> codeEmittingOrder) {
+    public LIR(AbstractControlFlowGraph<?> cfg, AbstractBlockBase<?>[] linearScanOrder, AbstractBlockBase<?>[] codeEmittingOrder) {
         this.cfg = cfg;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
@@ -81,25 +87,25 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return false;
     }
 
-    public List<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
+    public ArrayList<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
         return lirInstructions.get(block);
     }
 
-    public void setLIRforBlock(AbstractBlockBase<?> block, List<LIRInstruction> list) {
+    public void setLIRforBlock(AbstractBlockBase<?> block, ArrayList<LIRInstruction> list) {
         assert getLIRforBlock(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
 
     /**
-     * Gets the linear scan ordering of blocks as a list.
+     * Gets the linear scan ordering of blocks as an array.
      *
      * @return the blocks in linear scan order
      */
-    public List<? extends AbstractBlockBase<?>> linearScanOrder() {
+    public AbstractBlockBase<?>[] linearScanOrder() {
         return linearScanOrder;
     }
 
-    public List<? extends AbstractBlockBase<?>> codeEmittingOrder() {
+    public AbstractBlockBase<?>[] codeEmittingOrder() {
         return codeEmittingOrder;
     }
 
@@ -113,6 +119,24 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     public boolean hasArgInCallerFrame() {
         return hasArgInCallerFrame;
+    }
+
+    /**
+     * Gets the next non-{@code null} block in a list.
+     *
+     * @param blocks list of blocks
+     * @param blockIndex index of the current block
+     * @return the next block in the list that is none {@code null} or {@code null} if there is no
+     *         such block
+     */
+    public static AbstractBlockBase<?> getNextBlock(AbstractBlockBase<?>[] blocks, int blockIndex) {
+        for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.length; nextIndex++) {
+            AbstractBlockBase<?> nextBlock = blocks[nextIndex];
+            if (nextBlock != null) {
+                return nextBlock;
+            }
+        }
+        return null;
     }
 
     /**
@@ -142,7 +166,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
     public static boolean verifyBlock(LIR lir, AbstractBlockBase<?> block) {
-        List<LIRInstruction> ops = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> ops = lir.getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }
@@ -165,13 +189,16 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return true;
     }
 
-    public static boolean verifyBlocks(LIR lir, List<? extends AbstractBlockBase<?>> blocks) {
+    public static boolean verifyBlocks(LIR lir, AbstractBlockBase<?>[] blocks) {
         for (AbstractBlockBase<?> block : blocks) {
+            if (block == null) {
+                continue;
+            }
             for (AbstractBlockBase<?> sux : block.getSuccessors()) {
-                assert blocks.contains(sux) : "missing successor from: " + block + "to: " + sux;
+                assert Arrays.asList(blocks).contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                assert blocks.contains(pred) : "missing predecessor from: " + block + "to: " + pred;
+                assert Arrays.asList(blocks).contains(pred) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {
                 return false;
@@ -183,6 +210,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
     public void resetLabels() {
 
         for (AbstractBlockBase<?> block : codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction inst : lirInstructions.get(block)) {
                 if (inst instanceof LabelOp) {
                     ((LabelOp) inst).getLabel().reset();
