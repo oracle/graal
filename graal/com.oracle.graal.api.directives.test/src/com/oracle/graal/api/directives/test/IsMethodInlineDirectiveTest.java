@@ -49,6 +49,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         return GraalDirectives.isMethodInlined();
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testRootMethod() {
         ResolvedJavaMethod method = getResolvedJavaMethod("rootMethodSnippet");
@@ -102,6 +103,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         GraalDirectives.instrumentationEnd();
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testInlinedCalleeWithInstrumentation() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {

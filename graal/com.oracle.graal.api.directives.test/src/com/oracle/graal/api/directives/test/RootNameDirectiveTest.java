@@ -108,6 +108,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         GraalDirectives.instrumentationEnd();
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testRootNameWithinInstrumentationAtCallee() {
         try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {

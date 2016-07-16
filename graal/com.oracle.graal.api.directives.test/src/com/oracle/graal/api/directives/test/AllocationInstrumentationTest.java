@@ -38,6 +38,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SuppressWarnings("try")
 public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     private TinyInstrumentor instrumentor;

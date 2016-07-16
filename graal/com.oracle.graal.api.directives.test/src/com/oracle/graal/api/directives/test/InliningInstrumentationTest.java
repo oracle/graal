@@ -43,6 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Instrumentation will be invalidated when the target is removed. Hence, we use instrumentation to
  * guard the inlining decision.
  */
+@SuppressWarnings("try")
 public class InliningInstrumentationTest extends GraalCompilerTest {
 
     private TinyInstrumentor instrumentor;
