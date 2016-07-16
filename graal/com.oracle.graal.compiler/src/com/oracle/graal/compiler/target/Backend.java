@@ -61,13 +61,6 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
 
     private final Providers providers;
 
-    public static final ForeignCallDescriptor ARITHMETIC_SIN = new ForeignCallDescriptor("arithmeticSin", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_COS = new ForeignCallDescriptor("arithmeticCos", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_TAN = new ForeignCallDescriptor("arithmeticTan", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_EXP = new ForeignCallDescriptor("arithmeticExp", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_LOG = new ForeignCallDescriptor("arithmeticLog", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_LOG10 = new ForeignCallDescriptor("arithmeticLog10", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_POW = new ForeignCallDescriptor("arithmeticPow", double.class, double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
     public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
 

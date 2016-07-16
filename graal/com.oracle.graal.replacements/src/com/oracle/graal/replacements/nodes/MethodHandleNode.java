@@ -233,8 +233,13 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
     private static void maybeCastArgument(Assumptions assumptions, ValueNode[] arguments, int index, JavaType type) {
         if (type instanceof ResolvedJavaType) {
             TypeReference targetType = TypeReference.create(assumptions, (ResolvedJavaType) type);
-            if (targetType != null && !targetType.getType().isPrimitive()) {
-                ValueNode argument = arguments[index];
+            ValueNode argument = arguments[index];
+            /*
+             * When an argument is a Word type, we can have a mismatch of primitive/object types
+             * here. Not inserting a PiNode is a safe fallback, and Word types need no additional
+             * type information anyway.
+             */
+            if (targetType != null && !targetType.getType().isPrimitive() && !argument.getStackKind().isPrimitive()) {
                 ResolvedJavaType argumentType = StampTool.typeOrNull(argument.stamp());
                 if (argumentType == null || (argumentType.isAssignableFrom(targetType.getType()) && !argumentType.equals(targetType.getType()))) {
                     PiNode piNode = new PiNode(argument, StampFactory.object(targetType));
