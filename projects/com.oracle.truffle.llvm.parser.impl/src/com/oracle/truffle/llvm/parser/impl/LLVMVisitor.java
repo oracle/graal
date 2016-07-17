@@ -1048,6 +1048,18 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 GlobalVariable globalVariable = (GlobalVariable) constant.getRef();
                 String globalVarName = globalVariable.getName();
                 String linkage = globalVariable.getLinkage();
+
+                /*
+                 * Global variables in C can be 'extern', but still managed because they're defined
+                 * in another managed file. We should be able to detect that by looking for existing
+                 * global variables with the same name, so I would think that we should just need to
+                 * add
+                 * 
+                 * && !globalVars.containsKey(globalVariable)
+                 * 
+                 * to the condition below, but if I do that things go pretty badly wrong and we end
+                 * up crashing.
+                 */
                 if ("external".equals(linkage)) {
                     long getNativeSymbol = nativeLookup.getNativeHandle(globalVarName);
                     LLVMAddress nativeSymbolAddress = LLVMAddress.fromLong(getNativeSymbol);
