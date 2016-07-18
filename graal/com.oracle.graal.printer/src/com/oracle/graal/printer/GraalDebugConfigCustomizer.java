@@ -97,7 +97,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
             dumpIgvTimestamp = System.currentTimeMillis();
         }
         // Construct the path to the directory.
-        Path path = Paths.get(Options.DumpPath.getValue(), "graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet());
+        Path path = Paths.get(Options.DumpPath.getValue(), "graph-strings-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet());
         return new CanonicalStringGraphPrinter(path);
     }
 

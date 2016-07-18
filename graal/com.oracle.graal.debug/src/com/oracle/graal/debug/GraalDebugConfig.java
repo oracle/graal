@@ -129,6 +129,8 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> CanonicalGraphStringsExcludeVirtuals = new OptionValue<>(true);
         @Option(help = "Exclude virtual nodes when dumping canonical text for graphs.", type = OptionType.Debug)
         public static final OptionValue<Boolean> CanonicalGraphStringsCheckConstants = new OptionValue<>(false);
+        @Option(help = "Attempts to remove object identity hashes when dumping canonical text for graphs.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> CanonicalGraphStringsRemoveIdentities = new OptionValue<>(true);
 
         @Option(help = "Enable per method metrics that are collected across all compilations of a method." +
                        "Pattern for scope(s) in which method metering is enabled (see DebugFilter and Debug.metric).", type = OptionType.Debug)

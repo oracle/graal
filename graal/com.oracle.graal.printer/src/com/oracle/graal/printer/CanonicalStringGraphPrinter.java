@@ -24,6 +24,7 @@ package com.oracle.graal.printer;
 
 import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsCheckConstants;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsExcludeVirtuals;
+import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsRemoveIdentities;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringFlavor;
 
 import java.io.BufferedWriter;
@@ -37,6 +38,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.debug.TTY;
@@ -62,6 +64,7 @@ import com.oracle.graal.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CanonicalStringGraphPrinter implements GraphPrinter {
+    private static final Pattern IDENTITY_PATTERN = Pattern.compile("([A-Za-z0-9$_]+)@[0-9a-f]+");
     private Path currentDirectory;
     private Path root;
 
@@ -84,12 +87,20 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         return sb.toString();
     }
 
-    protected static void writeCanonicalGraphExpressionString2(ValueNode node, boolean checkConstants, PrintWriter writer) {
+    private static String removeIdentities(String str) {
+        return IDENTITY_PATTERN.matcher(str).replaceAll("$1");
+    }
+
+    protected static void writeCanonicalGraphExpressionString(ValueNode node, boolean checkConstants, boolean removeIdentities, PrintWriter writer) {
         writer.print(node.getClass().getSimpleName());
         writer.print("(");
         Fields properties = node.getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
-            writer.print(properties.get(node, i));
+            String dataStr = String.valueOf(properties.get(node, i));
+            if (removeIdentities) {
+                dataStr = removeIdentities(dataStr);
+            }
+            writer.print(dataStr);
             if (i + 1 < properties.getCount() || node.inputPositions().iterator().hasNext()) {
                 writer.print(", ");
             }
@@ -100,9 +111,13 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             Node input = position.get(node);
             if (checkConstants && input instanceof ConstantNode) {
                 ConstantNode constantNode = (ConstantNode) input;
-                writer.print(constantNode.getValue().toValueString());
+                String valueString = constantNode.getValue().toValueString();
+                if (removeIdentities) {
+                    valueString = removeIdentities(valueString);
+                }
+                writer.print(valueString);
             } else if (input instanceof ValueNode && !(input instanceof PhiNode) && !(input instanceof FixedNode)) {
-                writeCanonicalGraphExpressionString2((ValueNode) input, checkConstants, writer);
+                writeCanonicalGraphExpressionString((ValueNode) input, checkConstants, removeIdentities, writer);
             } else if (input == null) {
                 writer.print("null");
             } else {
@@ -115,7 +130,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         writer.print(")");
     }
 
-    protected static void writeCanonicalGraphString2(StructuredGraph graph, boolean checkConstants, PrintWriter writer) {
+    protected static void writeCanonicalExpressionCFGString(StructuredGraph graph, boolean checkConstants, boolean removeIdentities, PrintWriter writer) {
         ControlFlowGraph controlFlowGraph = ControlFlowGraph.compute(graph, true, true, false, false);
         for (Block block : controlFlowGraph.getBlocks()) {
             writer.print("Block ");
@@ -132,7 +147,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             writer.println();
             FixedNode node = block.getBeginNode();
             while (node != null) {
-                writeCanonicalGraphExpressionString2(node, checkConstants, writer);
+                writeCanonicalGraphExpressionString(node, checkConstants, removeIdentities, writer);
                 writer.println();
                 if (node instanceof FixedWithNextNode) {
                     node = ((FixedWithNextNode) node).next();
@@ -241,8 +256,8 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             Path filePath = currentDirectory.resolve(escapeFileName(title));
             try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {
                 switch (PrintCanonicalGraphStringFlavor.getValue()) {
-                    case 2:
-                        writeCanonicalGraphString2(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(), writer);
+                    case 1:
+                        writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(), CanonicalGraphStringsRemoveIdentities.getValue(), writer);
                         break;
                     case 0:
                     default:
