@@ -38,8 +38,8 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.TypedLocation;
-import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 import com.oracle.truffle.object.basic.DOTestAsserts;
+import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 @RunWith(Parameterized.class)
 public class ImplicitCastTest {
@@ -141,4 +141,26 @@ public class ImplicitCastTest {
         Assert.assertEquals(String.class, object.get("a").getClass());
     }
 
+    @Test
+    public void testLocationDecoratorEquals() {
+        Layout defaultLayout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
+        Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
+        Shape implicitCastRootShape = layout.createShape(new ObjectType());
+
+        DynamicObject object1 = implicitCastRootShape.newInstance();
+        object1.define("a", otherVal);
+        Location location1 = object1.getShape().getProperty("a").getLocation();
+
+        // Location of "a" should not change if an Integer is set
+        object1.set("a", intVal);
+        Assert.assertEquals(location1, object1.getShape().getProperty("a").getLocation());
+
+        DynamicObject object2 = defaultRootShape.newInstance();
+        object2.define("a", otherVal);
+        Location location2 = object2.getShape().getProperty("a").getLocation();
+
+        // This test relies on the assumption that both locations are of the same class
+        Assert.assertEquals(location1.getClass(), location2.getClass());
+        Assert.assertNotEquals(location1, location2);
+    }
 }

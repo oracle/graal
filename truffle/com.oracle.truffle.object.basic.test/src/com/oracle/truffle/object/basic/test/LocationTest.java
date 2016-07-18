@@ -32,6 +32,7 @@ import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.api.object.TypedLocation;
 import com.oracle.truffle.object.basic.DOTestAsserts;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
@@ -121,4 +122,26 @@ public class LocationTest {
         Assert.assertNotSame(location, newLocation);
     }
 
+    @Test
+    public void testDelete() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("a", 1);
+        object.define("b", 2);
+        object.delete("a");
+        Assert.assertFalse(object.containsKey("a"));
+        Assert.assertTrue(object.containsKey("b"));
+        Assert.assertEquals(2, object.get("b"));
+        object.define("a", 3);
+        object.delete("b");
+        Assert.assertEquals(3, object.get("a"));
+    }
+
+    @Test
+    public void testLocationDecoratorEquals() {
+        Allocator allocator = rootShape.allocator();
+        Location intLocation1 = allocator.locationForType(int.class);
+        Location intLocation2 = allocator.locationForType(int.class);
+        Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
+        Assert.assertNotEquals(intLocation1, intLocation2);
+    }
 }
