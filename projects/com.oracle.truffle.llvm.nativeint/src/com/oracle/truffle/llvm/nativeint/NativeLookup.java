@@ -140,7 +140,7 @@ public class NativeLookup {
     }
 
     public void addLibraryToNativeLookup(String library) {
-        getNativeFunctionHandles().add(getNFI().getLibraryHandle(library));
+        getLibraryHandles().add(getNFI().getLibraryHandle(library));
     }
 
     /**

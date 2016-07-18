@@ -528,7 +528,7 @@ def runTestJRuby(args=None):
     else:
         mx.run(['git', 'clone', rubyGemsUrl], cwd=suitesDir)
     os.environ['GRAAL_HOME'] = _suite.dir
-    os.environ['SULONG_DIR'] = _suite.dir
+    os.environ['SULONG_HOME'] = _suite.dir
     os.environ['GEM_HOME'] = jrubyGemsDir + '/gems'
     mx.run(['ruby', 'tool/jt.rb', 'build'], cwd=jrubyDir)
     mx.run(['ruby', 'tool/jt.rb', 'build', 'cexts'], cwd=jrubyDir)
