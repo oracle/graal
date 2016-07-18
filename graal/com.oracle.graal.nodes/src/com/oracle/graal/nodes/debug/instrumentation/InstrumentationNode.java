@@ -99,7 +99,9 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
                 AccessMonitorNode monitor = (AccessMonitorNode) target;
                 ValueNode alias = tool.getAlias(monitor.object());
                 if (alias instanceof VirtualObjectNode) {
-                    tool.replaceFirstInput(target, graph().addWithoutUnique(new MonitorProxyNode(null, monitor.getMonitorId())));
+                    MonitorProxyNode proxy = new MonitorProxyNode(null, monitor.getMonitorId());
+                    tool.addNode(proxy);
+                    tool.replaceFirstInput(target, proxy);
                 }
             } else if (!(target instanceof VirtualObjectNode)) {
                 ValueNode alias = tool.getAlias(target);

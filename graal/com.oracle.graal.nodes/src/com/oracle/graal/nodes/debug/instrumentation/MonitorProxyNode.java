@@ -27,6 +27,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 
@@ -36,7 +37,7 @@ import com.oracle.graal.nodes.java.RawMonitorEnterNode;
  * MonitorEnterNode and aggregates the monitor logic in a CommitAllocationNode.
  */
 @NodeInfo
-public class MonitorProxyNode extends ValueNode {
+public class MonitorProxyNode extends FloatingNode {
 
     public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
 
