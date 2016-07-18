@@ -123,7 +123,9 @@ public class GraalDebugConfig implements DebugConfig {
 
         @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintCanonicalGraphStrings = new OptionValue<>(false);
-        @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
+        @Option(help = "Choose format used when dumping canonical text for graphs:" +
+                "0 gives a scheduled graph (better for spotting changes involving the schedule)" +
+                "while 1 gives a CFG containing expressions rooted at fixed nodes (better for spotting small structure differences)", type = OptionType.Debug)
         public static final OptionValue<Integer> PrintCanonicalGraphStringFlavor = new OptionValue<>(0);
         @Option(help = "Exclude virtual nodes when dumping canonical text for graphs.", type = OptionType.Debug)
         public static final OptionValue<Boolean> CanonicalGraphStringsExcludeVirtuals = new OptionValue<>(true);
