@@ -457,13 +457,17 @@ public class PartialEvaluator {
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);
 
-        new InstrumentBranchesPhase().apply(graph, tierContext);
+        applyInstrumentationPhases(graph, tierContext);
 
         graph.maybeCompress();
 
         if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
             reportPerformanceWarnings(callTarget, graph);
         }
+    }
+
+    protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
+        new InstrumentBranchesPhase().apply(graph, tierContext);
     }
 
     @SuppressWarnings("try")
