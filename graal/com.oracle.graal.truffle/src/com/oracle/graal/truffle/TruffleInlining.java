@@ -58,13 +58,27 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy) {
         List<TruffleInliningDecision> exploredCallSites = new ArrayList<>();
         OptimizedCallTarget parentTarget = stack.get(stack.size() - 1);
-        for (OptimizedDirectCallNode callNode : parentTarget.getCallNodes()) {
+        for (OptimizedDirectCallNode callNode : getCallNodes(parentTarget)) {
             OptimizedCallTarget currentTarget = callNode.getCurrentCallTarget();
             stack.add(currentTarget); // push
             exploredCallSites.add(exploreCallSite(stack, callStackNodeCount, policy, callNode));
             stack.remove(stack.size() - 1); // pop
         }
         return exploredCallSites;
+    }
+
+    private static List<OptimizedDirectCallNode> getCallNodes(OptimizedCallTarget target) {
+        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
+        target.getRootNode().accept(new NodeVisitor() {
+            @Override
+            public boolean visit(Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    callNodes.add((OptimizedDirectCallNode) node);
+                }
+                return true;
+            }
+        });
+        return callNodes;
     }
 
     private static TruffleInliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode) {
@@ -103,7 +117,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
-        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getInterpreterCallCount());
+        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, ((DefaultCompilationProfile) target.getCompilationProfile()).getInterpreterCallCount());
     }
 
     private static int countRecursions(List<OptimizedCallTarget> stack) {

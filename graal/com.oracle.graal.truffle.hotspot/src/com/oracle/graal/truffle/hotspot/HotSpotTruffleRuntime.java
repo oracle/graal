@@ -169,19 +169,14 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return createCallTargetImpl(null, rootNode, createSpeculationLog());
+        return createCallTargetImpl(null, rootNode);
     }
 
     @Override
-    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode, SpeculationLog speculationLog) {
-        RootCallTarget target = super.createCallTargetImpl(source, rootNode, speculationLog);
+    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
+        RootCallTarget target = super.createCallTargetImpl(source, rootNode);
         callTargets.put(target, null);
         return target;
-    }
-
-    @Override
-    public RootCallTarget createCallTarget(RootNode root, SpeculationLog speculationLog) {
-        return createCallTargetImpl(null, root, speculationLog);
     }
 
     @Override
@@ -191,7 +186,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode root) {
-        return createCallTargetImpl(source, root, createSpeculationLog());
+        return createCallTargetImpl(source, root);
     }
 
     public static void setDontInlineCallBoundaryMethod() {

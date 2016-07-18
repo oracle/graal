@@ -44,7 +44,7 @@ public final class TraceSplittingListener extends AbstractDebugCompilationListen
     @Override
     public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
-        String label = String.format("split %3s-%-4s-%-4s ", splitCount++, callNode.getCurrentCallTarget().getCloneIndex(), callNode.getCallCount());
+        String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
         log(0, label, callTarget.toString(), callTarget.getDebugProperties(null));
     }
 

@@ -49,9 +49,11 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class OptimizedCallTargetTest {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
@@ -83,6 +85,11 @@ public class OptimizedCallTargetTest {
         assertTrue(target.isValid());
     }
 
+    private static void assertNotCompiled(OptimizedCallTarget target) {
+        assertNotNull(target);
+        assertFalse(target.isValid());
+    }
+
     private static final class CallTestNode extends AbstractTestNode {
         @Child private DirectCallNode callNode;
 
@@ -93,6 +100,95 @@ public class OptimizedCallTargetTest {
         @Override
         public int execute(VirtualFrame frame) {
             return (int) callNode.call(frame, frame.getArguments());
+        }
+    }
+
+    volatile int testInvalidationCounterCompiled = 0;
+    volatile int testInvalidationCounterInterpreted = 0;
+    volatile boolean doInvalidate;
+
+    @Test
+    public void testCompilationHeuristics() {
+        testInvalidationCounterCompiled = 0;
+        testInvalidationCounterInterpreted = 0;
+        doInvalidate = false;
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (CompilerDirectives.inInterpreter()) {
+                    testInvalidationCounterInterpreted++;
+                } else {
+                    testInvalidationCounterCompiled++;
+                }
+                // doInvalidate needs to be volatile otherwise it floats up.
+                if (doInvalidate) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                return null;
+            }
+        });
+        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        final int reprofileCount = TruffleCompilerOptions.TruffleReplaceReprofileCount.getValue();
+        assertTrue(compilationThreshold >= 2);
+
+        int expectedCompiledCount = 0;
+        int expectedInterpreterCount = 0;
+        for (int i = 0; i < compilationThreshold; i++) {
+            target.call();
+        }
+        expectedInterpreterCount += compilationThreshold;
+        assertCompiled(target);
+        assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+        assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
+
+        for (int j = 1; j < 100; j++) {
+
+            for (int i = 0; i < compilationThreshold; i++) {
+                target.call();
+            }
+            expectedCompiledCount += compilationThreshold;
+            assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+            assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
+            assertCompiled(target);
+
+            target.invalidate();
+            assertNotCompiled(target);
+
+            for (int i = 0; i < reprofileCount; i++) {
+                target.call();
+            }
+            assertCompiled(target);
+            expectedInterpreterCount += reprofileCount;
+            assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+            assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
+
+            doInvalidate = true;
+            expectedCompiledCount++;
+            target.call();
+            assertNotCompiled(target);
+            doInvalidate = false;
+
+            assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+            assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
+
+            for (int i = 0; i < reprofileCount; i++) {
+                target.call();
+            }
+            assertCompiled(target);
+            expectedInterpreterCount += reprofileCount;
+
+            assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+            assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
+
+            for (int i = 0; i < compilationThreshold; i++) {
+                target.call();
+            }
+
+            assertCompiled(target);
+
+            expectedCompiledCount += compilationThreshold;
+            assertEquals(expectedCompiledCount, testInvalidationCounterCompiled);
+            assertEquals(expectedInterpreterCount, testInvalidationCounterInterpreted);
         }
     }
 
