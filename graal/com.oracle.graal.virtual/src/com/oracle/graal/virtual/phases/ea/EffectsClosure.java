@@ -90,7 +90,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
-    public final void applyEffects() {
+    public void applyEffects() {
         final StructuredGraph graph = cfg.graph;
         final ArrayList<Node> obsoleteNodes = new ArrayList<>(0);
         final ArrayList<GraphEffectList> effectList = new ArrayList<>();
