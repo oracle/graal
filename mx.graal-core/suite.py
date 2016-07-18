@@ -1049,6 +1049,7 @@ suite = {
         "com.oracle.graal.test",
         "com.oracle.graal.runtime",
         "com.oracle.graal.graph.test",
+        "com.oracle.graal.printer",
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
       "uses" : ["com.oracle.graal.options.OptionDescriptors"],

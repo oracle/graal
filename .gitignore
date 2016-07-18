@@ -22,6 +22,7 @@
 *.rej
 *~
 core.*
+/graph-strings-*/
 /mx.graal-core/env
 /mx.graal-core/eclipse-launches/
 /graal.options
