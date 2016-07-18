@@ -581,6 +581,11 @@ public abstract class BasicLocations {
         public boolean equals(Object obj) {
             return super.equals(obj) && this.longLocation.equals(((PrimitiveLocationDecorator) obj).longLocation);
         }
+
+        @Override
+        public int hashCode() {
+            return longLocation.hashCode();
+        }
     }
 
     public static class IntLocationDecorator extends PrimitiveLocationDecorator implements IntLocation {
