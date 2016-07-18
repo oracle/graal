@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,7 +63,6 @@ import com.oracle.graal.nodes.ValueProxyNode;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
 import com.oracle.graal.nodes.spi.NodeWithState;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
@@ -180,11 +177,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 VirtualUtil.trace("deleted virtualizable allocation %s", node);
                 return true;
             }
-        }
-        if (UseGraalInstrumentation.getValue() && (node instanceof InstrumentationNode)) {
-            // InstrumentationNode will be adapted according to existing effects
-            processVirtualizable((ValueNode) node, nextFixedNode, state, effects);
-            return false;
         }
         if (hasVirtualInputs.isMarked(node) && node instanceof ValueNode) {
             if (node instanceof Virtualizable) {
