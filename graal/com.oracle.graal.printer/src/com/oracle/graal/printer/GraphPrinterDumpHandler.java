@@ -25,17 +25,7 @@ package com.oracle.graal.printer;
 import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,14 +34,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
 
 import jdk.vm.ci.meta.JavaMethod;
@@ -66,6 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
+    private final GraphPrinterSupplier printerSupplier;
     protected GraphPrinter printer;
     private List<String> previousInlineContext;
     private int[] dumpIds = {};
@@ -74,10 +64,19 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private final String jvmArguments;
     private final String sunJavaCommand;
 
+    @FunctionalInterface
+    public interface GraphPrinterSupplier {
+        GraphPrinter get() throws IOException;
+    }
+
     /**
      * Creates a new {@link GraphPrinterDumpHandler}.
+     * 
+     * @param printerSupplier Supplier used to create the GraphPrinter. Should supply an optional or
+     *            null in case of failure.
      */
-    public GraphPrinterDumpHandler() {
+    public GraphPrinterDumpHandler(GraphPrinterSupplier printerSupplier) {
+        this.printerSupplier = printerSupplier;
         /* Add the JVM and Java arguments to the graph properties to help identify it. */
         this.jvmArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
         this.sunJavaCommand = System.getProperty("sun.java.command");
@@ -90,17 +89,12 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             }
             previousInlineContext = new ArrayList<>();
             inlineContextMap = new WeakHashMap<>();
-            createPrinter();
-        }
-    }
-
-    protected void createPrinter() {
-        if (Options.PrintIdealGraphFile.getValue()) {
-            initializeFilePrinter();
-        } else if (Options.PrintCanonicalGraphStrings.getValue()) {
-            initializeStringPrinter();
-        } else {
-            initializeNetworkPrinter();
+            try {
+                printer = printerSupplier.get();
+            } catch (IOException e) {
+                TTY.println(e.getMessage());
+                failuresCount++;
+            }
         }
     }
 
@@ -112,73 +106,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         return dumpIds[depth - 1]++;
     }
 
-    private void initializeStringPrinter() {
-        // If this is the first time I have constructed a FilePrinterPath,
-        // get a time stamp in a (weak) attempt to make unique file names.
-        if (dumpIgvTimestamp == 0) {
-            dumpIgvTimestamp = System.currentTimeMillis();
-        }
-        // Construct the path to the directory.
-        Path path = Paths.get(Options.DumpPath.getValue(), "graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet());
-        printer = new CanonicalStringGraphPrinter(path);
-    }
-
-    private void initializeFilePrinter() {
-        Path path = getFilePrinterPath();
-        try {
-            if (Options.PrintBinaryGraphs.getValue()) {
-                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
-            } else {
-                printer = new IdealGraphPrinter(Files.newOutputStream(path), true);
-            }
-            TTY.println("Dumping IGV graphs to %s", path.toString());
-        } catch (IOException e) {
-            TTY.println("Failed to open %s to dump IGV graphs : %s", path.toString(), e);
-            failuresCount++;
-            printer = null;
-        }
-    }
-
-    private static long dumpIgvTimestamp;
-    private static final AtomicInteger dumpIgvId = new AtomicInteger();
-
-    private static Path getFilePrinterPath() {
-        // If this is the first time I have constructed a FilePrinterPath,
-        // get a time stamp in a (weak) attempt to make unique file names.
-        if (dumpIgvTimestamp == 0) {
-            dumpIgvTimestamp = System.currentTimeMillis();
-        }
-        // Encode the kind of the file in the extension.
-        final String ext = (Options.PrintBinaryGraphs.getValue() ? ".bgv" : ".gv.xml");
-        // Construct the path to the file.
-        return Paths.get(Options.DumpPath.getValue(), "runtime-graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet() + ext);
-    }
-
-    private void initializeNetworkPrinter() {
-        String host = Options.PrintIdealGraphAddress.getValue();
-        int port = Options.PrintBinaryGraphs.getValue() ? Options.PrintBinaryGraphPort.getValue() : Options.PrintIdealGraphPort.getValue();
-        try {
-            if (Options.PrintBinaryGraphs.getValue()) {
-                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
-            } else {
-                IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true);
-                printer = xmlPrinter;
-            }
-            TTY.println("Connected to the IGV on %s:%d", host, port);
-        } catch (ClosedByInterruptException | InterruptedIOException e) {
-            /*
-             * Interrupts should not count as errors because they may be caused by a cancelled Graal
-             * compilation. ClosedByInterruptException occurs if the SocketChannel could not be
-             * opened. InterruptedIOException occurs if new Socket(..) was interrupted.
-             */
-            printer = null;
-        } catch (IOException e) {
-            TTY.println("Could not connect to the IGV on %s:%d : %s", host, port, e);
-            failuresCount++;
-            printer = null;
-        }
-    }
-
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
@@ -188,60 +115,57 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             final Graph graph = (Graph) object;
+            // Get all current JavaMethod instances in the context.
+            List<String> inlineContext = getInlineContext(graph);
 
-            if (printer != null) {
-                // Get all current JavaMethod instances in the context.
-                List<String> inlineContext = getInlineContext(graph);
-
-                if (inlineContext != previousInlineContext) {
-                    Map<Object, Object> properties = new HashMap<>();
-                    properties.put("graph", graph.toString());
-                    if (inlineContext.equals(previousInlineContext)) {
-                        /*
-                         * two different graphs have the same inline context, so make sure they
-                         * appear in different folders by closing and reopening the top scope.
-                         */
-                        int inlineDepth = previousInlineContext.size() - 1;
-                        closeScope(inlineDepth);
-                        openScope(inlineContext.get(inlineDepth), inlineDepth, properties);
-                    } else {
-                        // Check for method scopes that must be closed since the previous dump.
-                        for (int i = 0; i < previousInlineContext.size(); ++i) {
-                            if (i >= inlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
-                                for (int inlineDepth = previousInlineContext.size() - 1; inlineDepth >= i; --inlineDepth) {
-                                    closeScope(inlineDepth);
-                                }
-                                break;
+            if (inlineContext != previousInlineContext) {
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put("graph", graph.toString());
+                if (inlineContext.equals(previousInlineContext)) {
+                    /*
+                     * two different graphs have the same inline context, so make sure they appear
+                     * in different folders by closing and reopening the top scope.
+                     */
+                    int inlineDepth = previousInlineContext.size() - 1;
+                    closeScope(inlineDepth);
+                    openScope(inlineContext.get(inlineDepth), inlineDepth, properties);
+                } else {
+                    // Check for method scopes that must be closed since the previous dump.
+                    for (int i = 0; i < previousInlineContext.size(); ++i) {
+                        if (i >= inlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
+                            for (int inlineDepth = previousInlineContext.size() - 1; inlineDepth >= i; --inlineDepth) {
+                                closeScope(inlineDepth);
                             }
+                            break;
                         }
-                        // Check for method scopes that must be opened since the previous dump.
-                        for (int i = 0; i < inlineContext.size(); ++i) {
-                            if (i >= previousInlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
-                                for (int inlineDepth = i; inlineDepth < inlineContext.size(); ++inlineDepth) {
-                                    openScope(inlineContext.get(inlineDepth), inlineDepth, inlineDepth == inlineContext.size() - 1 ? properties : null);
-                                }
-                                break;
+                    }
+                    // Check for method scopes that must be opened since the previous dump.
+                    for (int i = 0; i < inlineContext.size(); ++i) {
+                        if (i >= previousInlineContext.size() || !inlineContext.get(i).equals(previousInlineContext.get(i))) {
+                            for (int inlineDepth = i; inlineDepth < inlineContext.size(); ++inlineDepth) {
+                                openScope(inlineContext.get(inlineDepth), inlineDepth, inlineDepth == inlineContext.size() - 1 ? properties : null);
                             }
+                            break;
                         }
                     }
                 }
+            }
 
-                // Save inline context for next dump.
-                previousInlineContext = inlineContext;
+            // Save inline context for next dump.
+            previousInlineContext = inlineContext;
 
-                try (Scope s = Debug.sandbox("PrintingGraph", null)) {
-                    // Finally, output the graph.
-                    Map<Object, Object> properties = new HashMap<>();
-                    properties.put("graph", graph.toString());
-                    properties.put("date", new Date().toString());
-                    properties.put("scope", Debug.currentScope());
-                    printer.print(graph, nextDumpId() + ":" + message, properties);
-                } catch (IOException e) {
-                    failuresCount++;
-                    printer = null;
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
+            try (Scope s = Debug.sandbox("PrintingGraph", null)) {
+                // Finally, output the graph.
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put("graph", graph.toString());
+                properties.put("date", new Date().toString());
+                properties.put("scope", Debug.currentScope());
+                printer.print(graph, nextDumpId() + ":" + message, properties);
+            } catch (IOException e) {
+                failuresCount++;
+                printer = null;
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
         }
     }
