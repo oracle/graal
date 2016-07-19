@@ -32,13 +32,11 @@
 
 package com.oracle.truffle.llvm.asm.amd64;
 
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import java.io.ByteArrayInputStream;
+
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
 // Checkstyle: stop
 // @formatter:off
@@ -47,7 +45,7 @@ public class Parser {
 	public static final int _ident = 1;
 	public static final int _number = 2;
 	public static final int _hexNumber = 3;
-	public static final int maxT = 24;
+	public static final int maxT = 29;
 
 	static final boolean _T = true;
 	static final boolean _x = false;
@@ -59,14 +57,16 @@ public class Parser {
 
 	public final Scanner scanner;
 	public final Errors errors;
-	private final AsmNodeFactory factory;
+	private final AsmFactory factory;
 	private LLVMInlineAssemblyRootNode root;
+	private LLVMBaseType retType;
 
 
-	public Parser(String asmSnippet, @SuppressWarnings("unused") String asmFlags, @SuppressWarnings("unused") LLVMExpressionNode[] args, @SuppressWarnings("unused") LLVMBaseType retType) {
+	public Parser(String asmSnippet, String asmFlags, @SuppressWarnings("unused") LLVMExpressionNode[] args, LLVMBaseType retType) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
 		errors = new Errors();
-		this.factory = new AsmNodeFactory();
+		this.factory = new AsmFactory(asmFlags);
+		this.retType = retType;
 	}
 
 	void SynErr (int n) {
@@ -123,63 +123,100 @@ public class Parser {
 	}
 
 	void InlineAssembly() {
-		LLVMI32Node node = null;
+
 		Expect(4);
 		if (la.kind == 7 || la.kind == 8) {
-			node = AddSubOperation();
+			AddSubOperation();
 		} else if (la.kind == 9 || la.kind == 10) {
-			node = IncDecOperation();
+			IncDecOperation();
 		} else if (StartOf(1)) {
-			node = LogicOperation();
-		} else SynErr(25);
+			LogicOperation();
+		} else if (StartOf(2)) {
+			ShiftOperation();
+		} else if (la.kind == 19) {
+			MoveOperation();
+		} else SynErr(30);
+		while (StartOf(3)) {
+			if (la.kind == 7 || la.kind == 8) {
+				AddSubOperation();
+			} else if (la.kind == 9 || la.kind == 10) {
+				IncDecOperation();
+			} else if (StartOf(1)) {
+				LogicOperation();
+			} else if (StartOf(2)) {
+				ShiftOperation();
+			} else {
+				MoveOperation();
+			}
+		}
 		Expect(4);
-		root = factory.finishInline(node);
+		root = factory.finishInline();
 	}
 
-	LLVMI32Node  AddSubOperation() {
-		LLVMI32Node  n;
-		String op; LLVMI32Node left = null, right = null;
+	void AddSubOperation() {
+		String op; String left = null, right = null;
 		op = AddSubOp();
-		if (StartOf(2)) {
-			left = Register(1);
+		if (StartOf(4)) {
+			left = Register();
 			Expect(5);
-			right = Register(2);
-		} else if (la.kind == 23) {
+			right = Register();
+		} else if (la.kind == 28) {
 			left = Immediate();
 			Expect(5);
-			right = Register(1);
-		} else SynErr(26);
+			right = Register();
+		} else SynErr(31);
 		Expect(6);
-		n = factory.createBinary(op, left, right);
-		return n;
+		factory.createBinaryOperation(op, left, right);
 	}
 
-	LLVMI32Node  IncDecOperation() {
-		LLVMI32Node  n;
-		String op; LLVMI32Node left = null;
+	void IncDecOperation() {
+		String op; String left = null;
 		op = IncDecOp();
-		left = Register(1);
+		left = Register();
 		Expect(6);
-		n = factory.createUnary(op, left);
-		return n;
+		factory.createUnaryOperation(op, left);
 	}
 
-	LLVMI32Node  LogicOperation() {
-		LLVMI32Node  n;
-		String op = null; LLVMI32Node left = null, right = null; n = null;
+	void LogicOperation() {
+		String op = null; String left = null, right = null;
 		if (la.kind == 11) {
 			op = UnaryLogicOp();
-			left = Register(1);
-			n = factory.createUnary(op, left);
+			left = Register();
+			factory.createUnaryOperation(op, left);
 		} else if (la.kind == 12 || la.kind == 13 || la.kind == 14) {
 			op = BinaryLogicOp();
-			left = Register(1);
+			left = Register();
 			Expect(5);
-			right = Register(2);
-			n = factory.createBinary(op, left, right);
-		} else SynErr(27);
+			right = Register();
+			factory.createBinaryOperation(op, left, right);
+		} else SynErr(32);
 		Expect(6);
-		return n;
+	}
+
+	void ShiftOperation() {
+		String op = null; String left = null, right = null;
+		op = ShiftOp();
+		left = Immediate();
+		Expect(5);
+		right = Register();
+		factory.createBinaryOperation(op, left, right);
+		Expect(6);
+	}
+
+	void MoveOperation() {
+		String op; String left = null, right = null;
+		op = MoveOp();
+		if (StartOf(4)) {
+			left = Register();
+			Expect(5);
+			right = Register();
+		} else if (la.kind == 28) {
+			left = Immediate();
+			Expect(5);
+			right = Register();
+		} else SynErr(33);
+		Expect(6);
+		factory.createBinaryOperation(op, left, right);
 	}
 
 	String  AddSubOp() {
@@ -189,33 +226,13 @@ public class Parser {
 			Get();
 		} else if (la.kind == 8) {
 			Get();
-		} else SynErr(28);
+		} else SynErr(34);
 		return op;
 	}
 
-	LLVMI32Node  Register(int index) {
-		LLVMI32Node  n;
+	String  Register() {
+		String  reg;
 		switch (la.kind) {
-		case 15: {
-			Get();
-			break;
-		}
-		case 16: {
-			Get();
-			break;
-		}
-		case 17: {
-			Get();
-			break;
-		}
-		case 18: {
-			Get();
-			break;
-		}
-		case 19: {
-			Get();
-			break;
-		}
 		case 20: {
 			Get();
 			break;
@@ -228,23 +245,43 @@ public class Parser {
 			Get();
 			break;
 		}
-		default: SynErr(29); break;
+		case 23: {
+			Get();
+			break;
 		}
-		n = LLVMI32ArgNodeGen.create(index);
-		return n;
+		case 24: {
+			Get();
+			break;
+		}
+		case 25: {
+			Get();
+			break;
+		}
+		case 26: {
+			Get();
+			break;
+		}
+		case 27: {
+			Get();
+			break;
+		}
+		default: SynErr(35); break;
+		}
+		reg = t.val; factory.addFrameSlot(reg, this.retType);
+		return reg;
 	}
 
-	LLVMI32Node  Immediate() {
-		LLVMI32Node  n;
+	String  Immediate() {
+		String  n;
 		n = null;
-		Expect(23);
+		Expect(28);
 		if (la.kind == 2) {
 			Get();
-			n = new LLVMAMD64ImmNode(Integer.parseInt(t.val));
+			n = t.val;
 		} else if (la.kind == 3) {
 			Get();
-			n = new LLVMAMD64ImmNode(Integer.parseInt(t.val.substring(2), 16));
-		} else SynErr(30);
+			n = t.val;
+		} else SynErr(36);
 		return n;
 	}
 
@@ -255,7 +292,7 @@ public class Parser {
 			Get();
 		} else if (la.kind == 10) {
 			Get();
-		} else SynErr(31);
+		} else SynErr(37);
 		return op;
 	}
 
@@ -275,7 +312,29 @@ public class Parser {
 			Get();
 		} else if (la.kind == 14) {
 			Get();
-		} else SynErr(32);
+		} else SynErr(38);
+		return op;
+	}
+
+	String  ShiftOp() {
+		String  op;
+		op = la.val;
+		if (la.kind == 15) {
+			Get();
+		} else if (la.kind == 16) {
+			Get();
+		} else if (la.kind == 17) {
+			Get();
+		} else if (la.kind == 18) {
+			Get();
+		} else SynErr(39);
+		return op;
+	}
+
+	String  MoveOp() {
+		String  op;
+		op = la.val;
+		Expect(19);
 		return op;
 	}
 
@@ -288,13 +347,17 @@ public class Parser {
 		InlineAssembly();
 		Expect(0);
 
-		return root == null ? null : root;
+		if(root == null)
+			throw new IllegalStateException();
+		return root;
 	}
 
 	private static final boolean[][] set = {
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x}
 
 	};
 
@@ -335,24 +398,31 @@ class Errors {
 			case 12: s = "\"andl\" expected"; break;
 			case 13: s = "\"orl\" expected"; break;
 			case 14: s = "\"xorl\" expected"; break;
-			case 15: s = "\"%eax\" expected"; break;
-			case 16: s = "\"%ebx\" expected"; break;
-			case 17: s = "\"%ecx\" expected"; break;
-			case 18: s = "\"%edx\" expected"; break;
-			case 19: s = "\"%esp\" expected"; break;
-			case 20: s = "\"%ebp\" expected"; break;
-			case 21: s = "\"%esi\" expected"; break;
-			case 22: s = "\"%edi\" expected"; break;
-			case 23: s = "\"$$\" expected"; break;
-			case 24: s = "??? expected"; break;
-			case 25: s = "invalid InlineAssembly"; break;
-			case 26: s = "invalid AddSubOperation"; break;
-			case 27: s = "invalid LogicOperation"; break;
-			case 28: s = "invalid AddSubOp"; break;
-			case 29: s = "invalid Register"; break;
-			case 30: s = "invalid Immediate"; break;
-			case 31: s = "invalid IncDecOp"; break;
-			case 32: s = "invalid BinaryLogicOp"; break;
+			case 15: s = "\"shll\" expected"; break;
+			case 16: s = "\"shrl\" expected"; break;
+			case 17: s = "\"sall\" expected"; break;
+			case 18: s = "\"sarl\" expected"; break;
+			case 19: s = "\"movl\" expected"; break;
+			case 20: s = "\"%eax\" expected"; break;
+			case 21: s = "\"%ebx\" expected"; break;
+			case 22: s = "\"%ecx\" expected"; break;
+			case 23: s = "\"%edx\" expected"; break;
+			case 24: s = "\"%esp\" expected"; break;
+			case 25: s = "\"%ebp\" expected"; break;
+			case 26: s = "\"%esi\" expected"; break;
+			case 27: s = "\"%edi\" expected"; break;
+			case 28: s = "\"$$\" expected"; break;
+			case 29: s = "??? expected"; break;
+			case 30: s = "invalid InlineAssembly"; break;
+			case 31: s = "invalid AddSubOperation"; break;
+			case 32: s = "invalid LogicOperation"; break;
+			case 33: s = "invalid MoveOperation"; break;
+			case 34: s = "invalid AddSubOp"; break;
+			case 35: s = "invalid Register"; break;
+			case 36: s = "invalid Immediate"; break;
+			case 37: s = "invalid IncDecOp"; break;
+			case 38: s = "invalid BinaryLogicOp"; break;
+			case 39: s = "invalid ShiftOp"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);

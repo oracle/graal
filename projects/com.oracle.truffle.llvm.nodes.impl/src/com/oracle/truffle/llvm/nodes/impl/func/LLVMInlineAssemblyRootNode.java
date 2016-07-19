@@ -29,25 +29,38 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.func;
 
+import java.util.List;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.impl.asm.base.LLVMInlineAssemblyBlockNode;
+import com.oracle.truffle.llvm.nodes.impl.asm.base.LLVMInlineAssemblyPrologueNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
-    @Child private LLVMExpressionNode node;
+    @Child LLVMInlineAssemblyPrologueNode prologue;
+    @Child LLVMInlineAssemblyBlockNode block;
 
-    public LLVMInlineAssemblyRootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor, LLVMExpressionNode node) {
+    private final LLVMExpressionNode result;
+
+    public LLVMInlineAssemblyRootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor,
+                    LLVMNode[] statements, List<LLVMNode> writeNodes, LLVMExpressionNode result) {
         super(LLVMLanguage.class, sourceSection, frameDescriptor);
-        this.node = node;
+        this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
+        this.block = new LLVMInlineAssemblyBlockNode(statements);
+        this.result = result;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return node.executeGeneric(frame);
+        prologue.executeVoid(frame);
+        block.executeVoid(frame);
+        return result == null ? 0 : result.executeGeneric(frame);
     }
 
 }

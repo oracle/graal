@@ -27,19 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.asm;
+package com.oracle.truffle.llvm.nodes.impl.asm.base;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import java.util.List;
 
-@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMAMD64SublNode extends LLVMI32Node {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 
-    @Specialization
-    protected int executeI32(int left, int right) {
-        return right - left;
+public class LLVMInlineAssemblyPrologueNode extends LLVMNode {
+
+    @Children private final LLVMNode[] writeNodes;
+
+    public LLVMInlineAssemblyPrologueNode(List<LLVMNode> writeNodes) {
+        this.writeNodes = writeNodes.toArray(new LLVMNode[writeNodes.size()]);
+    }
+
+    @Override
+    @ExplodeLoop
+    public void executeVoid(VirtualFrame frame) {
+        for (LLVMNode n : writeNodes) {
+            n.executeVoid(frame);
+        }
     }
 
 }
