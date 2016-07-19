@@ -348,7 +348,7 @@ public class SPARCMove {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             // HotSpot for SPARC requires at least word alignment
             SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(data, max(SPARCKind.WORD.getSizeInBytes(), data.getAlignment()));
-            assert addr == masm.getPlaceholder();
+            assert addr == masm.getPlaceholder(-1);
             final boolean forceRelocatable = true;
             Register dstReg = asRegister(result);
             masm.setx(0, dstReg, forceRelocatable);

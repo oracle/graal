@@ -33,12 +33,13 @@ import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.i7;
 import static jdk.vm.ci.sparc.SPARC.o7;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Label;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.sparc.SPARC.CPUFeature;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -95,7 +96,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     }
 
     @Override
-    public AbstractAddress getPlaceholder() {
+    public AbstractAddress getPlaceholder(int instructionStartPosition) {
         return Placeholder;
     }
 

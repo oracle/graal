@@ -539,7 +539,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress getPlaceholder() {
+    public AbstractAddress getPlaceholder(int instructionStartPosition) {
         throw new UnsupportedOperationException();
     }
 

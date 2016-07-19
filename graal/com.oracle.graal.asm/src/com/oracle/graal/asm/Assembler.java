@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -36,6 +37,17 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public abstract class Assembler {
 
+    public abstract static class CodeAnnotation {
+        /**
+         * The position (bytes from the beginning of the method) of the annotated instruction.
+         */
+        public final int instructionPosition;
+
+        protected CodeAnnotation(int instructionStartPosition) {
+            this.instructionPosition = instructionStartPosition;
+        }
+    }
+
     public final TargetDescription target;
     private List<LabelHint> jumpDisplacementHints;
 
@@ -44,9 +56,16 @@ public abstract class Assembler {
      */
     private final Buffer codeBuffer;
 
+    protected Consumer<CodeAnnotation> codePatchingAnnotationConsumer;
+
     public Assembler(TargetDescription target) {
         this.target = target;
         this.codeBuffer = new Buffer(target.arch.getByteOrder());
+    }
+
+    public void setCodePatchingAnnotationConsumer(Consumer<CodeAnnotation> codeAnnotationConsumer) {
+        assert this.codePatchingAnnotationConsumer == null : "overwriting existing value";
+        this.codePatchingAnnotationConsumer = codeAnnotationConsumer;
     }
 
     /**
@@ -182,8 +201,11 @@ public abstract class Assembler {
 
     /**
      * Returns a target specific placeholder address that can be used for code patching.
+     * 
+     * @param instructionStartPosition The start of the instruction, i.e., the value that is used as
+     *            the key for looking up placeholder patching information.
      */
-    public abstract AbstractAddress getPlaceholder();
+    public abstract AbstractAddress getPlaceholder(int instructionStartPosition);
 
     /**
      * Emits a NOP instruction to advance the current PC.
