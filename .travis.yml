@@ -21,6 +21,10 @@ addons:
     - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libxml2-dev
+  - sudo apt-get install -y libssl-dev
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
@@ -54,6 +58,7 @@ env:
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
   - TEST_COMMAND='mx su-travis3'
-  - TEST_COMMAND='mx su-travis-jruby'
+  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu
+
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
