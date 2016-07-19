@@ -137,7 +137,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         this.graalRuntime = graalRuntime;
     }
 
-    GraalTVMCI getTvmci() {
+    protected GraalTVMCI getTvmci() {
         return tvmci;
     }
 
