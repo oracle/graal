@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.truffle.AbstractCompilationProfile;
+import com.oracle.graal.truffle.DefaultCompilationProfile;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TraceCompilationProfile;
@@ -74,7 +76,7 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
             int inlinedCallCount = sumCalls(allCallTargets, p -> p.getInlinedCallCount());
             int interpreterCallCount = sumCalls(allCallTargets, p -> p.getInterpreterCallCount());
             int totalCallCount = sumCalls(allCallTargets, p -> p.getTotalCallCount());
-            int invalidationCount = allCallTargets.stream().collect(Collectors.summingInt(target -> target.getCompilationProfile().getInvalidationCount()));
+            int invalidationCount = allCallTargets.stream().collect(Collectors.summingInt(target -> getDefaultCompilationProfile(target).getInvalidationCount()));
 
             totalDirectCallCount += directCallCount;
             totalInlinedCallCount += inlinedCallCount;
@@ -93,6 +95,14 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
         runtime.log(String.format(" %-50s  | %15d || %15d | %15d || %15d | %15d | %15d || %3d", "Total", totalTotalCallCount, totalInterpretedCallCount, totalTotalCallCount -
                         totalInterpretedCallCount, totalDirectCallCount, totalInlinedCallCount, totalIndirectCallCount, totalInvalidationCount));
 
+    }
+
+    private static DefaultCompilationProfile getDefaultCompilationProfile(OptimizedCallTarget target) {
+        AbstractCompilationProfile profile = target.getCompilationProfile();
+        if (profile instanceof DefaultCompilationProfile) {
+            return (DefaultCompilationProfile) profile;
+        }
+        return null;
     }
 
     private static int sumCalls(List<OptimizedCallTarget> targets, Function<TraceCompilationProfile, Integer> function) {

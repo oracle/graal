@@ -19,9 +19,9 @@ env:
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
-    - JDK="jdk8" GATE="build,bootstrap"
+    - JDK="jdk8" GATE="build,bootstraplite"
 #    - JDK="jdk9" GATE="build,test"
-#    - JDK="jdk9" GATE="build,bootstrap"
+#    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=$TRAVIS_BUILD_DIR/../mx

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static com.oracle.graal.printer.CanonicalStringGraphPrinter.getCanonicalGraphString;
+
 import org.junit.Assert;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
