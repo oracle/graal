@@ -461,6 +461,11 @@ public abstract class BasicLocations {
         public Class<Long> getType() {
             return long.class;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && this.allowInt == ((LongLocationDecorator) obj).allowInt;
+        }
     }
 
     public abstract static class SimpleLongFieldLocation extends FieldLocation implements InternalLongLocation {
@@ -571,6 +576,16 @@ public abstract class BasicLocations {
         public String getWhereString() {
             return longLocation.getWhereString();
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && this.longLocation.equals(((PrimitiveLocationDecorator) obj).longLocation);
+        }
+
+        @Override
+        public int hashCode() {
+            return longLocation.hashCode();
+        }
     }
 
     public static class IntLocationDecorator extends PrimitiveLocationDecorator implements IntLocation {
@@ -676,6 +691,11 @@ public abstract class BasicLocations {
 
         public Class<Double> getType() {
             return double.class;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && this.allowInt == ((DoubleLocationDecorator) obj).allowInt;
         }
     }
 
