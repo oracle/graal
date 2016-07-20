@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -52,7 +53,13 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
     protected final BinaryOperation operation;
 
     public enum BinaryOperation {
-        POW
+        POW(new ForeignCallDescriptor("arithmeticPow", double.class, double.class, double.class));
+
+        public final ForeignCallDescriptor foreignCallDescriptor;
+
+        BinaryOperation(ForeignCallDescriptor foreignCallDescriptor) {
+            this.foreignCallDescriptor = foreignCallDescriptor;
+        }
     }
 
     public BinaryOperation getOperation() {

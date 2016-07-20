@@ -138,7 +138,7 @@ public final class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
         this(tool, opcode, result, input, Value.ILLEGAL);
     }
 
-    public void setCrb(CompilationResultBuilder crb) {
+    private void setCrb(CompilationResultBuilder crb) {
         internalCrb = crb;
     }
 

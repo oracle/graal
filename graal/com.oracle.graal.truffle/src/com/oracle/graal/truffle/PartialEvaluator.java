@@ -39,8 +39,8 @@ import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.ConstantNode;
@@ -457,13 +457,17 @@ public class PartialEvaluator {
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);
 
-        new InstrumentBranchesPhase().apply(graph, tierContext);
+        applyInstrumentationPhases(graph, tierContext);
 
         graph.maybeCompress();
 
         if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
             reportPerformanceWarnings(callTarget, graph);
         }
+    }
+
+    protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
+        new InstrumentBranchesPhase().apply(graph, tierContext);
     }
 
     @SuppressWarnings("try")

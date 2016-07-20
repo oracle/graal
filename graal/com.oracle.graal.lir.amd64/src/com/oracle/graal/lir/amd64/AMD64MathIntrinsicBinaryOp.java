@@ -110,7 +110,7 @@ public final class AMD64MathIntrinsicBinaryOp extends AMD64LIRInstruction {
         }
     }
 
-    public void setCrb(CompilationResultBuilder crb) {
+    private void setCrb(CompilationResultBuilder crb) {
         internalCrb = crb;
     }
 

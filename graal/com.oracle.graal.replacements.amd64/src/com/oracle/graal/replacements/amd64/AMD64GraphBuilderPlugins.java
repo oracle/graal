@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
-import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -126,7 +126,6 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
-
         if (arithmeticStubs) {
             registerUnaryMath(r, "sin", SIN);
             registerUnaryMath(r, "cos", COS);

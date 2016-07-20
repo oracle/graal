@@ -38,6 +38,8 @@ import java.util.List;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -67,6 +69,7 @@ import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
@@ -112,6 +115,10 @@ import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
@@ -121,6 +128,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -130,12 +138,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected final MetaAccessProvider metaAccess;
+    protected final ForeignCallsProvider foreignCalls;
     protected final TargetDescription target;
 
     private BoxingSnippets.Templates boxingSnippets;
 
-    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, TargetDescription target) {
+    public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
         this.metaAccess = metaAccess;
+        this.foreignCalls = foreignCalls;
         this.target = target;
     }
 
@@ -188,9 +198,81 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             boxingSnippets.lower((UnboxNode) n, tool);
         } else if (n instanceof VerifyHeapNode) {
             lowerVerifyHeap((VerifyHeapNode) n);
+        } else if (n instanceof UnaryMathIntrinsicNode) {
+            lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
+        } else if (n instanceof BinaryMathIntrinsicNode) {
+            lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
         } else {
             throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
+    }
+
+    private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+        ResolvedJavaMethod method = math.graph().method();
+        if (method != null) {
+            if (method.getAnnotation(Snippet.class) != null) {
+                /*
+                 * In the context of the snippet use the LIR lowering instead of the Node lowering.
+                 */
+                return;
+            }
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+                /*
+                 * A root compilation of the intrinsic method should emit the full assembly
+                 * implementation.
+                 */
+                return;
+            }
+
+        }
+        ForeignCallDescriptor foreignCall = toForeignCall(math.getOperation());
+        if (foreignCall != null) {
+            StructuredGraph graph = math.graph();
+            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, toForeignCall(math.getOperation()), math.getX(), math.getY()));
+            graph.addAfterFixed(tool.lastFixedNode(), call);
+            math.replaceAtUsages(call);
+        }
+    }
+
+    private void lowerUnaryMath(UnaryMathIntrinsicNode math, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+        ResolvedJavaMethod method = math.graph().method();
+        if (method != null) {
+            if (method.getAnnotation(Snippet.class) != null) {
+                /*
+                 * In the context of the snippet use the LIR lowering instead of the Node lowering.
+                 */
+                return;
+            }
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+                /*
+                 * A root compilation of the intrinsic method should emit the full assembly
+                 * implementation.
+                 */
+                return;
+            }
+
+        }
+        ForeignCallDescriptor foreignCall = toForeignCall(math.getOperation());
+        if (foreignCall != null) {
+            StructuredGraph graph = math.graph();
+            ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls, foreignCall, math.getValue()));
+            graph.addAfterFixed(tool.lastFixedNode(), call);
+            math.replaceAtUsages(call);
+        }
+    }
+
+    protected ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
+        return operation.foreignCallDescriptor;
+    }
+
+    protected ForeignCallDescriptor toForeignCall(BinaryOperation operation) {
+        return operation.foreignCallDescriptor;
     }
 
     protected void lowerVerifyHeap(VerifyHeapNode n) {

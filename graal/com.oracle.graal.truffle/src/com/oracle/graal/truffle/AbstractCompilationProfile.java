@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,40 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.CompilerOptions;
+import java.util.Collections;
+import java.util.Map;
 
-public class InterpreterOnlyCompilationPolicy implements CompilationPolicy {
+public abstract class AbstractCompilationProfile {
 
-    @Override
-    public boolean shouldCompile(CompilationProfile profile, CompilerOptions options) {
-        return false;
+    AbstractCompilationProfile() {
     }
 
-    @Override
-    public void recordCompilationFailure(Throwable t) {
+    abstract void profileDirectCall(OptimizedCallTarget callTarget, Object[] args);
+
+    abstract void profileIndirectCall(OptimizedCallTarget callTarget);
+
+    abstract void profileInlinedCall();
+
+    abstract void profileReturnValue(Object result);
+
+    abstract <E extends Throwable> E profileExceptionType(E ex);
+
+    abstract Object[] injectArgumentProfile(Object[] originalArguments);
+
+    abstract Object injectReturnValueProfile(Object result);
+
+    abstract void reportCompilationFailure(Throwable t);
+
+    abstract void reportLoopCount(int count);
+
+    abstract void reportNodeReplaced();
+
+    abstract void interpreterCall(OptimizedCallTarget callTarget);
+
+    abstract void reportInvalidated();
+
+    public Map<String, Object> getDebugProperties() {
+        return Collections.emptyMap();
     }
 
 }
