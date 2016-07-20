@@ -63,4 +63,9 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
             } while (peeled);
         }
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 10.0f;
+    }
 }
