@@ -329,6 +329,15 @@ public final class LLVMInteropTest {
                         result[0]);
     }
 
+    @Test
+    public void test028() {
+        Runner runner = new Runner("interop028");
+        final Object[] result = new Object[]{null};
+        runner.export(JavaInterop.asTruffleFunction(FuncEInterface.class, x -> result[0] = x), "foo");
+        Assert.assertEquals(72, runner.run());
+        Assert.assertEquals("foo\u0000 bar\u0080 ", result[0]);
+    }
+
     public static final class ClassA {
         public boolean valueBool = true;
         public byte valueB = 40;
