@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.types.memory;
 
+import com.oracle.nfi.NativeFunctionInterfaceRuntime;
+import com.oracle.nfi.api.NativeFunctionHandle;
+import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public final class LLVMHeap extends LLVMMemory {
@@ -46,52 +49,57 @@ public final class LLVMHeap extends LLVMMemory {
     }
 
     public static LLVMAddress allocateMemory(long size) {
-        long allocateMemory = UNSAFE.allocateMemory(size);
+        long allocateMemory = (long) mallocHandle.call(size);
         return LLVMAddress.fromLong(allocateMemory);
     }
 
     public static LLVMAddress allocateZeroedMemory(long l) {
-        long allocateMemory = UNSAFE.allocateMemory(l);
+        long allocateMemory = allocateMemory(l).getVal();
         UNSAFE.setMemory(allocateMemory, l, (byte) 0);
         return LLVMAddress.fromLong(allocateMemory);
     }
 
     public static void freeMemory(LLVMAddress addr) {
-        UNSAFE.freeMemory(extractAddrNullPointerAllowed(addr));
+        freeHandle.call(addr.getVal());
     }
 
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length) {
         long targetAddress = extractAddrNullPointerAllowed(target);
         long sourceAddress = extractAddrNullPointerAllowed(source);
         assert length == 0 || targetAddress != 0 && sourceAddress != 0;
-        UNSAFE.copyMemory(sourceAddress, targetAddress, length);
+        memCopyHandle.call(targetAddress, sourceAddress, length);
     }
 
     public static void memCopy(LLVMAddress target, LLVMAddress source, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
         memCopy(target, source, length);
     }
 
-    public static void memSet(LLVMAddress target, byte value, long length) {
+    public static void memSet(LLVMAddress target, int value, long length) {
         long targetAddress = LLVMMemory.extractAddr(target);
-        UNSAFE.setMemory(targetAddress, length, value);
+        memSetHandle.call(targetAddress, value, length);
     }
 
     public static void memSet(LLVMAddress target, byte value, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
         memSet(target, value, length);
     }
 
-    public static void memMove(LLVMAddress dest, LLVMAddress source, long length, @SuppressWarnings("unused") int align, @SuppressWarnings("unused") boolean isVolatile) {
-        memMove(dest, source, length);
+    private static final NativeFunctionHandle memMoveHandle;
+    private static final NativeFunctionHandle memSetHandle;
+    private static final NativeFunctionHandle memCopyHandle;
+    private static final NativeFunctionHandle freeHandle;
+    private static final NativeFunctionHandle mallocHandle;
+
+    static {
+        final NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
+        memMoveHandle = nfi.getFunctionHandle("memmove", void.class, long.class, long.class, long.class);
+        memCopyHandle = nfi.getFunctionHandle("memcpy", void.class, long.class, long.class, long.class);
+        memSetHandle = nfi.getFunctionHandle("memset", void.class, long.class, int.class, long.class);
+        freeHandle = nfi.getFunctionHandle("free", void.class, long.class);
+        mallocHandle = nfi.getFunctionHandle("malloc", long.class, long.class);
     }
 
-    private static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
-        byte[] bytes = new byte[(int) length];
-        for (int i = 0; i < length; i++) {
-            bytes[i] = LLVMMemory.getI8(source.increment(i));
-        }
-        for (int i = 0; i < length; i++) {
-            LLVMMemory.putI8(dest.increment(i), bytes[i]);
-        }
+    public static void memMove(LLVMAddress dest, LLVMAddress source, long length) {
+        memMoveHandle.call(dest.getVal(), source.getVal(), length);
     }
 
     // current hack: we cannot directly store the LLVMFunction in the native memory due to GC

@@ -21,13 +21,17 @@ addons:
     - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libxml2-dev
+  - sudo apt-get install -y libssl-dev
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
   - pip install astroid==1.1.0 --user `whoami`
   - pip install pylint==1.1.0 --user `whoami`
   - git clone https://github.com/graalvm/mx
-  - wget -O mx/ecj.jar 'http://www.eclipse.org/downloads/download.php?file=/eclipse/downloads/drops4/R-4.5.1-201509040015/ecj-4.5.1.jar'
+  - wget -O mx/ecj.jar 'http://lafo.ssw.uni-linz.ac.at/sulong-deps/ecj-4.5.2.jar'
   - export JDT=`pwd`/mx/ecj.jar
   - wget http://lafo.ssw.uni-linz.ac.at/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
@@ -54,6 +58,7 @@ env:
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
   - TEST_COMMAND='mx su-travis3'
-  - TEST_COMMAND='mx su-travis-jruby'
+  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu
+
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
