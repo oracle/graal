@@ -28,6 +28,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
@@ -143,5 +144,19 @@ public class LocationTest {
         Location intLocation2 = allocator.locationForType(int.class);
         Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
         Assert.assertNotEquals(intLocation1, intLocation2);
+    }
+
+    @Test
+    public void testDeleteDeclaredProperty() {
+        DynamicObject object = rootShape.newInstance();
+        object.define("a", new Object(), 0, new LocationFactory() {
+            public Location createLocation(Shape shape, Object value) {
+                return shape.allocator().declaredLocation(value);
+            }
+        });
+        object.define("a", 42);
+        Assert.assertEquals(1, object.getShape().getPropertyCount());
+        object.delete("a");
+        Assert.assertFalse(object.containsKey("a"));
     }
 }
