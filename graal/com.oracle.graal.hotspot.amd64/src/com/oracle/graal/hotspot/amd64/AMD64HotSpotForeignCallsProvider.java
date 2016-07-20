@@ -62,6 +62,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     public static final ForeignCallDescriptor ARITHMETIC_COS_STUB = new ForeignCallDescriptor("arithmeticCosStub", double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_TAN_STUB = new ForeignCallDescriptor("arithmeticTanStub", double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_EXP_STUB = new ForeignCallDescriptor("arithmeticExpStub", double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_POW_STUB = new ForeignCallDescriptor("arithmeticPowStub", double.class, double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_LOG_STUB = new ForeignCallDescriptor("arithmeticLogStub", double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_LOG10_STUB = new ForeignCallDescriptor("arithmeticLog10Stub", double.class, double.class);
 
@@ -97,6 +98,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         link(new AMD64MathStub(ARITHMETIC_SIN_STUB, providers, registerStubCall(ARITHMETIC_SIN_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         link(new AMD64MathStub(ARITHMETIC_COS_STUB, providers, registerStubCall(ARITHMETIC_COS_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         link(new AMD64MathStub(ARITHMETIC_TAN_STUB, providers, registerStubCall(ARITHMETIC_TAN_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_EXP_STUB, providers, registerStubCall(ARITHMETIC_EXP_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        link(new AMD64MathStub(ARITHMETIC_POW_STUB, providers, registerStubCall(ARITHMETIC_POW_STUB, REEXECUTABLE, LEAF, NO_LOCATIONS)));
 
         if (config.useCRC32Intrinsics) {
             // This stub does callee saving

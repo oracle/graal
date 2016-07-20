@@ -27,6 +27,8 @@ import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOp
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
+import static com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
@@ -46,6 +48,7 @@ import com.oracle.graal.replacements.LongSubstitutions;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafeGetPlugin;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.UnsafePutPlugin;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import com.oracle.graal.replacements.nodes.BitCountNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -123,25 +126,20 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
-        // registerUnaryMath(r, "exp", EXP);
 
         if (arithmeticStubs) {
             registerUnaryMath(r, "sin", SIN);
             registerUnaryMath(r, "cos", COS);
             registerUnaryMath(r, "tan", TAN);
+            registerUnaryMath(r, "exp", EXP);
+            registerBinaryMath(r, "pow", POW);
         } else {
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "sin", double.class);
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "tan", double.class);
+            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "exp", double.class);
+            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "pow", double.class);
         }
-
-        r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Double, b.recursiveAppend(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
-                return true;
-            }
-        });
 
         if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
             registerRound(r, "rint", RoundingMode.NEAREST);
@@ -155,6 +153,16 @@ public class AMD64GraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.recursiveAppend(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerBinaryMath(Registration r, String name, BinaryOperation operation) {
+        r.register2(name, Double.TYPE, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Double, b.recursiveAppend(BinaryMathIntrinsicNode.create(x, y, operation)));
                 return true;
             }
         });

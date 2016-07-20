@@ -47,18 +47,19 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64MathIntrinsicOp> TYPE = LIRInstructionClass.create(AMD64MathIntrinsicOp.class);
+public final class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64MathIntrinsicUnaryOp> TYPE = LIRInstructionClass.create(AMD64MathIntrinsicUnaryOp.class);
 
-    public enum IntrinsicOpcode {
+    public enum UnaryIntrinsicOpcode {
+        LOG,
+        LOG10,
         SIN,
         COS,
         TAN,
-        LOG,
-        LOG10
+        EXP
     }
 
-    @Opcode private final IntrinsicOpcode opcode;
+    @Opcode private final UnaryIntrinsicOpcode opcode;
     @Def protected Value result;
     @Use protected Value input;
     @Temp({REG, ILLEGAL}) protected Value xmm1Temp = Value.ILLEGAL;
@@ -82,13 +83,16 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value gpr10Temp = Value.ILLEGAL;
     @Temp({STACK, ILLEGAL}) protected Value stackTemp = Value.ILLEGAL;
 
-    public AMD64MathIntrinsicOp(LIRGeneratorTool tool, IntrinsicOpcode opcode, Value result, Value input, Value stackTemp) {
+    CompilationResultBuilder internalCrb;
+
+    public AMD64MathIntrinsicUnaryOp(LIRGeneratorTool tool, UnaryIntrinsicOpcode opcode, Value result, Value input, Value stackTemp) {
         super(TYPE);
         this.opcode = opcode;
         this.result = result;
         this.input = input;
-        if (opcode == IntrinsicOpcode.LOG || opcode == IntrinsicOpcode.LOG10 ||
-                        opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
+        if (opcode == UnaryIntrinsicOpcode.LOG || opcode == UnaryIntrinsicOpcode.LOG10 ||
+            opcode == UnaryIntrinsicOpcode.SIN || opcode == UnaryIntrinsicOpcode.COS ||
+            opcode == UnaryIntrinsicOpcode.TAN || opcode == UnaryIntrinsicOpcode.EXP) {
             this.gpr1Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.gpr2Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.rcxTemp = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.QWORD));
@@ -101,7 +105,21 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             this.xmm6Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             this.xmm7Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
 
-            if (opcode == IntrinsicOpcode.SIN || opcode == IntrinsicOpcode.COS || opcode == IntrinsicOpcode.TAN) {
+            if (opcode == UnaryIntrinsicOpcode.EXP) {
+                this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.xmm8Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+            }
+
+            if (opcode == UnaryIntrinsicOpcode.TAN) {
+                this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr6Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr7Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr8Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr9Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+                this.gpr10Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            }
+
+            if (opcode == UnaryIntrinsicOpcode.SIN || opcode == UnaryIntrinsicOpcode.COS) {
                 this.gpr5Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
                 this.gpr6Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
                 this.gpr7Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
@@ -111,12 +129,21 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                 this.xmm8Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
                 this.xmm9Temp = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
             }
+
+            this.stackTemp = stackTemp;
         }
-        this.stackTemp = stackTemp;
     }
 
-    public AMD64MathIntrinsicOp(LIRGeneratorTool tool, IntrinsicOpcode opcode, Value result, Value input) {
+    public AMD64MathIntrinsicUnaryOp(LIRGeneratorTool tool, UnaryIntrinsicOpcode opcode, Value result, Value input) {
         this(tool, opcode, result, input, Value.ILLEGAL);
+    }
+
+    public void setCrb(CompilationResultBuilder crb) {
+        internalCrb = crb;
+    }
+
+    public AMD64Address externalAddress(ArrayDataPointerConstant curPtr) {
+        return (AMD64Address) internalCrb.recordDataReferenceInCode(curPtr);
     }
 
     @Override
@@ -136,6 +163,9 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                 break;
             case TAN:
                 tanIntrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
+                break;
+            case EXP:
+                expIntrinsic(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), crb, masm);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -311,6 +341,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
 
+        setCrb(crb);
         masm.movdq(stackSlot, value);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
@@ -328,7 +359,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.por(dest, temp2);
         masm.movl(gpr2, 16352);
         masm.psrlq(dest, 27);
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(logTwoTablePtr));
+        masm.leaq(gpr4, externalAddress(logTwoTablePtr));
         masm.psrld(dest, 2);
         masm.rcpps(dest, dest);
         masm.psllq(temp1, 12);
@@ -351,9 +382,9 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.subl(gpr1, gpr2);
         masm.cvtsi2sdl(temp7, gpr1);
         masm.mulsd(temp1, dest);
-        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(logTwoDataPtr));       // 0xfefa3800,
+        masm.movdq(temp6, externalAddress(logTwoDataPtr));                                    // 0xfefa3800,
                                                                                               // 0x3fa62e42
-        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(coeffLogTwoDataPtr)); // 0x92492492,
+        masm.movdqu(temp3, externalAddress(coeffLogTwoDataPtr));                              // 0x92492492,
                                                                                               // 0x3fc24924,
                                                                                               // 0x00000000,
                                                                                               // 0xbfd00000
@@ -361,7 +392,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.andl(gpr3, 16711680);
         masm.shrl(gpr3, 12);
         masm.movdqu(dest, new AMD64Address(gpr4, gpr3, Scale.Times1, 0));
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(coeffLogTwoDataPtr));
+        masm.leaq(gpr4, externalAddress(coeffLogTwoDataPtr));
         masm.movdqu(temp4, new AMD64Address(gpr4, 16));                                       // 0x3d6fb175,
                                                                                               // 0xbfc5555e,
                                                                                               // 0x55555555,
@@ -378,7 +409,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
             masm.movdqu(temp5, temp1);
             masm.movlhps(temp5, temp5);
         }
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(logTwoDataPtr));
+        masm.leaq(gpr4, externalAddress(logTwoDataPtr));
         masm.mulsd(temp7, new AMD64Address(gpr4, 8));                                         // 0x93c76730,
                                                                                               // 0x3ceef357
         masm.mulsd(temp3, temp1);
@@ -665,11 +696,12 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
 
+        setCrb(crb);
         masm.movdq(stackSlot, value);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
         }
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(highmaskLogTenPtr));  // 0xf8000000,
+        masm.movdqu(temp5, externalAddress(highmaskLogTenPtr));                               // 0xf8000000,
                                                                                               // 0xffffffff,
                                                                                               // 0x00000000,
                                                                                               // 0xffffe000
@@ -688,7 +720,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.por(dest, temp2);
         masm.movl(gpr2, 16352);
         masm.psrlq(dest, 27);
-        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(logTenEPtr));         // 0x00000000,
+        masm.movdqu(temp2, externalAddress(logTenEPtr));                                      // 0x00000000,
                                                                                               // 0x3fdbc000,
                                                                                               // 0xbf2e4108,
                                                                                               // 0x3f5a7a6c
@@ -706,11 +738,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.por(temp1, temp3);
         masm.andpd(temp5, temp1);
         masm.paddd(dest, temp4);
-        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(coeffLogTenDataPtr)); // 0xc1a5f12e,
+        masm.movdqu(temp3, externalAddress(coeffLogTenDataPtr));                              // 0xc1a5f12e,
                                                                                               // 0x40358874,
                                                                                               // 0x64d4ef0d,
                                                                                               // 0xc0089309
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(coeffLogTenDataPtr));
+        masm.leaq(gpr4, externalAddress(coeffLogTenDataPtr));
         masm.movdqu(temp4, new AMD64Address(gpr4, 16));                                       // 0x385593b1,
                                                                                               // 0xc025c917,
                                                                                               // 0xdc963467,
@@ -719,7 +751,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movdl(gpr3, dest);
         masm.psllq(dest, 29);
         masm.andpd(dest, temp6);
-        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(logTwoLogTenDataPtr)); // 0x509f7800,
+        masm.movdq(temp6, externalAddress(logTwoLogTenDataPtr));                              // 0x509f7800,
                                                                                               // 0x3f934413
         masm.andl(gpr1, 32752);
         masm.subl(gpr1, gpr2);
@@ -731,20 +763,20 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
                                                                                               // 0x4016ab9f,
                                                                                               // 0xdc77b115,
                                                                                               // 0xbff27af2
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(logTenTablePtr));
+        masm.leaq(gpr4, externalAddress(logTenTablePtr));
         masm.andl(gpr3, 16711680);
         masm.shrl(gpr3, 12);
         masm.movdqu(dest, new AMD64Address(gpr4, gpr3, Scale.Times1, -1504));
         masm.addsd(temp1, temp5);
         masm.mulsd(temp6, temp7);
         masm.pshufd(temp5, temp1, 0x44);
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(logTwoLogTenDataPtr));
+        masm.leaq(gpr4, externalAddress(logTwoLogTenDataPtr));
         masm.mulsd(temp7, new AMD64Address(gpr4, 8));                                         // 0x1f12b358,
                                                                                               // 0x3cdfef31
         masm.mulsd(temp3, temp1);
         masm.addsd(dest, temp6);
         masm.mulpd(temp4, temp5);
-        masm.leaq(gpr4, (AMD64Address) crb.recordDataReferenceInCode(logTenEPtr));
+        masm.leaq(gpr4, externalAddress(logTenEPtr));
         masm.movdq(temp6, new AMD64Address(gpr4, 8));                                         // 0xbf2e4108,
                                                                                               // 0x3f5a7a6c
         masm.mulpd(temp5, temp5);
@@ -813,7 +845,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.por(dest, temp2);
         masm.movl(gpr2, 18416);
         masm.psrlq(dest, 27);
-        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(logTenEPtr));         // 0x00000000,
+        masm.movdqu(temp2, externalAddress(logTenEPtr));                                      // 0x00000000,
                                                                                               // 0x3fdbc000,
                                                                                               // 0xbf2e4108,
                                                                                               // 0x3f5a7a6c
@@ -1191,6 +1223,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
 
+        setCrb(crb);
         masm.movsd(stackSlot, value);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
@@ -1198,9 +1231,9 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         masm.leaq(gpr1, stackSlot);
         masm.movl(gpr1, new AMD64Address(gpr1, 4));
-        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));   // 0x6dc9c883,
+        masm.movdq(temp1, externalAddress(piThirtyTwoInvPtr));                                // 0x6dc9c883,
                                                                                               // 0x40245f30
-        masm.movdq(temp2, (AMD64Address) crb.recordDataReferenceInCode(shifterPtr));          // 0x00000000,
+        masm.movdq(temp2, externalAddress(shifterPtr));                                       // 0x00000000,
                                                                                               // 0x43380000
 
         masm.andl(gpr1, 2147418112);
@@ -1209,24 +1242,24 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jcc(ConditionFlag.Above, bb0);
 
         masm.mulsd(temp1, dest);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));         // 0x00000000,
+        masm.movdqu(temp5, externalAddress(oneHalfPtr));                                      // 0x00000000,
                                                                                               // 0x3fe00000,
                                                                                               // 0x00000000,
                                                                                               // 0x3fe00000
-        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));         // 0x00000000,
+        masm.movdq(temp4, externalAddress(signMaskPtr));                                      // 0x00000000,
                                                                                               // 0x80000000
         masm.pand(temp4, dest);
         masm.por(temp5, temp4);
         masm.addpd(temp1, temp5);
         masm.cvttsd2sil(gpr4, temp1);
         masm.cvtsi2sdl(temp1, gpr4);
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));            // 0x1a600000,
+        masm.movdqu(temp6, externalAddress(pTwoPtr));                                         // 0x1a600000,
                                                                                               // 0x3d90b461,
                                                                                               // 0x1a600000,
                                                                                               // 0x3d90b461
         masm.movq(gpr7, 0x3fb921fb54400000L);
         masm.movdq(temp3, gpr7);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));          // 0xa556c734,
+        masm.movdqu(temp5, externalAddress(scFourPtr));                                       // 0xa556c734,
                                                                                               // 0x3ec71de3,
                                                                                               // 0x1a01a01a,
                                                                                               // 0x3efa01a0
@@ -1239,11 +1272,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         }
         masm.andl(gpr4, 63);
         masm.shll(gpr4, 5);
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.leaq(gpr1, externalAddress(cTablePtr));
         masm.addq(gpr1, gpr4);
         masm.movdqu(temp8, new AMD64Address(gpr1, 0));
         masm.mulpd(temp6, temp1);
-        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));           // 0x2e037073,
+        masm.mulsd(temp1, externalAddress(pThreePtr));                                        // 0x2e037073,
                                                                                               // 0x3b63198a
         masm.subsd(temp4, temp3);
         masm.subsd(dest, temp3);
@@ -1265,7 +1298,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulpd(temp5, dest);
         masm.mulpd(dest, dest);
         masm.subsd(temp3, temp6);
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));           // 0x11111111,
+        masm.movdqu(temp6, externalAddress(scTwoPtr));                                        // 0x11111111,
                                                                                               // 0x3f811111,
                                                                                               // 0x55555555,
                                                                                               // 0x3fa55555
@@ -1278,12 +1311,12 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulsd(temp3, temp4);
         masm.mulpd(temp2, dest);
         masm.mulpd(dest, dest);
-        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));          // 0x1a01a01a,
+        masm.addpd(temp5, externalAddress(scThreePtr));                                       // 0x1a01a01a,
                                                                                               // 0xbf2a01a0,
                                                                                               // 0x16c16c17,
                                                                                               // 0xbf56c16c
         masm.mulsd(temp4, temp8);
-        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));            // 0x55555555,
+        masm.addpd(temp6, externalAddress(scOnePtr));                                         // 0x55555555,
                                                                                               // 0xbfc55555,
                                                                                               // 0x00000000,
                                                                                               // 0xbfe00000
@@ -1322,16 +1355,16 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.cmpl(gpr1, 3325);
         masm.jcc(ConditionFlag.NotEqual, bb2);
 
-        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(allOnesPtr));           // 0xffffffff,
+        masm.mulsd(dest, externalAddress(allOnesPtr));                                        // 0xffffffff,
                                                                                               // 0x3fefffff
         masm.jmp(bb15);
 
         masm.bind(bb2);
-        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFivePtr));  // 0x00000000,
+        masm.movdq(temp3, externalAddress(twoPowFiftyFivePtr));                               // 0x00000000,
                                                                                               // 0x43600000
         masm.mulsd(temp3, dest);
         masm.subsd(temp3, dest);
-        masm.mulsd(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFiveMPtr)); // 0x00000000,
+        masm.mulsd(temp3, externalAddress(twoPowFiftyFiveMPtr));                              // 0x00000000,
                                                                                               // 0x3c800000
         masm.jmp(bb15);
 
@@ -1344,7 +1377,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
-        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.leaq(gpr10, externalAddress(piInvTablePtr));
         masm.addq(gpr3, gpr10);
         masm.movdq(gpr1, dest);
         masm.movl(gpr9, new AMD64Address(gpr3, 20));
@@ -1415,7 +1448,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addq(gpr8, gpr6);
         masm.imulq(gpr4, gpr1);
         masm.pextrw(gpr2, dest, 3);
-        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.leaq(gpr6, externalAddress(piInvTablePtr));
         masm.subq(gpr3, gpr6);
         masm.addl(gpr3, gpr3);
         masm.addl(gpr3, gpr3);
@@ -1479,7 +1512,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.orl(gpr4, gpr5);
         masm.xorl(gpr4, gpr2);
         masm.pinsrw(temp4, gpr4, 3);
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(piFourPtr));
+        masm.leaq(gpr1, externalAddress(piFourPtr));
         masm.movdqu(temp2, new AMD64Address(gpr1, 0));                                        // 0x40000000,
                                                                                               // 0x3fe921fb,
                                                                                               // 0x18469899,
@@ -1508,23 +1541,23 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp6, temp2);
 
         masm.bind(bb12);
-        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));   // 0x6dc9c883,
+        masm.movdq(temp1, externalAddress(piThirtyTwoInvPtr));                                // 0x6dc9c883,
                                                                                               // 0x40245f30
         masm.mulsd(temp1, dest);
-        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));          // 0x00000000,
+        masm.movdq(temp5, externalAddress(oneHalfPtr));                                       // 0x00000000,
                                                                                               // 0x3fe00000,
                                                                                               // 0x00000000,
                                                                                               // 0x3fe00000
-        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));         // 0x00000000,
+        masm.movdq(temp4, externalAddress(signMaskPtr));                                      // 0x00000000,
                                                                                               // 0x80000000
         masm.pand(temp4, dest);
         masm.por(temp5, temp4);
         masm.addpd(temp1, temp5);
         masm.cvttsd2sil(gpr4, temp1);
         masm.cvtsi2sdl(temp1, gpr4);
-        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));             // 0x54400000,
+        masm.movdq(temp3, externalAddress(pOnePtr));                                          // 0x54400000,
                                                                                               // 0x3fb921fb
-        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));            // 0x1a600000,
+        masm.movdqu(temp2, externalAddress(pTwoPtr));                                         // 0x1a600000,
                                                                                               // 0x3d90b461,
                                                                                               // 0x1a600000,
                                                                                               // 0x3d90b461
@@ -1535,15 +1568,15 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movdqu(temp4, dest);
         masm.addl(gpr4, gpr1);
         masm.andl(gpr4, 63);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));          // 0x54400000,
+        masm.movdqu(temp5, externalAddress(scFourPtr));                                       // 0x54400000,
                                                                                               // 0x3fb921fb
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.leaq(gpr1, externalAddress(cTablePtr));
         masm.shll(gpr4, 5);
         masm.addq(gpr1, gpr4);
         masm.movdqu(temp8, new AMD64Address(gpr1, 0));
         masm.mulpd(temp2, temp1);
         masm.subsd(dest, temp3);
-        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));           // 0x2e037073,
+        masm.mulsd(temp1, externalAddress(pThreePtr));                                        // 0x2e037073,
                                                                                               // 0x3b63198a
         masm.subsd(temp4, temp3);
         masm.unpcklpd(dest, dest);
@@ -1564,7 +1597,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp2, temp3);
         masm.subsd(temp7, temp2);
         masm.subsd(temp1, temp6);
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));           // 0x11111111,
+        masm.movdqu(temp6, externalAddress(scTwoPtr));                                        // 0x11111111,
                                                                                               // 0x3f811111,
                                                                                               // 0x55555555,
                                                                                               // 0x3fa55555
@@ -1573,12 +1606,12 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulsd(temp3, temp4);
         masm.mulpd(temp2, dest);
         masm.mulpd(dest, dest);
-        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));          // 0x1a01a01a,
+        masm.addpd(temp5, externalAddress(scThreePtr));                                       // 0x1a01a01a,
                                                                                               // 0xbf2a01a0,
                                                                                               // 0x16c16c17,
                                                                                               // 0xbf56c16c
         masm.mulsd(temp4, temp8);
-        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));            // 0x55555555,
+        masm.addpd(temp6, externalAddress(scOnePtr));                                         // 0x55555555,
                                                                                               // 0xbfc55555,
                                                                                               // 0x00000000,
                                                                                               // 0xbfe00000
@@ -1848,6 +1881,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
 
+        setCrb(crb);
         masm.movdq(stackSlot, value);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
@@ -1855,7 +1889,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         masm.leaq(gpr1, stackSlot);
         masm.movl(gpr1, new AMD64Address(gpr1, 4));
-        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr)); // 0x6dc9c883,
+        masm.movdq(temp1, externalAddress(piThirtyTwoInvPtr));                              // 0x6dc9c883,
                                                                                             // 0x40245f30
 
         masm.andl(gpr1, 2147418112);
@@ -1864,39 +1898,39 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jcc(ConditionFlag.Above, bb0);
 
         masm.mulsd(temp1, dest);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));       // 0x00000000,
+        masm.movdqu(temp5, externalAddress(oneHalfPtr));                                    // 0x00000000,
                                                                                             // 0x3fe00000,
                                                                                             // 0x00000000,
                                                                                             // 0x3fe00000
-        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));       // 0x00000000,
+        masm.movdq(temp4, externalAddress(signMaskPtr));                                    // 0x00000000,
                                                                                             // 0x80000000
         masm.pand(temp4, dest);
         masm.por(temp5, temp4);
         masm.addpd(temp1, temp5);
         masm.cvttsd2sil(gpr4, temp1);
         masm.cvtsi2sdl(temp1, gpr4);
-        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));          // 0x1a600000,
+        masm.movdqu(temp2, externalAddress(pTwoPtr));                                       // 0x1a600000,
                                                                                             // 0x3d90b461,
                                                                                             // 0x1a600000,
                                                                                             // 0x3d90b461
-        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));           // 0x54400000,
+        masm.movdq(temp3, externalAddress(pOnePtr));                                        // 0x54400000,
                                                                                             // 0x3fb921fb
         masm.mulsd(temp3, temp1);
         masm.unpcklpd(temp1, temp1);
         masm.addq(gpr4, 1865232);
         masm.movdqu(temp4, dest);
         masm.andq(gpr4, 63);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));        // 0xa556c734,
+        masm.movdqu(temp5, externalAddress(scFourPtr));                                     // 0xa556c734,
                                                                                             // 0x3ec71de3,
                                                                                             // 0x1a01a01a,
                                                                                             // 0x3efa01a0
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.leaq(gpr1, externalAddress(cTablePtr));
         masm.shlq(gpr4, 5);
         masm.addq(gpr1, gpr4);
         masm.movdqu(temp8, new AMD64Address(gpr1, 0));
         masm.mulpd(temp2, temp1);
         masm.subsd(dest, temp3);
-        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));         // 0x2e037073,
+        masm.mulsd(temp1, externalAddress(pThreePtr));                                      // 0x2e037073,
                                                                                             // 0x3b63198a
         masm.subsd(temp4, temp3);
         masm.unpcklpd(dest, dest);
@@ -1905,7 +1939,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulpd(temp5, dest);
         masm.subpd(dest, temp2);
         masm.pshufd(temp7, temp8, 0xE);
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));         // 0x11111111,
+        masm.movdqu(temp6, externalAddress(scTwoPtr));                                      // 0x11111111,
                                                                                             // 0x3f811111,
                                                                                             // 0x55555555,
                                                                                             // 0x3fa55555
@@ -1924,13 +1958,13 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulsd(temp3, temp4);
         masm.mulpd(temp2, dest);
         masm.mulpd(dest, dest);
-        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));        // 0x1a01a01a,
+        masm.addpd(temp5, externalAddress(scThreePtr));                                     // 0x1a01a01a,
                                                                                             // 0xbf2a01a0,
                                                                                             // 0x16c16c17,
                                                                                             // 0xbf56c16c
         masm.mulsd(temp4, temp8);
         masm.pshufd(temp9, temp8, 0xE);
-        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));          // 0x55555555,
+        masm.addpd(temp6, externalAddress(scOnePtr));                                       // 0x55555555,
                                                                                             // 0xbfc55555,
                                                                                             // 0x00000000,
                                                                                             // 0xbfe00000
@@ -1967,7 +2001,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.pextrw(gpr1, dest, 3);
         masm.andl(gpr1, 32767);
         masm.pinsrw(dest, gpr1, 3);
-        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(onePtr));            // 0x00000000,
+        masm.movdq(temp1, externalAddress(onePtr));                                         // 0x00000000,
                                                                                             // 0x3ff00000
         masm.subsd(temp1, dest);
         masm.movdqu(dest, temp1);
@@ -1982,7 +2016,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
-        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.leaq(gpr10, externalAddress(piInvTablePtr));
         masm.addq(gpr3, gpr10);
         masm.movdq(gpr1, dest);
         masm.movl(gpr9, new AMD64Address(gpr3, 20));
@@ -2053,7 +2087,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addq(gpr8, gpr6);
         masm.imulq(gpr4, gpr1);
         masm.pextrw(gpr2, dest, 3);
-        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTablePtr));
+        masm.leaq(gpr6, externalAddress(piInvTablePtr));
         masm.subq(gpr3, gpr6);
         masm.addl(gpr3, gpr3);
         masm.addl(gpr3, gpr3);
@@ -2116,13 +2150,13 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.negl(gpr4);
         masm.addl(gpr4, 16368);
         masm.orl(gpr4, gpr5);
+        masm.xorl(gpr4, gpr2);
         masm.pinsrw(temp4, gpr4, 3);
-        masm.leaq(gpr2, (AMD64Address) crb.recordDataReferenceInCode(piFourPtr));
+        masm.leaq(gpr2, externalAddress(piFourPtr));
         masm.movdqu(temp2, new AMD64Address(gpr2, 0));                                      // 0x40000000,
                                                                                             // 0x3fe921fb,
                                                                                             // 0x18469899,
                                                                                             // 0x3e64442d
-        masm.xorl(gpr4, gpr2);
         masm.xorpd(temp5, temp5);
         masm.subl(gpr4, 1008);
         masm.pinsrw(temp5, gpr4, 3);
@@ -2147,23 +2181,23 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp6, temp2);
 
         masm.bind(bb11);
-        masm.movq(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvPtr));  // 0x6dc9c883,
+        masm.movq(temp1, externalAddress(piThirtyTwoInvPtr));                               // 0x6dc9c883,
                                                                                             // 0x40245f30
         masm.mulsd(temp1, dest);
-        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfPtr));        // 0x00000000,
+        masm.movdq(temp5, externalAddress(oneHalfPtr));                                     // 0x00000000,
                                                                                             // 0x3fe00000,
                                                                                             // 0x00000000,
                                                                                             // 0x3fe00000
-        masm.movdq(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskPtr));       // 0x00000000,
+        masm.movdq(temp4, externalAddress(signMaskPtr));                                    // 0x00000000,
                                                                                             // 0x80000000
         masm.pand(temp4, dest);
         masm.por(temp5, temp4);
         masm.addpd(temp1, temp5);
         masm.cvttsd2siq(gpr4, temp1);
         masm.cvtsi2sdq(temp1, gpr4);
-        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOnePtr));           // 0x54400000,
+        masm.movdq(temp3, externalAddress(pOnePtr));                                        // 0x54400000,
                                                                                             // 0x3fb921fb
-        masm.movdqu(temp2, (AMD64Address) crb.recordDataReferenceInCode(pTwoPtr));          // 0x1a600000,
+        masm.movdqu(temp2, externalAddress(pTwoPtr));                                       // 0x1a600000,
                                                                                             // 0x3d90b461,
                                                                                             // 0x1a600000,
                                                                                             // 0x3d90b461
@@ -2174,17 +2208,17 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.movdqu(temp4, dest);
         masm.addl(gpr4, gpr1);
         masm.andl(gpr4, 63);
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(scFourPtr));        // 0xa556c734,
+        masm.movdqu(temp5, externalAddress(scFourPtr));                                     // 0xa556c734,
                                                                                             // 0x3ec71de3,
                                                                                             // 0x1a01a01a,
                                                                                             // 0x3efa01a0
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTablePtr));
+        masm.leaq(gpr1, externalAddress(cTablePtr));
         masm.shll(gpr4, 5);
         masm.addq(gpr1, gpr4);
         masm.movdqu(temp8, new AMD64Address(gpr1, 0));
         masm.mulpd(temp2, temp1);
         masm.subsd(dest, temp3);
-        masm.mulsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreePtr));         // 0x2e037073,
+        masm.mulsd(temp1, externalAddress(pThreePtr));                                      // 0x2e037073,
                                                                                             // 0x3b63198a
         masm.subsd(temp4, temp3);
         masm.unpcklpd(dest, dest);
@@ -2205,7 +2239,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp2, temp3);
         masm.subsd(temp7, temp2);
         masm.subsd(temp1, temp6);
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(scTwoPtr));         // 0x11111111,
+        masm.movdqu(temp6, externalAddress(scTwoPtr));                                      // 0x11111111,
                                                                                             // 0x3f811111,
                                                                                             // 0x55555555,
                                                                                             // 0x3fa55555
@@ -2214,12 +2248,12 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulsd(temp3, temp4);
         masm.mulpd(temp2, dest);
         masm.mulpd(dest, dest);
-        masm.addpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(scThreePtr));        // 0x1a01a01a,
+        masm.addpd(temp5, externalAddress(scThreePtr));                                     // 0x1a01a01a,
                                                                                             // 0xbf2a01a0,
                                                                                             // 0x16c16c17,
                                                                                             // 0xbf56c16c
         masm.mulsd(temp4, temp8);
-        masm.addpd(temp6, (AMD64Address) crb.recordDataReferenceInCode(scOnePtr));          // 0x55555555,
+        masm.addpd(temp6, externalAddress(scOnePtr));                                       // 0x55555555,
                                                                                             // 0xbfc55555,
                                                                                             // 0x00000000,
                                                                                             // 0xbfe00000
@@ -2766,7 +2800,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         ArrayDataPointerConstant piInvTableTanPtr = new ArrayDataPointerConstant(piInvTableTan, 16);
         ArrayDataPointerConstant piFourTanPtr = new ArrayDataPointerConstant(piFourTan, 8);
         ArrayDataPointerConstant qqTwoTanPtr = new ArrayDataPointerConstant(qqTwoTan, 8);
-        ArrayDataPointerConstant oneTanPtr = new ArrayDataPointerConstant(oneTan, 8);
+        ArrayDataPointerConstant onePtr = new ArrayDataPointerConstant(one, 8);
         ArrayDataPointerConstant twoPowFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowFiftyFiveTan, 8);
         ArrayDataPointerConstant twoPowMFiftyFiveTanPtr = new ArrayDataPointerConstant(twoPowMFiftyFiveTan, 8);
 
@@ -2804,6 +2838,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
         Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
 
+        setCrb(crb);
         if (dest.encoding != value.encoding) {
             masm.movdqu(dest, value);
         }
@@ -2814,21 +2849,21 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.cmpl(gpr1, 270);
         masm.jcc(ConditionFlag.Above, bb0);
 
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfTanPtr));        // 0x00000000,
+        masm.movdqu(temp5, externalAddress(oneHalfTanPtr));                                     // 0x00000000,
                                                                                                 // 0x3fe00000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x3fe00000
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(mulSixteenPtr));        // 0x00000000,
+        masm.movdqu(temp6, externalAddress(mulSixteenPtr));                                     // 0x00000000,
                                                                                                 // 0x40300000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x3ff00000
         masm.unpcklpd(dest, dest);
-        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskTanPtr));       // 0x00000000,
+        masm.movdqu(temp4, externalAddress(signMaskTanPtr));                                    // 0x00000000,
                                                                                                 // 0x80000000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x80000000
         masm.andpd(temp4, dest);
-        masm.movdqu(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvTanPtr)); // 0x6dc9c883,
+        masm.movdqu(temp1, externalAddress(piThirtyTwoInvTanPtr));                              // 0x6dc9c883,
                                                                                                 // 0x3fe45f30,
                                                                                                 // 0x6dc9c883,
                                                                                                 // 0x40245f30
@@ -2841,14 +2876,14 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.cvttpd2dq(temp1, temp1);
         masm.cvtdq2pd(temp1, temp1);
         masm.mulpd(temp1, temp6);
-        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOneTanPtr));           // 0x54444000,
+        masm.movdqu(temp3, externalAddress(pOneTanPtr));                                        // 0x54444000,
                                                                                                 // 0x3fb921fb,
                                                                                                 // 0x54440000,
                                                                                                 // 0x3fb921fb
-        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(qqTwoTanPtr));           // 0x676733af,
+        masm.movdq(temp5, externalAddress(qqTwoTanPtr));                                        // 0x676733af,
                                                                                                 // 0x3d32e7b9
         masm.addq(gpr4, 469248);
-        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(pTwoTanPtr));           // 0x67674000,
+        masm.movdqu(temp4, externalAddress(pTwoTanPtr));                                        // 0x67674000,
                                                                                                 // 0xbd32e7b9,
                                                                                                 // 0x4c4c0000,
                                                                                                 // 0x3d468c23
@@ -2859,7 +2894,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulpd(temp4, temp1);
         masm.shlq(gpr3, 1);
         masm.subpd(dest, temp3);
-        masm.mulpd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreeTanPtr));          // 0x3707344a,
+        masm.mulpd(temp1, externalAddress(pThreeTanPtr));                                       // 0x3707344a,
                                                                                                 // 0x3aa8a2e0,
                                                                                                 // 0x03707345,
                                                                                                 // 0x3ae98a2e
@@ -2869,11 +2904,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp5, dest);
         masm.movdqu(temp2, dest);
         masm.subpd(dest, temp4);
-        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+        masm.movdq(temp6, externalAddress(onePtr));                                             // 0x00000000,
                                                                                                 // 0x3ff00000
         masm.shlq(gpr4, 4);
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTableTanPtr));
-        masm.andpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(maskThirtyFiveTanPtr));  // 0xfffc0000,
+        masm.leaq(gpr1, externalAddress(cTableTanPtr));
+        masm.andpd(temp5, externalAddress(maskThirtyFiveTanPtr));                               // 0xfffc0000,
                                                                                                 // 0xffffffff,
                                                                                                 // 0x00000000,
                                                                                                 // 0x00000000
@@ -2929,7 +2964,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp7, new AMD64Address(gpr1, 136));
         masm.addsd(temp7, temp1);
         masm.addsd(dest, temp7);
-        masm.movdq(temp7, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+        masm.movdq(temp7, externalAddress(onePtr));                                             // 0x00000000,
                                                                                                 // 0x3ff00000
         masm.mulsd(temp4, temp6);
         masm.movdq(temp2, new AMD64Address(gpr1, 168));
@@ -2963,32 +2998,32 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
         masm.movdqu(temp2, dest);
         masm.movdqu(temp3, dest);
-        masm.movdq(temp1, (AMD64Address) crb.recordDataReferenceInCode(qElevenTanPtr));         // 0xb8fe4d77,
+        masm.movdq(temp1, externalAddress(qElevenTanPtr));                                      // 0xb8fe4d77,
                                                                                                 // 0x3f82609a
         masm.mulsd(temp2, dest);
         masm.mulsd(temp3, temp2);
         masm.mulsd(temp1, temp2);
-        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qNineTanPtr));           // 0xbf847a43,
+        masm.addsd(temp1, externalAddress(qNineTanPtr));                                        // 0xbf847a43,
                                                                                                 // 0x3f9664a0
         masm.mulsd(temp1, temp2);
-        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qSevenTanPtr));          // 0x52c4c8ab,
+        masm.addsd(temp1, externalAddress(qSevenTanPtr));                                       // 0x52c4c8ab,
                                                                                                 // 0x3faba1ba
         masm.mulsd(temp1, temp2);
-        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qFiveTanPtr));           // 0x11092746,
+        masm.addsd(temp1, externalAddress(qFiveTanPtr));                                        // 0x11092746,
                                                                                                 // 0x3fc11111
         masm.mulsd(temp1, temp2);
-        masm.addsd(temp1, (AMD64Address) crb.recordDataReferenceInCode(qThreeTanPtr));          // 0x55555612,
+        masm.addsd(temp1, externalAddress(qThreeTanPtr));                                       // 0x55555612,
                                                                                                 // 0x3fd55555
         masm.mulsd(temp1, temp3);
         masm.addsd(dest, temp1);
         masm.jmp(bb15);
 
         masm.bind(bb3);
-        masm.movdq(temp3, (AMD64Address) crb.recordDataReferenceInCode(twoPowFiftyFiveTanPtr)); // 0x00000000,
+        masm.movdq(temp3, externalAddress(twoPowFiftyFiveTanPtr));                              // 0x00000000,
                                                                                                 // 0x43600000
         masm.mulsd(temp3, dest);
         masm.addsd(dest, temp3);
-        masm.mulsd(dest, (AMD64Address) crb.recordDataReferenceInCode(twoPowMFiftyFiveTanPtr)); // 0x00000000,
+        masm.mulsd(dest, externalAddress(twoPowMFiftyFiveTanPtr));                              // 0x00000000,
                                                                                                 // 0x3c800000
         masm.jmp(bb15);
 
@@ -3012,7 +3047,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.subl(gpr3, 16224);
         masm.shrl(gpr3, 7);
         masm.andl(gpr3, 65532);
-        masm.leaq(gpr10, (AMD64Address) crb.recordDataReferenceInCode(piInvTableTanPtr));
+        masm.leaq(gpr10, externalAddress(piInvTableTanPtr));
         masm.addq(gpr3, gpr10);
         masm.movdq(gpr1, dest);
         masm.movl(gpr9, new AMD64Address(gpr3, 20));
@@ -3083,7 +3118,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addq(gpr8, gpr6);
         masm.imulq(gpr4, gpr1);
         masm.pextrw(gpr2, dest, 3);
-        masm.leaq(gpr6, (AMD64Address) crb.recordDataReferenceInCode(piInvTableTanPtr));
+        masm.leaq(gpr6, externalAddress(piInvTableTanPtr));
         masm.subq(gpr3, gpr6);
         masm.addl(gpr3, gpr3);
         masm.addl(gpr3, gpr3);
@@ -3146,7 +3181,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.orl(gpr4, gpr5);
         masm.xorl(gpr4, gpr2);
         masm.pinsrw(temp4, gpr4, 3);
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(piFourTanPtr));
+        masm.leaq(gpr1, externalAddress(piFourTanPtr));
         masm.movdq(temp2, new AMD64Address(gpr1, 0));                                           // 0x00000000,
                                                                                                 // 0x3fe921fb,
         masm.movdq(temp7, new AMD64Address(gpr1, 8));                                           // 0x4611a626,
@@ -3172,7 +3207,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(dest, temp7);
         masm.subsd(temp2, dest);
         masm.addsd(temp7, temp2);
-        masm.movdqu(temp1, (AMD64Address) crb.recordDataReferenceInCode(piThirtyTwoInvTanPtr)); // 0x6dc9c883,
+        masm.movdqu(temp1, externalAddress(piThirtyTwoInvTanPtr));                              // 0x6dc9c883,
                                                                                                 // 0x3fe45f30,
                                                                                                 // 0x6dc9c883,
                                                                                                 // 0x40245f30
@@ -3181,7 +3216,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         } else {
             masm.movlhps(dest, dest);
         }
-        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(signMaskTanPtr));       // 0x00000000,
+        masm.movdqu(temp4, externalAddress(signMaskTanPtr));                                    // 0x00000000,
                                                                                                 // 0x80000000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x80000000
@@ -3192,11 +3227,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         } else {
             masm.movlhps(temp7, temp7);
         }
-        masm.movdqu(temp5, (AMD64Address) crb.recordDataReferenceInCode(oneHalfTanPtr));        // 0x00000000,
+        masm.movdqu(temp5, externalAddress(oneHalfTanPtr));                                     // 0x00000000,
                                                                                                 // 0x3fe00000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x3fe00000
-        masm.movdqu(temp6, (AMD64Address) crb.recordDataReferenceInCode(mulSixteenPtr));        // 0x00000000,
+        masm.movdqu(temp6, externalAddress(mulSixteenPtr));                                     // 0x00000000,
                                                                                                 // 0x40300000,
                                                                                                 // 0x00000000,
                                                                                                 // 0x3ff00000
@@ -3208,15 +3243,15 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.cvttpd2dq(temp1, temp1);
         masm.cvtdq2pd(temp1, temp1);
         masm.mulpd(temp1, temp6);
-        masm.movdqu(temp3, (AMD64Address) crb.recordDataReferenceInCode(pOneTanPtr));           // 0x54444000,
+        masm.movdqu(temp3, externalAddress(pOneTanPtr));                                        // 0x54444000,
                                                                                                 // 0x3fb921fb,
                                                                                                 // 0x54440000,
                                                                                                 // 0x3fb921fb
-        masm.movdq(temp5, (AMD64Address) crb.recordDataReferenceInCode(qqTwoTanPtr));           // 0x676733af,
+        masm.movdq(temp5, externalAddress(qqTwoTanPtr));                                        // 0x676733af,
                                                                                                 // 0x3d32e7b9
         masm.shll(gpr1, 4);
         masm.addl(gpr4, 469248);
-        masm.movdqu(temp4, (AMD64Address) crb.recordDataReferenceInCode(pTwoTanPtr));           // 0x67674000,
+        masm.movdqu(temp4, externalAddress(pTwoTanPtr));                                        // 0x67674000,
                                                                                                 // 0xbd32e7b9,
                                                                                                 // 0x4c4c0000,
                                                                                                 // 0x3d468c23
@@ -3228,7 +3263,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.mulpd(temp4, temp1);
         masm.shll(gpr3, 1);
         masm.subpd(dest, temp3);
-        masm.mulpd(temp1, (AMD64Address) crb.recordDataReferenceInCode(pThreeTanPtr));          // 0x3707344a,
+        masm.mulpd(temp1, externalAddress(pThreeTanPtr));                                       // 0x3707344a,
                                                                                                 // 0x3aa8a2e0,
                                                                                                 // 0x03707345,
                                                                                                 // 0x3ae98a2e
@@ -3238,11 +3273,11 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp5, dest);
         masm.movdqu(temp2, dest);
         masm.subpd(dest, temp4);
-        masm.movdq(temp6, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+        masm.movdq(temp6, externalAddress(onePtr));                                             // 0x00000000,
                                                                                                 // 0x3ff00000
         masm.shll(gpr4, 4);
-        masm.leaq(gpr1, (AMD64Address) crb.recordDataReferenceInCode(cTableTanPtr));
-        masm.andpd(temp5, (AMD64Address) crb.recordDataReferenceInCode(maskThirtyFiveTanPtr));  // 0xfffc0000,
+        masm.leaq(gpr1, externalAddress(cTableTanPtr));
+        masm.andpd(temp5, externalAddress(maskThirtyFiveTanPtr));                               // 0xfffc0000,
                                                                                                 // 0xffffffff,
                                                                                                 // 0x00000000,
                                                                                                 // 0x00000000
@@ -3299,7 +3334,7 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.addsd(temp7, new AMD64Address(gpr1, 136));
         masm.addsd(temp7, temp1);
         masm.addsd(dest, temp7);
-        masm.movdq(temp7, (AMD64Address) crb.recordDataReferenceInCode(oneTanPtr));             // 0x00000000,
+        masm.movdq(temp7, externalAddress(onePtr));                                             // 0x00000000,
                                                                                                 // 0x3ff00000
         masm.mulsd(temp4, temp6);
         masm.movdq(temp2, new AMD64Address(gpr1, 168));
@@ -3400,5 +3435,406 @@ public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         masm.jmp(bb8);
 
         masm.bind(bb15);
+    }
+
+    /*
+     * Copyright (c) 2014, 2016, Intel Corporation. All rights reserved. Intel Math Library (LIBM)
+     * Source Code
+     *
+     * ALGORITHM DESCRIPTION - EXP() ---------------------
+     *
+     * Description: Let K = 64 (table size). x x/log(2) n e = 2 = 2 * T[j] * (1 + P(y)) where x =
+     * m*log(2)/K + y, y in [-log(2)/K..log(2)/K] m = n*K + j, m,n,j - signed integer, j in
+     * [-K/2..K/2] j/K values of 2 are tabulated as T[j] = T_hi[j] ( 1 + T_lo[j]).
+     *
+     * P(y) is a minimax polynomial approximation of exp(x)-1 on small interval
+     * [-log(2)/K..log(2)/K] (were calculated by Maple V).
+     *
+     * To avoid problems with arithmetic overflow and underflow, n n1 n2 value of 2 is safely
+     * computed as 2 * 2 where n1 in [-BIAS/2..BIAS/2] where BIAS is a value of exponent bias.
+     *
+     * Special cases: exp(NaN) = NaN exp(+INF) = +INF exp(-INF) = 0 exp(x) = 1 for subnormals for
+     * finite argument, only exp(0)=1 is exact For IEEE double if x > 709.782712893383973096 then
+     * exp(x) overflow if x < -745.133219101941108420 then exp(x) underflow
+     *
+     */
+
+    private static int[] cvExp = {
+                    0x652b82fe, 0x40571547, 0x652b82fe, 0x40571547, 0xfefa0000,
+                    0x3f862e42, 0xfefa0000, 0x3f862e42, 0xbc9e3b3a, 0x3d1cf79a,
+                    0xbc9e3b3a, 0x3d1cf79a, 0xfffffffe, 0x3fdfffff, 0xfffffffe,
+                    0x3fdfffff, 0xe3289860, 0x3f56c15c, 0x555b9e25, 0x3fa55555,
+                    0xc090cf0f, 0x3f811115, 0x55548ba1, 0x3fc55555
+    };
+
+    private static int[] shifterExp = {
+                    0x00000000, 0x43380000, 0x00000000, 0x43380000
+    };
+
+    private static int[] mMaskExp = {
+                    0xffffffc0, 0x00000000, 0xffffffc0, 0x00000000
+    };
+
+    private static int[] biasExp = {
+                    0x0000ffc0, 0x00000000, 0x0000ffc0, 0x00000000
+    };
+
+    private static int[] tblAddrExp = {
+                    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x0e03754d,
+                    0x3cad7bbf, 0x3e778060, 0x00002c9a, 0x3567f613, 0x3c8cd252,
+                    0xd3158574, 0x000059b0, 0x61e6c861, 0x3c60f74e, 0x18759bc8,
+                    0x00008745, 0x5d837b6c, 0x3c979aa6, 0x6cf9890f, 0x0000b558,
+                    0x702f9cd1, 0x3c3ebe3d, 0x32d3d1a2, 0x0000e3ec, 0x1e63bcd8,
+                    0x3ca3516e, 0xd0125b50, 0x00011301, 0x26f0387b, 0x3ca4c554,
+                    0xaea92ddf, 0x0001429a, 0x62523fb6, 0x3ca95153, 0x3c7d517a,
+                    0x000172b8, 0x3f1353bf, 0x3c8b898c, 0xeb6fcb75, 0x0001a35b,
+                    0x3e3a2f5f, 0x3c9aecf7, 0x3168b9aa, 0x0001d487, 0x44a6c38d,
+                    0x3c8a6f41, 0x88628cd6, 0x0002063b, 0xe3a8a894, 0x3c968efd,
+                    0x6e756238, 0x0002387a, 0x981fe7f2, 0x3c80472b, 0x65e27cdd,
+                    0x00026b45, 0x6d09ab31, 0x3c82f7e1, 0xf51fdee1, 0x00029e9d,
+                    0x720c0ab3, 0x3c8b3782, 0xa6e4030b, 0x0002d285, 0x4db0abb6,
+                    0x3c834d75, 0x0a31b715, 0x000306fe, 0x5dd3f84a, 0x3c8fdd39,
+                    0xb26416ff, 0x00033c08, 0xcc187d29, 0x3ca12f8c, 0x373aa9ca,
+                    0x000371a7, 0x738b5e8b, 0x3ca7d229, 0x34e59ff6, 0x0003a7db,
+                    0xa72a4c6d, 0x3c859f48, 0x4c123422, 0x0003dea6, 0x259d9205,
+                    0x3ca8b846, 0x21f72e29, 0x0004160a, 0x60c2ac12, 0x3c4363ed,
+                    0x6061892d, 0x00044e08, 0xdaa10379, 0x3c6ecce1, 0xb5c13cd0,
+                    0x000486a2, 0xbb7aafb0, 0x3c7690ce, 0xd5362a27, 0x0004bfda,
+                    0x9b282a09, 0x3ca083cc, 0x769d2ca6, 0x0004f9b2, 0xc1aae707,
+                    0x3ca509b0, 0x569d4f81, 0x0005342b, 0x18fdd78e, 0x3c933505,
+                    0x36b527da, 0x00056f47, 0xe21c5409, 0x3c9063e1, 0xdd485429,
+                    0x0005ab07, 0x2b64c035, 0x3c9432e6, 0x15ad2148, 0x0005e76f,
+                    0x99f08c0a, 0x3ca01284, 0xb03a5584, 0x0006247e, 0x0073dc06,
+                    0x3c99f087, 0x82552224, 0x00066238, 0x0da05571, 0x3c998d4d,
+                    0x667f3bcc, 0x0006a09e, 0x86ce4786, 0x3ca52bb9, 0x3c651a2e,
+                    0x0006dfb2, 0x206f0dab, 0x3ca32092, 0xe8ec5f73, 0x00071f75,
+                    0x8e17a7a6, 0x3ca06122, 0x564267c8, 0x00075feb, 0x461e9f86,
+                    0x3ca244ac, 0x73eb0186, 0x0007a114, 0xabd66c55, 0x3c65ebe1,
+                    0x36cf4e62, 0x0007e2f3, 0xbbff67d0, 0x3c96fe9f, 0x994cce12,
+                    0x00082589, 0x14c801df, 0x3c951f14, 0x9b4492ec, 0x000868d9,
+                    0xc1f0eab4, 0x3c8db72f, 0x422aa0db, 0x0008ace5, 0x59f35f44,
+                    0x3c7bf683, 0x99157736, 0x0008f1ae, 0x9c06283c, 0x3ca360ba,
+                    0xb0cdc5e4, 0x00093737, 0x20f962aa, 0x3c95e8d1, 0x9fde4e4f,
+                    0x00097d82, 0x2b91ce27, 0x3c71affc, 0x82a3f090, 0x0009c491,
+                    0x589a2ebd, 0x3c9b6d34, 0x7b5de564, 0x000a0c66, 0x9ab89880,
+                    0x3c95277c, 0xb23e255c, 0x000a5503, 0x6e735ab3, 0x3c846984,
+                    0x5579fdbf, 0x000a9e6b, 0x92cb3387, 0x3c8c1a77, 0x995ad3ad,
+                    0x000ae89f, 0xdc2d1d96, 0x3ca22466, 0xb84f15fa, 0x000b33a2,
+                    0xb19505ae, 0x3ca1112e, 0xf2fb5e46, 0x000b7f76, 0x0a5fddcd,
+                    0x3c74ffd7, 0x904bc1d2, 0x000bcc1e, 0x30af0cb3, 0x3c736eae,
+                    0xdd85529c, 0x000c199b, 0xd10959ac, 0x3c84e08f, 0x2e57d14b,
+                    0x000c67f1, 0x6c921968, 0x3c676b2c, 0xdcef9069, 0x000cb720,
+                    0x36df99b3, 0x3c937009, 0x4a07897b, 0x000d072d, 0xa63d07a7,
+                    0x3c74a385, 0xdcfba487, 0x000d5818, 0xd5c192ac, 0x3c8e5a50,
+                    0x03db3285, 0x000da9e6, 0x1c4a9792, 0x3c98bb73, 0x337b9b5e,
+                    0x000dfc97, 0x603a88d3, 0x3c74b604, 0xe78b3ff6, 0x000e502e,
+                    0x92094926, 0x3c916f27, 0xa2a490d9, 0x000ea4af, 0x41aa2008,
+                    0x3c8ec3bc, 0xee615a27, 0x000efa1b, 0x31d185ee, 0x3c8a64a9,
+                    0x5b6e4540, 0x000f5076, 0x4d91cd9d, 0x3c77893b, 0x819e90d8,
+                    0x000fa7c1
+    };
+
+    private static int[] allOnesExp = {
+                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
+    };
+
+    private static int[] expBias = {
+                    0x00000000, 0x3ff00000, 0x00000000, 0x3ff00000
+    };
+
+    private static int[] xMaxExp = {
+                    0xffffffff, 0x7fefffff
+    };
+
+    private static int[] xMinExp = {
+                    0x00000000, 0x00100000
+    };
+
+    private static int[] infExp = {
+                    0x00000000, 0x7ff00000
+    };
+
+    private static int[] zeroExp = {
+                    0x00000000, 0x00000000
+    };
+
+    public void expIntrinsic(Register dest, Register value, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        ArrayDataPointerConstant onePtr = new ArrayDataPointerConstant(one, 16);
+        ArrayDataPointerConstant cvExpPtr = new ArrayDataPointerConstant(cvExp, 16);
+        ArrayDataPointerConstant shifterExpPtr = new ArrayDataPointerConstant(shifterExp, 8);
+        ArrayDataPointerConstant mMaskExpPtr = new ArrayDataPointerConstant(mMaskExp, 16);
+        ArrayDataPointerConstant biasExpPtr = new ArrayDataPointerConstant(biasExp, 16);
+        ArrayDataPointerConstant tblAddrExpPtr = new ArrayDataPointerConstant(tblAddrExp, 16);
+        ArrayDataPointerConstant expBiasPtr = new ArrayDataPointerConstant(expBias, 8);
+        ArrayDataPointerConstant xMaxExpPtr = new ArrayDataPointerConstant(xMaxExp, 8);
+        ArrayDataPointerConstant xMinExpPtr = new ArrayDataPointerConstant(xMinExp, 8);
+        ArrayDataPointerConstant infExpPtr = new ArrayDataPointerConstant(infExp, 8);
+        ArrayDataPointerConstant zeroExpPtr = new ArrayDataPointerConstant(zeroExp, 8);
+        ArrayDataPointerConstant allOnesExpPtr = new ArrayDataPointerConstant(allOnesExp, 8);
+
+        Label bb0 = new Label();
+        Label bb1 = new Label();
+        Label bb2 = new Label();
+        Label bb3 = new Label();
+        Label bb4 = new Label();
+        Label bb5 = new Label();
+        Label bb7 = new Label();
+        Label bb8 = new Label();
+        Label bb9 = new Label();
+        Label bb10 = new Label();
+        Label bb11 = new Label();
+        Label bb12 = new Label();
+        Label bb14 = new Label();
+
+        Register gpr1 = asRegister(gpr1Temp, AMD64Kind.QWORD);
+        Register gpr2 = asRegister(gpr2Temp, AMD64Kind.QWORD);
+        Register gpr3 = asRegister(rcxTemp, AMD64Kind.QWORD);
+        Register gpr4 = asRegister(gpr4Temp, AMD64Kind.QWORD);
+        Register gpr5 = asRegister(gpr5Temp, AMD64Kind.QWORD);
+
+        Register temp1 = asRegister(xmm1Temp, AMD64Kind.DOUBLE);
+        Register temp2 = asRegister(xmm2Temp, AMD64Kind.DOUBLE);
+        Register temp3 = asRegister(xmm3Temp, AMD64Kind.DOUBLE);
+        Register temp4 = asRegister(xmm4Temp, AMD64Kind.DOUBLE);
+        Register temp5 = asRegister(xmm5Temp, AMD64Kind.DOUBLE);
+        Register temp6 = asRegister(xmm6Temp, AMD64Kind.DOUBLE);
+        Register temp7 = asRegister(xmm7Temp, AMD64Kind.DOUBLE);
+        Register temp8 = asRegister(xmm8Temp, AMD64Kind.DOUBLE);
+
+        AMD64Address stackSlot = (AMD64Address) crb.asAddress(stackTemp);
+
+        setCrb(crb);
+        masm.movsd(stackSlot, value);
+        if (dest.encoding != value.encoding) {
+            masm.movdqu(dest, value);
+        }
+
+        masm.unpcklpd(dest, dest);
+        masm.leaq(gpr5, stackSlot);
+        masm.leaq(gpr2, externalAddress(cvExpPtr));
+        masm.movdqu(temp1, new AMD64Address(gpr2, 0));                                   // 0x652b82fe,
+                                                                                         // 0x40571547,
+                                                                                         // 0x652b82fe,
+                                                                                         // 0x40571547
+        masm.movdqu(temp6, externalAddress(shifterExpPtr));                              // 0x00000000,
+                                                                                         // 0x43380000,
+                                                                                         // 0x00000000,
+                                                                                         // 0x43380000
+        masm.movdqu(temp2, new AMD64Address(gpr2, 16));                                  // 0xfefa0000,
+                                                                                         // 0x3f862e42,
+                                                                                         // 0xfefa0000,
+                                                                                         // 0x3f862e42
+        masm.movdqu(temp3, new AMD64Address(gpr2, 32));                                  // 0xbc9e3b3a,
+                                                                                         // 0x3d1cf79a,
+                                                                                         // 0xbc9e3b3a,
+                                                                                         // 0x3d1cf79a
+        masm.pextrw(gpr1, dest, 3);
+        masm.andl(gpr1, 32767);
+        masm.movl(gpr4, 16527);
+        masm.subl(gpr4, gpr1);
+        masm.subl(gpr1, 15504);
+        masm.orl(gpr4, gpr1);
+        masm.cmpl(gpr4, Integer.MIN_VALUE);
+        masm.jcc(ConditionFlag.AboveEqual, bb0);
+
+        masm.leaq(gpr4, externalAddress(tblAddrExpPtr));
+        masm.movdqu(temp8, new AMD64Address(gpr2, 48));                                  // 0xfffffffe,
+                                                                                         // 0x3fdfffff,
+                                                                                         // 0xfffffffe,
+                                                                                         // 0x3fdfffff
+        masm.movdqu(temp4, new AMD64Address(gpr2, 64));                                  // 0xe3289860,
+                                                                                         // 0x3f56c15c,
+                                                                                         // 0x555b9e25,
+                                                                                         // 0x3fa55555
+        masm.movdqu(temp5, new AMD64Address(gpr2, 80));                                  // 0xc090cf0f,
+                                                                                         // 0x3f811115,
+                                                                                         // 0x55548ba1,
+                                                                                         // 0x3fc55555
+        masm.mulpd(temp1, dest);
+        masm.addpd(temp1, temp6);
+        masm.movapd(temp7, temp1);
+        masm.movdl(gpr1, temp1);
+        masm.pand(temp7, externalAddress(mMaskExpPtr));                                  // 0xffffffc0,
+                                                                                         // 0x00000000,
+                                                                                         // 0xffffffc0,
+                                                                                         // 0x00000000
+        masm.subpd(temp1, temp6);
+        masm.mulpd(temp2, temp1);
+        masm.mulpd(temp3, temp1);
+        masm.paddq(temp7, externalAddress(biasExpPtr));                                  // 0x0000ffc0,
+                                                                                         // 0x00000000,
+                                                                                         // 0x0000ffc0,
+                                                                                         // 0x00000000
+        masm.subpd(dest, temp2);
+        masm.movl(gpr3, gpr1);
+        masm.andl(gpr3, 63);
+        masm.shll(gpr3, 4);
+        masm.movdqu(temp2, new AMD64Address(gpr3, gpr4, Scale.Times1, 0));
+        masm.sarl(gpr1, 6);
+        masm.psllq(temp7, 46);
+        masm.subpd(dest, temp3);
+        masm.mulpd(temp4, dest);
+        masm.movl(gpr4, gpr1);
+        masm.movapd(temp6, dest);
+        masm.movapd(temp1, dest);
+        masm.mulpd(temp6, temp6);
+        masm.mulpd(dest, temp6);
+        masm.addpd(temp5, temp4);
+        masm.mulsd(dest, temp6);
+        masm.mulpd(temp6, temp8);
+        masm.addsd(temp1, temp2);
+        masm.unpckhpd(temp2, temp2);
+        masm.mulpd(dest, temp5);
+        masm.addsd(temp1, dest);
+        masm.por(temp2, temp7);
+        masm.unpckhpd(dest, dest);
+        masm.addsd(dest, temp1);
+        masm.addsd(dest, temp6);
+        masm.addl(gpr4, 894);
+        masm.cmpl(gpr4, 1916);
+        masm.jcc(ConditionFlag.Above, bb1);
+
+        masm.mulsd(dest, temp2);
+        masm.addsd(dest, temp2);
+        masm.jmp(bb14);
+
+        masm.bind(bb1);
+        masm.movdqu(temp6, externalAddress(expBiasPtr));                                 // 0x00000000,
+                                                                                         // 0x3ff00000,
+                                                                                         // 0x00000000,
+                                                                                         // 0x3ff00000
+        masm.xorpd(temp3, temp3);
+        masm.movdqu(temp4, externalAddress(allOnesExpPtr));                              // 0xffffffff,
+                                                                                         // 0xffffffff,
+                                                                                         // 0xffffffff,
+                                                                                         // 0xffffffff
+        masm.movl(gpr4, -1022);
+        masm.subl(gpr4, gpr1);
+        masm.movdl(temp5, gpr4);
+        masm.psllq(temp4, temp5);
+        masm.movl(gpr3, gpr1);
+        masm.sarl(gpr1, 1);
+        masm.pinsrw(temp3, gpr1, 3);
+        masm.psllq(temp3, 4);
+        masm.psubd(temp2, temp3);
+        masm.mulsd(dest, temp2);
+        masm.cmpl(gpr4, 52);
+        masm.jcc(ConditionFlag.Greater, bb2);
+
+        masm.pand(temp4, temp2);
+        masm.paddd(temp3, temp6);
+        masm.subsd(temp2, temp4);
+        masm.addsd(dest, temp2);
+        masm.cmpl(gpr3, 1023);
+        masm.jcc(ConditionFlag.GreaterEqual, bb3);
+
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32768);
+        masm.orl(gpr4, gpr3);
+        masm.cmpl(gpr4, 0);
+        masm.jcc(ConditionFlag.Equal, bb4);
+
+        masm.movapd(temp6, dest);
+        masm.addsd(dest, temp4);
+        masm.mulsd(dest, temp3);
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 0);
+        masm.jcc(ConditionFlag.Equal, bb5);
+
+        masm.jmp(bb14);
+
+        masm.bind(bb5);
+        masm.mulsd(temp6, temp3);
+        masm.mulsd(temp4, temp3);
+        masm.movdqu(dest, temp6);
+        masm.pxor(temp6, temp4);
+        masm.psrad(temp6, 31);
+        masm.pshufd(temp6, temp6, 85);
+        masm.psllq(dest, 1);
+        masm.psrlq(dest, 1);
+        masm.pxor(dest, temp6);
+        masm.psrlq(temp6, 63);
+        masm.paddq(dest, temp6);
+        masm.paddq(dest, temp4);
+        masm.jmp(bb14);
+
+        masm.bind(bb4);
+        masm.addsd(dest, temp4);
+        masm.mulsd(dest, temp3);
+        masm.jmp(bb14);
+
+        masm.bind(bb3);
+        masm.addsd(dest, temp4);
+        masm.mulsd(dest, temp3);
+        masm.pextrw(gpr3, dest, 3);
+        masm.andl(gpr3, 32752);
+        masm.cmpl(gpr3, 32752);
+        masm.jcc(ConditionFlag.AboveEqual, bb7);
+
+        masm.jmp(bb14);
+
+        masm.bind(bb2);
+        masm.paddd(temp3, temp6);
+        masm.addpd(dest, temp2);
+        masm.mulsd(dest, temp3);
+        masm.jmp(bb14);
+
+        masm.bind(bb8);
+        masm.movsd(dest, externalAddress(xMaxExpPtr));                                   // 0xffffffff,
+                                                                                         // 0x7fefffff
+        masm.movsd(temp8, externalAddress(xMinExpPtr));                                  // 0x00000000,
+                                                                                         // 0x00100000
+        masm.cmpl(gpr1, 2146435072);
+        masm.jcc(ConditionFlag.AboveEqual, bb9);
+
+        masm.movl(gpr1, new AMD64Address(gpr5, 4));
+        masm.cmpl(gpr1, Integer.MIN_VALUE);
+        masm.jcc(ConditionFlag.AboveEqual, bb10);
+
+        masm.mulsd(dest, dest);
+
+        masm.bind(bb7);
+        masm.jmp(bb14);
+
+        masm.bind(bb10);
+        masm.mulsd(dest, temp8);
+        masm.jmp(bb14);
+
+        masm.bind(bb9);
+        masm.movl(gpr4, stackSlot);
+        masm.cmpl(gpr1, 2146435072);
+        masm.jcc(ConditionFlag.Above, bb11);
+
+        masm.cmpl(gpr4, 0);
+        masm.jcc(ConditionFlag.NotEqual, bb11);
+
+        masm.movl(gpr1, new AMD64Address(gpr5, 4));
+        masm.cmpl(gpr1, 2146435072);
+        masm.jcc(ConditionFlag.NotEqual, bb12);
+
+        masm.movsd(dest, externalAddress(infExpPtr));                                    // 0x00000000,
+                                                                                         // 0x7ff00000
+        masm.jmp(bb14);
+
+        masm.bind(bb12);
+        masm.movsd(dest, externalAddress(zeroExpPtr));                                   // 0x00000000,
+                                                                                         // 0x00000000
+        masm.jmp(bb14);
+
+        masm.bind(bb11);
+        masm.movsd(dest, stackSlot);
+        masm.addsd(dest, dest);
+        masm.jmp(bb14);
+
+        masm.bind(bb0);
+        masm.movl(gpr1, new AMD64Address(gpr5, 4));
+        masm.andl(gpr1, 2147483647);
+        masm.cmpl(gpr1, 1083179008);
+        masm.jcc(ConditionFlag.AboveEqual, bb8);
+
+        masm.addsd(dest, externalAddress(onePtr));                                       // 0x00000000,
+                                                                                         // 0x3ff00000
+        masm.bind(bb14);
     }
 }

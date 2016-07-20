@@ -65,11 +65,13 @@ import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.DREM;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.FREM;
-import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.COS;
-import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.LOG;
-import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.LOG10;
-import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.SIN;
-import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.TAN;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.COS;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.LOG;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.LOG10;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.SIN;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.TAN;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.EXP;
+import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicBinaryOp.BinaryIntrinsicOpcode.POW;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
@@ -95,7 +97,8 @@ import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import com.oracle.graal.lir.amd64.AMD64Binary;
 import com.oracle.graal.lir.amd64.AMD64BinaryConsumer;
 import com.oracle.graal.lir.amd64.AMD64ClearRegisterOp;
-import com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp;
+import com.oracle.graal.lir.amd64.AMD64MathIntrinsicUnaryOp;
+import com.oracle.graal.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import com.oracle.graal.lir.amd64.AMD64MulDivOp;
 import com.oracle.graal.lir.amd64.AMD64ShiftOp;
 import com.oracle.graal.lir.amd64.AMD64SignExtendOp;
@@ -903,7 +906,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitMathLog(Value input, boolean base10) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, getLIRGen().asAllocatable(input), stackSlot));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 
@@ -911,7 +914,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitMathCos(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), COS, result, getLIRGen().asAllocatable(input), stackSlot));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), COS, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 
@@ -919,7 +922,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitMathSin(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), SIN, result, getLIRGen().asAllocatable(input), stackSlot));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), SIN, result, getLIRGen().asAllocatable(input), stackSlot));
         return result;
     }
 
@@ -927,7 +930,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitMathTan(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicOp(getAMD64LIRGen(), TAN, result, getLIRGen().asAllocatable(input), stackSlot));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), TAN, result, getLIRGen().asAllocatable(input), stackSlot));
+        return result;
+    }
+
+    @Override
+    public Value emitMathExp(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input));
+        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), EXP, result, getLIRGen().asAllocatable(input), stackSlot));
+        return result;
+    }
+
+    @Override
+    public Value emitMathPow(Value input1, Value input2) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input1));
+        getLIRGen().append(new AMD64MathIntrinsicBinaryOp(getAMD64LIRGen(), POW, result, getLIRGen().asAllocatable(input1), getLIRGen().asAllocatable(input2)));
         return result;
     }
 
