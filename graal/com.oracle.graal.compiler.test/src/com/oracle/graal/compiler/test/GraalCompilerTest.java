@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
-import static com.oracle.graal.printer.CanonicalStringGraphPrinter.getCanonicalGraphString;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -187,7 +186,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 ComputeLoopFrequenciesClosure.compute(graph);
             }
 
- 	    @Override
+            @Override
             public float codeSizeIncrease() {
                 return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }
@@ -199,9 +198,9 @@ public abstract class GraalCompilerTest extends GraalTest {
                 assert checkHighTierGraph(graph) : "failed HighTier graph check";
             }
 
- 	   @Override
+            @Override
             public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CHECK_FACTOR;
+                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }
         });
         ret.getMidTier().appendPhase(new Phase("CheckGraphPhase") {
@@ -224,7 +223,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 assert checkLowTierGraph(graph) : "failed LowTier graph check";
             }
 
-   	    @Override
+            @Override
             public float codeSizeIncrease() {
                 return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
             }

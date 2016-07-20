@@ -268,7 +268,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         new CanonicalizerPhase().apply(g1, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
         gc1.apply(g1, htc);
-        Assert.assertEquals(35, gc1.finalCycles, 5);
+        Assert.assertEquals(35, gc1.finalCycles, 25);
     }
 
     @Test
@@ -278,7 +278,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         new CanonicalizerPhase().apply(g1, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
         gc1.apply(g1, htc);
-        Assert.assertEquals(54, gc1.finalCycles, 5);
+        Assert.assertEquals(50, gc1.finalCycles, 25);
     }
 
     @Test
@@ -288,7 +288,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         new CanonicalizerPhase().apply(g1, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
         gc1.apply(g1, htc);
-        Assert.assertEquals(30, gc1.finalCycles, 5);
+        Assert.assertEquals(30, gc1.finalCycles, 25);
     }
 
     @Test
@@ -298,7 +298,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         new CanonicalizerPhase().apply(g1, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
         gc1.apply(g1, htc);
-        Assert.assertEquals(120, gc1.finalCycles, 5);
+        Assert.assertEquals(120, gc1.finalCycles, 25);
     }
 
     static class ImprovementSavingCanonicalizer extends CustomCanonicalizer {
