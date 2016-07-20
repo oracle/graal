@@ -68,7 +68,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public interface LLVMLanguageProvider {
         LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
 
-        CallTarget parse(Source code, Node context, String... argumentNames);
+        CallTarget parse(Source code, Node context, String... argumentNames) throws IOException;
 
         void disposeContext(LLVMContext context);
     }
