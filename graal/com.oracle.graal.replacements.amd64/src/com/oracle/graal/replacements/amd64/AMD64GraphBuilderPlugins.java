@@ -126,18 +126,16 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
+        registerUnaryMath(r, "exp", EXP);
+        registerBinaryMath(r, "pow", POW);
         if (arithmeticStubs) {
             registerUnaryMath(r, "sin", SIN);
             registerUnaryMath(r, "cos", COS);
             registerUnaryMath(r, "tan", TAN);
-            registerUnaryMath(r, "exp", EXP);
-            registerBinaryMath(r, "pow", POW);
         } else {
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "sin", double.class);
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
             r.registerMethodSubstitution(AMD64MathSubstitutions.class, "tan", double.class);
-            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "exp", double.class);
-            r.registerMethodSubstitution(AMD64MathSubstitutions.class, "pow", double.class);
         }
 
         if (arch.getFeatures().contains(CPUFeature.SSE4_1)) {
