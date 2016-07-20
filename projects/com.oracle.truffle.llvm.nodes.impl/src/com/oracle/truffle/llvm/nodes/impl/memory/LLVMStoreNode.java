@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.impl.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -55,8 +56,10 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableStorageGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -212,10 +215,77 @@ public abstract class LLVMStoreNode extends LLVMNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization
-        public void execute(LLVMAddress address, TruffleObject value) {
+        @Specialization(guards = "!isLLVMAddress(value)")
+        public void execute(LLVMAddress address, Object value) {
             CompilerDirectives.bailout("unsupported operation");
-            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address");
+            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address);
+        }
+
+    }
+
+    @NodeChild(type = LLVMAddressNode.class, value = "valueNode")
+    @ImportStatic(LLVMGlobalVariableStorageGuards.class)
+    public abstract static class LLVMGlobalVariableStoreNode extends LLVMNode {
+
+        protected final LLVMGlobalVariableStorage globalVariableStorage;
+
+        public LLVMGlobalVariableStoreNode(LLVMGlobalVariableStorage globalVariableStorage) {
+            this.globalVariableStorage = globalVariableStorage;
+        }
+
+        @Specialization(guards = "isUninitialized(frame, globalVariableStorage)")
+        public void executeUninitializedNative(VirtualFrame frame, LLVMAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            globalVariableStorage.initialize();
+            executeNative(frame, value);
+        }
+
+        @Specialization(guards = {"isUninitialized(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        public void executeUninitializedManaged(VirtualFrame frame, Object value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            globalVariableStorage.initialize();
+            globalVariableStorage.initializeManaged();
+            executeManaged(frame, value);
+        }
+
+        @Specialization(guards = "isInitializedNative(frame, globalVariableStorage)")
+        public void executeInitializedNative(VirtualFrame frame, LLVMAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            globalVariableStorage.initializeNative();
+            executeNative(frame, value);
+        }
+
+        @Specialization(guards = {"isInitializedNative(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        public void executeInitializedManaged(VirtualFrame frame, Object value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            globalVariableStorage.initializeManaged();
+            executeManaged(frame, value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isNative(frame, globalVariableStorage)")
+        public void executeNative(VirtualFrame frame, LLVMAddress value) {
+            LLVMMemory.putAddress(globalVariableStorage.getNativeStorage(), value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isNative(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        public void executeManagedUnsupported(VirtualFrame frame, Object value) {
+            CompilerDirectives.bailout("unsupported operation");
+            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a global variable " + globalVariableStorage.getName() + " that previously stored a native address");
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isManaged(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        public void executeManaged(VirtualFrame frame, Object value) {
+            globalVariableStorage.setManagedStorage(value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isManaged(frame, globalVariableStorage)")
+        public void executeManagedUnsupported(VirtualFrame frame, LLVMAddress value) {
+            CompilerDirectives.bailout("unsupported operation");
+            throw new UnsupportedOperationException("Sulong can't store a native address in a global variable " + globalVariableStorage.getName() + " that previously stored a Truffle object");
         }
 
     }
