@@ -424,15 +424,15 @@ graal_unit_test_runs = [
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true'], tags=[GraalTags.bootstrap]),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithGCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=[GraalTags.fulltest]),
-    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.fulltest]),
+    BootstrapTest('BootstrapWithSystemAssertions', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true'], tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithExceptionEdges', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithRegisterPressure', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapTraceRAWithRegisterPressure', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithImmutableCode', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
 ]
 
 def _graal_gate_runner(args, tasks):
