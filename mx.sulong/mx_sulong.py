@@ -742,15 +742,16 @@ def mdlCheck(args=None):
 
 def getBitcodeLibrariesOption():
     libraries = []
-    for path, _, files in os.walk(_libPath):
-        for f in files:
-            # TODO: also allow other extensions, best introduce a command "compile" that compiles C, C++, Fortran and other files
-            if f.endswith('.c'):
-                bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
-                absBitcodeFile = path + '/' + bitcodeFile
-                if not os.path.isfile(absBitcodeFile):
-                    compileWithClangOpt(path + '/' + f, absBitcodeFile)
-                libraries.append(absBitcodeFile)
+    if 'SULONG_NO_LIBRARY' not in os.environ:
+        for path, _, files in os.walk(_libPath):
+            for f in files:
+                # TODO: also allow other extensions, best introduce a command "compile" that compiles C, C++, Fortran and other files
+                if f.endswith('.c'):
+                    bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
+                    absBitcodeFile = path + '/' + bitcodeFile
+                    if not os.path.isfile(absBitcodeFile):
+                        compileWithClangOpt(path + '/' + f, absBitcodeFile)
+                    libraries.append(absBitcodeFile)
     return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
 
 def clangformatcheck(args=None):
