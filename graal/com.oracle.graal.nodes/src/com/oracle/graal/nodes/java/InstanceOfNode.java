@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.nodeinfo.InputType.Anchor;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_30;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_15;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_15;
 
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-@NodeInfo(cycles = CYCLES_30, size = SIZE_30)
+@NodeInfo(cycles = CYCLES_15, size = SIZE_15)
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
