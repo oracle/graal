@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,18 +40,18 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
-public abstract class LLVMTruffleReadNBytes extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleReadNString extends LLVMAddressIntrinsic {
     @Specialization
+    @TruffleBoundary
     public Object executeIntrinsic(LLVMAddress value, int n) {
         LLVMAddress adr = value;
         int count = n < 0 ? 0 : n;
-        byte[] bytes = new byte[count];
-        adr = value;
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < count; i++) {
-            bytes[i] = LLVMMemory.getI8(adr);
+            sb.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(adr)));
             adr = adr.increment(Byte.BYTES);
         }
-        return bytes;
+        return sb.toString();
     }
 
 }

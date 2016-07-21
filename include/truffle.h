@@ -127,6 +127,7 @@ void truffle_write_idx_b(void *object, int idx, bool value);
 
 // Strings
 void *truffle_read_string(const char *string);
+void *truffle_read_n_string(const char *string, int n);
 void *truffle_read_bytes(const char *bytes);
 void *truffle_read_n_bytes(const char *bytes, int n);
 
