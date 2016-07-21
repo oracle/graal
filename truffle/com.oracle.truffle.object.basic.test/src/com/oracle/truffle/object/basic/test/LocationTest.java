@@ -154,6 +154,7 @@ public class LocationTest {
                 return shape.allocator().declaredLocation(value);
             }
         });
+        Assert.assertTrue(object.containsKey("a"));
         object.define("a", 42);
         Assert.assertEquals(1, object.getShape().getPropertyCount());
         object.delete("a");

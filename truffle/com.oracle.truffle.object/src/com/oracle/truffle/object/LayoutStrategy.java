@@ -85,9 +85,8 @@ public abstract class LayoutStrategy {
 
     protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, LocationFactory locationFactory) {
         if (oldProperty.getLocation() instanceof DeclaredLocation) {
-            Property property = relocateShadow(oldProperty, locationFactory.createLocation(oldShape, value));
-            ShapeImpl newShape = oldShape.addProperty(property);
-            return newShape;
+            Property property = oldProperty.relocate(locationFactory.createLocation(oldShape, value));
+            return oldShape.replaceProperty(oldProperty, property);
         } else {
             return generalizeProperty(oldProperty, value, oldShape, oldShape);
         }
@@ -151,10 +150,6 @@ public abstract class LayoutStrategy {
         DynamicObject original = object.cloneWithShape(oldShape);
         object.setShapeAndResize(newShape);
         object.copyProperties(original, deletedParentShape);
-    }
-
-    protected static Property relocateShadow(Property property, Location newLocation) {
-        return ((PropertyImpl) property).relocateShadow(newLocation);
     }
 
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
