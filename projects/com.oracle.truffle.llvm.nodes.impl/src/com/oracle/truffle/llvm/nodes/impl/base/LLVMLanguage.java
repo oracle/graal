@@ -68,7 +68,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public interface LLVMLanguageProvider {
         LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
 
-        CallTarget parse(Source code, Node context, String... argumentNames);
+        CallTarget parse(Source code, Node context, String... argumentNames) throws IOException;
 
         void disposeContext(LLVMContext context);
     }
@@ -103,8 +103,11 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
+        String atname = "@" + globalName; // for interop
         for (LLVMFunctionDescriptor descr : context.getFunctionRegistry().getFunctionDescriptors()) {
             if (descr != null && descr.getName().equals(globalName)) {
+                return descr;
+            } else if (descr != null && descr.getName().equals(atname)) {
                 return descr;
             }
         }
