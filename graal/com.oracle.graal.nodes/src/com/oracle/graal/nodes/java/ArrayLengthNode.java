@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_4;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * The {@code ArrayLength} instruction gets the length of an array.
  */
-@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
     public static final NodeClass<ArrayLengthNode> TYPE = NodeClass.create(ArrayLengthNode.class);

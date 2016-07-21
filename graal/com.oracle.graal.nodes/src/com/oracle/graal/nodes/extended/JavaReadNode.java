@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
-@NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = CYCLES_6, size = SIZE_2)
+@NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
 public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
     public static final NodeClass<JavaReadNode> TYPE = NodeClass.create(JavaReadNode.class);

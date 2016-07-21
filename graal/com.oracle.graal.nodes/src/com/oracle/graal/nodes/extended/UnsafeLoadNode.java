@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.nodeinfo.InputType.Condition;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_8;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
  */
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
     public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
     @OptionalInput(Condition) LogicNode guardingCondition;
