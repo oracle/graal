@@ -179,9 +179,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 Debug.verify(graph, "%s", getName());
             }
             assert graph.verify();
-        } catch (
-
-        Throwable t) {
+        } catch (Throwable t) {
             throw Debug.handle(t);
         }
     }

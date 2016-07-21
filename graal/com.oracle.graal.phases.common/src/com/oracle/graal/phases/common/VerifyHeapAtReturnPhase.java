@@ -35,5 +35,4 @@ public class VerifyHeapAtReturnPhase extends Phase {
             VerifyHeapNode.addBefore(returnNode);
         }
     }
-
 }
