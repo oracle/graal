@@ -25,8 +25,8 @@ package com.oracle.graal.replacements.nodes;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.nodeinfo.InputType.Memory;
 import static com.oracle.graal.nodeinfo.InputType.State;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_50;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_50;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_200;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -55,7 +55,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo(cycles = CYCLES_50, size = SIZE_50)
+@NodeInfo(cycles = CYCLES_200, size = SIZE_100)
 public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virtualizable, MemoryCheckpoint.Single, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);

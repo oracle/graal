@@ -23,8 +23,8 @@
 package com.oracle.graal.replacements.nodes;
 
 import static com.oracle.graal.nodeinfo.InputType.Memory;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_500;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_100;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_50;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compares two arrays with the same length.
  */
-@NodeInfo(cycles = CYCLES_500, size = SIZE_100)
+@NodeInfo(cycles = CYCLES_100, size = SIZE_50)
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
