@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
  * {@link StateSplit} and does not include a write barrier. Note that contrary to the sound of the
  * name this node can be used for storing any kind.
  */
-@NodeInfo(cycles = CYCLES_6, size = SIZE_2)
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<DirectObjectStoreNode> TYPE = NodeClass.create(DirectObjectStoreNode.class);
