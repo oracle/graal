@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_100;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
-
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -32,7 +29,7 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-@NodeInfo(cycles = CYCLES_100, size = SIZE_100)
+@NodeInfo
 public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
