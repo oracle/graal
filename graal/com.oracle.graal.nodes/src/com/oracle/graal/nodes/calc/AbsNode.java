@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_20;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Absolute value.
  */
-@NodeInfo(cycles = CYCLES_20, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class AbsNode extends UnaryArithmeticNode<Abs> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
     public static final NodeClass<AbsNode> TYPE = NodeClass.create(AbsNode.class);
 
