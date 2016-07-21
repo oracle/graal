@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Count the number of trailing zeros using the {@code tzcntq} or {@code tzcntl} instructions.
  */
-@NodeInfo(cycles = CYCLES_6, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class AMD64CountTrailingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
 
