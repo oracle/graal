@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.PlatformKind;
 /**
  * Gets the address of the C++ JavaThread object for the current thread.
  */
-@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CurrentJavaThreadNode> TYPE = NodeClass.create(CurrentJavaThreadNode.class);
 
