@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_5;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.calc.FloatConvert;
@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * of the {@link FloatConvertNode} which, on AMD64 needs a {@link AMD64FloatConvertNode} plus some
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_5, size = SIZE_1)
 public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64FloatConvertNode> TYPE = NodeClass.create(AMD64FloatConvertNode.class);
 
