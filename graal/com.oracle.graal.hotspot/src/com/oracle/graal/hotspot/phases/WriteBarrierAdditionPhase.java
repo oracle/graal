@@ -187,6 +187,6 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     @Override
     public float codeSizeIncrease() {
-        return 100.0f;
+        return 25.0f;
     }
 }
