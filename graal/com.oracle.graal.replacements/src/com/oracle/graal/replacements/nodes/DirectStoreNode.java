@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -40,7 +43,7 @@ import jdk.vm.ci.meta.Value;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and takes a computed address instead of an object.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<DirectStoreNode> TYPE = NodeClass.create(DirectStoreNode.class);
