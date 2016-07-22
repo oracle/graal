@@ -91,8 +91,8 @@ public final class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
         this.result = result;
         this.input = input;
         if (opcode == UnaryIntrinsicOpcode.LOG || opcode == UnaryIntrinsicOpcode.LOG10 ||
-            opcode == UnaryIntrinsicOpcode.SIN || opcode == UnaryIntrinsicOpcode.COS ||
-            opcode == UnaryIntrinsicOpcode.TAN || opcode == UnaryIntrinsicOpcode.EXP) {
+                        opcode == UnaryIntrinsicOpcode.SIN || opcode == UnaryIntrinsicOpcode.COS ||
+                        opcode == UnaryIntrinsicOpcode.TAN || opcode == UnaryIntrinsicOpcode.EXP) {
             this.gpr1Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.gpr2Temp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.rcxTemp = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.QWORD));

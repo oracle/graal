@@ -1005,7 +1005,7 @@ public final class AMD64MathIntrinsicBinaryOp extends AMD64LIRInstruction {
         masm.movdqu(dest, new AMD64Address(gpr8, 48));       // 0x486ececc,
                                                              // 0x3fc4635e,
                                                              // 0x161bb241,
-                                                             // 0xbf5dabe1  
+                                                             // 0xbf5dabe1
         masm.subsd(temp5, temp9);
         masm.movl(gpr3, gpr1);
         masm.sarl(gpr1, 31);
