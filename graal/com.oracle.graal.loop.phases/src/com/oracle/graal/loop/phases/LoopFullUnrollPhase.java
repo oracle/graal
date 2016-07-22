@@ -65,7 +65,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     }
 
     @Override
-    public float codeSizeIncrease() {
-        return 10.0f;
+    public boolean checkContract() {
+        return false;
     }
 }
