@@ -100,11 +100,13 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
-    public float codeSizeIncrease() {
+    public boolean checkContract() {
         /*
-         * e.g. removing merges adding more return node, etc.
+         * There are certain canonicalizations we make that heavily increase code size by e.g.
+         * replacing a merge followed by a return of the merge's phi with returns in each
+         * predecessor.
          */
-        return 2.5f;
+        return false;
     }
 
     @Override
