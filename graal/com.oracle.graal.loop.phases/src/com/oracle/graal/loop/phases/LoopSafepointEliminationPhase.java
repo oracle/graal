@@ -71,8 +71,4 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         loops.deleteUnusedNodes();
     }
 
-    @Override
-    public float codeSizeIncrease() {
-        return 1.1f;
-    }
 }

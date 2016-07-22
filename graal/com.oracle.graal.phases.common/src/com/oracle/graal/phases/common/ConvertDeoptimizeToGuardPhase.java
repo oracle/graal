@@ -30,7 +30,6 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
@@ -94,15 +93,6 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
 
         new DeadCodeEliminationPhase(Optional).apply(graph);
-    }
-
-    @Override
-    public float codeSizeIncrease() {
-        /*
-         * We can introduce new deoptimization nodes that heavily increase code size as they come
-         * with all their required meta data.
-         */
-        return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
     }
 
     private void trySplitFixedGuard(FixedGuardNode fixedGuard, PhaseContext context) {
