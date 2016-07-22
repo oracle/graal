@@ -70,5 +70,4 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
         loops.deleteUnusedNodes();
     }
-
 }
