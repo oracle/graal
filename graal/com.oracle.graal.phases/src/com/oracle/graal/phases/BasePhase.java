@@ -51,7 +51,14 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
-        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<>(false);
+        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<Boolean>(){
+            @SuppressWarnings("all")
+            protected Boolean defaultValue() {
+                boolean assertionsEnabled = false;
+                assert assertionsEnabled = true;
+                return assertionsEnabled;
+            }
+          };
         // @formatter:on
     }
 
@@ -165,6 +172,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
                     double sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
+                    Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
                     NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this, getName().toString());
                 }
             }
