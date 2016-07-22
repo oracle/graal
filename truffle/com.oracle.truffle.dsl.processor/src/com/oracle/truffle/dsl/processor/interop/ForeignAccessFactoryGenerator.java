@@ -65,11 +65,16 @@ public final class ForeignAccessFactoryGenerator {
         this.languageCheckFactoryInvokation = invocation;
     }
 
+    public String getFullClassName() {
+        return packageName + "." + simpleClassName;
+    }
+
     public void generate() throws IOException {
         JavaFileObject factoryFile = processingEnv.getFiler().createSourceFile(packageName + "." + simpleClassName, element);
         Writer w = factoryFile.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
+        Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         w.append("final class ").append(simpleClassName);
         w.append(" implements Factory10, Factory {\n");
 

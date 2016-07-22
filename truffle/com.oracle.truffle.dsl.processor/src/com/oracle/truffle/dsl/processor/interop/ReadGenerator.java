@@ -43,8 +43,9 @@ public final class ReadGenerator extends MessageGenerator {
     private static final String TARGETABLE_READ_NODE = "TargetableReadNode";
     private static final String READ_ROOT_NODE = "ReadRootNode";
 
-    public ReadGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public ReadGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
     }
 
     @Override

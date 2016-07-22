@@ -39,8 +39,9 @@ public final class GenericGenerator extends MessageGenerator {
     private final String targetableExecuteNode;
     private final String executeRootNode;
 
-    public GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         String mName = messageName.substring(messageName.lastIndexOf('.') + 1);
         this.targetableExecuteNode = (new StringBuilder(mName)).replace(0, 1, mName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
         this.executeRootNode = (new StringBuilder(mName)).replace(0, 1, mName.substring(0, 1).toUpperCase()).append("RootNode").toString();
