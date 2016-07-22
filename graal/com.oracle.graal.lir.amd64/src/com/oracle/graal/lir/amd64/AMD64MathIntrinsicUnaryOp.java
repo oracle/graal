@@ -2770,10 +2770,6 @@ public final class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
                     0x676733af, 0x3d32e7b9
     };
 
-    private static int[] oneTan = {
-                    0x00000000, 0x3ff00000
-    };
-
     private static int[] twoPowFiftyFiveTan = {
                     0x00000000, 0x43600000
     };
