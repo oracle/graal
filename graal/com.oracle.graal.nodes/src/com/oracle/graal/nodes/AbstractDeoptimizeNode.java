@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import static com.oracle.graal.nodeinfo.InputType.State;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_INFINITY;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -40,8 +40,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * interpreter) at the position described by the {@link #stateBefore() deoptimization state}.
  */
 // @formatter:off
-@NodeInfo(cycles = CYCLES_INFINITY,
-          cyclesRationale = "The cycles for a deopt are as high as possible as we continue execution in the interpreter.",
+@NodeInfo(cycles = CYCLES_UNKNOWN,
+          cyclesRationale = "The cycles for a deopt are as high as possible as we continue execution in the interpreter, " +
+                            "but they pollute the cost model, thus we do not care about their cycles.",
           size = SIZE_UNKNOWN,
           sizeRationale = "Deopts carry the meta information necessary to map the state back in the interpreter, but they pollute the cost model," +
                           "thus we do not care about their size.")

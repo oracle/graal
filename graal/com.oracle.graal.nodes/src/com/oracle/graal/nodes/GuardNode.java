@@ -24,8 +24,8 @@ package com.oracle.graal.nodes;
 
 import static com.oracle.graal.nodeinfo.InputType.Condition;
 import static com.oracle.graal.nodeinfo.InputType.Guard;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * maximum flexibility for the guard node and guarantees that deoptimization occurs only if the
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
-@NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {Guard}, size = SIZE_1, cycles = CYCLES_1)
+@NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {Guard}, size = SIZE_2, cycles = CYCLES_2)
 public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, GuardingNode, DeoptimizingGuard {
 
     public static final NodeClass<GuardNode> TYPE = NodeClass.create(GuardNode.class);

@@ -65,8 +65,7 @@ public enum NodeSize {
     SIZE_50(50),
     SIZE_80(80),
     SIZE_100(100),
-    SIZE_200(200),
-    SIZE_INFINITY(1000);
+    SIZE_200(200);
 
     final int estimatedCodeSize;
 

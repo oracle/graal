@@ -31,7 +31,6 @@ import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_4;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_40;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_80;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_INFINITY;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_10;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
@@ -170,10 +169,6 @@ public abstract class DefaultNodeCostProvider implements NodeCostProvider {
             if (((AccessFieldNode) n).field().isVolatile()) {
                 // membar cycles is added
                 return CYCLES_30;
-            }
-        } else if (n instanceof LoopEndNode) {
-            if (((LoopEndNode) n).canSafepoint()) {
-                return CYCLES_INFINITY;
             }
         } else if (n instanceof SwitchNode) {
             SwitchNode x = (SwitchNode) n;
