@@ -56,11 +56,11 @@ void *truffle_address_to_function(void *address);
 void *truffle_get_arg(int i);
 
 // Predicates:
-bool truffle_is_executable(void *object);
-bool truffle_is_null(void *object);
-bool truffle_has_size(void *object);
-bool truffle_is_boxed(void *object);
-bool truffle_is_truffle_object(void *object);
+bool truffle_is_executable(const void *object);
+bool truffle_is_null(const void *object);
+bool truffle_has_size(const void *object);
+bool truffle_is_boxed(const void *object);
+bool truffle_is_truffle_object(const void *object);
 
 // Execute:
 void *truffle_execute(void *object, ...);
