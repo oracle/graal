@@ -711,9 +711,12 @@ public class FlatNodeGenFactory {
 
         TypeMirror returnType = executeAndSpecializeType.getReturnType();
 
-        CodeExecutableElement method = frameState.createMethod(modifiers(PRIVATE, Modifier.SYNCHRONIZED), returnType, "executeAndSpecialize", frame);
+        CodeExecutableElement method = frameState.createMethod(modifiers(PRIVATE), returnType, "executeAndSpecialize", frame);
 
         final CodeTreeBuilder builder = method.createBuilder();
+
+        builder.startSynchronized("getRootNode()");
+
         builder.tree(state.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
@@ -729,6 +732,8 @@ public class FlatNodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
+
+        builder.end();
         return method;
     }
 
@@ -2190,7 +2195,7 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
         boolean isSynchronized = builder.findMethod().getModifiers().contains(Modifier.SYNCHRONIZED);
         if (!isSynchronized) {
-            builder.startSynchronized("this");
+            builder.startSynchronized("getRootNode()");
         }
         if (excludeSpecialization) {
             builder.tree(this.exclude.createSet(frameState, Arrays.asList(specialization).toArray(new SpecializationData[0]), true, true));
