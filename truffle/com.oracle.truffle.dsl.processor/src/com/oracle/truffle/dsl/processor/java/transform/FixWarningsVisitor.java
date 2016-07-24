@@ -90,6 +90,10 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
         symbolsUsed.clear();
         super.visitExecutable(e, p);
 
+        // don't do suppressed warnings unused for constructors
+        if (e.getSimpleName().toString().equals(e.getEnclosingClass().getSimpleName().toString())) {
+            return null;
+        }
         for (VariableElement parameter : e.getParameters()) {
             if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {
                 e.getAnnotationMirrors().add(createUnusedAnnotationMirror());

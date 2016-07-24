@@ -80,6 +80,12 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
 
+        for (AssumptionExpression expression : getAssumptionExpressions()) {
+            if (expression.getExpression().findBoundVariableElements().contains(cachedVariable)) {
+                return true;
+            }
+        }
+
         // check all next binding caches if they are bound to a guard and use this cache variable
         boolean found = false;
         for (CacheExpression expression : getCaches()) {
@@ -93,6 +99,7 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+
         return false;
     }
 
