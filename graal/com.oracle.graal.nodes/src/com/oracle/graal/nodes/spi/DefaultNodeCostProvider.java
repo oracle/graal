@@ -47,7 +47,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.InvokeNode;
+import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoopEndNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.SwitchNode;
@@ -73,11 +73,11 @@ public abstract class DefaultNodeCostProvider implements NodeCostProvider {
 
     @Override
     public NodeSize size(Node n) {
-        if (n instanceof InvokeNode) {
+        if (n instanceof Invoke) {
             /*
              * Code size for the invoke itself is a very weak approximation.
              */
-            InvokeNode ivk = (InvokeNode) n;
+            Invoke ivk = (Invoke) n;
             CallTargetNode mct = ivk.callTarget();
             switch (mct.invokeKind()) {
                 case Interface:
@@ -137,8 +137,8 @@ public abstract class DefaultNodeCostProvider implements NodeCostProvider {
 
     @Override
     public NodeCycles cycles(Node n) {
-        if (n instanceof InvokeNode) {
-            InvokeNode ivk = (InvokeNode) n;
+        if (n instanceof Invoke) {
+            Invoke ivk = (Invoke) n;
             CallTargetNode mct = ivk.callTarget();
             switch (mct.invokeKind()) {
                 case Interface:
