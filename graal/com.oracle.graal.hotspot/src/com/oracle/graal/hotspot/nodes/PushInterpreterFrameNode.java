@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_6;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
@@ -37,7 +40,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * A call to the runtime code implementing the uncommon trap logic.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_8, size = SIZE_6)
 public final class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<PushInterpreterFrameNode> TYPE = NodeClass.create(PushInterpreterFrameNode.class);

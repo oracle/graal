@@ -25,6 +25,8 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.debug.Debug.applyFormattingFlagsAndWidth;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 import static java.util.FormattableFlags.ALTERNATE;
 
@@ -471,7 +473,7 @@ public class SnippetTemplate {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
 
         public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.create(VarargsPlaceholderNode.class);

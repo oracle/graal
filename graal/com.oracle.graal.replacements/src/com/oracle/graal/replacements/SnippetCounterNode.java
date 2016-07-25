@@ -23,6 +23,8 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.lang.reflect.Field;
@@ -59,7 +61,7 @@ import sun.misc.Unsafe;
  * A unique counter will be created for each unique name passed to the constructor. Depending on the
  * value of withContext, the name of the root method is added to the counter's name.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<SnippetCounterNode> TYPE = NodeClass.create(SnippetCounterNode.class);

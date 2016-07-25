@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -30,7 +33,7 @@ import com.oracle.graal.nodes.StartNode;
 /**
  * Start node for a {@link Stub}'s graph.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class StubStartNode extends StartNode {
 
     public static final NodeClass<StubStartNode> TYPE = NodeClass.create(StubStartNode.class);

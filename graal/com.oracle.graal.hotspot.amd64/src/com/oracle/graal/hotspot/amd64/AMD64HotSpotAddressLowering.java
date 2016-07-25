@@ -23,6 +23,9 @@
 
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.AMD64AddressLowering;
@@ -46,7 +49,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
     private final long heapBase;
     private final Register heapBaseRegister;
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
     public static class HeapBaseNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<HeapBaseNode> TYPE = NodeClass.create(HeapBaseNode.class);
