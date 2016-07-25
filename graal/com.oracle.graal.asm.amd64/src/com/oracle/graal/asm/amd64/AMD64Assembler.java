@@ -1801,13 +1801,6 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(src, dst);
     }
 
-    public final void movw(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x8B);
-        emitOperandHelper(dst, src);
-    }
-
     public final void mulpd(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
@@ -2166,14 +2159,6 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void paddq(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
-        simdPrefix(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0xD4);
-        emitOperandHelper(dst, src);
-    }
-
     public final void pextrw(Register dst, Register src, int imm8) {
         assert dst.getRegisterCategory().equals(AMD64.CPU) && src.getRegisterCategory().equals(AMD64.XMM);
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
@@ -2206,14 +2191,6 @@ public class AMD64Assembler extends Assembler {
         int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0xDB);
         emitByte(0xC0 | encode);
-    }
-
-    public final void pand(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
-        simdPrefix(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0xDB);
-        emitOperandHelper(dst, src);
     }
 
     public final void pxor(Register dst, Register src) {
