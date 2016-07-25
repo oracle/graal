@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.34.3",
+  "mxversion" : "5.35.2",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "993fb45e82e288e96cd857b6768da473f13477e2",
+        "version" : "534a0391a33938b5d20b362c3f4988e90672bf0c",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -1086,6 +1086,7 @@ suite = {
         "com.oracle.graal.replacements",
       ],
       "uses" : [
+        "com.oracle.truffle.api.object.LayoutFactory",
         "com.oracle.graal.truffle.LoopNodeFactory",
         "com.oracle.graal.truffle.substitutions.TruffleInvocationPluginProvider",
       ],
@@ -1401,6 +1402,8 @@ suite = {
     },
 
     "GRAAL" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.graal.graal_core",
       "subDir" : "graal",
       "overlaps" : [
         "GRAAL_OPTIONS",
@@ -1446,10 +1449,6 @@ suite = {
         "JVMCI_SERVICES",
         "JVMCI_API",
         "JVMCI_HOTSPOT",
-      ],
-      # The root(s) of the module jar's contents
-      "moduledeps" : [
-        "GRAAL_TRUFFLE_HOTSPOT",
       ],
     },
   },
