@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.InputType.Anchor;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_15;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_15;
+
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNegationNode;
@@ -49,14 +52,14 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_15, size = SIZE_15)
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     protected final ObjectStamp checkedStamp;
 
     private JavaTypeProfile profile;
-    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
+    @OptionalInput(Anchor) protected AnchoringNode anchor;
 
     private InstanceOfNode(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         this(TYPE, checkedStamp, object, profile, anchor);

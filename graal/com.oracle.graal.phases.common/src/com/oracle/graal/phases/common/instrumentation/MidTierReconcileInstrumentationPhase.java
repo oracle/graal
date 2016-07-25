@@ -54,4 +54,9 @@ public class MidTierReconcileInstrumentationPhase extends Phase {
             }
         }
     }
+
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
 }

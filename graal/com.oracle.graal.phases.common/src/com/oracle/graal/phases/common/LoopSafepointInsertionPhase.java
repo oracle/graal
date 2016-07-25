@@ -35,6 +35,13 @@ import com.oracle.graal.phases.Phase;
 public class LoopSafepointInsertionPhase extends Phase {
 
     @Override
+    public boolean checkContract() {
+        // the size / cost after is highly dynamic and dependent on the graph, thus we do not verify
+        // costs for this phase
+        return false;
+    }
+
+    @Override
     protected void run(StructuredGraph graph) {
         if (GenLoopSafepoints.getValue()) {
             for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.TYPE)) {

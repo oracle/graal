@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.word;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -38,7 +41,7 @@ import jdk.vm.ci.meta.Value;
  * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER} and
  * {@link HotspotOpcode#TO_KLASS_POINTER} operations.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class PointerCastNode extends FloatingNode implements LIRLowerable, Node.ValueNumberable {
 
     public static final NodeClass<PointerCastNode> TYPE = NodeClass.create(PointerCastNode.class);

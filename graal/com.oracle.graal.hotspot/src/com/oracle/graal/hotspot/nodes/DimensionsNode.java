@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.asm.NumUtil.roundUp;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.BitSet;
 
@@ -43,7 +45,7 @@ import jdk.vm.ci.meta.Value;
  * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray
  * instruction.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<DimensionsNode> TYPE = NodeClass.create(DimensionsNode.class);

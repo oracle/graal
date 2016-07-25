@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_20;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -33,7 +36,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 /**
  * The {@code AbstractNewObjectNode} is the base class for the new instance and new array nodes.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_20, size = SIZE_20)
 public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode implements Lowerable {
 
     public static final NodeClass<AbstractNewObjectNode> TYPE = NodeClass.create(AbstractNewObjectNode.class);

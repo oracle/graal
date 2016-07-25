@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.function.Consumer;
 
@@ -96,7 +98,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static class TestNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
         private static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
 

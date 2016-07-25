@@ -22,15 +22,19 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.Map;
+import static com.oracle.graal.nodeinfo.InputType.Extension;
+import static com.oracle.graal.nodeinfo.InputType.Guard;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import jdk.vm.ci.meta.JavaKind;
+import java.util.Map;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
@@ -43,7 +47,9 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.UncheckedInterfaceProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 
-@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
+import jdk.vm.ci.meta.JavaKind;
+
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
@@ -51,10 +57,10 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
 
     @Successor AbstractBeginNode next;
     @Successor AbstractBeginNode exceptionEdge;
-    @Input(InputType.Extension) CallTargetNode callTarget;
-    @OptionalInput(InputType.State) FrameState stateDuring;
-    @OptionalInput(InputType.State) FrameState stateAfter;
-    @OptionalInput(InputType.Guard) GuardingNode guard;
+    @Input(Extension) CallTargetNode callTarget;
+    @OptionalInput(State) FrameState stateDuring;
+    @OptionalInput(State) FrameState stateAfter;
+    @OptionalInput(Guard) GuardingNode guard;
     protected final int bci;
     protected boolean polymorphic;
     protected boolean useForInlining;

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
@@ -42,7 +44,7 @@ import jdk.vm.ci.code.CodeUtil;
 /**
  * The {@code ZeroExtendNode} converts an integer to a wider integer using zero extension.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1)
 public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
 
     public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.create(ZeroExtendNode.class);

@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.java;
 
-import jdk.vm.ci.meta.Value;
-import sun.misc.Unsafe;
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_10;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_3;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
@@ -37,14 +38,17 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.Value;
+import sun.misc.Unsafe;
+
 /**
  * Represents an atomic read-and-add operation like {@link Unsafe#getAndAddInt(Object, long, int)}.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_10, size = SIZE_3)
 public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<AtomicReadAndAddNode> TYPE = NodeClass.create(AtomicReadAndAddNode.class);
-    @Input(InputType.Association) AddressNode address;
+    @Input(Association) AddressNode address;
     @Input ValueNode delta;
 
     protected final LocationIdentity locationIdentity;

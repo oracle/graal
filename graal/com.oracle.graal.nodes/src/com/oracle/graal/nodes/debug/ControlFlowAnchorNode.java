@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -35,7 +38,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * This node prevents control flow optimizations. It is never duplicated or merged with other
  * control flow anchors.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.create(ControlFlowAnchorNode.class);

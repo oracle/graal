@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
+
 import com.oracle.graal.compiler.amd64.AMD64NodeLIRBuilder;
 import com.oracle.graal.compiler.common.type.RawPointerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -43,7 +46,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Native call is a block hole", size = SIZE_20)
 public final class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<AMD64RawNativeCallNode> TYPE = NodeClass.create(AMD64RawNativeCallNode.class);
 

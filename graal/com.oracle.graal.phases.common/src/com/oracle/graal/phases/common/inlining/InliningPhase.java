@@ -70,6 +70,11 @@ public class InliningPhase extends AbstractInliningPhase {
         this.canonicalizer = canonicalizer;
     }
 
+    @Override
+    public float codeSizeIncrease() {
+        return 10_000f;
+    }
+
     public void setMaxMethodsPerInlining(int max) {
         maxMethodPerInlining = max;
     }
@@ -104,4 +109,5 @@ public class InliningPhase extends AbstractInliningPhase {
         assert data.inliningDepth() == 0 || count == limit;
         assert data.graphCount() == 0 || count == limit;
     }
+
 }

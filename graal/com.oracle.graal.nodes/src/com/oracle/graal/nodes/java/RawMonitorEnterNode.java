@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_80;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_80;
+
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.graph.IterableNodeType;
@@ -40,7 +43,11 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * The {@code RawMonitorEnterNode} represents the acquisition of a monitor. The object needs to
  * already be non-null and the hub is an additional parameter to the node.
  */
-@NodeInfo
+// @formatter:off
+@NodeInfo(cycles = CYCLES_80,
+          cyclesRationale = "Rough estimation of the enter operation",
+          size = SIZE_80)
+// @formatter:on
 public final class RawMonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
 
     public static final NodeClass<RawMonitorEnterNode> TYPE = NodeClass.create(RawMonitorEnterNode.class);

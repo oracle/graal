@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_5;
+
 import java.util.EnumMap;
 
 import com.oracle.graal.compiler.common.calc.FloatConvert;
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
  * semantics.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_5)
 public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ConvertNode, Lowerable, ArithmeticLIRLowerable {
     public static final NodeClass<FloatConvertNode> TYPE = NodeClass.create(FloatConvertNode.class);
 

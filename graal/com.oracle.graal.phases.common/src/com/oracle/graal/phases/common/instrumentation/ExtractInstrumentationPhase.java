@@ -223,4 +223,9 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
 
     }
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
+
 }

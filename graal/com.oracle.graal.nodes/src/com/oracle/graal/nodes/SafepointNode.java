@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_6;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -33,7 +36,11 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Marks a position in the graph where a safepoint should be emitted.
  */
-@NodeInfo
+// @formatter:off
+@NodeInfo(cycles = CYCLES_UNKNOWN,
+          cyclesRationale = "We don't know how long a safepoint would take if it is executed",
+          size = SIZE_6)
+// @formatter:on
 public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable {
 
     public static final NodeClass<SafepointNode> TYPE = NodeClass.create(SafepointNode.class);

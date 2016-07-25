@@ -30,6 +30,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -39,7 +40,7 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.TriState;
 
-@NodeInfo(shortName = "==")
+@NodeInfo(shortName = "==", cycles = NodeCycles.CYCLES_3)
 public final class FloatEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
     public static final NodeClass<FloatEqualsNode> TYPE = NodeClass.create(FloatEqualsNode.class);
 

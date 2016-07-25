@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.LIRKind;
@@ -51,7 +54,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 /**
  * The {@code ConstantNode} represents a {@link Constant constant}.
  */
-@NodeInfo(nameTemplate = "C({p#rawvalue})")
+@NodeInfo(nameTemplate = "C({p#rawvalue})", cycles = CYCLES_0, size = SIZE_1)
 public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<ConstantNode> TYPE = NodeClass.create(ConstantNode.class);

@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import static com.oracle.graal.nodeinfo.InputType.Condition;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node.IndirectCanonicalization;
@@ -30,7 +31,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
 
-@NodeInfo(allowedUsageTypes = {Condition})
+@NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
 public abstract class LogicNode extends FloatingNode implements IndirectCanonicalization {
 
     public static final NodeClass<LogicNode> TYPE = NodeClass.create(LogicNode.class);

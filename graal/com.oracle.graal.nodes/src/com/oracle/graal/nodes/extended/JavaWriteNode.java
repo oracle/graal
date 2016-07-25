@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Write a raw memory location according to Java field or array write semantics. It will perform

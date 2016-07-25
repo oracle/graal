@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 import static jdk.vm.ci.code.BytecodeFrame.getPlaceholderBciName;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
@@ -60,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * This can be used as debug or deoptimization information.
  */
-@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}")
+@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}", cycles = CYCLES_0, size = SIZE_1)
 public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
@@ -100,9 +104,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     @OptionalInput NodeInputList<ValueNode> values;
 
-    @OptionalInput(InputType.Association) NodeInputList<MonitorIdNode> monitorIds;
+    @OptionalInput(Association) NodeInputList<MonitorIdNode> monitorIds;
 
-    @OptionalInput(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
+    @OptionalInput(State) NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.

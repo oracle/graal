@@ -48,4 +48,9 @@ public class LoopPeelingPhase extends ContextlessLoopPhase<LoopPolicies> {
             data.deleteUnusedNodes();
         }
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 5.0f;
+    }
 }
