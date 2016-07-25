@@ -90,6 +90,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                 case EXP:
                     return ARITHMETIC_EXP_STUB;
             }
+        } else if (operation == UnaryOperation.EXP) {
+            return operation.foreignCallDescriptor;
         }
         // Lower only using LIRGenerator
         return null;
@@ -102,6 +104,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                 case POW:
                     return ARITHMETIC_POW_STUB;
             }
+        } else if (operation == BinaryOperation.POW) {
+            return operation.foreignCallDescriptor;
         }
         // Lower only using LIRGenerator
         return null;
