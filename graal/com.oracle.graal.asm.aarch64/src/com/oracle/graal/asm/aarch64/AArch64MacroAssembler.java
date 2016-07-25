@@ -1401,7 +1401,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress getPlaceholder() {
+    public AbstractAddress getPlaceholder(int instructionStartPosition) {
         return AArch64Address.PLACEHOLDER;
     }
 }

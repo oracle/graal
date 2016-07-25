@@ -38,6 +38,7 @@ import com.oracle.graal.asm.AbstractAddress;
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.code.DataSection.Data;
 import com.oracle.graal.code.DataSection.RawData;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -93,6 +94,29 @@ public class CompilationResultBuilder {
         }
     }
 
+    /**
+     * Wrapper for a code annotation that was produced by the {@link Assembler}.
+     */
+    public static final class AssemblerAnnotation extends CodeAnnotation {
+
+        public final Assembler.CodeAnnotation assemblerCodeAnnotation;
+
+        public AssemblerAnnotation(Assembler.CodeAnnotation assemblerCodeAnnotation) {
+            super(assemblerCodeAnnotation.instructionPosition);
+            this.assemblerCodeAnnotation = assemblerCodeAnnotation;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+
+        @Override
+        public String toString() {
+            return assemblerCodeAnnotation.toString();
+        }
+    }
+
     public final Assembler asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
@@ -141,6 +165,16 @@ public class CompilationResultBuilder {
         this.frameContext = frameContext;
         assert frameContext != null;
         this.dataCache = dataCache;
+
+        boolean assertionsEnabled = false;
+        assert (assertionsEnabled = true) == true;
+        if (dataBuilder.needDetailedPatchingInformation() || assertionsEnabled) {
+            /*
+             * Always enabled in debug mode, even when the VM does not request detailed information,
+             * to increase test coverage.
+             */
+            asm.setCodePatchingAnnotationConsumer(assemblerCodeAnnotation -> compilationResult.addAnnotation(new AssemblerAnnotation(assemblerCodeAnnotation)));
+        }
     }
 
     public void setTotalFrameSize(int frameSize) {
@@ -237,8 +271,9 @@ public class CompilationResultBuilder {
     public AbstractAddress recordDataSectionReference(Data data) {
         assert data != null;
         DataSectionReference reference = compilationResult.getDataSection().insertData(data);
-        compilationResult.recordDataPatch(asm.position(), reference);
-        return asm.getPlaceholder();
+        int instructionStart = asm.position();
+        compilationResult.recordDataPatch(instructionStart, reference);
+        return asm.getPlaceholder(instructionStart);
     }
 
     public AbstractAddress recordDataReferenceInCode(DataPointerConstant constant) {
