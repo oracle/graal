@@ -53,16 +53,21 @@ public abstract class MessageGenerator {
     protected final String messageName;
     protected final String userClassName;
     protected final String truffleLanguageFullClazzName;
+    protected final String receiverClassName;
     protected final ProcessingEnvironment processingEnv;
+    protected final ForeignAccessFactoryGenerator containingForeignAccessFactory;
 
-    MessageGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
+    MessageGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         this.processingEnv = processingEnv;
         this.element = element;
+        this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.packageName = ElementUtils.getPackageName(element);
         this.messageName = resolveAnnotation.message();
         this.userClassName = ElementUtils.getQualifiedName(element);
         this.truffleLanguageFullClazzName = Utils.getTruffleLanguageFullClassName(messageResolutionAnnotation);
         this.clazzName = Utils.getSimpleResolveClassName(element);
+        this.containingForeignAccessFactory = containingForeignAccessFactory;
     }
 
     public final void generate() throws IOException {
@@ -71,6 +76,7 @@ public abstract class MessageGenerator {
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
 
+        Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
         w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
@@ -170,25 +176,26 @@ public abstract class MessageGenerator {
         return clazzName;
     }
 
-    public static MessageGenerator getGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
+    public static MessageGenerator getGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         String messageName = resolveAnnotation.message();
 
         Object currentMessage = Utils.getMessage(processingEnv, messageName);
         if (currentMessage != null) {
             if (Message.READ.toString().equalsIgnoreCase(messageName)) {
-                return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+                return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
-                return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+                return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                             Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
                             Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName)) {
-                return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+                return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                             Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
-                return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+                return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else {
                 assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
-                return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+                return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             }
         }
         return null;

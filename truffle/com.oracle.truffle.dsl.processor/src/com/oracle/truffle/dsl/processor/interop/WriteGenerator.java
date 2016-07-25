@@ -43,8 +43,9 @@ public final class WriteGenerator extends MessageGenerator {
     private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
     private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
-    public WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
     }
 
     @Override
