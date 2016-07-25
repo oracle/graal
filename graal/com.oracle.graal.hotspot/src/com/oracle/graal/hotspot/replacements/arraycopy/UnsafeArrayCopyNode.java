@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_200;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_200;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -41,7 +41,9 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+import jdk.vm.ci.meta.JavaKind;
+
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_200, size = SIZE_200)
 public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single, MemoryAccess {
 
     public static final NodeClass<UnsafeArrayCopyNode> TYPE = NodeClass.create(UnsafeArrayCopyNode.class);

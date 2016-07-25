@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.phases.common.instrumentation.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -36,7 +39,7 @@ import com.oracle.graal.nodes.ValuePhiNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public final class RuntimePathNode extends InstrumentationContentNode {
 
     public static final NodeClass<RuntimePathNode> TYPE = NodeClass.create(RuntimePathNode.class);

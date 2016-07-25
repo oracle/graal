@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_10;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_6;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
@@ -36,7 +39,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * Emits code to leave (pop) the current low-level stack frame. This operation also removes the
  * return address if its location is on the stack.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_10, size = SIZE_6)
 public final class LeaveCurrentStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<LeaveCurrentStackFrameNode> TYPE = NodeClass.create(LeaveCurrentStackFrameNode.class);

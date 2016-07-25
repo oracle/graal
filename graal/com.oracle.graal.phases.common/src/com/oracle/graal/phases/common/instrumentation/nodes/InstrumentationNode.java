@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.phases.common.instrumentation.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
@@ -58,7 +61,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public class InstrumentationNode extends DeoptimizingFixedWithNextNode implements Virtualizable {
 
     public static final NodeClass<InstrumentationNode> TYPE = NodeClass.create(InstrumentationNode.class);

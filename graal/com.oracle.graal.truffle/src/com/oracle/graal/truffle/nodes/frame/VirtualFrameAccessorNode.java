@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.truffle.nodes.frame;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -39,7 +42,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public abstract class VirtualFrameAccessorNode extends FixedWithNextNode {
     public static final NodeClass<VirtualFrameAccessorNode> TYPE = NodeClass.create(VirtualFrameAccessorNode.class);
 

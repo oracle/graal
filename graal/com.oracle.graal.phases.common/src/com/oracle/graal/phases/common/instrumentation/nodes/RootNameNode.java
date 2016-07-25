@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.phases.common.instrumentation.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
@@ -33,7 +36,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public final class RootNameNode extends InstrumentationContentNode implements Lowerable {
 
     public static final NodeClass<RootNameNode> TYPE = NodeClass.create(RootNameNode.class);

@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
@@ -41,10 +41,13 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.word.Word;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
+
 /**
  * A call to the runtime code {@code Deoptimization::fetch_unroll_info}.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<DeoptimizationFetchUnrollInfoCallNode> TYPE = NodeClass.create(DeoptimizationFetchUnrollInfoCallNode.class);

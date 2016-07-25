@@ -23,6 +23,8 @@
 package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptEliminateGuards;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER_ALWAYS_REACHED;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_LEAVE;
@@ -82,7 +84,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class LoweringPhase extends BasePhase<PhaseContext> {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class DummyGuardHandle extends ValueNode implements GuardedNode {
         public static final NodeClass<DummyGuardHandle> TYPE = NodeClass.create(DummyGuardHandle.class);
         @Input(InputType.Guard) GuardingNode guard;

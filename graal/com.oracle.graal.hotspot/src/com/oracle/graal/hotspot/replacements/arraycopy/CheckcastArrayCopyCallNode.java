@@ -23,10 +23,10 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaKind;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -52,7 +52,10 @@ import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.word.Word;
 
-@NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaKind;
+
+@NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.create(CheckcastArrayCopyCallNode.class);
