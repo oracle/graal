@@ -24,6 +24,8 @@ package com.oracle.truffle.object.dsl.processor.model;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.object.dsl.processor.LayoutParser;
+
 public class PropertyModel {
 
     private String name;
@@ -70,7 +72,7 @@ public class PropertyModel {
     }
 
     public boolean hasGeneratedName() {
-        return name.length() > 3 && name.startsWith("arg") && Character.isDigit(name.charAt(3));
+        return LayoutParser.isGeneratedName(name);
     }
 
     public TypeMirror getType() {
