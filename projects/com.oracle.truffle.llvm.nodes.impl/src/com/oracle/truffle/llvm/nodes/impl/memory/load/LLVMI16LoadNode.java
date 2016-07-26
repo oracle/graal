@@ -33,21 +33,52 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.load.LLVMI16LoadNodeFactory.LLVMI16DirectLoadNodeGen;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 // Truffle has no branch profiles for short
+@NodeChild(type = LLVMAddressNode.class)
 public abstract class LLVMI16LoadNode extends LLVMI16Node {
+    @Child protected Node foreignRead = Message.READ.createNode();
+    @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
+    protected static final Class<?> type = short.class;
 
-    @NodeChild(type = LLVMAddressNode.class)
+    protected short doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+        try {
+            int index = (int) (addr.getOffset() / LLVMI16Node.BYTE_SIZE);
+            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
+            return (short) toLLVM.convert(frame, value, type);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public abstract static class LLVMI16DirectLoadNode extends LLVMI16LoadNode {
 
         @Specialization
         public short executeI16(LLVMAddress addr) {
             return LLVMMemory.getI16(addr);
+        }
+
+        @Specialization
+        public short executeI16(VirtualFrame frame, LLVMTruffleObject addr) {
+            return doForeignAccess(frame, addr);
+        }
+
+        @Specialization
+        public short executeI16(VirtualFrame frame, TruffleObject addr) {
+            return executeI16(frame, new LLVMTruffleObject(addr));
         }
 
     }
@@ -63,7 +94,15 @@ public abstract class LLVMI16LoadNode extends LLVMI16Node {
         @Override
         public short executeI16(VirtualFrame frame) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            short val = LLVMMemory.getI16(addressNode.executePointee(frame));
+            Object addr = addressNode.executeGeneric(frame);
+            short val;
+            if (addr instanceof LLVMAddress) {
+                val = LLVMMemory.getI16((LLVMAddress) addr);
+            } else if (addr instanceof LLVMTruffleObject) {
+                val = doForeignAccess(frame, (LLVMTruffleObject) addr);
+            } else {
+                val = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr));
+            }
             replace(new LLVMI16ProfilingLoadNode(addressNode, val));
             return val;
         }
@@ -82,7 +121,15 @@ public abstract class LLVMI16LoadNode extends LLVMI16Node {
 
         @Override
         public short executeI16(VirtualFrame frame) {
-            short value = LLVMMemory.getI16(addressNode.executePointee(frame));
+            Object addr = addressNode.executeGeneric(frame);
+            short value;
+            if (addr instanceof LLVMAddress) {
+                value = LLVMMemory.getI16((LLVMAddress) addr);
+            } else if (addr instanceof LLVMTruffleObject) {
+                value = doForeignAccess(frame, (LLVMTruffleObject) addr);
+            } else {
+                value = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr));
+            }
             if (value == profiledValue) {
                 return profiledValue;
             } else {
