@@ -27,33 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.impl.others;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
 
-public abstract class LLVMMemMove {
+public abstract class LLVMGlobalVariableStorageGuards {
 
-    @GenerateNodeFactory
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class, value = "dest"), @NodeChild(type = LLVMAddressNode.class, value = "src"), @NodeChild(type = LLVMI64Node.class, value = "length"),
-                    @NodeChild(type = LLVMI32Node.class, value = "align"), @NodeChild(type = LLVMI1Node.class, value = "isVolatile")})
-    public abstract static class LLVMMemMoveI64 extends LLVMNode {
+    @SuppressWarnings("unused")
+    public static boolean isUninitialized(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
+        return globalVariableStorage.isUninitialized();
+    }
 
-        @SuppressWarnings("unused")
-        @Specialization
-        public void executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
-            LLVMHeap.memMove(dest, source, length);
-        }
+    @SuppressWarnings("unused")
+    public static boolean isInitializedNative(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
+        return globalVariableStorage.isInitializedNative();
+    }
 
+    @SuppressWarnings("unused")
+    public static boolean isNative(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
+        return globalVariableStorage.isNative();
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean isManaged(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
+        return globalVariableStorage.isManaged();
     }
 
 }

@@ -77,11 +77,13 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI16Arr
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI32ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI64ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -381,7 +383,13 @@ public final class LLVMLiteralFactory {
             case FLOAT_POINTER:
             case DOUBLE_POINTER:
             case ADDRESS:
-                return new LLVMAddressLiteralNode((LLVMAddress) value);
+                if (value instanceof LLVMAddress) {
+                    return new LLVMAddressLiteralNode((LLVMAddress) value);
+                } else if (value instanceof LLVMGlobalVariableStorage) {
+                    return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobalVariableStorage) value);
+                } else {
+                    throw new AssertionError(value.getClass());
+                }
             case FUNCTION_ADDRESS:
                 return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) value);
             default:
