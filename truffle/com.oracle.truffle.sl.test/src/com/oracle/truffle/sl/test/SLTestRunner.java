@@ -89,7 +89,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
-public final class SLTestRunner extends ParentRunner<TestCase> {
+public class SLTestRunner extends ParentRunner<TestCase> {
 
     private static int repeats = 1;
 
@@ -145,7 +145,11 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
 
         String[] paths = suite.value();
 
-        Path root = getRootViaResourceURL(c, paths);
+        Class<?> testCaseDirectory = c;
+        if (suite.testCaseDirectory() != SLTestSuite.class) {
+            testCaseDirectory = suite.testCaseDirectory();
+        }
+        Path root = getRootViaResourceURL(testCaseDirectory, paths);
 
         if (root == null) {
             for (String path : paths) {
