@@ -210,8 +210,9 @@ public class LayoutParser {
             }
 
             final VariableElement firstParameter = parameters.get(0);
+            final String firstParameterName = firstParameter.getSimpleName().toString();
 
-            if (!firstParameter.getSimpleName().toString().equals("factory")) {
+            if (!matches(firstParameterName, "factory")) {
                 processor.reportError(firstParameter, "If an @Layout has shape properties, the first parameter of the constructor must be called factory (was %s)",
                                 firstParameter.getSimpleName());
             }
@@ -299,6 +300,7 @@ public class LayoutParser {
 
         final TypeMirror type = parameter.asType();
 
+        final String parameterName = parameter.getSimpleName().toString();
         final String expectedParameterName;
 
         if (isSameType(type, DynamicObject.class)) {
@@ -315,7 +317,7 @@ public class LayoutParser {
             expectedParameterName = null;
         }
 
-        if (expectedParameterName != null && !expectedParameterName.equals(parameter.getSimpleName().toString())) {
+        if (expectedParameterName != null && !matches(parameterName, expectedParameterName)) {
             processor.reportError(methodElement, "@Layout guard method should have a parameter named %s", expectedParameterName);
         }
     }
@@ -327,6 +329,7 @@ public class LayoutParser {
 
         final VariableElement parameter = methodElement.getParameters().get(0);
         final TypeMirror parameterType = parameter.asType();
+        final String parameterName = parameter.getSimpleName().toString();
 
         final boolean isShapeGetter;
         final boolean isObjectTypeGetter;
@@ -351,7 +354,7 @@ public class LayoutParser {
             processor.reportError(methodElement, "@Layout getter methods must have a parameter of type DynamicObject or, for shape properties, DynamicObjectFactory or ObjectType");
         }
 
-        if (expectedParameterName != null && !expectedParameterName.equals(parameter.getSimpleName().toString())) {
+        if (expectedParameterName != null && !matches(parameterName, expectedParameterName)) {
             processor.reportError(methodElement, "@Layout getter method should have a parameter named %s", expectedParameterName);
         }
 
@@ -376,6 +379,7 @@ public class LayoutParser {
 
         final VariableElement parameter = methodElement.getParameters().get(0);
         final TypeMirror parameterType = parameter.asType();
+        final String parameterName = parameter.getSimpleName().toString();
 
         final boolean isShapeSetter;
         final String expectedParameterName;
@@ -392,11 +396,14 @@ public class LayoutParser {
             processor.reportError(methodElement, "@Layout setter methods must have a first parameter of type DynamicObject or, for shape properties, DynamicObjectFactory");
         }
 
-        if (expectedParameterName != null && !expectedParameterName.equals(parameter.getSimpleName().toString())) {
+        if (expectedParameterName != null && !matches(parameterName, expectedParameterName)) {
             processor.reportError(methodElement, "@Layout getter method should have a first parameter named %s", expectedParameterName);
         }
 
-        if (!methodElement.getParameters().get(1).getSimpleName().toString().equals("value")) {
+        final VariableElement secondParameter = methodElement.getParameters().get(1);
+        final String secondParameterName = secondParameter.getSimpleName().toString();
+
+        if (!matches(secondParameterName, "value")) {
             processor.reportError(methodElement, "@Layout getter method should have a second parameter named value");
         }
 
@@ -508,8 +515,17 @@ public class LayoutParser {
         return processor.getProcessingEnv().getTypeUtils().isSameType(a, getType(klass));
     }
 
+    // Whether the parameter name is a fake generated one (argX).
+    // Happens only during superLayout parsing.
     public static boolean isGeneratedName(String name) {
         return name.length() > 3 && name.startsWith("arg") && Character.isDigit(name.charAt(3));
+    }
+
+    private static boolean matches(String parameterName, String expected) {
+        if (isGeneratedName(parameterName)) {
+            return true;
+        }
+        return parameterName.equals(expected);
     }
 
     private void setPropertyType(Element element, PropertyBuilder builder, TypeMirror type) {
