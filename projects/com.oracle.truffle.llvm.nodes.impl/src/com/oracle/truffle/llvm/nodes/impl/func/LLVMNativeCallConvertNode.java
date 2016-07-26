@@ -49,7 +49,10 @@ public abstract class LLVMNativeCallConvertNode {
 
         public LLVMResolvedNativeAddressCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
             super(function, nativeFunctionHandle, args, context);
-            assert function.getReturnType() == LLVMRuntimeType.ADDRESS;
+            assert (function.getReturnType() == LLVMRuntimeType.ADDRESS || function.getReturnType() == LLVMRuntimeType.I1_POINTER || function.getReturnType() == LLVMRuntimeType.I8_POINTER ||
+                            function.getReturnType() == LLVMRuntimeType.I16_POINTER || function.getReturnType() == LLVMRuntimeType.I32_POINTER ||
+                            function.getReturnType() == LLVMRuntimeType.I64_POINTER || function.getReturnType() == LLVMRuntimeType.HALF_POINTER ||
+                            function.getReturnType() == LLVMRuntimeType.FLOAT_POINTER || function.getReturnType() == LLVMRuntimeType.DOUBLE_POINTER);
         }
 
         @Override

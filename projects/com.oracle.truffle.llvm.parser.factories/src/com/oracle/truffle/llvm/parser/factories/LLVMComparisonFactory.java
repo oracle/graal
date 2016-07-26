@@ -175,6 +175,14 @@ public final class LLVMComparisonFactory {
                 return visitI64Comparison((LLVMI64Node) left, (LLVMI64Node) right, condition);
             case I_VAR_BITWIDTH:
                 return visitIVarComparison((LLVMIVarBitNode) left, (LLVMIVarBitNode) right, condition);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return visitAddressComparison((LLVMAddressNode) left, (LLVMAddressNode) right, condition);
             case FUNCTION_ADDRESS:

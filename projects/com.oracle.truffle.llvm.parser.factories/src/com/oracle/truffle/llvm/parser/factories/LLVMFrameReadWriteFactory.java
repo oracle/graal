@@ -105,6 +105,14 @@ public final class LLVMFrameReadWriteFactory {
                 return LLVMDoubleReadNodeGen.create(frameSlot);
             case X86_FP80:
                 return LLVM80BitFloatReadNodeGen.create(frameSlot);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMAddressReadNodeGen.create(frameSlot);
             case FUNCTION_ADDRESS:
@@ -156,6 +164,14 @@ public final class LLVMFrameReadWriteFactory {
                 return LLVMWriteDoubleNodeGen.create((LLVMDoubleNode) result, slot);
             case X86_FP80:
                 return LLVMWrite80BitFloatingNodeGen.create((LLVM80BitFloatNode) result, slot);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMWriteAddressNodeGen.create(result, slot);
             case FUNCTION_ADDRESS:
@@ -200,6 +216,14 @@ public final class LLVMFrameReadWriteFactory {
             case DOUBLE_VECTOR:
             case STRUCT:
             case FUNCTION_ADDRESS:
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
             case ARRAY:
                 return FrameSlotKind.Object;

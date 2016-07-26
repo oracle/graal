@@ -27,27 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
+package com.oracle.truffle.llvm.types;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMTruffleAddress;
 
-public abstract class LLVMToNullNode extends Node {
-    public abstract Object executeConvert(Object value, LLVMRuntimeType type);
+public class LLVMTruffleAddress implements TruffleObject {
+    private final LLVMAddress address;
+    private final LLVMRuntimeType type;
 
-    @Specialization
-    protected static Object fromAddress(LLVMAddress value, LLVMRuntimeType type) {
-        if (LLVMAddress.NULL_POINTER.equals(value)) {
-            return null;
-        }
-        return new LLVMTruffleAddress(value, type);
+    public LLVMTruffleAddress(LLVMAddress address, LLVMRuntimeType type) {
+        this.address = address;
+        this.type = type;
     }
 
-    @Specialization
-    protected static Object fromGeneric(Object value, @SuppressWarnings("unused") LLVMRuntimeType type) {
-        return value;
+    public LLVMAddress getAddress() {
+        return address;
+    }
+
+    public LLVMRuntimeType getType() {
+        return type;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMTruffleAddress;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
     }
 }

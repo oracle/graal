@@ -651,6 +651,14 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 case X86_FP80:
                     node = LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen.create((LLVM80BitFloatNode) value, slot);
                     break;
+                case I1_POINTER:
+                case I8_POINTER:
+                case I16_POINTER:
+                case I32_POINTER:
+                case I64_POINTER:
+                case HALF_POINTER:
+                case FLOAT_POINTER:
+                case DOUBLE_POINTER:
                 case ADDRESS:
                     node = LLVMRetNodeFactory.LLVMAddressRetNodeGen.create((LLVMAddressNode) value, slot);
                     break;

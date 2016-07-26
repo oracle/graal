@@ -149,6 +149,14 @@ public final class LLVMMemoryReadWriteFactory {
                 return LLVMDoubleDirectLoadNodeGen.create(loadTarget);
             case X86_FP80:
                 return LLVM80BitFloatDirectLoadNodeGen.create(loadTarget);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMAddressDirectLoadNodeGen.create(loadTarget);
             case FUNCTION_ADDRESS:
@@ -209,6 +217,14 @@ public final class LLVMMemoryReadWriteFactory {
                 return LLVMDoubleStoreNodeGen.create(pointerNode, (LLVMDoubleNode) valueNode);
             case X86_FP80:
                 return LLVM80BitFloatStoreNodeGen.create(pointerNode, (LLVM80BitFloatNode) valueNode);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMAddressStoreNodeGen.create(pointerNode, (LLVMAddressNode) valueNode);
             case FUNCTION_ADDRESS:

@@ -147,6 +147,14 @@ public final class LLVMFunctionFactory {
                     return LLVMDoubleRetNodeGen.create((LLVMDoubleNode) retValue, retSlot);
                 case X86_FP80:
                     return LLVM80BitFloatRetNodeGen.create((LLVM80BitFloatNode) retValue, retSlot);
+                case I1_POINTER:
+                case I8_POINTER:
+                case I16_POINTER:
+                case I32_POINTER:
+                case I64_POINTER:
+                case HALF_POINTER:
+                case FLOAT_POINTER:
+                case DOUBLE_POINTER:
                 case ADDRESS:
                     return LLVMAddressRetNodeGen.create((LLVMAddressNode) retValue, retSlot);
                 case FUNCTION_ADDRESS:
@@ -193,6 +201,14 @@ public final class LLVMFunctionFactory {
                 return LLVMDoubleArgNodeGen.create(argIndex);
             case X86_FP80:
                 return LLVM80BitFloatArgNodeGen.create(argIndex);
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
             case STRUCT:
                 return LLVMAddressArgNodeGen.create(argIndex);
@@ -244,6 +260,14 @@ public final class LLVMFunctionFactory {
                     return LLVMDoubleCallUnboxNodeGen.create(unresolvedCallNode);
                 case X86_FP80:
                     return LLVM80BitFloatCallUnboxNodeGen.create(unresolvedCallNode);
+                case I1_POINTER:
+                case I8_POINTER:
+                case I16_POINTER:
+                case I32_POINTER:
+                case I64_POINTER:
+                case HALF_POINTER:
+                case FLOAT_POINTER:
+                case DOUBLE_POINTER:
                 case ADDRESS:
                     return LLVMAddressCallUnboxNodeGen.create(unresolvedCallNode);
                 case FUNCTION_ADDRESS:

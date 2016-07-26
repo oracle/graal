@@ -238,7 +238,39 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof PointerType) {
             Type pointee = ((PointerType) type).getPointeeType();
-            return pointee instanceof FunctionType ? LLVMBaseType.FUNCTION_ADDRESS : LLVMBaseType.ADDRESS;
+            if (pointee instanceof FunctionType) {
+                return LLVMBaseType.FUNCTION_ADDRESS;
+            }
+            if (pointee instanceof IntegerType) {
+                switch (((IntegerType) pointee).getBitCount()) {
+                    case 1:
+                        return LLVMBaseType.I1_POINTER;
+                    case Byte.SIZE:
+                        return LLVMBaseType.I8_POINTER;
+                    case Short.SIZE:
+                        return LLVMBaseType.I16_POINTER;
+                    case Integer.SIZE:
+                        return LLVMBaseType.I32_POINTER;
+                    case Long.SIZE:
+                        return LLVMBaseType.I64_POINTER;
+                    default:
+                        return LLVMBaseType.ADDRESS;
+                }
+            }
+            if (pointee instanceof FloatingPointType) {
+                switch (((FloatingPointType) pointee)) {
+                    case HALF:
+                        return LLVMBaseType.HALF_POINTER;
+                    case FLOAT:
+                        return LLVMBaseType.FLOAT_POINTER;
+                    case DOUBLE:
+                        return LLVMBaseType.DOUBLE_POINTER;
+                    case X86_FP80:
+                    default:
+                        return LLVMBaseType.ADDRESS;
+                }
+            }
+            return LLVMBaseType.ADDRESS;
         }
         if (type instanceof StructureType) {
             return LLVMBaseType.STRUCT;
@@ -505,6 +537,14 @@ public final class LLVMBitcodeHelper {
                     }
                     return LLVMAddressArrayCopyNodeGen.create(elements, stride, allocation);
                 }
+                case I1_POINTER:
+                case I8_POINTER:
+                case I16_POINTER:
+                case I32_POINTER:
+                case I64_POINTER:
+                case HALF_POINTER:
+                case FLOAT_POINTER:
+                case DOUBLE_POINTER:
                 case ADDRESS: {
                     LLVMAddressNode[] elements = new LLVMAddressNode[array.getElementCount()];
                     for (int i = 0; i < elements.length; i++) {
@@ -774,6 +814,14 @@ public final class LLVMBitcodeHelper {
                             nodes[i] = new LLVMCompoundStructWriteNode((LLVMAddressNode) struct, elementSize);
                         }
                         break;
+                    case I1_POINTER:
+                    case I8_POINTER:
+                    case I16_POINTER:
+                    case I32_POINTER:
+                    case I64_POINTER:
+                    case HALF_POINTER:
+                    case FLOAT_POINTER:
+                    case DOUBLE_POINTER:
                     case ADDRESS:
                         nodes[i] = new LLVMAddressStructWriteNode(new LLVMAddressLiteralNode(LLVMAddress.fromLong(0)));
                         break;
@@ -902,7 +950,39 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof PointerType) {
             Type pointee = ((PointerType) type).getPointeeType();
-            return pointee instanceof FunctionType ? LLVMRuntimeType.FUNCTION_ADDRESS : LLVMRuntimeType.ADDRESS;
+            if (pointee instanceof FunctionType) {
+                return LLVMRuntimeType.FUNCTION_ADDRESS;
+            }
+            if (pointee instanceof IntegerType) {
+                switch (((IntegerType) pointee).getBitCount()) {
+                    case 1:
+                        return LLVMRuntimeType.I1_POINTER;
+                    case Byte.SIZE:
+                        return LLVMRuntimeType.I8_POINTER;
+                    case Short.SIZE:
+                        return LLVMRuntimeType.I16_POINTER;
+                    case Integer.SIZE:
+                        return LLVMRuntimeType.I32_POINTER;
+                    case Long.SIZE:
+                        return LLVMRuntimeType.I64_POINTER;
+                    default:
+                        return LLVMRuntimeType.ADDRESS;
+                }
+            }
+            if (pointee instanceof FloatingPointType) {
+                switch (((FloatingPointType) pointee)) {
+                    case HALF:
+                        return LLVMRuntimeType.HALF_POINTER;
+                    case FLOAT:
+                        return LLVMRuntimeType.FLOAT_POINTER;
+                    case DOUBLE:
+                        return LLVMRuntimeType.DOUBLE_POINTER;
+                    case X86_FP80:
+                    default:
+                        return LLVMRuntimeType.ADDRESS;
+                }
+            }
+            return LLVMRuntimeType.ADDRESS;
         }
         if (type instanceof StructureType) {
             return LLVMRuntimeType.STRUCT;

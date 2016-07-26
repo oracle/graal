@@ -77,7 +77,7 @@ public class LLVMFunctionMessageResolution {
                 }
             }
             Object result = getHelperNode().executeCall(frame, object, arguments);
-            return toNull.executeConvert(result);
+            return toNull.executeConvert(result, object.getReturnType());
         }
 
         private LLVMForeignCallNode getHelperNode() {

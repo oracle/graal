@@ -83,6 +83,14 @@ public final class ToLLVMNode extends Node {
             case DOUBLE:
                 t = double.class;
                 break;
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
             case FUNCTION_ADDRESS:
                 t = TruffleObject.class;
