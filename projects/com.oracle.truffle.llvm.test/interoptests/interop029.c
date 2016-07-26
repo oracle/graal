@@ -1,13 +1,6 @@
 #include <truffle.h>
 
-typedef struct {
-  double real;
-  double imaginary;
-} COMPLEX;
-
-void complexAdd(COMPLEX *a, COMPLEX *b) {
-  a->real = a->real + b->real;
-  a->imaginary = a->imaginary + b->imaginary;
+int main() {
+  truffle_execute(truffle_import("foo"), truffle_read_n_bytes("foo\x00 bar\x80 bla", 10));
+  return 36;
 }
-
-int main() { return 0; }

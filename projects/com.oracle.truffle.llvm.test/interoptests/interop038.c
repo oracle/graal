@@ -1,3 +1,2 @@
-int a[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-int *get() { return a; }
+int get(int *a, int idx) { return a[idx]; }
 int main() { return 0; }

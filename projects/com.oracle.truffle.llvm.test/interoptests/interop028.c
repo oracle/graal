@@ -1,15 +1,6 @@
 #include <truffle.h>
 
-typedef struct {
-  bool valueBool;
-  char valueB;
-  short valueC;
-  int valueI;
-  long valueL;
-  float valueF;
-  double valueD;
-} CLASS;
-
-int getValueI(CLASS *c) { return c->valueI; }
-
-int main() { return 0; }
+int main() {
+  truffle_execute(truffle_import("foo"), truffle_read_n_string("foo\x00 bar\x80 bla", 10));
+  return 72;
+}
