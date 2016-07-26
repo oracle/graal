@@ -223,13 +223,14 @@ public class CompilationTask {
                     final long stop = TimeSource.getTimeNS();
                     final long duration = (stop - start) / 1000000;
                     final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
+                    final int bytecodeSize = result.getBytecodeSize();
                     final long allocatedBytesAfter = Lazy.threadMXBean.getThreadAllocatedBytes(threadId);
-                    final long allocatedBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
+                    final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
 
                     if (printAfterCompilation) {
-                        TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dkB", duration, targetCodeSize, allocatedBytes));
+                        TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dB %5dkB", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
                     } else if (printCompilation) {
-                        TTY.println(String.format("%-6d JVMCI %-70s %-45s %-50s | %4dms %5dB %5dkB", getId(), "", "", "", duration, targetCodeSize, allocatedBytes));
+                        TTY.println(String.format("%-6d JVMCI %-70s %-45s %-50s | %4dms %5dB %5dB %5dkB", getId(), "", "", "", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
                     }
                 }
             }
