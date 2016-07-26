@@ -24,52 +24,32 @@
  */
 package com.oracle.truffle.api.object.dsl.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.dsl.Layout;
-
-import org.junit.Assert;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.InheritedShapeBaseLayout;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.InheritedShapeBaseLayoutImpl;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.InheritedShapeTopLayout;
+import com.oracle.truffle.api.object.dsl.test.alternate_package.InheritedShapeTopLayoutImpl;
 
 public class InheritedShapePropertiesTest {
 
-    @Layout
-    public interface ShapeBaseLayout {
-
-        DynamicObjectFactory createShapeBaseShape(int a);
-
-        DynamicObject createShapeBase(DynamicObjectFactory factory);
-
-        int getA(DynamicObject object);
-
-    }
-
-    @Layout
-    public interface ShapeTopLayout extends ShapeBaseLayout {
-
-        DynamicObjectFactory createShapeTopShape(int a, int b);
-
-        DynamicObject createShapeTop(DynamicObjectFactory factory);
-
-        int getB(DynamicObject object);
-
-    }
-
-    private static final ShapeBaseLayout BASE_LAYOUT = ShapeBaseLayoutImpl.INSTANCE;
-    private static final ShapeTopLayout TOP_LAYOUT = ShapeTopLayoutImpl.INSTANCE;
+    private static final InheritedShapeBaseLayout BASE_LAYOUT = InheritedShapeBaseLayoutImpl.INSTANCE;
+    private static final InheritedShapeTopLayout TOP_LAYOUT = InheritedShapeTopLayoutImpl.INSTANCE;
 
     @Test
     public void testBase() {
-        final DynamicObjectFactory factory = BASE_LAYOUT.createShapeBaseShape(14);
-        final DynamicObject object = BASE_LAYOUT.createShapeBase(factory);
+        final DynamicObjectFactory factory = BASE_LAYOUT.createInheritedShapeBaseShape(14);
+        final DynamicObject object = BASE_LAYOUT.createInheritedShapeBase(factory);
         Assert.assertEquals(14, BASE_LAYOUT.getA(object));
     }
 
     @Test
     public void testTop() {
-        final DynamicObjectFactory factory = TOP_LAYOUT.createShapeTopShape(14, 2);
-        final DynamicObject object = TOP_LAYOUT.createShapeTop(factory);
+        final DynamicObjectFactory factory = TOP_LAYOUT.createInheritedShapeTopShape(14, 2);
+        final DynamicObject object = TOP_LAYOUT.createInheritedShapeTop(factory);
         Assert.assertEquals(14, TOP_LAYOUT.getA(object));
         Assert.assertEquals(2, TOP_LAYOUT.getB(object));
     }
