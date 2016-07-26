@@ -23,6 +23,8 @@
 package com.oracle.graal.lir.jtt;
 
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -57,7 +59,7 @@ import jdk.vm.ci.meta.Value;
  */
 public abstract class LIRTest extends JTTTest {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static final class LIRTestNode extends FixedWithNextNode implements LIRLowerable {
 
         public static final NodeClass<LIRTestNode> TYPE = NodeClass.create(LIRTestNode.class);
@@ -99,7 +101,7 @@ public abstract class LIRTest extends JTTTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static final class LIRValueNode extends FixedWithNextNode implements LIRLowerable {
 
         public static final NodeClass<LIRValueNode> TYPE = NodeClass.create(LIRValueNode.class);

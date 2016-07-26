@@ -83,6 +83,11 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
+    public float codeSizeIncrease() {
+        return 2.5f;
+    }
+
+    @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         JavaConstant tableConstant = lookupTableContant(context);
         try {

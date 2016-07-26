@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_200;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
@@ -52,7 +52,10 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
-@NodeInfo
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+@NodeInfo(cycles = CYCLES_200, size = SIZE_100)
 public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virtualizable, MemoryCheckpoint.Single, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
@@ -65,9 +68,9 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
 
     @Input NodeInputList<ValueNode> args;
 
-    @OptionalInput(InputType.State) FrameState stateDuring;
+    @OptionalInput(State) FrameState stateDuring;
 
-    @OptionalInput(InputType.Memory) protected MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryNode lastLocationAccess;
 
     protected JavaKind elementKind;
 

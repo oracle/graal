@@ -25,6 +25,8 @@ package com.oracle.graal.graph.test;
 import static com.oracle.graal.graph.test.matchers.NodeIterableContains.contains;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isNotEmpty;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -37,7 +39,7 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 
 public class NodeUsagesTests {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class Def extends Node {
         public static final NodeClass<Def> TYPE = NodeClass.create(Def.class);
 
@@ -46,7 +48,7 @@ public class NodeUsagesTests {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class Use extends Node {
         public static final NodeClass<Use> TYPE = NodeClass.create(Use.class);
         @Input Def in0;

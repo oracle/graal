@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import jdk.vm.ci.meta.Value;
+import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.extended.MonitorEnter;
 import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
@@ -39,13 +40,15 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
 
+import jdk.vm.ci.meta.Value;
+
 /**
  * Intrinsic for opening a scope binding a stack-based lock with an object. A lock scope must be
  * closed with an {@link EndLockScopeNode}. The frame state after this node denotes that the object
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
+@NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
 public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorEnter, MemoryCheckpoint.Single {
 
     public static final NodeClass<BeginLockScopeNode> TYPE = NodeClass.create(BeginLockScopeNode.class);

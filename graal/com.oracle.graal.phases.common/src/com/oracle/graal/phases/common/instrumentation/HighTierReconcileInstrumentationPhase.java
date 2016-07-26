@@ -46,6 +46,11 @@ import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 public class HighTierReconcileInstrumentationPhase extends Phase {
 
     @Override
+    public boolean checkContract() {
+        return false;
+    }
+
+    @Override
     protected void run(StructuredGraph graph) {
         for (CommitAllocationNode commit : graph.getNodes().filter(CommitAllocationNode.class)) {
             InstrumentationAggregation aggregation = new InstrumentationAggregation(commit);

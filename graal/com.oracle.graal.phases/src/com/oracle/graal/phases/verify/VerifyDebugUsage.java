@@ -52,6 +52,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
 
     @Override
+    public boolean checkContract() {
+        return false;
+    }
+
+    @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
         ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);

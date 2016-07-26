@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.nodes;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.VM_ERROR;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -45,7 +47,7 @@ import jdk.vm.ci.meta.Value;
  * Causes the VM to exit with a description of the current Java location and an optional
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     public static final NodeClass<VMErrorNode> TYPE = NodeClass.create(VMErrorNode.class);

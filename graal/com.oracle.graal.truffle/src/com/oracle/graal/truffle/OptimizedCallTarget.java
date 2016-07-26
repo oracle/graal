@@ -305,7 +305,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return (OptimizedCallTarget) runtime().createClonedCallTarget(this, copiedRoot);
     }
 
-    synchronized SpeculationLog getSpeculationLog() {
+    protected synchronized SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
             speculationLog = ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog();
         }
@@ -422,7 +422,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     final void onLoopCount(int count) {
-        compilationProfile.reportLoopCount(count);
+        getCompilationProfile().reportLoopCount(count);
     }
 
     /*
@@ -430,7 +430,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      */
     @Override
     public void reportLoopCount(int count) {
-        compilationProfile.reportLoopCount(count);
+        getCompilationProfile().reportLoopCount(count);
     }
 
     @Override

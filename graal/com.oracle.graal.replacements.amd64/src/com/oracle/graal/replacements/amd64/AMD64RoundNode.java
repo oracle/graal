@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import com.oracle.graal.compiler.common.type.FloatStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.GraalError;
@@ -43,7 +45,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Round floating-point value.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1)
 public final class AMD64RoundNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64RoundNode> TYPE = NodeClass.create(AMD64RoundNode.class);
 

@@ -24,6 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import static com.oracle.graal.nodeinfo.InputType.Guard;
 import static com.oracle.graal.nodeinfo.InputType.Memory;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
 import org.junit.Assert;
@@ -55,7 +57,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 
-    @NodeInfo(allowedUsageTypes = {Memory})
+    @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestMemory extends FixedWithNextNode implements MemoryNode {
         private static final NodeClass<TestMemory> TYPE = NodeClass.create(TestMemory.class);
 
@@ -67,7 +69,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
         public static native Memory memory();
     }
 
-    @NodeInfo(allowedUsageTypes = {Guard})
+    @NodeInfo(allowedUsageTypes = {Guard}, cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestGuard extends FloatingNode implements GuardingNode {
         private static final NodeClass<TestGuard> TYPE = NodeClass.create(TestGuard.class);
 
@@ -82,7 +84,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
         public static native Guard guard(Memory memory);
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class TestValue extends FloatingNode {
         private static final NodeClass<TestValue> TYPE = NodeClass.create(TestValue.class);
 

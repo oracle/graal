@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.word.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
@@ -51,7 +54,7 @@ import jdk.vm.ci.meta.ValueKind;
  * operations. It has an impact on the pointer maps for the GC, so it must not be scheduled or
  * optimized away.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
     public static final NodeClass<WordCastNode> TYPE = NodeClass.create(WordCastNode.class);

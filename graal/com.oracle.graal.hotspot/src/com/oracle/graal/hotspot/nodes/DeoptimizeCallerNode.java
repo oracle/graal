@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_3;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
@@ -36,7 +39,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
  */
-@NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
+@NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}", cycles = CYCLES_1, size = SIZE_3)
 public final class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
     public static final NodeClass<DeoptimizeCallerNode> TYPE = NodeClass.create(DeoptimizeCallerNode.class);

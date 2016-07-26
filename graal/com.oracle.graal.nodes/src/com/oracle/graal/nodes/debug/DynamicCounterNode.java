@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_20;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_10;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
@@ -44,7 +47,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
  * A unique counter will be created for each unique name passed to the constructor. Depending on the
  * value of withContext, the name of the root method is added to the counter's name.
  */
-@NodeInfo
+@NodeInfo(size = SIZE_10, cycles = CYCLES_20)
 public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<DynamicCounterNode> TYPE = NodeClass.create(DynamicCounterNode.class);

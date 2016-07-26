@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import java.io.Serializable;
 import java.util.function.Function;
 
@@ -44,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * The {@code ShiftOp} class represents shift operations.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<ShiftNode> TYPE = NodeClass.create(ShiftNode.class);

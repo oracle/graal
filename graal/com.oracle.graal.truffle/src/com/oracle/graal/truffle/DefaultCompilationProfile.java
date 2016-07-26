@@ -228,10 +228,10 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         if (callsMissing == getTimestampThreshold()) {
             timestamp = System.nanoTime();
         }
-        // check if a call target is hot enough to get compiled
-        if (!callTarget.isCompiling() && !compilationFailed && intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold) {
-            // check if a call target took too long to get hot
-            if (!isDeferredCompile(callTarget)) {
+        if (!callTarget.isCompiling() && !compilationFailed) {
+            // check if call target is hot enough to get compiled, but took not too long to get hot
+            if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
+                            TruffleCompilerOptions.TruffleCompileImmediately.getValue()) {
                 callTarget.compile();
             }
         }

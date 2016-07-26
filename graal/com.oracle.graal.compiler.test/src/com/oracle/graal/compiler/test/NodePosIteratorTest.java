@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import java.util.Iterator;
 
 import org.junit.Assert;
@@ -41,7 +44,7 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 
 public class NodePosIteratorTest extends GraalCompilerTest {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class TestNode extends Node {
         public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         @Successor Node s1;

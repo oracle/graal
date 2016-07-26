@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.LoopExitNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator;
 
 public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
@@ -103,5 +104,15 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
             ReentrantNodeIterator.apply(INSTANCE, graph.start(), 1D);
         }
     }
+
+    public static class ComputeLoopFrequencyPhase extends Phase {
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            compute(graph);
+        }
+    }
+
+    public static final ComputeLoopFrequencyPhase PHASE_INSTANCE = new ComputeLoopFrequencyPhase();
 
 }

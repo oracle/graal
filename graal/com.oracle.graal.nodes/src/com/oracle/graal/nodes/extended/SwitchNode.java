@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import java.util.Arrays;
 
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
@@ -41,7 +44,14 @@ import jdk.vm.ci.meta.Constant;
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
-@NodeInfo
+// @formatter:off
+@NodeInfo(cycles = CYCLES_UNKNOWN,
+          cyclesRationale = "We cannot estimate the runtime cost of a switch statement without knowing the number" +
+                            "of case statements and the involved keys.",
+          size = SIZE_UNKNOWN,
+          sizeRationale = "We cannot estimate the code size of a switch statement without knowing the number" +
+                          "of case statements.")
+// @formatter:on
 public abstract class SwitchNode extends ControlSplitNode {
 
     public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);

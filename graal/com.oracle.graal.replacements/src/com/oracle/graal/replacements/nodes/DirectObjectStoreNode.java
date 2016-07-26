@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -41,12 +42,14 @@ import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
+import jdk.vm.ci.meta.JavaKind;
+
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and does not include a write barrier. Note that contrary to the sound of the
  * name this node can be used for storing any kind.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<DirectObjectStoreNode> TYPE = NodeClass.create(DirectObjectStoreNode.class);

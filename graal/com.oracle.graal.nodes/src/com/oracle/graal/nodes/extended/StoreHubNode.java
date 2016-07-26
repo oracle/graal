@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -30,7 +33,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<StoreHubNode> TYPE = NodeClass.create(StoreHubNode.class);

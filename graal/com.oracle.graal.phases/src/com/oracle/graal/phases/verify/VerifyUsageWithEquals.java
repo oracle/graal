@@ -47,6 +47,11 @@ import jdk.vm.ci.meta.Signature;
  */
 public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
+
     /**
      * The type of values that must not use identity for testing object equality.
      */

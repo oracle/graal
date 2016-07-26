@@ -65,7 +65,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         try {
             long handle = (long) libraryLookupFunctionHandle.call(libPathCString, ebuf, ebufLen);
             if (handle == 0) {
-                throw new UnsatisfiedLinkError(libPath);
+                throw new UnsatisfiedLinkError(readCString(UNSAFE, ebuf, ebufLen));
             }
             return new HotSpotNativeLibraryHandle(libPath, handle);
         } finally {
@@ -211,5 +211,20 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         }
         unsafe.putByte(buf + size, (byte) '\0');
         return buf;
+    }
+
+    /**
+     * Reads a {@code '\0'} terminated C string.
+     */
+    private static String readCString(Unsafe unsafe, long buf, long bufLen) {
+        final StringBuilder builder = new StringBuilder();
+        for (long n = 0; n < bufLen; n++) {
+            final char c = (char) unsafe.getByte(buf + n);
+            if (c == '\0') {
+                break;
+            }
+            builder.append(c);
+        }
+        return builder.toString();
     }
 }

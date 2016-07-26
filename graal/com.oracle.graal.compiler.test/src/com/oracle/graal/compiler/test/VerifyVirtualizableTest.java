@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -57,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyVirtualizableTest {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class InvalidEffectNodeAdd extends ValueNode implements Virtualizable {
 
         public static final NodeClass<InvalidEffectNodeAdd> TYPE = NodeClass.create(InvalidEffectNodeAdd.class);
@@ -72,7 +75,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class InvalidEffectNodeAddWithoutUnique extends ValueNode implements Virtualizable {
 
         public static final NodeClass<InvalidEffectNodeAddWithoutUnique> TYPE = NodeClass.create(InvalidEffectNodeAddWithoutUnique.class);
@@ -87,7 +90,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class InvalidEffectNodeAddOrUnique extends ValueNode implements Virtualizable {
 
         public static final NodeClass<InvalidEffectNodeAddOrUnique> TYPE = NodeClass.create(InvalidEffectNodeAddOrUnique.class);
@@ -102,7 +105,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class InvalidEffectNodeAddWithoutUniqueWithInputs extends ValueNode implements Virtualizable {
 
         public static final NodeClass<InvalidEffectNodeAddWithoutUniqueWithInputs> TYPE = NodeClass.create(InvalidEffectNodeAddWithoutUniqueWithInputs.class);
@@ -117,7 +120,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class InvalidEffectNodeAddOrUniqueWithInputs extends ValueNode implements Virtualizable {
 
         public static final NodeClass<InvalidEffectNodeAddOrUniqueWithInputs> TYPE = NodeClass.create(InvalidEffectNodeAddOrUniqueWithInputs.class);
@@ -132,7 +135,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ValidEffectNodeAdd extends ValueNode implements Virtualizable {
 
         public static final NodeClass<ValidEffectNodeAdd> TYPE = NodeClass.create(ValidEffectNodeAdd.class);
@@ -147,7 +150,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ValidEffectNodeAddWithoutUnique extends ValueNode implements Virtualizable {
 
         public static final NodeClass<ValidEffectNodeAddWithoutUnique> TYPE = NodeClass.create(ValidEffectNodeAddWithoutUnique.class);
@@ -162,7 +165,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ValidEffectNodeAddOrUnique extends ValueNode implements Virtualizable {
 
         public static final NodeClass<ValidEffectNodeAddOrUnique> TYPE = NodeClass.create(ValidEffectNodeAddOrUnique.class);
@@ -177,7 +180,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ValidEffectNodeAddWithoutUniqueWithInputs extends ValueNode implements Virtualizable {
 
         public static final NodeClass<ValidEffectNodeAddWithoutUniqueWithInputs> TYPE = NodeClass.create(ValidEffectNodeAddWithoutUniqueWithInputs.class);
@@ -192,7 +195,7 @@ public class VerifyVirtualizableTest {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ValidEffectNodeAddOrUniqueWithInputs extends ValueNode implements Virtualizable {
 
         public static final NodeClass<ValidEffectNodeAddOrUniqueWithInputs> TYPE = NodeClass.create(ValidEffectNodeAddOrUniqueWithInputs.class);

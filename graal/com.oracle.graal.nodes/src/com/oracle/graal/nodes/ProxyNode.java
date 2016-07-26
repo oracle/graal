@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.Association;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
@@ -35,11 +38,11 @@ import com.oracle.graal.nodes.extended.GuardingNode;
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
  * live on entry to the loop) and is (potentially) used after the loop.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable {
 
     public static final NodeClass<ProxyNode> TYPE = NodeClass.create(ProxyNode.class);
-    @Input(InputType.Association) LoopExitNode loopExit;
+    @Input(Association) LoopExitNode loopExit;
 
     protected ProxyNode(NodeClass<? extends ProxyNode> c, Stamp stamp, LoopExitNode proxyPoint) {
         super(c, stamp);

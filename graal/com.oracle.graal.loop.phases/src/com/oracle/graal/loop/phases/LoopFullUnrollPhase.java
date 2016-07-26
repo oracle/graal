@@ -63,4 +63,9 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
             } while (peeled);
         }
     }
+
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
 }

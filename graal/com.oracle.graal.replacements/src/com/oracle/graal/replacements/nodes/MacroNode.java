@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -68,7 +70,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * possible if the macro node is a {@link MacroStateSplitNode}.</li>
  * </ul>
  */
-@NodeInfo
+//@formatter:off
+@NodeInfo(cycles = CYCLES_UNKNOWN,
+          cyclesRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate",
+          size = SIZE_UNKNOWN,
+          sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
+//@formatter:on
 public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
@@ -119,7 +126,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     @SuppressWarnings("try")
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getConstantFieldProvider(), tool.getLowerer(), tool.getReplacements(),
-                        tool.getStampProvider());
+                        tool.getStampProvider(), tool.getNodeCostProvider());
         if (!graph().hasValueProxies()) {
             new RemoveValueProxyPhase().apply(replacementGraph);
         }
