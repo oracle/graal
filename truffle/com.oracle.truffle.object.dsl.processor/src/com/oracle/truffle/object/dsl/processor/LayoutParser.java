@@ -43,6 +43,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -249,9 +250,15 @@ public class LayoutParser {
 
         for (int n = 0; n < sharedProperties.size(); n++) {
             final VariableElement parameter = parameters.get(n);
+            final String parameterName = parameter.getSimpleName().toString();
             final PropertyModel superLayoutProperty = sharedProperties.get(n);
 
-            if (!parameter.getSimpleName().toString().equals(superLayoutProperty.getName())) {
+            if (superLayoutProperty.hasGeneratedName()) {
+                // Assume the name is right if we cannot check it during incremental compilation
+                superLayoutProperty.fixName(parameterName);
+            }
+
+            if (!parameterName.equals(superLayoutProperty.getName())) {
                 processor.reportError(element, "@Layout constructor parameter %d needs to have the same name as the super layout constructor (is %s, should be %s)",
                                 n, parameter.getSimpleName(), superLayoutProperty.getName());
             }

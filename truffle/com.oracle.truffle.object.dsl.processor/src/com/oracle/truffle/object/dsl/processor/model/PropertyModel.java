@@ -26,7 +26,7 @@ import javax.lang.model.type.TypeMirror;
 
 public class PropertyModel {
 
-    private final String name;
+    private String name;
     private final TypeMirror type;
     private final boolean hasObjectTypeGetter;
     private final boolean hasShapeGetter;
@@ -63,6 +63,14 @@ public class PropertyModel {
 
     public String getName() {
         return name;
+    }
+
+    public void fixName(String realName) {
+        this.name = realName;
+    }
+
+    public boolean hasGeneratedName() {
+        return name.length() > 3 && name.startsWith("arg") && Character.isDigit(name.charAt(3));
     }
 
     public TypeMirror getType() {
