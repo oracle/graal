@@ -24,9 +24,11 @@ package com.oracle.truffle.object.dsl.processor.model;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.object.dsl.processor.LayoutParser;
+
 public class PropertyModel {
 
-    private final String name;
+    private String name;
     private final TypeMirror type;
     private final boolean hasObjectTypeGetter;
     private final boolean hasShapeGetter;
@@ -63,6 +65,14 @@ public class PropertyModel {
 
     public String getName() {
         return name;
+    }
+
+    public void fixName(String realName) {
+        this.name = realName;
+    }
+
+    public boolean hasGeneratedName() {
+        return LayoutParser.isGeneratedName(name);
     }
 
     public TypeMirror getType() {
