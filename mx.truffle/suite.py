@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.21.1",
+  "mxversion" : "5.34.4",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -435,6 +435,8 @@ suite = {
     # ------------- Distributions -------------
 
     "TRUFFLE_API" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_api",
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
       "dependencies" : [
