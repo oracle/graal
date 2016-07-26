@@ -323,7 +323,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return null;
     }
 
-    public NativeFunctionInterface createNativeFunctionInterface() {
+    NativeFunctionInterface createNativeFunctionInterface() {
         GraalHotSpotVMConfig config = getVMConfig();
         Backend backend = getHotSpotBackend();
         RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
