@@ -41,11 +41,12 @@ public class LayoutModel {
     private final boolean hasObjectTypeGuard;
     private final boolean hasObjectGuard;
     private final boolean hasDynamicObjectGuard;
+    private final boolean hasBuilder;
     private final List<PropertyModel> properties;
     private final List<ImplicitCast> implicitCasts;
 
     public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
-                    boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard,
+                    boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard, boolean hasBuilder,
                     Collection<PropertyModel> properties, String interfaceFullName, Collection<ImplicitCast> implicitCasts) {
         this.objectTypeSuperclass = objectTypeSuperclass;
         this.superLayout = superLayout;
@@ -55,6 +56,7 @@ public class LayoutModel {
         this.hasObjectTypeGuard = hasObjectTypeGuard;
         this.hasObjectGuard = hasObjectGuard;
         this.hasDynamicObjectGuard = hasDynamicObjectGuard;
+        this.hasBuilder = hasBuilder;
         this.properties = Collections.unmodifiableList(new ArrayList<>(properties));
         this.implicitCasts = Collections.unmodifiableList(new ArrayList<>(implicitCasts));
     }
@@ -89,6 +91,10 @@ public class LayoutModel {
 
     public boolean hasDynamicObjectGuard() {
         return hasDynamicObjectGuard;
+    }
+
+    public boolean hasBuilder() {
+        return hasBuilder;
     }
 
     public boolean hasInstanceProperties() {

@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Next Version
+* [Layout](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/object/dsl/Layout.html)
+  now accepts an alternative way to construct an object with the `build` method instead of `create`.
+
 ## Version 0.15
 1-Jul-2016
 * [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html) shall be
