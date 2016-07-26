@@ -144,7 +144,7 @@ public class LayoutParser {
                 } else if (simpleName.startsWith("set")) {
                     parseSetter((ExecutableElement) element);
                 } else {
-                    processor.reportError(element, "Unknown method prefix in @Layout interface - woudln't know how to implement this method");
+                    processor.reportError(element, "Unknown method prefix in @Layout interface - wouldn't know how to implement this method");
                 }
             }
         }
