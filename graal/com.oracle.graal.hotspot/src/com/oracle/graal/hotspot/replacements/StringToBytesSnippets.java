@@ -26,13 +26,11 @@ import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.debug.RuntimeStringNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.debug.StringToBytesNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
-import com.oracle.graal.nodes.java.NewInstanceNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -45,26 +43,14 @@ import com.oracle.graal.replacements.nodes.CStringConstant;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 
-public class RuntimeStringSnippets implements Snippets {
+/**
+ * The {@code StringToBytesSnippets} contains a snippet for lowering {@link StringToBytesNode}.
+ */
+public class StringToBytesSnippets implements Snippets {
 
-    @Fold
-    static long valueOffset() {
-        try {
-            return UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-        } catch (Exception e) {
-            throw new GraalError(e);
-        }
-    }
-
-    @Fold
-    static long hashOffset() {
-        try {
-            return UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-        } catch (Exception e) {
-            throw new GraalError(e);
-        }
-    }
+    public static final LocationIdentity CSTRING_LOCATION = NamedLocationIdentity.immutable("CString location");
 
     @Fold
     static long arrayBaseOffset() {
@@ -72,37 +58,31 @@ public class RuntimeStringSnippets implements Snippets {
     }
 
     @Snippet
-    public static String create(@ConstantParameter String compilationTimeString) {
+    public static byte[] transform(@ConstantParameter String compilationTimeString) {
         int i = compilationTimeString.length();
-        char[] array = (char[]) NewArrayNode.newUninitializedArray(char.class, i);
+        byte[] array = (byte[]) NewArrayNode.newUninitializedArray(byte.class, i);
         Word cArray = CStringConstant.cstring(compilationTimeString);
         while (i-- > 0) {
-            // assuming it is ASCII string
-            // array[i] = (char) cArray.readByte(i);
-            UNSAFE.putChar(array, arrayBaseOffset() + i * 2, (char) cArray.readByte(i));
+            // array[i] = cArray.readByte(i);
+            UNSAFE.putByte(array, arrayBaseOffset() + i, cArray.readByte(i, CSTRING_LOCATION));
         }
-        String newString = (String) newInstance(String.class, false);
-        UNSAFE.putObject(newString, valueOffset(), array);
-        UNSAFE.putInt(newString, hashOffset(), 0);
-        return newString;
+        return array;
     }
-
-    @NodeIntrinsic(NewInstanceNode.class)
-    public static native Object newInstance(@ConstantNodeParameter Class<?> type, @ConstantNodeParameter boolean fillContent);
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo create = snippet(RuntimeStringSnippets.class, "create");
+        private final SnippetInfo create;
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
+            create = snippet(StringToBytesSnippets.class, "transform", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         }
 
-        public void lower(RuntimeStringNode runtimeStringNode, LoweringTool tool) {
-            Arguments args = new Arguments(create, runtimeStringNode.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("value", runtimeStringNode.getValue());
+        public void lower(StringToBytesNode stringToBytesNode, LoweringTool tool) {
+            Arguments args = new Arguments(create, stringToBytesNode.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("compilationTimeString", stringToBytesNode.getValue());
             SnippetTemplate template = template(args);
-            template.instantiate(providers.getMetaAccess(), runtimeStringNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), stringToBytesNode, DEFAULT_REPLACER, args);
         }
 
     }

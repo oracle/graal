@@ -20,24 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.debug.RuntimeStringNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.debug.StringToBytesNode;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * The {@code RootNameNode} represents the name of the compilation root.
+ */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public final class RootNameNode extends InstrumentationContentNode implements Lowerable {
+public final class RootNameNode extends FixedWithNextNode implements Lowerable, InstrumentationInliningCallback, MemoryCheckpoint.Single {
 
     public static final NodeClass<RootNameNode> TYPE = NodeClass.create(RootNameNode.class);
 
@@ -45,22 +52,36 @@ public final class RootNameNode extends InstrumentationContentNode implements Lo
         super(TYPE, stamp);
     }
 
-    public static String genRootName(ResolvedJavaMethod method) {
-        if (method == null) {
-            return "<unresolved method>";
-        }
-        return method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor();
+    /**
+     * resolve this node and replace with a {@link StringToBytesNode} that constructs the root
+     * method name in the compiled code. To ensure the correct result, this method should be invoked
+     * after inlining.
+     */
+    private void resolve(StructuredGraph graph) {
+        ResolvedJavaMethod method = graph.method();
+        String rootName = method == null ? "<unresolved method>" : (method.getDeclaringClass().toJavaName() + "." + method.getName() + method.getSignature().toMethodDescriptor());
+        StringToBytesNode stringToByteNode = graph().add(new StringToBytesNode(rootName, stamp()));
+        graph().replaceFixedWithFixed(this, stringToByteNode);
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        RuntimeStringNode runtimeString = graph().add(new RuntimeStringNode(genRootName(graph().method()), stamp()));
-        graph().replaceFixedWithFixed(this, runtimeString);
+        resolve(graph());
     }
 
     @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        throw GraalError.shouldNotReachHere("RootNameNode must be replaced before inlining an instrumentation");
+    public void preInlineInstrumentation(InstrumentationNode instrumentation) {
+        // resolve to the method name of the original graph
+        resolve(instrumentation.graph());
+    }
+
+    @Override
+    public void postInlineInstrumentation(InstrumentationNode instrumentation) {
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
     }
 
 }

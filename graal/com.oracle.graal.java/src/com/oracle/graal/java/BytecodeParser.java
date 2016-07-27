@@ -229,6 +229,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
 import static com.oracle.graal.compiler.common.GraalOptions.PrintProfilingInformation;
 import static com.oracle.graal.compiler.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static com.oracle.graal.compiler.common.GraalOptions.StressInvokeWithExceptionNode;
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.compiler.common.type.StampFactory.objectNonNull;
 import static com.oracle.graal.debug.GraalError.guarantee;
 import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
@@ -349,6 +350,7 @@ import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
 import com.oracle.graal.nodes.calc.XorNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
 import com.oracle.graal.nodes.extended.AnchoringNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
@@ -581,6 +583,8 @@ public class BytecodeParser implements GraphBuilderContext {
     private FixedWithNextNode[] firstInstructionArray;
     private FrameStateBuilder[] entryStateArray;
 
+    private int lastBCI; // BCI of lastInstr. This field is for resolving instrumentation target.
+
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                     IntrinsicContext intrinsicContext) {
         this.graphBuilderInstance = graphBuilderInstance;
@@ -598,6 +602,7 @@ public class BytecodeParser implements GraphBuilderContext {
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
         this.parent = parent;
+        this.lastBCI = -1;
 
         assert method.getCode() != null : "method must contain bytecodes: " + method;
 
@@ -1911,6 +1916,25 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private <T extends ValueNode> void updateLastInstruction(T v) {
+        if (UseGraalInstrumentation.getValue()) {
+            // resolve instrumentation target
+            if (v instanceof InstrumentationBeginNode) {
+                InstrumentationBeginNode begin = (InstrumentationBeginNode) v;
+                if (!begin.isAnchored() && lastBCI != -1) {
+                    int currentBCI = stream.currentBCI();
+                    // temporarily set the bytecode stream to lastBCI
+                    stream.setBCI(lastBCI);
+                    // The instrumentation should be associated with the predecessor. In case of the
+                    // predecessor being optimized away, e.g., inlining, we should not set the
+                    // target.
+                    if (stream.nextBCI() == currentBCI) {
+                        begin.setTarget(lastInstr);
+                    }
+                    // restore the current BCI
+                    stream.setBCI(currentBCI);
+                }
+            }
+        }
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             lastInstr.setNext(fixedNode);
@@ -1918,8 +1942,10 @@ public class BytecodeParser implements GraphBuilderContext {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                 assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
                 lastInstr = fixedWithNextNode;
+                lastBCI = stream.currentBCI();
             } else {
                 lastInstr = null;
+                lastBCI = -1;
             }
         }
     }

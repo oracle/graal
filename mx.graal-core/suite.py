@@ -239,6 +239,7 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "dependencies" : [
         "com.oracle.graal.compiler.test",
+        "JVMCI_HOTSPOT",
       ],
       "javaCompliance" : "1.8",
       "workingSets" : "API,Graal",

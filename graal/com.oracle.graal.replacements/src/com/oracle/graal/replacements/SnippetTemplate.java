@@ -90,6 +90,7 @@ import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValueNodeUtil;
 import com.oracle.graal.nodes.calc.FloatingNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.nodes.memory.MemoryAccess;
@@ -112,7 +113,6 @@ import com.oracle.graal.phases.common.FloatingReadPhase.MemoryMapImpl;
 import com.oracle.graal.phases.common.GuardLoweringPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -1352,14 +1352,8 @@ public class SnippetTemplate {
 
             if (UseGraalInstrumentation.getValue()) {
                 for (InstrumentationNode instrumentation : replaceeGraph.getNodes().filter(InstrumentationNode.class)) {
-                    if (instrumentation.target() == replacee) {
-                        if (instrumentation.offset() < 0) {
-                            ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
-                            FixedWithNextNode pred = (FixedWithNextNode) returnDuplicate.predecessor();
-                            instrumentation.replaceFirstInput(replacee, pred);
-                        } else {
-                            instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
-                        }
+                    if (instrumentation.getTarget() == replacee) {
+                        instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
                     }
                 }
             }

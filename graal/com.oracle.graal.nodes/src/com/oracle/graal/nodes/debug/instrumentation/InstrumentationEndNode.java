@@ -20,39 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
+/**
+ * The {@code InstrumentationEndNode} represents the boundary of the instrumentation.
+ */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public class MonitorProxyNode extends ValueNode {
+public final class InstrumentationEndNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
+    public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode target;
-    @OptionalInput(value = InputType.Association) protected MonitorIdNode monitorId;
-
-    public MonitorProxyNode(ValueNode target, MonitorIdNode monitorId) {
+    public InstrumentationEndNode() {
         super(TYPE, StampFactory.forVoid());
-
-        this.target = target;
-        this.monitorId = monitorId;
     }
 
-    public ValueNode target() {
-        return target;
-    }
-
-    public MonitorIdNode getMonitorId() {
-        return monitorId;
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        // do nothing
     }
 
 }

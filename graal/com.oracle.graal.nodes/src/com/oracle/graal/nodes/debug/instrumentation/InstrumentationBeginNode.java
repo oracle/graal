@@ -20,38 +20,53 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug.instrumentation;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.AbstractStateSplit;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.LIRLowerable;
+import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.meta.JavaKind;
-
+/**
+ * The {@code InstrumentationBeginNode} represents the boundary of the instrumentation. It also
+ * maintains the target of the instrumentation.
+ */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public final class IsMethodInlinedNode extends InstrumentationContentNode {
+public final class InstrumentationBeginNode extends AbstractStateSplit implements LIRLowerable {
 
-    public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);
+    public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
-    protected int original;
+    @OptionalInput(value = InputType.Association) protected ValueNode target;
+    private final boolean anchored;
 
-    public IsMethodInlinedNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+    public InstrumentationBeginNode(boolean anchored) {
+        super(TYPE, StampFactory.forVoid());
+        this.anchored = anchored;
+        this.target = null;
+    }
+
+    public boolean isAnchored() {
+        return anchored;
+    }
+
+    public ValueNode getTarget() {
+        return target;
+    }
+
+    public void setTarget(ValueNode target) {
+        this.target = target;
     }
 
     @Override
-    public void onExtractInstrumentation(InstrumentationNode instrumentation) {
-        original = System.identityHashCode(instrumentation.graph());
-    }
-
-    @Override
-    public void onInlineInstrumentation(InstrumentationNode instrumentation, FixedNode position) {
-        graph().replaceFixedWithFloating(this, ConstantNode.forBoolean(original != System.identityHashCode(instrumentation.graph()), graph()));
+    public void generate(NodeLIRBuilderTool generator) {
+        // do nothing
     }
 
 }

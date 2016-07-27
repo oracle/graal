@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives;
 
+import java.nio.charset.Charset;
+
 // JaCoCo Exclude
 
 /**
@@ -367,76 +369,65 @@ public final class GraalDirectives {
     }
 
     /**
-     * Marks the beginning of the instrumentation boundary. The instrumentation will be folded
-     * during compilation and will not affect inlining heuristics regarding graph size except the
-     * one on compiled low-level graph size (see GraalOptions.SmallCompiledLowLevelGraphSize). The
-     * offset specifies a target node to whom the instrumentation is associated. If the target node
-     * is a NewInstanceNode or a MonitorEnterNode, the instrumentation will be duplicated and
-     * inserted after the relocated CommitAllocationNode.
+     * Marks the beginning of an instrumentation boundary. The instrumentation code will be folded
+     * during compilation and will not affect inlining heuristics regarding graph size except one on
+     * compiled low-level graph size (e.g., {@code GraalOptions.SmallCompiledLowLevelGraphSize}).
+     */
+    public static void instrumentationBegin() {
+    }
+
+    /**
+     * Marks the beginning of an instrumentation boundary and associates the instrumentation with
+     * the preceding bytecode. If the instrumented instruction is {@code new}, then instrumentation
+     * will adapt to optimizations concerning allocation, and only be executed if allocation really
+     * happens.
      *
-     * Example (the instrumentation is associated with the allocation):
+     * Example (the instrumentation is associated with {@code new}):
      *
      * <blockquote>
      *
      * <pre>
-     * new java.lang.Object
-     * iconst_m1
-     * invokestatic GraalDirectives.instrumentationBegin(int)
-     * invokestatic AllocationProfiler.countActualAllocation()
-     * invokestatic GraalDirectives.instrumentationEnd()
-     * invokespecial java.lang.Object()
+     *  0  new java.lang.Object
+     *  3  invokestatic com.oracle.graal.api.directives.GraalDirectives.instrumentationBeginForPredecessor() : void
+     *  6  invokestatic AllocationProfiler.countActualAllocation() : void
+     *  9  invokestatic com.oracle.graal.api.directives.GraalDirectives.instrumentationEnd() : void
+     * 12  invokespecial java.lang.Object()
      * </pre>
      *
      * </blockquote>
      *
-     * @param offset the length of a sequential path from a target node to the invocation to this
-     *            API (if negative), or from the invocation to {@link #instrumentationEnd()} to a
-     *            target node (if positive). Pass 0 to anchor the instrumentation.
+     * @see #instrumentationBegin()
      */
-    public static void instrumentationBegin(int offset) {
+    public static void instrumentationBeginForPredecessor() {
     }
 
     /**
-     * Ensures that the instrumentation is valid only if it is associated with an Invoke node.
+     * Marks the end of the instrumentation boundary.
      *
-     * See {@link #instrumentationBegin(int)}.
-     */
-    public static void instrumentationToInvokeBegin(@SuppressWarnings("unused") int offset) {
-    }
-
-    /**
-     * Marks the end of the instrumentation boundary. See {@link #instrumentationBegin(int)}.
+     * @see #instrumentationBegin()
      */
     public static void instrumentationEnd() {
     }
 
     /**
-     * @return an integer representing a runtime path taken for a @Snippet. This API is valid only
-     *         if invoked within an instrumentation (see {@link #instrumentationBegin(int)} and
-     *         {@link #instrumentationEnd()} , and the associated target node of the instrumentation
-     *         is a preceding node that will be substituted by a @Snippet with multiple runtime
-     *         paths. It will be replaced with a ValuePhiNode with constant integer inputs [0, N-1],
-     *         where N denotes the number of runtime paths of the snippet.
-     */
-    public static int runtimePath() {
-        return -1;
-    }
-
-    /**
-     * @return true if the enclosing method is inlined. This API is valid only if invoked within an
-     *         instrumentation (see {@link #instrumentationBegin(int)} and
-     *         {@link #instrumentationEnd()} .
+     * @return true if the enclosing method is inlined.
      */
     public static boolean isMethodInlined() {
         return false;
     }
+
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     /**
      * @return the name of the root method for the current compilation task. If the enclosing method
      *         is inlined, it returns the name of the method into which it is inlined.
      */
     public static String rootName() {
-        return "unknown";
+        return new String(rawRootName(), UTF8);
+    }
+
+    public static byte[] rawRootName() {
+        return new byte[0];
     }
 
 }

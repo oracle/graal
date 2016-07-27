@@ -20,30 +20,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation.nodes;
+package com.oracle.graal.nodes.debug;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 
+import jdk.vm.ci.meta.JavaKind;
+
+/**
+ * The {@code StringToBytesNode} transforms a compilation-time String into a byte array in the
+ * compiled code.
+ */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public abstract class InstrumentationContentNode extends FixedWithNextNode {
+public final class StringToBytesNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<InstrumentationContentNode> TYPE = NodeClass.create(InstrumentationContentNode.class);
+    public static final NodeClass<StringToBytesNode> TYPE = NodeClass.create(StringToBytesNode.class);
 
-    public InstrumentationContentNode(NodeClass<? extends FixedWithNextNode> c, Stamp stamp) {
-        super(c, stamp);
+    private final String value;
+
+    public StringToBytesNode(String value, Stamp stamp) {
+        super(TYPE, stamp);
+        this.value = value;
     }
 
-    public void onExtractInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation) {
+    public String getValue() {
+        return value;
     }
 
-    public void onInlineInstrumentation(@SuppressWarnings("unused") InstrumentationNode instrumentation, @SuppressWarnings("unused") FixedNode position) {
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
+    }
 }
