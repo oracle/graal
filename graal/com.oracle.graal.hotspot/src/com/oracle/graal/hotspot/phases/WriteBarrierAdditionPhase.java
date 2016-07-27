@@ -186,7 +186,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     @Override
-    public float codeSizeIncrease() {
-        return 25.0f;
+    public boolean checkContract() {
+        return false;
     }
 }
