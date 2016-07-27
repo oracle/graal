@@ -70,7 +70,7 @@ public class ContentDigestTest {
         }
     }
 
-    private void assertDigest(byte[] arr, final String msg) throws NoSuchAlgorithmException {
+    private static void assertDigest(byte[] arr, final String msg) throws NoSuchAlgorithmException {
         byte[] result = MessageDigest.getInstance("MD2").digest(arr);
         String expecting = new BigInteger(1, result).toString(16);
 

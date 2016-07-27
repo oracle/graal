@@ -131,7 +131,7 @@ abstract class Content {
                     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
     };
 
-    static String digest(byte[] message, int index, int length) {
+    static String digest(byte[] message, int from, int length) {
         int[] m = new int[19];
         int[] x = new int[48];
         int[] c = new int[16];
@@ -146,6 +146,7 @@ abstract class Content {
         }
 
         int last = 0;
+        int index = from;
         m[16] = m[17] = m[18] = 0;
         while (loop == 1) {
             m[0] = m[16];
