@@ -25,22 +25,26 @@ package com.oracle.graal.nodes.debug.instrumentation;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.debug.StringToBytesNode;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The {@code RootNameNode} represents the name of the compilation root.
  */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public final class RootNameNode extends FixedWithNextNode implements Lowerable, InstrumentationInliningCallback {
+public final class RootNameNode extends FixedWithNextNode implements Lowerable, InstrumentationInliningCallback, MemoryCheckpoint.Single {
 
     public static final NodeClass<RootNameNode> TYPE = NodeClass.create(RootNameNode.class);
 
@@ -73,6 +77,11 @@ public final class RootNameNode extends FixedWithNextNode implements Lowerable, 
 
     @Override
     public void postInlineInstrumentation(InstrumentationNode instrumentation) {
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
     }
 
 }

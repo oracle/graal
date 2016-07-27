@@ -22,22 +22,27 @@
  */
 package com.oracle.graal.nodes.debug;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The {@code StringToBytesNode} transforms a compilation-time String into a byte array in the
  * compiled code.
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class StringToBytesNode extends FixedWithNextNode implements Lowerable {
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
+public final class StringToBytesNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<StringToBytesNode> TYPE = NodeClass.create(StringToBytesNode.class);
 
@@ -57,4 +62,8 @@ public final class StringToBytesNode extends FixedWithNextNode implements Lowera
         tool.getLowerer().lower(this, tool);
     }
 
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
+    }
 }

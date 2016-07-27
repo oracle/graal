@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.debug.StringToBytesNode;
@@ -49,6 +50,8 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class StringToBytesSnippets implements Snippets {
 
+    public static final LocationIdentity CSTRING_LOCATION = NamedLocationIdentity.immutable("CString location");
+
     @Fold
     static long arrayBaseOffset() {
         return UNSAFE.arrayBaseOffset(char[].class);
@@ -61,7 +64,7 @@ public class StringToBytesSnippets implements Snippets {
         Word cArray = CStringConstant.cstring(compilationTimeString);
         while (i-- > 0) {
             // array[i] = cArray.readByte(i);
-            UNSAFE.putByte(array, arrayBaseOffset() + i, cArray.readByte(i));
+            UNSAFE.putByte(array, arrayBaseOffset() + i, cArray.readByte(i, CSTRING_LOCATION));
         }
         return array;
     }
