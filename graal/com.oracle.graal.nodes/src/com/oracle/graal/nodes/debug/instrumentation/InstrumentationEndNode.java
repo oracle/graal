@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug.instrumentation;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -32,7 +35,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * The {@code InstrumentationEndNode} represents the boundary of the instrumentation.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public final class InstrumentationEndNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<InstrumentationEndNode> TYPE = NodeClass.create(InstrumentationEndNode.class);

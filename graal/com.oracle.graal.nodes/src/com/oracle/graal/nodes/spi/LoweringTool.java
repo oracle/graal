@@ -49,6 +49,8 @@ public interface LoweringTool {
 
     StampProvider getStampProvider();
 
+    NodeCostProvider getNodeCostProvider();
+
     GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
 
     GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, JavaConstant speculation, boolean negated);

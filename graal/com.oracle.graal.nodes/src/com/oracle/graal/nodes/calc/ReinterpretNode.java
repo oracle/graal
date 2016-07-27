@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -46,7 +48,7 @@ import jdk.vm.ci.meta.SerializableConstant;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1)
 public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);

@@ -64,8 +64,12 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.nodeinfo.InputType;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionValue;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -76,6 +80,20 @@ import com.oracle.graal.nodeinfo.Verbosity;
  * </ul>
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Verifies that receivers of NodeInfo#size() and NodeInfo#cycles() do not have UNSET values.")
+        public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new OptionValue<Boolean>(){
+          @SuppressWarnings("all")
+          protected Boolean defaultValue() {
+              boolean assertionsEnabled = false;
+              assert assertionsEnabled = true;
+              return assertionsEnabled;
+          }
+        };
+        // @formatter:on
+    }
 
     // Timers for creation of a NodeClass instance
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
@@ -230,6 +248,62 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
         nodeIterableCount = Debug.counter("NodeIterable_%s", clazz);
         assert verifyIterableIds();
+
+        try (Debug.Scope scope = Debug.scope("NodeCosts")) {
+            /*
+             * Note: We do not check for the existence of the node cost annotations during
+             * construction as not every node needs to have them set. However if costs are queried,
+             * after the construction of the node class, they must be properly set. This is
+             * important as we can not trust our cost model if there are unspecified nodes. Nodes
+             * that do not need cost annotations are e.g. abstractions like FixedNode or
+             * FloatingNode or ValueNode. Sub classes where costs are not specified will ask the
+             * superclass for their costs during node class initialization. Therefore getters for
+             * cycles and size can omit verification during creation.
+             */
+            NodeCycles c = info.cycles();
+            if (c == NodeCycles.CYCLES_UNSET) {
+                cycles = superNodeClass != null ? superNodeClass.cycles(false) : NodeCycles.CYCLES_UNSET;
+            } else {
+                cycles = c;
+            }
+            assert cycles != null;
+            NodeSize s = info.size();
+            if (s == NodeSize.SIZE_UNSET) {
+                size = superNodeClass != null ? superNodeClass.size(false) : NodeSize.SIZE_UNSET;
+            } else {
+                size = s;
+            }
+            assert size != null;
+            Debug.log("Node cost for node of type __| %s |_, cycles:%s,size:%s", clazz, cycles, size);
+        }
+
+    }
+
+    private final NodeCycles cycles;
+    private final NodeSize size;
+
+    public NodeCycles cycles(boolean assertSanity) {
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
+            GraalError.guarantee(superNodeClass != null && cycles != NodeCycles.CYCLES_UNSET,
+                            "Missing NodeCycles specification in the @NodeInfo annotation of the node %s", toString());
+        }
+        return cycles;
+    }
+
+    public NodeCycles cycles() {
+        return cycles(true);
+    }
+
+    public NodeSize size(boolean assertSanity) {
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
+            GraalError.guarantee(superNodeClass != null && size != NodeSize.SIZE_UNSET,
+                            "Missing NodeSize specification in the @NodeInfo annotation of the node %s", toString());
+        }
+        return size;
+    }
+
+    public NodeSize size() {
+        return size(true);
     }
 
     public static long computeIterationMask(Type type, int directCount, long[] offsets) {

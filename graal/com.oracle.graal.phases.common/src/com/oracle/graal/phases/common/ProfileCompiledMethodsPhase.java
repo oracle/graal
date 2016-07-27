@@ -193,4 +193,5 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
         return hasInvoke;
     }
+
 }

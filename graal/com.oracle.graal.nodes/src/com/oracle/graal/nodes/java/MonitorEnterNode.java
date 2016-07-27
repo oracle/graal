@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_100;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
+
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
@@ -38,7 +41,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 /**
  * The {@code MonitorEnterNode} represents the acquisition of a monitor.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_100, size = SIZE_100)
 public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
 
     public static final NodeClass<MonitorEnterNode> TYPE = NodeClass.create(MonitorEnterNode.class);

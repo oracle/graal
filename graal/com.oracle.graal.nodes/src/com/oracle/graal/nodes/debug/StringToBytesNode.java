@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -33,7 +36,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
  * The {@code StringToBytesNode} transforms a compilation-time String into a byte array in the
  * compiled code.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class StringToBytesNode extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<StringToBytesNode> TYPE = NodeClass.create(StringToBytesNode.class);

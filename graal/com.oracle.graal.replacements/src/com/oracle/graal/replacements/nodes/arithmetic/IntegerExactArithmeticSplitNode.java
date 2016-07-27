@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.nodes.arithmetic;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -42,7 +45,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_2, cyclesRationale = "add+cmp", size = SIZE_2)
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
     public static final NodeClass<IntegerExactArithmeticSplitNode> TYPE = NodeClass.create(IntegerExactArithmeticSplitNode.class);
 

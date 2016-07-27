@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import java.util.BitSet;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -41,7 +44,7 @@ import jdk.vm.ci.meta.Value;
  * Reserves a block of memory in the stack frame of a method. The block is reserved in the frame for
  * the entire execution of the associated method.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class AllocaNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<AllocaNode> TYPE = NodeClass.create(AllocaNode.class);

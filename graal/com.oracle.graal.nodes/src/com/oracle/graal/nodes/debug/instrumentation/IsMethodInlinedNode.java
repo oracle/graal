@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug.instrumentation;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -40,7 +43,7 @@ import jdk.vm.ci.meta.JavaKind;
  * contextual information during bytecode parsing; second, the original graph upon cloning, which
  * can detect the inlining when comparing to the current graph.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public final class IsMethodInlinedNode extends FixedWithNextNode implements Lowerable, InstrumentationInliningCallback {
 
     public static final NodeClass<IsMethodInlinedNode> TYPE = NodeClass.create(IsMethodInlinedNode.class);

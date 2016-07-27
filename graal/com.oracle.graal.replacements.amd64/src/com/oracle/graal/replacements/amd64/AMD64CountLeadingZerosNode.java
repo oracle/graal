@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+
 import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -44,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Count the number of leading zeros using the {@code lzcntq} or {@code lzcntl} instructions.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
 public final class AMD64CountLeadingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.create(AMD64CountLeadingZerosNode.class);
 

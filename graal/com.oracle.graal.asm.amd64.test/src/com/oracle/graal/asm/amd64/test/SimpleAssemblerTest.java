@@ -81,7 +81,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
                 Data data = new SerializableData(JavaConstant.forDouble(84.72), 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
-                asm.movdbl(ret, asm.getPlaceholder());
+                asm.movdbl(ret, asm.getPlaceholder(-1));
                 asm.ret(0);
                 return asm.close(true);
             }
@@ -103,7 +103,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
                 Data data = new RawData(rawBytes, 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
-                asm.movdbl(ret, asm.getPlaceholder());
+                asm.movdbl(ret, asm.getPlaceholder(-1));
                 asm.ret(0);
                 return asm.close(true);
             }

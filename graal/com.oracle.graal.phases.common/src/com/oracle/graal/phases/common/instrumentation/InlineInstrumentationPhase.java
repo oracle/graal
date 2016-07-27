@@ -220,4 +220,8 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
         new CanonicalizerPhase().apply(graph, context);
     }
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
 }

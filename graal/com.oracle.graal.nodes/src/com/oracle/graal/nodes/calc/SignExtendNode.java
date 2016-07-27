@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
+
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
@@ -38,7 +40,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_1)
 public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
 
     public static final NodeClass<SignExtendNode> TYPE = NodeClass.create(SignExtendNode.class);

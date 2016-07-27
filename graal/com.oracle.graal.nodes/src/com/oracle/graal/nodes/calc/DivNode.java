@@ -29,6 +29,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -38,7 +39,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
-@NodeInfo(shortName = "/")
+@NodeInfo(shortName = "/", cycles = NodeCycles.CYCLES_30)
 public class DivNode extends BinaryArithmeticNode<Div> {
 
     public static final NodeClass<DivNode> TYPE = NodeClass.create(DivNode.class);

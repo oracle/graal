@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes;
 
 import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -283,7 +285,7 @@ public class GraphDecoder {
      * later be replaced by a ProxyNode if {@link GraphDecoder#detectLoops loop detection} finds out
      * that the value is defined in the loop, but used outside the loop.
      */
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 

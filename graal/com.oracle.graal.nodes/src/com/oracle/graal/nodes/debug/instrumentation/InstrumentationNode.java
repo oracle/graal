@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug.instrumentation;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
@@ -44,7 +47,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * InstrumentationEndNode). Any data dependency of the instrumentation nodes will be transformed
  * into an input to the InstrumentationNode.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public class InstrumentationNode extends DeoptimizingFixedWithNextNode implements VirtualizableAllocation {
 
     public static final NodeClass<InstrumentationNode> TYPE = NodeClass.create(InstrumentationNode.class);

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
+
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
@@ -44,7 +47,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "This node can be lowered to a call", size = SIZE_20)
 public final class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);

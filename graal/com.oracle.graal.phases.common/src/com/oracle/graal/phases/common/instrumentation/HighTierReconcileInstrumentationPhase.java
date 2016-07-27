@@ -49,6 +49,11 @@ import com.oracle.graal.phases.Phase;
 public class HighTierReconcileInstrumentationPhase extends Phase {
 
     @Override
+    public boolean checkContract() {
+        return false;
+    }
+
+    @Override
     protected void run(StructuredGraph graph) {
         // iterate through all CommitAllocationNodes, and clone the InstrumentationNodes targeting
         // allocation/lock held by this CommitAllocationNode

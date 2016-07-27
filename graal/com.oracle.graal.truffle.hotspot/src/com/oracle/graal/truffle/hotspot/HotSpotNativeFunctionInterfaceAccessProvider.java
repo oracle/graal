@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.nfi;
+package com.oracle.graal.truffle.hotspot;
 
 import com.oracle.graal.serviceprovider.ServiceProvider;
-import com.oracle.graal.truffle.hotspot.HotSpotTruffleRuntime;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
 import com.oracle.truffle.api.Truffle;
 
 @ServiceProvider(NativeFunctionInterfaceAccess.class)
-public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {
+public class HotSpotNativeFunctionInterfaceAccessProvider implements NativeFunctionInterfaceAccess {
     private final NativeFunctionInterface instance = createNativeFunctionInterface();
 
     @Override

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
+
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -51,7 +54,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compress or uncompress an oop or metaspace pointer.
  */
-@NodeInfo(nameTemplate = "{p#op/s}")
+@NodeInfo(nameTemplate = "{p#op/s}", cycles = CYCLES_2, size = SIZE_2)
 public final class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
     public static final NodeClass<CompressionNode> TYPE = NodeClass.create(CompressionNode.class);

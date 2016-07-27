@@ -100,6 +100,16 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
+    public boolean checkContract() {
+        /*
+         * There are certain canonicalizations we make that heavily increase code size by e.g.
+         * replacing a merge followed by a return of the merge's phi with returns in each
+         * predecessor.
+         */
+        return false;
+    }
+
+    @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         new Instance(context).run(graph);
     }
@@ -471,4 +481,5 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     public boolean getCanonicalizeReads() {
         return canonicalizeReads;
     }
+
 }

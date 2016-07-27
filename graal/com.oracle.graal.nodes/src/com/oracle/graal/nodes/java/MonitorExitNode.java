@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_50;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
+
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
@@ -40,7 +43,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
  * a synchronized method, then the return value of the method will be referenced via the edge
  * {@link #escapedReturnValue}, so that it will be materialized before releasing the monitor.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_50, size = SIZE_100)
 public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
 
     public static final NodeClass<MonitorExitNode> TYPE = NodeClass.create(MonitorExitNode.class);

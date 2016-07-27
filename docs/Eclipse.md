@@ -29,4 +29,4 @@ Any time Eclipse updates a class file needed by the Graal runtime, the updated c
 
 > Occasionally, a new Eclipse project is added to Graal.  This usually results in an Eclipse error message indicating that a project is missing another required Java project. To handle this, you simply need repeat the steps above for importing projects.
 
-In order to debug Graal with Eclipse, you should launch Graal using the `-d` global option as described [Debugging](docs/Debugging.md).
+In order to debug Graal with Eclipse, you should launch Graal using the `-d` global option as described [Debugging](Debugging.md).

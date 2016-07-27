@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.debug.instrumentation;
 
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.InputType;
@@ -36,7 +39,7 @@ import com.oracle.graal.nodes.java.RawMonitorEnterNode;
  * MonitorEnterNode is invalid. Such situation occurs when the escape analysis removes the
  * MonitorEnterNode and aggregates the monitor logic in a CommitAllocationNode.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public class MonitorProxyNode extends FloatingNode {
 
     public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);

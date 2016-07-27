@@ -23,6 +23,8 @@
 package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptEliminateGuards;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER_ALWAYS_REACHED;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.ST_LEAVE;
@@ -63,6 +65,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.nodes.spi.NodeCostProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.phases.BasePhase;
@@ -81,7 +84,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class LoweringPhase extends BasePhase<PhaseContext> {
 
-    @NodeInfo
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class DummyGuardHandle extends ValueNode implements GuardedNode {
         public static final NodeClass<DummyGuardHandle> TYPE = NodeClass.create(DummyGuardHandle.class);
         @Input(InputType.Guard) GuardingNode guard;
@@ -106,6 +109,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         public ValueNode asNode() {
             return this;
         }
+    }
+
+    @Override
+    public boolean checkContract() {
+        return false;
     }
 
     final class LoweringToolImpl implements LoweringTool {
@@ -197,6 +205,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public FixedWithNextNode lastFixedNode() {
             return lastFixedNode;
+        }
+
+        @Override
+        public NodeCostProvider getNodeCostProvider() {
+            return context.getNodeCostProvider();
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
@@ -313,6 +326,15 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public boolean checkContract() {
+            /*
+             * lowering with snippets cannot be fully built in the node costs of all high level
+             * nodes
+             */
+            return false;
+        }
+
+        @Override
         public void run(StructuredGraph graph) {
             schedulePhase.apply(graph, false);
             schedule = graph.getLastSchedule();
@@ -363,6 +385,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     }
                 }
             }
+
         }
 
         @SuppressWarnings("try")

@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.nodeinfo.InputType.State;
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Simplifiable;
 import com.oracle.graal.graph.spi.SimplifierTool;
-import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
@@ -37,11 +40,11 @@ import jdk.vm.ci.code.site.InfopointReason;
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
-@NodeInfo
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class FullInfopointNode extends FixedWithNextNode implements LIRLowerable, NodeWithState, Simplifiable {
     public static final NodeClass<FullInfopointNode> TYPE = NodeClass.create(FullInfopointNode.class);
     protected final InfopointReason reason;
-    @Input(InputType.State) FrameState state;
+    @Input(State) FrameState state;
     @OptionalInput ValueNode escapedReturnValue;
 
     public FullInfopointNode(InfopointReason reason, FrameState state, ValueNode escapedReturnValue) {

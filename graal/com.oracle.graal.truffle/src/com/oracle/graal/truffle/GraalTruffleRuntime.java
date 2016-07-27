@@ -31,7 +31,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.WeakHashMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -63,6 +65,7 @@ import com.oracle.graal.truffle.debug.TraceSplittingListener;
 import com.oracle.graal.truffle.phases.InstrumentBranchesPhase;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
@@ -91,6 +94,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
+
+    private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     protected abstract static class BackgroundCompileQueue implements CompilerThreadFactory.DebugConfigAccess {
         private final ExecutorService compileQueue;
@@ -231,13 +236,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             loopNodeFactory = loadPrioritizedServiceProvider(LoopNodeFactory.class);
         }
         return loopNodeFactory;
-    }
-
-    protected RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
-        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode);
-        rootNode.setCallTarget(target);
-        tvmci.onLoad(target.getRootNode());
-        return target;
     }
 
     @Override
@@ -409,9 +407,27 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public abstract SpeculationLog createSpeculationLog();
 
     @Override
-    public abstract RootCallTarget createCallTarget(RootNode root);
+    public RootCallTarget createCallTarget(RootNode rootNode) {
+        return createClonedCallTarget(null, rootNode);
+    }
 
-    public abstract RootCallTarget createClonedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode root);
+    public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+        CompilerAsserts.neverPartOfCompilation();
+
+        OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
+        rootNode.setCallTarget(target);
+        tvmci.onLoad(target.getRootNode());
+        callTargets.put(target, null);
+        return target;
+    }
+
+    protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public Collection<RootCallTarget> getCallTargets() {
+        return Collections.unmodifiableSet(callTargets.keySet());
+    }
 
     public void addCompilationListener(GraalTruffleCompilationListener listener) {
         compilationListeners.add(listener);
