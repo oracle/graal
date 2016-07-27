@@ -675,7 +675,7 @@ public class InvocationPlugins {
         this(null, metaAccess);
     }
 
-    private void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
