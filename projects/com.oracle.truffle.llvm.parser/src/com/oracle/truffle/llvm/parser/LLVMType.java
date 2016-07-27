@@ -29,31 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-public enum LLVMBaseType {
-    VOID,
-    I1,
-    I8,
-    I16,
-    I32,
-    I64,
-    HALF,
-    FLOAT,
-    DOUBLE,
-    F128,
-    X86_FP80,
-    PPC_FP128,
-    ADDRESS,
-    STRUCT,
-    ARRAY,
-    FUNCTION_ADDRESS,
-    I1_VECTOR,
-    I8_VECTOR,
-    I16_VECTOR,
-    I32_VECTOR,
-    I64_VECTOR,
-    FLOAT_VECTOR,
-    DOUBLE_VECTOR,
-    I128_VECTOR,
-    I_VAR_BITWIDTH,
-    ADDRESS_VECTOR;
+public class LLVMType {
+    public final LLVMBaseType type;
+    public final LLVMType pointee;
+
+    public LLVMType(LLVMBaseType type) {
+        this(type, null);
+    }
+
+    public LLVMType(LLVMBaseType type, LLVMType pointee) {
+        this.type = type;
+        this.pointee = pointee;
+    }
+
+    public boolean isPointer() {
+        return this.pointee != null;
+    }
 }

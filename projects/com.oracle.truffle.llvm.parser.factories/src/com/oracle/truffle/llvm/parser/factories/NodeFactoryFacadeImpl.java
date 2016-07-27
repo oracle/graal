@@ -377,14 +377,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
                 return new LLVMDoubleUnsupportedInlineAssemblerNode();
             case X86_FP80:
                 return new LLVM80BitFloatUnsupportedInlineAssemblerNode();
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 return new LLVMAddressUnsupportedInlineAssemblerNode();
             case FUNCTION_ADDRESS:

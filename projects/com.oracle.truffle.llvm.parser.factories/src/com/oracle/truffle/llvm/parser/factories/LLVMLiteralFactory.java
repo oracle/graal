@@ -98,7 +98,7 @@ public final class LLVMLiteralFactory {
 
     public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, EObject t) {
         ResolvedType resolvedType = runtime.resolve(t);
-        LLVMBaseType type = LLVMTypeHelper.getLLVMType(resolvedType);
+        LLVMBaseType type = LLVMTypeHelper.getLLVMType(resolvedType).type;
         if (LLVMTypeHelper.isVectorType(type)) {
             LLVMAddressLiteralNode addr = new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             switch (type) {
@@ -140,14 +140,6 @@ public final class LLVMLiteralFactory {
                 return new LLVMFloatLiteralNode(-1);
             case DOUBLE:
                 return new LLVMDoubleLiteralNode(-1);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 return new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             case FUNCTION_ADDRESS:
@@ -198,14 +190,6 @@ public final class LLVMLiteralFactory {
             case I64:
                 long val = Long.decode(stringValue);
                 return new LLVMI64LiteralNode(val);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 if (stringValue.equals("null")) {
                     return new LLVMAddressLiteralNode(LLVMAddress.fromLong(0));
@@ -374,14 +358,6 @@ public final class LLVMLiteralFactory {
                 return new LLVMFloatLiteralNode((float) value);
             case DOUBLE:
                 return new LLVMDoubleLiteralNode((double) value);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 if (value instanceof LLVMAddress) {
                     return new LLVMAddressLiteralNode((LLVMAddress) value);
@@ -400,7 +376,7 @@ public final class LLVMLiteralFactory {
     public static LLVMAddressNode createArrayLiteral(LLVMParserRuntime runtime, List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
         int nrElements = arrayValues.size();
         ResolvedType elementType = arrayType.getContainedType(-1);
-        LLVMBaseType llvmElementType = LLVMTypeHelper.getLLVMType(elementType);
+        LLVMBaseType llvmElementType = LLVMTypeHelper.getLLVMType(elementType).type;
         int baseTypeSize = LLVMTypeHelper.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(arrayType, size, LLVMTypeHelper.getAlignmentByte(arrayType));
@@ -426,14 +402,6 @@ public final class LLVMLiteralFactory {
             case ARRAY:
             case STRUCT:
                 return LLVMAddressArrayCopyNodeGen.create(arrayValues.toArray(new LLVMAddressNode[nrElements]), baseTypeSize, arrayAlloc);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMAddressArrayLiteralNodeGen.create(arrayValues.toArray(new LLVMAddressNode[nrElements]), baseTypeSize, arrayAlloc);
             case FUNCTION_ADDRESS:

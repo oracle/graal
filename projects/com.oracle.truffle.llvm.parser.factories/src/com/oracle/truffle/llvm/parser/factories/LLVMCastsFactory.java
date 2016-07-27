@@ -160,7 +160,7 @@ public final class LLVMCastsFactory {
 
     private LLVMCastsFactory(ResolvedType targetType, ResolvedType fromType, LLVMConversionType conv) {
         this.fromType = fromType;
-        this.targetType = LLVMTypeHelper.getLLVMType(targetType);
+        this.targetType = LLVMTypeHelper.getLLVMType(targetType).type;
         this.resolvedType = targetType;
         this.conv = conv;
         this.bits = 0;
@@ -178,7 +178,7 @@ public final class LLVMCastsFactory {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
-        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelper.getLLVMType(fromType), fromNode);
+        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelper.getLLVMType(fromType).type, fromNode);
     }
 
     public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv) {
@@ -212,14 +212,6 @@ public final class LLVMCastsFactory {
                 return factory.castFromDouble((LLVMDoubleNode) fromNode);
             case X86_FP80:
                 return factory.castFrom80BitFloat((LLVM80BitFloatNode) fromNode);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 return factory.castFromPointer((LLVMAddressNode) fromNode);
             case FUNCTION_ADDRESS:
@@ -339,14 +331,6 @@ public final class LLVMCastsFactory {
                 return LLVMFunctionToI32NodeGen.create(fromNode);
             case I64:
                 return LLVMFunctionToI64NodeGen.create(fromNode);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 return LLVMFunctionToAddressNodeGen.create(fromNode);
             default:
@@ -434,19 +418,8 @@ public final class LLVMCastsFactory {
     }
 
     private LLVMExpressionNode castFromPointer(LLVMAddressNode fromNode) {
-        switch (targetType) {
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
-            case ADDRESS:
-                return fromNode;
-            default:
-                break;
+        if (targetType == LLVMBaseType.ADDRESS) {
+            return fromNode;
         }
         if (hasJavaCastSemantics() || conv == LLVMConversionType.BITCAST) {
             switch (targetType) {
@@ -456,14 +429,6 @@ public final class LLVMCastsFactory {
                     return LLVMAddressToI32NodeGen.create(fromNode);
                 case I64:
                     return LLVMAddressToI64NodeGen.create(fromNode);
-                case I1_POINTER:
-                case I8_POINTER:
-                case I16_POINTER:
-                case I32_POINTER:
-                case I64_POINTER:
-                case HALF_POINTER:
-                case FLOAT_POINTER:
-                case DOUBLE_POINTER:
                 case ADDRESS:
                     // at the moment we still can directly cast from pointer to pointer (e.g. from
                     // I32* to I32Vector*)
@@ -497,14 +462,6 @@ public final class LLVMCastsFactory {
                     return LLVMI64ToDoubleNodeGen.create(fromNode);
                 case X86_FP80:
                     return LLVMI64ToLLVM80BitFloatNodeGen.create(fromNode);
-                case I1_POINTER:
-                case I8_POINTER:
-                case I16_POINTER:
-                case I32_POINTER:
-                case I64_POINTER:
-                case HALF_POINTER:
-                case FLOAT_POINTER:
-                case DOUBLE_POINTER:
                 case ADDRESS:
                     return LLVMI64ToAddressNodeGen.create(fromNode);
                 default:
@@ -520,14 +477,6 @@ public final class LLVMCastsFactory {
                     return LLVMI64ToDoubleUnsignedNodeGen.create(fromNode);
                 case X86_FP80:
                     return LLVMI64ToLLVM80BitFloatUnsignedNodeGen.create(fromNode);
-                case I1_POINTER:
-                case I8_POINTER:
-                case I16_POINTER:
-                case I32_POINTER:
-                case I64_POINTER:
-                case HALF_POINTER:
-                case FLOAT_POINTER:
-                case DOUBLE_POINTER:
                 case ADDRESS:
                     return LLVMI64ToAddressNodeGen.create(fromNode);
                 case FUNCTION_ADDRESS:

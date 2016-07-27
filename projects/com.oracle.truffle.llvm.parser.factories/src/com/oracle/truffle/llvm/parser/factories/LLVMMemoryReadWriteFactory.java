@@ -99,7 +99,7 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget, LLVMParserRuntime runtime) {
-        LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType);
+        LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType).type;
 
         if (resolvedResultType.isVector()) {
             return createLoadVector(resultType, loadTarget, resolvedResultType.asVector().getSize());
@@ -152,14 +152,6 @@ public final class LLVMMemoryReadWriteFactory {
                 return LLVMDoubleDirectLoadNodeGen.create(loadTarget);
             case X86_FP80:
                 return LLVM80BitFloatDirectLoadNodeGen.create(loadTarget);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 if (loadTarget instanceof LLVMAccessGlobalVariableStorageNode) {
                     return LLVMGlobalVariableDirectLoadNodeGen.create(((LLVMAccessGlobalVariableStorageNode) loadTarget).getGlobalVariableStorage());
@@ -201,7 +193,7 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type), LLVMTypeHelper.getByteSize(type));
+        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type).type, LLVMTypeHelper.getByteSize(type));
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {
@@ -224,14 +216,6 @@ public final class LLVMMemoryReadWriteFactory {
                 return LLVMDoubleStoreNodeGen.create(pointerNode, (LLVMDoubleNode) valueNode);
             case X86_FP80:
                 return LLVM80BitFloatStoreNodeGen.create(pointerNode, (LLVM80BitFloatNode) valueNode);
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
             case ADDRESS:
                 if (pointerNode instanceof LLVMAccessGlobalVariableStorageNode) {
                     return LLVMGlobalVariableStoreNodeGen.create(((LLVMAccessGlobalVariableStorageNode) pointerNode).getGlobalVariableStorage(), (LLVMAddressNode) valueNode);
