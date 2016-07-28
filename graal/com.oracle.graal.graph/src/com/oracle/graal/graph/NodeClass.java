@@ -285,7 +285,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public NodeCycles cycles(boolean assertSanity) {
         if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && cycles != NodeCycles.CYCLES_UNSET,
-                            "Missing NodeCycles specification in the @NodeInfo annotation of the node %s", toString());
+                            "Missing NodeCycles specification in the @NodeInfo annotation of the node %s", this);
         }
         return cycles;
     }
@@ -297,7 +297,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public NodeSize size(boolean assertSanity) {
         if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
             GraalError.guarantee(superNodeClass != null && size != NodeSize.SIZE_UNSET,
-                            "Missing NodeSize specification in the @NodeInfo annotation of the node %s", toString());
+                            "Missing NodeSize specification in the @NodeInfo annotation of the node %s", this);
         }
         return size;
     }
