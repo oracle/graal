@@ -135,7 +135,7 @@ public final class LLVMAggregateFactory {
 
     private static LLVMStructWriteNode createStructWriteNode(LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
         int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
-        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType);
+        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType).getType();
         switch (llvmType) {
             case I1:
                 return new LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);

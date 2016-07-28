@@ -160,7 +160,7 @@ public final class LLVMCastsFactory {
 
     private LLVMCastsFactory(ResolvedType targetType, ResolvedType fromType, LLVMConversionType conv) {
         this.fromType = fromType;
-        this.targetType = LLVMTypeHelper.getLLVMType(targetType);
+        this.targetType = LLVMTypeHelper.getLLVMType(targetType).getType();
         this.resolvedType = targetType;
         this.conv = conv;
         this.bits = 0;
@@ -178,7 +178,7 @@ public final class LLVMCastsFactory {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
-        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelper.getLLVMType(fromType), fromNode);
+        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelper.getLLVMType(fromType).getType(), fromNode);
     }
 
     public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv) {

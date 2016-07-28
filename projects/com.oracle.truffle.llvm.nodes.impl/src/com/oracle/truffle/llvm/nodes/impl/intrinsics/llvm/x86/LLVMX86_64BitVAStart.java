@@ -66,6 +66,14 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
             case I16:
             case I32:
             case I64:
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 return VarArgArea.GP_AREA;
             case FLOAT:
@@ -254,6 +262,14 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
             case X86_FP80:
                 LLVMMemory.put80BitFloat(currentAddress, (LLVM80BitFloat) object);
                 break;
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
                 LLVMMemory.putAddress(currentAddress, (LLVMAddress) object);
                 break;

@@ -27,21 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.base.integers;
+package com.oracle.truffle.llvm.nodes.impl.intrinsics.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
 
-public abstract class LLVMI16Node extends LLVMExpressionNode {
+public class LLVMAddressMessageResolutionAccessor {
 
-    public static final int MASK = 0xffff;
-    public static final int BYTE_SIZE = 2;
-
-    public abstract short executeI16(VirtualFrame frame);
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeI16(frame);
-    }
+    public static final ForeignAccess ACCESS = LLVMAddressMessageResolutionForeign.ACCESS;
 
 }

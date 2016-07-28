@@ -27,21 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.base.integers;
+package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+public class LLVMType {
+    private final LLVMBaseType type;
+    private final LLVMType pointee;
 
-public abstract class LLVMI16Node extends LLVMExpressionNode {
-
-    public static final int MASK = 0xffff;
-    public static final int BYTE_SIZE = 2;
-
-    public abstract short executeI16(VirtualFrame frame);
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeI16(frame);
+    public LLVMType(LLVMBaseType type) {
+        this(type, null);
     }
 
+    public LLVMType(LLVMBaseType type, LLVMType pointee) {
+        this.type = type;
+        this.pointee = pointee;
+    }
+
+    public boolean isPointer() {
+        return this.pointee != null;
+    }
+
+    public LLVMBaseType getType() {
+        return type;
+    }
+
+    public LLVMType getPointee() {
+        return pointee;
+    }
 }

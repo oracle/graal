@@ -27,21 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.base.integers;
+package com.oracle.truffle.llvm.types;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
-public abstract class LLVMI16Node extends LLVMExpressionNode {
+public class LLVMTruffleAddress implements TruffleObject {
+    private final LLVMAddress address;
+    private final LLVMRuntimeType type;
 
-    public static final int MASK = 0xffff;
-    public static final int BYTE_SIZE = 2;
-
-    public abstract short executeI16(VirtualFrame frame);
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeI16(frame);
+    public LLVMTruffleAddress(LLVMAddress address, LLVMRuntimeType type) {
+        this.address = address;
+        this.type = type;
     }
 
+    public LLVMAddress getAddress() {
+        return address;
+    }
+
+    public LLVMRuntimeType getType() {
+        return type;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMTruffleAddress;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
+    }
 }

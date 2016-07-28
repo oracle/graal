@@ -34,6 +34,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 
 public abstract class LLVMI64Node extends LLVMExpressionNode {
 
+    public static final int BYTE_SIZE = 8;
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         return executeI64(frame);

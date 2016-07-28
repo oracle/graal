@@ -225,6 +225,14 @@ public class NativeLookup {
                 return double.class;
             case VOID:
                 return void.class;
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
             case ADDRESS:
             case STRUCT:
                 return long.class;

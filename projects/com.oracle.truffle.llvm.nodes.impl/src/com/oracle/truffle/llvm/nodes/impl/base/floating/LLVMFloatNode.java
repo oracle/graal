@@ -34,6 +34,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 
 public abstract class LLVMFloatNode extends LLVMExpressionNode {
 
+    public static final int BYTE_SIZE = 4;
+
     public abstract float executeFloat(VirtualFrame frame);
 
     @Override

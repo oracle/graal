@@ -45,6 +45,7 @@ import com.intel.llvm.ireditor.types.ResolvedVoidType;
 import com.intel.llvm.ireditor.types.TypeResolver;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -142,68 +143,73 @@ public class LLVMTypeHelper {
     }
 
     // Checkstyle: stop magic number name check
-    public static LLVMBaseType getLLVMType(ResolvedType elementType) {
+    public static LLVMType getLLVMType(ResolvedType elementType) {
         if (elementType instanceof ResolvedIntegerType) {
             switch (elementType.getBits().intValue()) {
                 case 1:
-                    return LLVMBaseType.I1;
+                    return new LLVMType(LLVMBaseType.I1);
                 case 8:
-                    return LLVMBaseType.I8;
+                    return new LLVMType(LLVMBaseType.I8);
                 case 16:
-                    return LLVMBaseType.I16;
+                    return new LLVMType(LLVMBaseType.I16);
                 case 32:
-                    return LLVMBaseType.I32;
+                    return new LLVMType(LLVMBaseType.I32);
                 case 64:
-                    return LLVMBaseType.I64;
+                    return new LLVMType(LLVMBaseType.I64);
                 default:
-                    return LLVMBaseType.I_VAR_BITWIDTH;
+                    return new LLVMType(LLVMBaseType.I_VAR_BITWIDTH);
             }
         } else if (elementType instanceof ResolvedFloatingType) {
             switch (elementType.getBits().intValue()) {
                 case 32:
-                    return LLVMBaseType.FLOAT;
+                    return new LLVMType(LLVMBaseType.FLOAT);
                 case 64:
-                    return LLVMBaseType.DOUBLE;
+                    return new LLVMType(LLVMBaseType.DOUBLE);
                 case 80:
-                    return LLVMBaseType.X86_FP80;
+                    return new LLVMType(LLVMBaseType.X86_FP80);
                 default:
                     throw new LLVMUnsupportedException(UnsupportedReason.FLOAT_OTHER_TYPE_NOT_IMPLEMENTED);
             }
         } else if (elementType.isPointer()) {
             if (elementType.getContainedType(0).isFunction()) {
-                return LLVMBaseType.FUNCTION_ADDRESS;
+                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
             } else {
-                return LLVMBaseType.ADDRESS;
+                try {
+                    return new LLVMType(LLVMBaseType.ADDRESS, getLLVMType(elementType.getContainedType(0)));
+                } catch (LLVMUnsupportedException e) {
+                    // generic pointer
+                    return new LLVMType(LLVMBaseType.ADDRESS, new LLVMType(LLVMBaseType.VOID));
+                }
             }
         } else if (elementType instanceof ResolvedVoidType) {
-            return LLVMBaseType.VOID;
+            return new LLVMType(LLVMBaseType.VOID);
         } else if (elementType instanceof ResolvedArrayType) {
-            return LLVMBaseType.ARRAY;
+            return new LLVMType(LLVMBaseType.ARRAY);
         } else if (elementType.isStruct()) {
-            return LLVMBaseType.STRUCT;
+            return new LLVMType(LLVMBaseType.STRUCT);
         } else if (elementType instanceof ResolvedVectorType) {
-            switch (getLLVMType(elementType.getContainedType(-1))) {
+            switch (getLLVMType(elementType.getContainedType(-1)).getType()) {
                 case I1:
-                    return LLVMBaseType.I1_VECTOR;
+                    return new LLVMType(LLVMBaseType.I1_VECTOR);
                 case I8:
-                    return LLVMBaseType.I8_VECTOR;
+                    return new LLVMType(LLVMBaseType.I8_VECTOR);
                 case I16:
-                    return LLVMBaseType.I16_VECTOR;
+                    return new LLVMType(LLVMBaseType.I16_VECTOR);
                 case I32:
-                    return LLVMBaseType.I32_VECTOR;
+                    return new LLVMType(LLVMBaseType.I32_VECTOR);
                 case I64:
-                    return LLVMBaseType.I64_VECTOR;
+                    return new LLVMType(LLVMBaseType.I64_VECTOR);
                 case FLOAT:
-                    return LLVMBaseType.FLOAT_VECTOR;
+                    return new LLVMType(LLVMBaseType.FLOAT_VECTOR);
                 case DOUBLE:
-                    return LLVMBaseType.DOUBLE_VECTOR;
+                    return new LLVMType(LLVMBaseType.DOUBLE_VECTOR);
                 case ADDRESS:
-                    return LLVMBaseType.ADDRESS_VECTOR;
+                    return new LLVMType(LLVMBaseType.ADDRESS_VECTOR, getLLVMType(elementType.getContainedType(-1)).getPointee());
                 default:
                     throw new AssertionError(elementType);
             }
         } else if (elementType instanceof ResolvedAnyIntegerType) {
-            return LLVMBaseType.I32;
+            return new LLVMType(LLVMBaseType.I32);
         }
 
         else {
@@ -281,7 +287,7 @@ public class LLVMTypeHelper {
         } else if (field instanceof ResolvedVectorType) {
             return getAlignmentByte(field.getContainedType(-1));
         } else {
-            LLVMBaseType type = getLLVMType(field);
+            LLVMBaseType type = getLLVMType(field).getType();
             return runtime.getBitAlignment(type) / Byte.SIZE;
         }
     }
@@ -319,7 +325,7 @@ public class LLVMTypeHelper {
         }
     }
 
-    public static LLVMRuntimeType[] convertTypes(LLVMBaseType... llvmParamTypes) {
+    public static LLVMRuntimeType[] convertTypes(LLVMType... llvmParamTypes) {
         LLVMRuntimeType[] types = new LLVMRuntimeType[llvmParamTypes.length];
         for (int i = 0; i < types.length; i++) {
             types[i] = convertType(llvmParamTypes[i]);
@@ -327,8 +333,31 @@ public class LLVMTypeHelper {
         return types;
     }
 
-    public static LLVMRuntimeType convertType(LLVMBaseType llvmReturnType) {
-        return LLVMRuntimeType.valueOf(llvmReturnType.toString());
+    public static LLVMRuntimeType convertType(LLVMType llvmReturnType) {
+        if (llvmReturnType.isPointer()) {
+            switch (llvmReturnType.getPointee().getType()) {
+                case I1:
+                    return LLVMRuntimeType.I1_POINTER;
+                case I8:
+                    return LLVMRuntimeType.I8_POINTER;
+                case I16:
+                    return LLVMRuntimeType.I16_POINTER;
+                case I32:
+                    return LLVMRuntimeType.I32_POINTER;
+                case I64:
+                    return LLVMRuntimeType.I64_POINTER;
+                case HALF:
+                    return LLVMRuntimeType.HALF_POINTER;
+                case FLOAT:
+                    return LLVMRuntimeType.FLOAT_POINTER;
+                case DOUBLE:
+                    return LLVMRuntimeType.DOUBLE_POINTER;
+                default:
+                    return LLVMRuntimeType.ADDRESS;
+            }
+        } else {
+            return LLVMRuntimeType.valueOf(llvmReturnType.getType().toString());
+        }
     }
 
     public static boolean isCompoundType(LLVMBaseType type) {

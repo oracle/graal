@@ -73,6 +73,11 @@ public abstract class LLVMDoubleLoadNode extends LLVMDoubleNode {
         public double executeDouble(VirtualFrame frame, LLVMTruffleObject addr) {
             return doForeignAccess(frame, addr);
         }
+
+        @Specialization
+        public double executeDouble(VirtualFrame frame, TruffleObject addr) {
+            return executeDouble(frame, new LLVMTruffleObject(addr));
+        }
     }
 
     public abstract static class LLVMDoubleProfilingLoadNode extends LLVMDoubleLoadNode {

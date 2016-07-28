@@ -62,7 +62,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMCallNode {
@@ -196,12 +195,22 @@ public abstract class LLVMCallNode {
     }
 
     public static LLVMResolvedDirectNativeCallNode getResolvedNativeCall(LLVMFunctionDescriptor function, NativeFunctionHandle nativeHandle, LLVMExpressionNode[] args, LLVMContext context) {
-        if (function.getReturnType() == LLVMRuntimeType.ADDRESS || function.getReturnType() == LLVMRuntimeType.STRUCT) {
-            return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args, context);
-        } else if (function.getReturnType() == LLVMRuntimeType.X86_FP80) {
-            return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args, context);
-        } else {
-            return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args, context);
+        switch (function.getReturnType()) {
+            case ADDRESS:
+            case STRUCT:
+            case I1_POINTER:
+            case I8_POINTER:
+            case I16_POINTER:
+            case I32_POINTER:
+            case I64_POINTER:
+            case HALF_POINTER:
+            case FLOAT_POINTER:
+            case DOUBLE_POINTER:
+                return new LLVMResolvedNativeAddressCallNode(function, nativeHandle, args, context);
+            case X86_FP80:
+                return new LLVMResolvedNative80BitFloatCallNode(function, nativeHandle, args, context);
+            default:
+                return new LLVMResolvedDirectNativeCallNode(function, nativeHandle, args, context);
         }
     }
 

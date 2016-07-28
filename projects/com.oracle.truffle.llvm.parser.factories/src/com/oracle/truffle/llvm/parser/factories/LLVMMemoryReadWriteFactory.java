@@ -99,7 +99,7 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMAddressNode loadTarget, LLVMParserRuntime runtime) {
-        LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType);
+        LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolvedResultType).getType();
 
         if (resolvedResultType.isVector()) {
             return createLoadVector(resultType, loadTarget, resolvedResultType.asVector().getSize());
@@ -193,7 +193,7 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type), LLVMTypeHelper.getByteSize(type));
+        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type).getType(), LLVMTypeHelper.getByteSize(type));
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {

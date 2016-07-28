@@ -54,7 +54,7 @@ public abstract class LLVMI8LoadNode extends LLVMI8Node {
 
     protected byte doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
-            int index = (int) (addr.getOffset());
+            int index = (int) addr.getOffset();
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
             return (byte) toLLVM.convert(frame, value, type);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
