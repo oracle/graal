@@ -39,8 +39,10 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RRMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AVXOp;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.gen.NodeLIRBuilder;
@@ -71,7 +73,10 @@ import com.oracle.graal.nodes.memory.Access;
 import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -289,12 +294,23 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                         getState(access));
     }
 
+    private ComplexMatchResult binaryRead(AMD64RRMOp op, OperandSize size, ValueNode value, Access access) {
+        return builder -> getArithmeticLIRGenerator().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()),
+                        getState(access));
+    }
+
     @MatchRule("(Add value Read=access)")
     @MatchRule("(Add value FloatingRead=access)")
     public ComplexMatchResult addMemory(ValueNode value, Access access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            return binaryRead(SSEOp.ADD, size, value, access);
+            TargetDescription target = getLIRGeneratorTool().target();
+            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
+            if (isAvx) {
+                return binaryRead(AVXOp.ADD, size, value, access);
+            } else {
+                return binaryRead(SSEOp.ADD, size, value, access);
+            }
         } else {
             return binaryRead(ADD.getRMOpcode(size), size, value, access);
         }
@@ -305,7 +321,13 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult subMemory(ValueNode value, Access access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            return binaryRead(SSEOp.SUB, size, value, access);
+            TargetDescription target = getLIRGeneratorTool().target();
+            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
+            if (isAvx) {
+                return binaryRead(AVXOp.SUB, size, value, access);
+            } else {
+                return binaryRead(SSEOp.SUB, size, value, access);
+            }
         } else {
             return binaryRead(SUB.getRMOpcode(size), size, value, access);
         }
@@ -316,7 +338,13 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mulMemory(ValueNode value, Access access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            return binaryRead(SSEOp.MUL, size, value, access);
+            TargetDescription target = getLIRGeneratorTool().target();
+            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
+            if (isAvx) {
+                return binaryRead(AVXOp.MUL, size, value, access);
+            } else {
+                return binaryRead(SSEOp.MUL, size, value, access);
+            }
         } else {
             return binaryRead(AMD64RMOp.IMUL, size, value, access);
         }
