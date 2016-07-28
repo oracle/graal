@@ -188,7 +188,7 @@ public class LLVMTypeHelper {
         } else if (elementType.isStruct()) {
             return new LLVMType(LLVMBaseType.STRUCT);
         } else if (elementType instanceof ResolvedVectorType) {
-            switch (getLLVMType(elementType.getContainedType(-1)).type) {
+            switch (getLLVMType(elementType.getContainedType(-1)).getType()) {
                 case I1:
                     return new LLVMType(LLVMBaseType.I1_VECTOR);
                 case I8:
@@ -204,7 +204,7 @@ public class LLVMTypeHelper {
                 case DOUBLE:
                     return new LLVMType(LLVMBaseType.DOUBLE_VECTOR);
                 case ADDRESS:
-                    return new LLVMType(LLVMBaseType.ADDRESS_VECTOR, getLLVMType(elementType.getContainedType(-1)).pointee);
+                    return new LLVMType(LLVMBaseType.ADDRESS_VECTOR, getLLVMType(elementType.getContainedType(-1)).getPointee());
                 default:
                     throw new AssertionError(elementType);
             }
@@ -287,7 +287,7 @@ public class LLVMTypeHelper {
         } else if (field instanceof ResolvedVectorType) {
             return getAlignmentByte(field.getContainedType(-1));
         } else {
-            LLVMBaseType type = getLLVMType(field).type;
+            LLVMBaseType type = getLLVMType(field).getType();
             return runtime.getBitAlignment(type) / Byte.SIZE;
         }
     }
@@ -335,7 +335,7 @@ public class LLVMTypeHelper {
 
     public static LLVMRuntimeType convertType(LLVMType llvmReturnType) {
         if (llvmReturnType.isPointer()) {
-            switch (llvmReturnType.pointee.type) {
+            switch (llvmReturnType.getPointee().getType()) {
                 case I1:
                     return LLVMRuntimeType.I1_POINTER;
                 case I8:
@@ -356,7 +356,7 @@ public class LLVMTypeHelper {
                     return LLVMRuntimeType.ADDRESS;
             }
         } else {
-            return LLVMRuntimeType.valueOf(llvmReturnType.type.toString());
+            return LLVMRuntimeType.valueOf(llvmReturnType.getType().toString());
         }
     }
 

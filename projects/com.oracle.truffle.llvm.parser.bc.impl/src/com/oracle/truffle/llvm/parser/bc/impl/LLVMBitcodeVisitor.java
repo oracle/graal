@@ -175,7 +175,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         // formalParamInits.add(retValue);
         // }
         for (FunctionParameter parameter : parameters) {
-            LLVMBaseType llvmtype = LLVMBitcodeHelper.toBaseType(parameter.getType()).type;
+            LLVMBaseType llvmtype = LLVMBitcodeHelper.toBaseType(parameter.getType()).getType();
             LLVMExpressionNode parameterNode = LLVMFunctionFactory.createFunctionArgNode(argIndex++, llvmtype);
             FrameSlot slot = frame.findFrameSlot(parameter.getName());
             parameterNodes.add(LLVMFrameReadWriteFactory.createFrameWrite(llvmtype, parameterNode, slot));
@@ -190,7 +190,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             LLVMExpressionNode constant = LLVMBitcodeHelper.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stack);
             if (constant != null) {
                 Type type = ((PointerType) global.getType()).getPointeeType();
-                LLVMBaseType baseType = LLVMBitcodeHelper.toBaseType(type).type;
+                LLVMBaseType baseType = LLVMBitcodeHelper.toBaseType(type).getType();
                 int size = LLVMBitcodeHelper.getSize(type, global.getAlign());
 
                 LLVMAddressLiteralNode globalVarAddress = (LLVMAddressLiteralNode) getGlobalVariable(global);
@@ -203,7 +203,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         store = LLVMMemI32CopyFactory.create(globalVarAddress, (LLVMAddressNode) constant, new LLVMI32LiteralNode(size), new LLVMI32LiteralNode(0), new LLVMI1LiteralNode(false));
                     } else {
                         Type t = global.getValue().getType();
-                        store = LLVMMemoryReadWriteFactory.createStore(globalVarAddress, constant, LLVMBitcodeHelper.toBaseType(t).type, LLVMBitcodeHelper.getSize(t, 0));
+                        store = LLVMMemoryReadWriteFactory.createStore(globalVarAddress, constant, LLVMBitcodeHelper.toBaseType(t).getType(), LLVMBitcodeHelper.getSize(t, 0));
                     }
                     return store;
                 }

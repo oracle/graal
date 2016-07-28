@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser;
 
 public class LLVMType {
-    public final LLVMBaseType type;
-    public final LLVMType pointee;
+    private final LLVMBaseType type;
+    private final LLVMType pointee;
 
     public LLVMType(LLVMBaseType type) {
         this(type, null);
@@ -44,5 +44,13 @@ public class LLVMType {
 
     public boolean isPointer() {
         return this.pointee != null;
+    }
+
+    public LLVMBaseType getType() {
+        return type;
+    }
+
+    public LLVMType getPointee() {
+        return pointee;
     }
 }

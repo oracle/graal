@@ -255,7 +255,7 @@ public final class LLVMBitcodeHelper {
         }
         if (type instanceof VectorType) {
             Type base = ((VectorType) type).getElementType();
-            switch (toBaseType(base).type) {
+            switch (toBaseType(base).getType()) {
                 case I1:
                     return new LLVMType(LLVMBaseType.I1_VECTOR);
                 case I8:
@@ -306,7 +306,7 @@ public final class LLVMBitcodeHelper {
     }
 
     public static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMAddressNode target, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        LLVMBaseType llvmtype = toBaseType(type).type;
+        LLVMBaseType llvmtype = toBaseType(type).getType();
 
         switch (operator) {
             case FP_FALSE:
@@ -453,7 +453,7 @@ public final class LLVMBitcodeHelper {
 
             Type subtype = array.getType().getElementType();
 
-            LLVMBaseType llvmsubtype = LLVMBitcodeHelper.toBaseType(subtype).type;
+            LLVMBaseType llvmsubtype = LLVMBitcodeHelper.toBaseType(subtype).getType();
             int stride = getSize(subtype, align);
 
             LLVMAllocaInstruction allocation = LLVMAllocaInstructionNodeGen.create(getSize(array, align), getAlignment(array, align), context, stack);
@@ -545,7 +545,7 @@ public final class LLVMBitcodeHelper {
                 offsets[i] = offset;
 
                 LLVMExpressionNode elementNode = toConstantNode(element, align, variables, context, stack);
-                LLVMBaseType elementBaseType = toBaseType(element.getType()).type;
+                LLVMBaseType elementBaseType = toBaseType(element.getType()).getType();
                 int elementSize = getSize(element, align);
 
                 offset += elementSize;
@@ -602,7 +602,7 @@ public final class LLVMBitcodeHelper {
             BinaryOperationConstant operation = (BinaryOperationConstant) value;
             LLVMExpressionNode lhs = toConstantNode(operation.getLHS(), align, variables, context, stack);
             LLVMExpressionNode rhs = toConstantNode(operation.getRHS(), align, variables, context, stack);
-            LLVMBaseType type = toBaseType(operation.getType()).type;
+            LLVMBaseType type = toBaseType(operation.getType()).getType();
 
             return toBinaryOperatorNode(operation.getOperator(), type, lhs, rhs);
         }
@@ -610,8 +610,8 @@ public final class LLVMBitcodeHelper {
             CastConstant cast = (CastConstant) value;
             LLVMConversionType type = toConversionType(cast.getOperator());
             LLVMExpressionNode fromNode = toConstantNode(cast.getValue(), align, variables, context, stack);
-            LLVMBaseType from = toBaseType(cast.getValue().getType()).type;
-            LLVMBaseType to = toBaseType(cast.getType()).type;
+            LLVMBaseType from = toBaseType(cast.getValue().getType()).getType();
+            LLVMBaseType to = toBaseType(cast.getType()).getType();
 
             return LLVMCastsFactory.cast(fromNode, to, from, type);
         }
@@ -717,7 +717,7 @@ public final class LLVMBitcodeHelper {
             LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(getSize(value, align), getAlignment(value.getType(), align), context, stack);
             LLVMExpressionNode[] zeroes = new LLVMExpressionNode[vector.getElementCount()];
             Arrays.fill(zeroes, toConstantZeroNode(vector.getElementType(), align, context, stack));
-            return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target, toBaseType(vector).type);
+            return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target, toBaseType(vector).getType());
         }
         if (value instanceof FunctionType) {
             LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
@@ -740,7 +740,7 @@ public final class LLVMBitcodeHelper {
                 }
                 offsets[i] = offset;
 
-                LLVMBaseType elementBaseType = toBaseType(element).type;
+                LLVMBaseType elementBaseType = toBaseType(element).getType();
                 int elementSize = getSize(element, align);
 
                 offset += elementSize;
@@ -994,7 +994,7 @@ public final class LLVMBitcodeHelper {
     }
 
     private static LLVMAddressNode toArray(Type type, int alignment, List<LLVMExpressionNode> values, LLVMContext context, FrameSlot stack) {
-        LLVMBaseType llvmElementType = toBaseType(type).type;
+        LLVMBaseType llvmElementType = toBaseType(type).getType();
         int baseTypeSize = type.sizeof();
         int nrElements = values.size();
         int size = nrElements * baseTypeSize;

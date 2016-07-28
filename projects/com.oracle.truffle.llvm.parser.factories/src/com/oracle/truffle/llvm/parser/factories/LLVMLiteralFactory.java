@@ -98,7 +98,7 @@ public final class LLVMLiteralFactory {
 
     public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, EObject t) {
         ResolvedType resolvedType = runtime.resolve(t);
-        LLVMBaseType type = LLVMTypeHelper.getLLVMType(resolvedType).type;
+        LLVMBaseType type = LLVMTypeHelper.getLLVMType(resolvedType).getType();
         if (LLVMTypeHelper.isVectorType(type)) {
             LLVMAddressLiteralNode addr = new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             switch (type) {
@@ -376,7 +376,7 @@ public final class LLVMLiteralFactory {
     public static LLVMAddressNode createArrayLiteral(LLVMParserRuntime runtime, List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
         int nrElements = arrayValues.size();
         ResolvedType elementType = arrayType.getContainedType(-1);
-        LLVMBaseType llvmElementType = LLVMTypeHelper.getLLVMType(elementType).type;
+        LLVMBaseType llvmElementType = LLVMTypeHelper.getLLVMType(elementType).getType();
         int baseTypeSize = LLVMTypeHelper.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(arrayType, size, LLVMTypeHelper.getAlignmentByte(arrayType));
