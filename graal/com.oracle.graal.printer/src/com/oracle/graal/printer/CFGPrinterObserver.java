@@ -134,102 +134,104 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(Object object, String message) {
-
-        if (!dumpFrontend && isFrontendObject(object)) {
-            return;
-        }
-
-        if (cfgPrinter == null) {
-            cfgFile = getCFGPath().toFile();
-            try {
-                OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
-                cfgPrinter = new CFGPrinter(out);
-            } catch (FileNotFoundException e) {
-                throw new GraalError("Could not open " + cfgFile.getAbsolutePath());
-            }
-            TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
-        }
-
-        if (!checkMethodScope()) {
-            return;
-        }
-        if (curMethod instanceof ResolvedJavaMethod) {
-            cfgPrinter.method = (ResolvedJavaMethod) curMethod;
-        }
-
-        if (object instanceof LIR) {
-            cfgPrinter.lir = (LIR) object;
-        } else {
-            cfgPrinter.lir = Debug.contextLookup(LIR.class);
-        }
-        cfgPrinter.nodeLirGenerator = Debug.contextLookup(NodeLIRBuilder.class);
-        if (cfgPrinter.nodeLirGenerator != null) {
-            cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
-        }
-        if (cfgPrinter.lir != null && cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph) {
-            cfgPrinter.cfg = (ControlFlowGraph) cfgPrinter.lir.getControlFlowGraph();
-        }
-
-        CodeCacheProvider codeCache = Debug.contextLookup(CodeCacheProvider.class);
-        if (codeCache != null) {
-            cfgPrinter.target = codeCache.getTarget();
-        }
-
-        if (object instanceof BciBlockMapping) {
-            BciBlockMapping blockMap = (BciBlockMapping) object;
-            cfgPrinter.printCFG(message, blockMap);
-            if (blockMap.method.getCode() != null) {
-                cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.method));
+        try {
+            if (!dumpFrontend && isFrontendObject(object)) {
+                return;
             }
 
-        } else if (object instanceof LIR) {
-            // Currently no node printing for lir
-            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
-            lastLIR = (LIR) object;
-            if (delayedIntervals != null) {
-                cfgPrinter.printIntervals(message, delayedIntervals);
-                delayedIntervals = null;
-            }
-        } else if (object instanceof ScheduleResult) {
-            cfgPrinter.printSchedule(message, (ScheduleResult) object);
-        } else if (object instanceof StructuredGraph) {
-            if (cfgPrinter.cfg == null) {
-                StructuredGraph graph = (StructuredGraph) object;
-                cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
-            }
-            cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
-
-        } else if (object instanceof CompilationResult) {
-            final CompilationResult compResult = (CompilationResult) object;
-            cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
-        } else if (object instanceof InstalledCode) {
-            CompilationResult compResult = Debug.contextLookup(CompilationResult.class);
-            if (compResult != null) {
-                cfgPrinter.printMachineCode(disassemble(codeCache, compResult, (InstalledCode) object), message);
-            }
-        } else if (object instanceof IntervalDumper) {
-            if (lastLIR == cfgPrinter.lir) {
-                cfgPrinter.printIntervals(message, (IntervalDumper) object);
-            } else {
-                if (delayedIntervals != null) {
-                    Debug.log("Some delayed intervals were dropped (%s)", delayedIntervals);
+            if (cfgPrinter == null) {
+                cfgFile = getCFGPath().toFile();
+                try {
+                    OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
+                    cfgPrinter = new CFGPrinter(out);
+                } catch (FileNotFoundException e) {
+                    throw new GraalError("Could not open " + cfgFile.getAbsolutePath());
                 }
-                delayedIntervals = (IntervalDumper) object;
+                TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
             }
-        } else if (object instanceof AbstractBlockBase<?>[]) {
-            cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
-        } else if (object instanceof Trace) {
-            cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
-        } else if (object instanceof TraceBuilderResult) {
-            cfgPrinter.printTraces(message, (TraceBuilderResult) object);
+
+            if (!checkMethodScope()) {
+                return;
+            }
+            if (curMethod instanceof ResolvedJavaMethod) {
+                cfgPrinter.method = (ResolvedJavaMethod) curMethod;
+            }
+
+            if (object instanceof LIR) {
+                cfgPrinter.lir = (LIR) object;
+            } else {
+                cfgPrinter.lir = Debug.contextLookup(LIR.class);
+            }
+            cfgPrinter.nodeLirGenerator = Debug.contextLookup(NodeLIRBuilder.class);
+            if (cfgPrinter.nodeLirGenerator != null) {
+                cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
+            }
+            if (cfgPrinter.lir != null && cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph) {
+                cfgPrinter.cfg = (ControlFlowGraph) cfgPrinter.lir.getControlFlowGraph();
+            }
+
+            CodeCacheProvider codeCache = Debug.contextLookup(CodeCacheProvider.class);
+            if (codeCache != null) {
+                cfgPrinter.target = codeCache.getTarget();
+            }
+
+            if (object instanceof BciBlockMapping) {
+                BciBlockMapping blockMap = (BciBlockMapping) object;
+                cfgPrinter.printCFG(message, blockMap);
+                if (blockMap.method.getCode() != null) {
+                    cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.method));
+                }
+
+            } else if (object instanceof LIR) {
+                // Currently no node printing for lir
+                cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
+                lastLIR = (LIR) object;
+                if (delayedIntervals != null) {
+                    cfgPrinter.printIntervals(message, delayedIntervals);
+                    delayedIntervals = null;
+                }
+            } else if (object instanceof ScheduleResult) {
+                cfgPrinter.printSchedule(message, (ScheduleResult) object);
+            } else if (object instanceof StructuredGraph) {
+                if (cfgPrinter.cfg == null) {
+                    StructuredGraph graph = (StructuredGraph) object;
+                    cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+                    cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
+                } else {
+                    cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
+                }
+
+            } else if (object instanceof CompilationResult) {
+                final CompilationResult compResult = (CompilationResult) object;
+                cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
+            } else if (object instanceof InstalledCode) {
+                CompilationResult compResult = Debug.contextLookup(CompilationResult.class);
+                if (compResult != null) {
+                    cfgPrinter.printMachineCode(disassemble(codeCache, compResult, (InstalledCode) object), message);
+                }
+            } else if (object instanceof IntervalDumper) {
+                if (lastLIR == cfgPrinter.lir) {
+                    cfgPrinter.printIntervals(message, (IntervalDumper) object);
+                } else {
+                    if (delayedIntervals != null) {
+                        Debug.log("Some delayed intervals were dropped (%s)", delayedIntervals);
+                    }
+                    delayedIntervals = (IntervalDumper) object;
+                }
+            } else if (object instanceof AbstractBlockBase<?>[]) {
+                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
+            } else if (object instanceof Trace) {
+                cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
+            } else if (object instanceof TraceBuilderResult) {
+                cfgPrinter.printTraces(message, (TraceBuilderResult) object);
+            }
+        } finally {
+            cfgPrinter.target = null;
+            cfgPrinter.lir = null;
+            cfgPrinter.nodeLirGenerator = null;
+            cfgPrinter.cfg = null;
+            cfgPrinter.flush();
         }
-
-        cfgPrinter.target = null;
-        cfgPrinter.lir = null;
-        cfgPrinter.nodeLirGenerator = null;
-        cfgPrinter.cfg = null;
-        cfgPrinter.flush();
-
     }
 
     private static long timestamp;
