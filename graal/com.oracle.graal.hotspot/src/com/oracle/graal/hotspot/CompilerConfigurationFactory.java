@@ -173,6 +173,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 factory = candidates.get(0);
             }
         }
+
         try (InitTimer t = timer("HotSpotBackendFactory.register")) {
             for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
                 if (backend.isAssociatedWith(factory)) {
