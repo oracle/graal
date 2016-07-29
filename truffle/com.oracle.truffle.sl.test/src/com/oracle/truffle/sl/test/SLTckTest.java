@@ -117,11 +117,117 @@ public class SLTckTest extends TruffleTCK {
                     "  obj.charValue = \"0\";\n" +
                     "  obj.booleanValue = (1 == 0);\n" +
                     "  return obj;\n" +
-                    "}\n").name("SL TCK").mimeType(SLLanguage.MIME_TYPE
+                    "}\n" +
+                    "function add(a, b) { return a + b; }\n" +
+                    "function addNumbersFunction() {\n" +
+                    "  return add;\n" +
+                    "}\n" +
+                    "function objectWithValueProperty() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.value = 42;\n" +
+                    "  return obj;\n" +
+                    "}\n" +
+                    "function callFunction(f) {\n" +
+                    "  return f(41, 42);\n" +
+                    "}\n" +
+                    "function readValueFromForeign(o) {\n" +
+                    "  return o.value;\n" +
+                    "}\n" +
+                    "function writeValueToForeign(o) {\n" +
+                    "  o.value = 42;\n" +
+                    "}\n" +
+                    "function getSizeOfForeign(o) {\n" +
+                    "  return getSize(o);\n" +
+                    "}\n" +
+                    "function isNullOfForeign(o) {\n" +
+                    "  return isNull(o);\n" +
+                    "}\n" +
+                    "function hasSizeOfForeign(o) {\n" +
+                    "  return hasSize(o);\n" +
+                    "}\n" +
+                    "function isExecutableOfForeign(o) {\n" +
+                    "  return isExecutable(o);\n" +
+                    "}\n"
+                        ).name("SL TCK").mimeType(SLLanguage.MIME_TYPE
             ).build()
         );
         // @formatter:on
         return vm;
+    }
+
+    @Override
+    protected String getSizeOfForeign() {
+        return "getSizeOfForeign";
+    }
+
+    @Override
+    protected String isNullForeign() {
+        return "isNullOfForeign";
+    }
+
+    @Override
+    protected String hasSizeOfForeign() {
+        return "hasSizeOfForeign";
+    }
+
+    @Override
+    protected String isExecutableOfForeign() {
+        return "isExecutableOfForeign";
+    }
+
+    @Override
+    protected String readValueFromForeign() {
+        return "readValueFromForeign";
+    }
+
+    @Override
+    protected String writeValueToForeign() {
+        return "writeValueToForeign";
+    }
+
+    @Override
+    protected String callFunction() {
+        return "callFunction";
+    }
+
+    @Override
+    protected String objectWithElement() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String objectWithValueAndAddProperty() {
+        // skip these tests; SL doesn't have objects with methods
+        return null;
+    }
+
+    @Override
+    protected String callMethod() {
+        // skip these tests; SL doesn't have objects with methods
+        return null;
+    }
+
+    @Override
+    protected String readElementFromForeign() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String writeElementToForeign() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String objectWithValueProperty() {
+        return "objectWithValueProperty";
+    }
+
+    @Override
+    protected String functionAddNumbers() {
+        return "addNumbersFunction";
     }
 
     @Override
