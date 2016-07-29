@@ -299,7 +299,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case SINGLE:
                 if (isAvx) {
                     return emitBinary(resultKind, AVXOp.ADD, SS, true, a, b);
-                } else  {
+                } else {
                     return emitBinary(resultKind, SSEOp.ADD, SS, true, a, b);
                 }
             case DOUBLE:
