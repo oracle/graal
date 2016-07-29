@@ -52,7 +52,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -204,9 +203,8 @@ public abstract class TruffleCompiler {
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
         InstalledCode installedCode;
-        try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), result); DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            CompiledCode compiledCode = backend.createCompiledCode(graph.method(), result);
-            installedCode = providers.getCodeCache().addCode(graph.method(), compiledCode, graph.getSpeculationLog(), predefinedInstalledCode);
+        try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
+            installedCode = backend.createInstalledCode(graph.method(), result, graph.getSpeculationLog(), predefinedInstalledCode, false);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

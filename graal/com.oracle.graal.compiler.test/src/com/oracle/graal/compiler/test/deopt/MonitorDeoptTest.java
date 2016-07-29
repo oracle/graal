@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -145,8 +144,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
         removeLoopSafepoint(graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);
-        CompiledCode compiledCode = getBackend().createCompiledCode(javaMethod, compilationResult);
-        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compiledCode);
+        final InstalledCode installedCode = getBackend().createDefaultInstalledCode(javaMethod, compilationResult);
 
         final Monitor monitor = new Monitor();
 

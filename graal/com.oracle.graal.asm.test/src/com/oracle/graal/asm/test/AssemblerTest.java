@@ -40,7 +40,6 @@ import com.oracle.graal.test.GraalTest;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.code.RegisterConfig;
@@ -84,8 +83,7 @@ public abstract class AssemblerTest extends GraalTest {
             compResult.setTotalFrameSize(0);
             compResult.close();
 
-            CompiledCode compiledCode = backend.createCompiledCode(method, compResult);
-            InstalledCode code = codeCache.addCode(method, compiledCode, null, null);
+            InstalledCode code = backend.addInstalledCode(method, compResult);
 
             for (DisassemblerProvider dis : GraalServices.load(DisassemblerProvider.class)) {
                 String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);

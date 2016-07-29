@@ -51,7 +51,6 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.phases.OptimisticOptimizations;
 
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -62,8 +61,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Override
     protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
-        CompiledCode compiledCode = getBackend().createCompiledCode(method, compResult);
-        return getCodeCache().setDefaultCode(method, compiledCode);
+        return getBackend().createDefaultInstalledCode(method, compResult);
     }
 
     SecretKey aesKey;
