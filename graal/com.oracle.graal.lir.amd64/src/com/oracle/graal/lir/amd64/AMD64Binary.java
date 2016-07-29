@@ -39,8 +39,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RRMOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AVXOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.lir.LIRFrameState;
