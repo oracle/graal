@@ -120,12 +120,7 @@ public class AMD64Binary {
             if (isRegister(y)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
             } else {
-                //AllocatableValue input = x;
                 assert isStackSlot(y);
-                //if (isStackSlot(x)) {
-                //    input = result;
-                //    AMD64Move.move(crb, masm, input, x);
-                //}
                 opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asAddress(y));
             }
         }
