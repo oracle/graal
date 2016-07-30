@@ -36,10 +36,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -48,7 +49,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
  *
  * @see <a href="http://llvm.org/docs/LangRef.html#functions">basic blocks in LLVM IR</a>
  */
-public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAssignableNode {
+public class LLVMBasicBlockNode extends LLVMNode {
 
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
@@ -149,14 +150,14 @@ public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAss
     }
 
     @Override
-    public void assignSourceSection(SourceSection newSourceSection) {
-        assert sourceSection == null;
-        assert newSourceSection != null;
-        sourceSection = newSourceSection;
-    }
-
-    @Override
     public SourceSection getSourceSection() {
+        if (sourceSection == null) {
+            // No harm in racing to create the source section
+            LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(getParent(), LLVMFunctionStartNode.class);
+            assert functionStartNode != null;
+            String identifier = String.format("basic block %d in function %s", blockId, functionStartNode.getFunctionName());
+            sourceSection = functionStartNode.getSourceSection().getSource().createSection(identifier, 1);
+        }
         return sourceSection;
     }
 
@@ -164,4 +165,9 @@ public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAss
     public String toString() {
         return String.format(FORMAT_STRING, blockId, statements.length, Arrays.toString(termInstruction.getSuccessors()));
     }
+
+    public int getBlockId() {
+        return blockId;
+    }
+
 }

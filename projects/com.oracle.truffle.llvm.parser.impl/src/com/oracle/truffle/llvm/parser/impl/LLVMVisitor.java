@@ -125,8 +125,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
@@ -495,7 +493,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         String functionName = def.getHeader().getName();
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, frameDescriptor, functionName);
+        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(functionName, 1), frameDescriptor, functionName);
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
@@ -649,7 +647,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode terminatorNode = statements.get(statements.size() - 1);
         int basicBlockIndex = getIndexFromBasicBlock(basicBlock);
         LLVMNode basicBlockNode = factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, basicBlockIndex);
-        ((LLVMSourceSectionAssignableNode) basicBlockNode).assignSourceSection(LLVMSourceSectionFactory.forBasicBlock(sourceFile, basicBlockIndex, containingFunctionDef.getHeader().getName()));
         return basicBlockNode;
     }
 
@@ -779,8 +776,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         }
         List<LLVMNode> resultNodes = new ArrayList<>();
         LLVMNode writeNode = getWriteNode(result, frameSlot, instr);
-        ((LLVMSourceSectionAssignableNode) writeNode).assignSourceSection(LLVMSourceSectionFactory.forAssignment(sourceFile, name, getIndexFromBasicBlock(currentBasicBlock),
-                        containingFunctionDef.getHeader().getName()));
         resultNodes.add(writeNode);
         return resultNodes;
     }
@@ -1062,9 +1057,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                  * in another managed file. We should be able to detect that by looking for existing
                  * global variables with the same name, so I would think that we should just need to
                  * add
-                 *
+                 * 
                  * && !globalVars.containsKey(globalVariable)
-                 *
+                 * 
                  * to the condition below, but if I do that things go pretty badly wrong and we end
                  * up crashing.
                  */
