@@ -40,4 +40,12 @@ public abstract class LLVMSoureSectionFactory {
         String identifier = String.format("basic block %d in function %s", basicBlockIndex, functionName);
         return source.createSection(identifier, 1);
     }
+
+    public static SourceSection forAssignment(Source source, String name, int basicBlockIndex, String functionName) {
+        assert source != null;
+        assert functionName != null;
+        String identifier = String.format("assignment of %s in basic block %d in function %s", name, basicBlockIndex, functionName);
+        return source.createSection(identifier, 1);
+    }
+
 }

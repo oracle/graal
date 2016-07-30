@@ -779,6 +779,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         }
         List<LLVMNode> resultNodes = new ArrayList<>();
         LLVMNode writeNode = getWriteNode(result, frameSlot, instr);
+        ((LLVMSourceSectionAssignableNode) writeNode).assignSourceSection(LLVMSoureSectionFactory.forAssignment(sourceFile, name, getIndexFromBasicBlock(currentBasicBlock),
+                        containingFunctionDef.getHeader().getName()));
         resultNodes.add(writeNode);
         return resultNodes;
     }

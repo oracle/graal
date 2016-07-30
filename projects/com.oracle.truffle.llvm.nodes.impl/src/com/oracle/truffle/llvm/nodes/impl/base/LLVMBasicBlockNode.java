@@ -151,6 +151,7 @@ public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAss
     @Override
     public void assignSourceSection(SourceSection newSourceSection) {
         assert sourceSection == null;
+        assert newSourceSection != null;
         sourceSection = newSourceSection;
     }
 
