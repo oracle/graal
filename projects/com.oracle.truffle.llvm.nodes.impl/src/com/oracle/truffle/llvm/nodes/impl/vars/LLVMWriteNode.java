@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.vars;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -70,7 +71,12 @@ public abstract class LLVMWriteNode extends LLVMNode {
             assert basicBlock != null;
             LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
             assert functionStartNode != null;
-            String identifier = String.format("assignment of %s in basic block %d in function %s", getSlot().getIdentifier(), basicBlock.getBlockId(), functionStartNode.getFunctionName());
+            String identifier;
+            if (basicBlock.getBlockId() == 0) {
+                identifier = String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
+            } else {
+                identifier = String.format("assignment of %s in basic block %d in function %s", getSlot().getIdentifier(), basicBlock.getBlockId(), functionStartNode.getFunctionName());
+            }
             sourceSection = functionStartNode.getSourceSection().getSource().createSection(identifier, 1);
         }
         return sourceSection;

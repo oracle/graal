@@ -155,7 +155,12 @@ public class LLVMBasicBlockNode extends LLVMNode {
             // No harm in racing to create the source section
             LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(getParent(), LLVMFunctionStartNode.class);
             assert functionStartNode != null;
-            String identifier = String.format("basic block %d in function %s", blockId, functionStartNode.getFunctionName());
+            String identifier;
+            if (blockId == 0) {
+                identifier = String.format("first basic block in function %s", functionStartNode.getFunctionName());
+            } else {
+                identifier = String.format("basic block %d in function %s", blockId, functionStartNode.getFunctionName());
+            }
             sourceSection = functionStartNode.getSourceSection().getSource().createSection(identifier, 1);
         }
         return sourceSection;
