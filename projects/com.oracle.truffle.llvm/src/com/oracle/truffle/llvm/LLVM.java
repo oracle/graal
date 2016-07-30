@@ -159,7 +159,7 @@ public class LLVM {
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacadeImpl facade = new NodeFactoryFacadeImpl();
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
-                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
+                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile());
                 facade.setParserRuntime(runtime);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
@@ -218,7 +218,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
@@ -233,7 +233,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 

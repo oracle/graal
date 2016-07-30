@@ -192,11 +192,13 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private Object[] mainArgs;
 
     private Source sourceFile;
+    private Source mainSourceFile;
 
-    public LLVMVisitor(LLVMOptimizationConfiguration optimizationConfiguration, Object[] mainArgs, Source sourceFile) {
+    public LLVMVisitor(LLVMOptimizationConfiguration optimizationConfiguration, Object[] mainArgs, Source sourceFile, Source mainSourceFile) {
         this.optimizationConfiguration = optimizationConfiguration;
         this.mainArgs = mainArgs;
         this.sourceFile = sourceFile;
+        this.mainSourceFile = mainSourceFile;
         LLVMTypeHelper.setParserRuntime(this);
     }
 
@@ -255,7 +257,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             return new ParserResult(null, staticInitsTarget, staticDestructorsTarget, parsedFunctions);
         }
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
-        RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, mainArgs, sourceFile, mainFunction.getParameterTypes());
+        RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, mainArgs, mainSourceFile, mainFunction.getParameterTypes());
         RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
         RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getReturnType());
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
@@ -1057,9 +1059,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                  * in another managed file. We should be able to detect that by looking for existing
                  * global variables with the same name, so I would think that we should just need to
                  * add
-                 * 
+                 *
                  * && !globalVars.containsKey(globalVariable)
-                 * 
+                 *
                  * to the condition below, but if I do that things go pretty badly wrong and we end
                  * up crashing.
                  */
