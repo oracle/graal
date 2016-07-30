@@ -34,7 +34,9 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
@@ -58,6 +60,8 @@ public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAss
     @CompilationFinal private long totalExecutionCount = 0;
     private final int blockId;
 
+    private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
+
     @CompilationFinal private SourceSection sourceSection;
 
     @Override
@@ -75,7 +79,21 @@ public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAss
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
         for (LLVMNode statement : statements) {
-            statement.executeVoid(frame);
+            try {
+                statement.executeVoid(frame);
+            } catch (ControlFlowException e) {
+                controlFlowExceptionProfile.enter();
+                throw e;
+            } catch (RuntimeException e) {
+                CompilerDirectives.transferToInterpreter();
+                SourceSection exceptionSourceSection = statement.getEncapsulatingSourceSection();
+                if (exceptionSourceSection == null) {
+                    throw e;
+                } else {
+                    String message = String.format("LLVM error in %s in %s", exceptionSourceSection.getIdentifier(), exceptionSourceSection.getSource().getName());
+                    throw new RuntimeException(message, e);
+                }
+            }
         }
         return termInstruction.executeGetSuccessorIndex(frame);
     }

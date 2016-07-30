@@ -125,6 +125,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMSoureSectionFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
@@ -645,7 +647,10 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         System.arraycopy(statements.toArray(new LLVMNode[statementNodes.length]), 0, statementNodes, 0, statementNodes.length);
         LLVMParserAsserts.assertNoNullElement(statementNodes);
         LLVMNode terminatorNode = statements.get(statements.size() - 1);
-        return factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, getIndexFromBasicBlock(basicBlock));
+        int basicBlockIndex = getIndexFromBasicBlock(basicBlock);
+        LLVMNode basicBlockNode = factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, basicBlockIndex);
+        ((LLVMSourceSectionAssignableNode) basicBlockNode).assignSourceSection(LLVMSoureSectionFactory.forBasicBlock(sourceFile, basicBlockIndex, containingFunctionDef.getHeader().getName()));
+        return basicBlockNode;
     }
 
     private List<LLVMNode> visitInstruction(Instruction instr) {
