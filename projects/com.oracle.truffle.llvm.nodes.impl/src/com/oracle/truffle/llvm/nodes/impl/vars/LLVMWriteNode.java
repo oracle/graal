@@ -66,6 +66,7 @@ public abstract class LLVMWriteNode extends LLVMNode {
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             // No harm in racing to create the source section
             LLVMBasicBlockNode basicBlock = NodeUtil.findParent(getParent(), LLVMBasicBlockNode.class);
             assert basicBlock != null;

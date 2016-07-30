@@ -152,6 +152,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             // No harm in racing to create the source section
             LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(getParent(), LLVMFunctionStartNode.class);
             assert functionStartNode != null;
