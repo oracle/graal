@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.nodes.base;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class LLVMSoureSectionFactory {
+public abstract class LLVMSourceSectionFactory {
 
     public static SourceSection forBasicBlock(Source source, int basicBlockIndex, String functionName) {
         assert source != null;

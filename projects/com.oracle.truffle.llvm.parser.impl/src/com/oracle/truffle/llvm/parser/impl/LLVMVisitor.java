@@ -126,7 +126,7 @@ import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMSoureSectionFactory;
+import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
@@ -649,7 +649,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode terminatorNode = statements.get(statements.size() - 1);
         int basicBlockIndex = getIndexFromBasicBlock(basicBlock);
         LLVMNode basicBlockNode = factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, basicBlockIndex);
-        ((LLVMSourceSectionAssignableNode) basicBlockNode).assignSourceSection(LLVMSoureSectionFactory.forBasicBlock(sourceFile, basicBlockIndex, containingFunctionDef.getHeader().getName()));
+        ((LLVMSourceSectionAssignableNode) basicBlockNode).assignSourceSection(LLVMSourceSectionFactory.forBasicBlock(sourceFile, basicBlockIndex, containingFunctionDef.getHeader().getName()));
         return basicBlockNode;
     }
 
@@ -779,7 +779,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         }
         List<LLVMNode> resultNodes = new ArrayList<>();
         LLVMNode writeNode = getWriteNode(result, frameSlot, instr);
-        ((LLVMSourceSectionAssignableNode) writeNode).assignSourceSection(LLVMSoureSectionFactory.forAssignment(sourceFile, name, getIndexFromBasicBlock(currentBasicBlock),
+        ((LLVMSourceSectionAssignableNode) writeNode).assignSourceSection(LLVMSourceSectionFactory.forAssignment(sourceFile, name, getIndexFromBasicBlock(currentBasicBlock),
                         containingFunctionDef.getHeader().getName()));
         resultNodes.add(writeNode);
         return resultNodes;
