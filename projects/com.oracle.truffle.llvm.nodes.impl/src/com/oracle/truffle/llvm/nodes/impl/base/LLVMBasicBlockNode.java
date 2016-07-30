@@ -35,7 +35,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMSourceSectionAssignableNode;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -44,7 +46,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
  *
  * @see <a href="http://llvm.org/docs/LangRef.html#functions">basic blocks in LLVM IR</a>
  */
-public class LLVMBasicBlockNode extends LLVMNode {
+public class LLVMBasicBlockNode extends LLVMNode implements LLVMSourceSectionAssignableNode {
 
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
@@ -55,6 +57,8 @@ public class LLVMBasicBlockNode extends LLVMNode {
     @CompilationFinal private final long[] successorCount;
     @CompilationFinal private long totalExecutionCount = 0;
     private final int blockId;
+
+    @CompilationFinal private SourceSection sourceSection;
 
     @Override
     public void executeVoid(VirtualFrame frame) {
@@ -124,6 +128,17 @@ public class LLVMBasicBlockNode extends LLVMNode {
             incrementSuccessorCount(successorIndex);
             incrementTotalCount();
         }
+    }
+
+    @Override
+    public void assignSourceSection(SourceSection newSourceSection) {
+        assert sourceSection == null;
+        sourceSection = newSourceSection;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     @Override
