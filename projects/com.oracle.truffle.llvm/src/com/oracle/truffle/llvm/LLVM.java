@@ -153,7 +153,7 @@ public class LLVM {
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacadeImpl facade = new NodeFactoryFacadeImpl();
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
-                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
+                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
                 facade.setParserRuntime(runtime);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
@@ -162,7 +162,7 @@ public class LLVM {
                     }
                     Object sourceFile = env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY);
                     if (sourceFile != null) {
-                        context.setSourceFile((Source) sourceFile);
+                        context.setMainSourceFile((Source) sourceFile);
                     }
                     Object parseOnly = env.getConfig().get(LLVMLanguage.PARSE_ONLY_KEY);
                     if (parseOnly != null) {
@@ -212,7 +212,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
@@ -227,7 +227,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
