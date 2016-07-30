@@ -90,9 +90,9 @@ public class LLVM {
                     LLVMParserResult parserResult;
                     try {
                         if (path == null) {
-                            parserResult = parseString(code.getCode(), context);
+                            parserResult = parseString(code, context);
                         } else {
-                            parserResult = parseFile(code.getPath(), context);
+                            parserResult = parseFile(code, context);
                         }
                     } catch (IllegalStateException e) {
                         throw new IOException(e);
@@ -107,7 +107,7 @@ public class LLVM {
                     }, source -> {
                         LLVMParserResult parserResult;
                         try {
-                            parserResult = parseString(source.getCode(), context);
+                            parserResult = parseString(source, context);
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -134,7 +134,13 @@ public class LLVM {
                 String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
-                        LLVMParserResult result = parseFile(s, context);
+                        Source source;
+                        try {
+                            source = Source.newBuilder(new File(s)).build();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        LLVMParserResult result = parseFile(source, context);
                         handleParserResult(context, result);
                     }
                 }
@@ -198,13 +204,13 @@ public class LLVM {
         System.exit(status);
     }
 
-    public static LLVMParserResult parseString(String source, LLVMContext context) throws IOException {
+    public static LLVMParserResult parseString(Source source, LLVMContext context) throws IOException {
         LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
         Injector injector = setup.createInjectorAndDoEMFRegistration();
         XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
         resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
         Resource resource = resourceSet.createResource(URI.createURI("dummy:/sulong.ll"));
-        try (InputStream in = new StringInputStream(source)) {
+        try (InputStream in = new StringInputStream(source.getCode())) {
             resource.load(in, resourceSet.getLoadOptions());
         }
         EList<EObject> contents = resource.getContents();
@@ -212,22 +218,22 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source);
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
-    public static LLVMParserResult parseFile(String filePath, LLVMContext context) {
+    public static LLVMParserResult parseFile(Source source, LLVMContext context) {
         LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
         Injector injector = setup.createInjectorAndDoEMFRegistration();
         XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
         resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
-        Resource resource = resourceSet.getResource(URI.createURI(filePath), true);
+        Resource resource = resourceSet.getResource(URI.createURI(source.getPath()), true);
         EList<EObject> contents = resource.getContents();
         if (contents.size() == 0) {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source);
         return llvmVisitor.getMain(model, new NodeFactoryFacadeImpl(llvmVisitor));
     }
 
