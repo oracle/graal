@@ -86,7 +86,10 @@ public class LLVMRootNodeFactory {
         } else if (llvmRuntimeTypes.length == 1) {
             return new Object[]{argsCount};
         } else {
-            LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(mainArgs);
+            Object[] args = new Object[mainArgs.length + 1];
+            args[0] = sourceFile.getPath();
+            System.arraycopy(mainArgs, 0, args, 1, mainArgs.length);
+            LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
             // Checkstyle: stop magic number check
             if (llvmRuntimeTypes.length == 2) {
                 return new Object[]{argsCount, allocatedArgsStartAddress};
