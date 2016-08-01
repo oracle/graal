@@ -648,7 +648,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMParserAsserts.assertNoNullElement(statementNodes);
         LLVMNode terminatorNode = statements.get(statements.size() - 1);
         int basicBlockIndex = getIndexFromBasicBlock(basicBlock);
-        LLVMNode basicBlockNode = factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, basicBlockIndex);
+        LLVMNode basicBlockNode = factoryFacade.createBasicBlockNode(statementNodes, terminatorNode, basicBlockIndex, basicBlock.getName());
         return basicBlockNode;
     }
 

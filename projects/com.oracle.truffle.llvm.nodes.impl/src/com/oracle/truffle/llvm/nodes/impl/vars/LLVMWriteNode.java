@@ -76,7 +76,7 @@ public abstract class LLVMWriteNode extends LLVMNode {
             if (basicBlock.getBlockId() == 0) {
                 identifier = String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
             } else {
-                identifier = String.format("assignment of %s in basic block %d in function %s", getSlot().getIdentifier(), basicBlock.getBlockId(), functionStartNode.getFunctionName());
+                identifier = String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getFunctionName());
             }
             sourceSection = functionStartNode.getSourceSection().getSource().createSection(identifier, 1);
         }
