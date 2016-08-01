@@ -38,11 +38,13 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
@@ -219,6 +221,8 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@abs", LLVMAbsFactory.getInstance());
         intrinsics.put("@labs", LLVMLAbsFactory.getInstance());
         intrinsics.put("@fabs", LLVMFAbsFactory.getInstance());
+        intrinsics.put("@pow", LLVMPowFactory.getInstance());
+        intrinsics.put("@exp", LLVMExpFactory.getInstance());
     }
 
 }
