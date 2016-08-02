@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64SublNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64XorlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
@@ -61,6 +62,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
 public class AsmFactory {
 
+    public static final int REG_START_INDEX = 1;
     private static final int HEX = 16;
 
     private FrameDescriptor frameDescriptor;
@@ -90,60 +92,65 @@ public class AsmFactory {
         LLVMI32Node leftNode = (leftSlot != null) ? LLVMI32ReadNodeGen.create(leftSlot) : getImmediateNode(left);
         LLVMI32Node rightNode = LLVMI32ReadNodeGen.create(rightSlot);
         this.result = LLVMI32ReadNodeGen.create(rightSlot);
+        LLVMI32Node opNode = null;
         switch (operation) {
             case "addl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64AddlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64AddlNodeGen.create(leftNode, rightNode);
                 break;
             case "subl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64SublNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64SublNodeGen.create(leftNode, rightNode);
                 break;
             case "andl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64AndlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64AndlNodeGen.create(leftNode, rightNode);
                 break;
             case "orl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64OrlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64OrlNodeGen.create(leftNode, rightNode);
                 break;
             case "xorl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64XorlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64XorlNodeGen.create(leftNode, rightNode);
                 break;
             case "sall":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64SallNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64SallNodeGen.create(leftNode, rightNode);
                 break;
             case "sarl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64SarlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64SarlNodeGen.create(leftNode, rightNode);
                 break;
             case "shll":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64ShllNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64ShllNodeGen.create(leftNode, rightNode);
                 break;
             case "shrl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64ShrlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64ShrlNodeGen.create(leftNode, rightNode);
                 break;
             case "movl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64MovlNodeGen.create(leftNode, rightNode), rightSlot));
+                opNode = LLVMAMD64MovlNodeGen.create(leftNode, rightNode);
                 break;
             default:
-                this.statements.add(new LLVMI32UnsupportedInlineAssemblerNode());
+                opNode = new LLVMI32UnsupportedInlineAssemblerNode();
+                return;
         }
+        this.statements.add(LLVMWriteI32NodeGen.create(opNode, rightSlot));
     }
 
     public void createUnaryOperation(String operation, String node) {
         FrameSlot slot = frameDescriptor.findFrameSlot(node);
         LLVMI32Node childNode = LLVMI32ReadNodeGen.create(slot);
         this.result = LLVMI32ReadNodeGen.create(slot);
+        LLVMI32Node opNode = null;
         switch (operation) {
             case "notl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64NotlNodeGen.create(childNode), slot));
+                opNode = LLVMAMD64NotlNodeGen.create(childNode);
                 break;
             case "decl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64DeclNodeGen.create(childNode), slot));
+                opNode = LLVMAMD64DeclNodeGen.create(childNode);
                 break;
             case "incl":
-                this.statements.add(LLVMWriteI32NodeGen.create(LLVMAMD64InclNodeGen.create(childNode), slot));
+                opNode = LLVMAMD64InclNodeGen.create(childNode);
                 break;
             default:
-                this.statements.add(new LLVMI32UnsupportedInlineAssemblerNode());
-                break;
+                opNode = new LLVMI32UnsupportedInlineAssemblerNode();
+                return;
         }
+        this.statements.add(LLVMWriteI32NodeGen.create(opNode, slot));
     }
 
     protected void addFrameSlot(String reg, LLVMBaseType type) {
@@ -163,7 +170,7 @@ public class AsmFactory {
     }
 
     private void getArguments() {
-        for (int i = 1; i < registers.size(); i++) {
+        for (int i = LLVMCallNode.ARG_START_INDEX; i < registers.size(); i++) {
             String reg = registers.get(i);
             if (reg != null) {
                 int index = getRegisterIndex(reg);
@@ -188,7 +195,7 @@ public class AsmFactory {
 
     private int getRegisterIndex(String register) {
         String[] flags = asmFlags.split(",");
-        for (int i = 1; i < flags.length; i++) {
+        for (int i = REG_START_INDEX; i < flags.length; i++) {
             if (flags[i].startsWith("{") && register.contains(flags[i].substring(1, flags[i].length() - 1))) {
                 return i;
             }
