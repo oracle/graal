@@ -62,7 +62,7 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/graalvm/sulong
 
 Next, you need to download a recent
-[labsjdk](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
+[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
     tar -zxf labsjdk-8u92-jvmci-0.17-linux-amd64.tar.gz
