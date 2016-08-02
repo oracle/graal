@@ -563,7 +563,7 @@ def getSearchPathOption(lib_args=None):
         '-lstdc++': ['libstdc++.so.6', 'libstdc++.6.dylib'],
         '-lgmp': ['libgmp.so.10', 'libgmp.10.dylib'],
         '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib'],
-        '-lpcre': ['libpcre.so', 'libpcre.dylib']
+        '-lpcre': ['libpcre.so.3', 'libpcre.dylib']
     }
     osStr = mx.get_os()
     index = {'linux': 0, 'darwin': 1}[mx.get_os()]
