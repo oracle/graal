@@ -5,7 +5,7 @@ int main() {
   __asm__("movl $2, %%eax;"
           "movl $10, %%ebx;"
           "addl %%eax, %%ebx;"
-          : "=a"(calc)
+          : "=b"(calc)
           : "a"(arg1), "b"(arg2));
   return calc;
 }

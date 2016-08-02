@@ -37,20 +37,19 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64AddlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64AndlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64DeclNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64AddlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64AndlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64OrlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SallNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SarlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64ShllNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64ShrlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SublNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64XorlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64InclNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64MovlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64NotlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64OrlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64SallNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64SarlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ShllNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ShrlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64SublNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64XorlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
@@ -122,7 +121,7 @@ public class AsmFactory {
                 opNode = LLVMAMD64ShrlNodeGen.create(leftNode, rightNode);
                 break;
             case "movl":
-                opNode = LLVMAMD64MovlNodeGen.create(leftNode, rightNode);
+                opNode = leftNode;
                 break;
             default:
                 opNode = new LLVMI32UnsupportedInlineAssemblerNode();
