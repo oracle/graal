@@ -77,6 +77,9 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final DebugCounter trivialTracesCounter = Debug.counter("TraceRA[trivialTraces]");
     private static final DebugCounter tracesCounter = Debug.counter("TraceRA[traces]");
 
+    public static final DebugCounter globalStackSlots = Debug.counter("TraceRA[GlobalStackSlots]");
+    public static final DebugCounter allocatedStackSlots = Debug.counter("TraceRA[AllocatedStackSlots]");
+
     @Override
     @SuppressWarnings("try")
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {

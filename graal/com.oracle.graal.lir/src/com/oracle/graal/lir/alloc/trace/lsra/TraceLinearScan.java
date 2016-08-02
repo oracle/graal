@@ -42,7 +42,6 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
@@ -236,9 +235,6 @@ public final class TraceLinearScan implements IntervalDumper {
         return registerAttributes[reg.number];
     }
 
-    private static final DebugCounter globalStackSlots = Debug.counter("TraceRA[GlobalStackSlots]");
-    private static final DebugCounter allocatedStackSlots = Debug.counter("TraceRA[AllocatedStackSlots]");
-
     void assignSpillSlot(TraceInterval interval) {
         /*
          * Assign the canonical spill slot of the parent (if a part of the interval is already
@@ -264,9 +260,7 @@ public final class TraceLinearScan implements IntervalDumper {
         if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
             AllocatableValue cachedStackSlot = cachedStackSlots[variableIndex];
             if (cachedStackSlot != null) {
-                if (globalStackSlots.isEnabled()) {
-                    globalStackSlots.increment();
-                }
+                TraceRegisterAllocationPhase.globalStackSlots.increment();
                 assert cachedStackSlot.getValueKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getValueKind();
                 return cachedStackSlot;
             }
@@ -275,9 +269,7 @@ public final class TraceLinearScan implements IntervalDumper {
         if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
             cachedStackSlots[variableIndex] = slot;
         }
-        if (allocatedStackSlots.isEnabled()) {
-            allocatedStackSlots.increment();
-        }
+        TraceRegisterAllocationPhase.allocatedStackSlots.increment();
         return slot;
     }
 
