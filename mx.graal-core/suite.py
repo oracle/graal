@@ -21,14 +21,14 @@ suite = {
 
   "jdklibraries" : {
     "JVMCI_SERVICES" : {
-      "path" : "jre/lib/jvmci-services.jar",
-      "sourcePath" : "jre/lib/jvmci-services.src.zip",
+      "path" : "lib/jvmci-services.jar",
+      "sourcePath" : "lib/jvmci-services.src.zip",
       "optional" : False,
       "jdkStandardizedSince" : "9",
     },
     "JVMCI_API" : {
-      "path" : "jre/lib/jvmci/jvmci-api.jar",
-      "sourcePath" : "jre/lib/jvmci/jvmci-api.src.zip",
+      "path" : "lib/jvmci/jvmci-api.jar",
+      "sourcePath" : "lib/jvmci/jvmci-api.src.zip",
       "dependencies" : [
         "JVMCI_SERVICES",
       ],
@@ -36,8 +36,8 @@ suite = {
       "jdkStandardizedSince" : "9",
     },
     "JVMCI_HOTSPOT" : {
-      "path" : "jre/lib/jvmci/jvmci-hotspot.jar",
-      "sourcePath" : "jre/lib/jvmci/jvmci-hotspot.src.zip",
+      "path" : "lib/jvmci/jvmci-hotspot.jar",
+      "sourcePath" : "lib/jvmci/jvmci-hotspot.src.zip",
       "dependencies" : [
         "JVMCI_API",
       ],
