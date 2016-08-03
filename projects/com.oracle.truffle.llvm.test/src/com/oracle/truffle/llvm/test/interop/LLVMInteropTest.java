@@ -498,7 +498,8 @@ public final class LLVMInteropTest {
         try {
             PolyglotEngine.Value get = runner.findGlobalSymbol("get");
             TruffleObject result = get.execute().as(TruffleObject.class);
-            List<Integer> array = TruffleList.create(Integer.class, result);
+            @SuppressWarnings("unchecked")
+            List<Integer> array = JavaInterop.asJavaObject(List.class, result);
             Assert.assertEquals(16, (int) array.get(4));
         } finally {
             runner.dispose();
@@ -513,10 +514,26 @@ public final class LLVMInteropTest {
             PolyglotEngine.Value get = runner.findGlobalSymbol("get");
             PolyglotEngine.Value getval = runner.findGlobalSymbol("getval");
             TruffleObject result = get.execute().as(TruffleObject.class);
-            List<Integer> array = TruffleList.create(Integer.class, result);
+            @SuppressWarnings("unchecked")
+            List<Integer> array = JavaInterop.asJavaObject(List.class, result);
             array.set(3, 9);
             int value = (int) getval.execute(3).get();
             Assert.assertEquals(9, value);
+        } finally {
+            runner.dispose();
+        }
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void test042() throws Exception {
+        Runner runner = new Runner("interop042");
+        try {
+            PolyglotEngine.Value get = runner.findGlobalSymbol("get");
+            TruffleObject result = get.execute().as(TruffleObject.class);
+            @SuppressWarnings("unchecked")
+            List<Integer> array = JavaInterop.asJavaObject(List.class, result);
+            array.size(); // GET_SIZE is not supported
+            Assert.fail("IllegalStateException expected");
         } finally {
             runner.dispose();
         }
