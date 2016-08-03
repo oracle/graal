@@ -608,7 +608,8 @@ def runTestArgon2(args=None, optimize=False):
     os.chdir(_argon2Dir)
     if args is None:
         args = []
-    args.extend(['-ea', '-esa'])
+    # TODO: Enable assertions
+    #args.extend(['-ea', '-esa'])
 
     compileArgon2('genkat', optimize, ['-DGENKAT'])
     ret = runTestArgon2Kats(args)
