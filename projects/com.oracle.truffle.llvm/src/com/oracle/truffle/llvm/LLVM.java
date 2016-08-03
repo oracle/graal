@@ -178,6 +178,9 @@ public class LLVM {
                 context.getFunctionRegistry().register(result.getParsedFunctions());
                 context.registerStaticInitializer(result.getStaticInits());
                 context.registerStaticDestructor(result.getStaticDestructors());
+                if (result.getDestructorFunctions() != null) {
+                    context.registerDestructorFunction(result.getDestructorFunctions());
+                }
                 if (!context.isParseOnly()) {
                     result.getStaticInits().call();
                 }

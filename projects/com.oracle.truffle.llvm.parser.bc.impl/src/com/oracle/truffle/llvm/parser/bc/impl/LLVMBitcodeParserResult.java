@@ -68,4 +68,9 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
     public RootCallTarget getStaticDestructors() {
         return staticDestructors;
     }
+
+    @Override
+    public RootCallTarget getDestructorFunctions() {
+        return null;
+    }
 }

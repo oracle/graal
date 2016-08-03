@@ -36,3 +36,4 @@ test-suite-3.2.src/SingleSource/Regression/C/DuffsDevice.c
 test-suite-3.2.src/SingleSource/Regression/C/testtrace.c
 test-suite-3.2.src/SingleSource/Regression/C/PR491.c
 test-suite-3.2.src/SingleSource/Regression/C/pointer_arithmetic.c
+test-suite-3.2.src/SingleSource/Regression/C/ConstructorDestructorAttributes.c

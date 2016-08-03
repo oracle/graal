@@ -42,4 +42,6 @@ public interface LLVMParserResult {
     RootCallTarget getStaticInits();
 
     RootCallTarget getStaticDestructors();
+
+    RootCallTarget getDestructorFunctions();
 }
