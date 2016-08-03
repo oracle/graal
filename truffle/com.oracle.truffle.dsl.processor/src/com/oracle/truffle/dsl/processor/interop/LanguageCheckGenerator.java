@@ -172,7 +172,7 @@ public final class LanguageCheckGenerator {
     }
 
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private final static class LanguageCheckRootNode extends RootNode {\n");
+        w.append("    private static final class LanguageCheckRootNode extends RootNode {\n");
         w.append("        protected LanguageCheckRootNode(Class<? extends TruffleLanguage<?>> language) {\n");
         w.append("            super(language, null, null);\n");
         w.append("        }\n");
