@@ -48,6 +48,14 @@ public class LLVMAddressMessageResolution {
     private static final int FLOAT_SIZE = 4;
     private static final int DOUBLE_SIZE = 8;
 
+    @Resolve(message = "HAS_SIZE")
+    public abstract static class ForeignHasSize extends Node {
+        @SuppressWarnings("unused")
+        protected boolean access(VirtualFrame frame, LLVMTruffleAddress receiver) {
+            return true;
+        }
+    }
+
     @Resolve(message = "READ")
     public abstract static class ForeignRead extends Node {
         protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
