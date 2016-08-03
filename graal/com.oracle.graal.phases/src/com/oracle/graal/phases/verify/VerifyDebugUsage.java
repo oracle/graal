@@ -22,14 +22,21 @@
  */
 package com.oracle.graal.phases.verify;
 
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugMethodMetrics;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import com.oracle.graal.nodes.java.NewArrayNode;
+import com.oracle.graal.nodes.java.StoreIndexedNode;
 import com.oracle.graal.phases.VerifyPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 
@@ -62,30 +69,58 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
         ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
         ResolvedJavaType debugMethodMetricsType = context.getMetaAccess().lookupJavaType(DebugMethodMetrics.class);
+        ResolvedJavaType graalErrorType = context.getMetaAccess().lookupJavaType(GraalError.class);
 
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             String calleeName = callee.getName();
             if (callee.getDeclaringClass().equals(debugType)) {
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || calleeName.equals("dump")) {
-                    verifyParameters(graph, t.arguments(), stringType, calleeName.equals("dump") ? 2 : 1);
+                    verifyParameters(t, graph, t.arguments(), stringType, calleeName.equals("dump") ? 2 : 1);
                 }
             }
             if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
                 if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
-                    verifyParameters(graph, t.arguments(), stringType, 1);
+                    verifyParameters(t, graph, t.arguments(), stringType, 1);
                 }
             }
             if (callee.getDeclaringClass().equals(debugMethodMetricsType)) {
                 if (calleeName.equals("addToMetric") || calleeName.equals("getCurrentMetricValue") || calleeName.equals("incrementMetric")) {
-                    verifyParameters(graph, t.arguments(), stringType, 1);
+                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                }
+            }
+            if (callee.getDeclaringClass().isAssignableFrom(graalErrorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
+                if (calleeName.equals("guarantee")) {
+                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                }
+                if (calleeName.equals("<init>") && callee.getSignature().getParameterCount(false) == 2) {
+                    verifyParameters(t, graph, t.arguments(), stringType, 1);
                 }
             }
         }
         return true;
     }
 
-    private static void verifyParameters(StructuredGraph graph, NodeInputList<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
+    private static void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph graph, NodeInputList<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
+        // TRANSIENT end VARARGS modifiers share the same encoding, for methods VARARGS is set if
+        // they have var arg parameters
+        if (Modifier.isTransient(callTarget.targetMethod().getModifiers()) && args.get(args.count() - 1) instanceof NewArrayNode) {
+            // unpack the arguments to the var args
+            List<Node> unpacked = new ArrayList<>(args.snapshot());
+            NewArrayNode varArgParameter = (NewArrayNode) unpacked.remove(unpacked.size() - 1);
+            for (Node usage : varArgParameter.usages()) {
+                if (usage instanceof StoreIndexedNode) {
+                    StoreIndexedNode si = (StoreIndexedNode) usage;
+                    unpacked.add(si.value());
+                }
+            }
+            verifyParameters(graph, unpacked, stringType, startArgIdx);
+        } else {
+            verifyParameters(graph, args.snapshot(), stringType, startArgIdx);
+        }
+    }
+
+    private static void verifyParameters(StructuredGraph graph, List<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
         int argIdx = startArgIdx;
         for (Node arg : args) {
             if (arg instanceof Invoke) {
