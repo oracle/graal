@@ -58,7 +58,7 @@ public class LLVMContext extends ExecutionContext {
 
     private Object[] mainArguments;
 
-    private Source sourceFile;
+    private Source mainSourceFile;
 
     private boolean parseOnly;
 
@@ -120,12 +120,12 @@ public class LLVMContext extends ExecutionContext {
         return mainArguments;
     }
 
-    public void setSourceFile(Source sourceFile) {
-        this.sourceFile = sourceFile;
+    public void setMainSourceFile(Source mainSourceFile) {
+        this.mainSourceFile = mainSourceFile;
     }
 
-    public Source getSourceFile() {
-        return sourceFile;
+    public Source getMainSourceFile() {
+        return mainSourceFile;
     }
 
     public void registerStaticDestructor(RootCallTarget staticDestructor) {

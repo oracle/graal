@@ -286,7 +286,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMNode[] beforeFunction = parameters.toArray(new LLVMNode[parameters.size()]);
         LLVMNode[] afterFunction = new LLVMNode[0];
 
-        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, frame, method.getName());
+        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, null, frame, method.getName());
         LLVMRuntimeType llvmReturnType = LLVMBitcodeHelper.toRuntimeType(method.getReturnType());
         LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeHelper.toRuntimeTypes(method.getArgumentTypes());
         LLVMFunctionDescriptor function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
