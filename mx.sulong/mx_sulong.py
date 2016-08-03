@@ -405,7 +405,7 @@ def truffle_extract_VM_args(args, useDoubleDash=False):
     vmArgs, remainder = [], []
     if args is not None:
         for (i, arg) in enumerate(args):
-            if any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-agentlib']) or arg in ['-esa']:
+            if any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-da', '-agentlib']) or arg in ['-esa']:
                 vmArgs += [arg]
             elif useDoubleDash and arg == '--':
                 remainder += args[i:]
