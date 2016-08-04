@@ -817,7 +817,12 @@ def mdlCheck(args=None):
         for f in files:
             if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
                 absPath = path + '/' + f
-                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032,~MD033', absPath])
+                mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
+                try:
+                    subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
+                except subprocess.CalledProcessError as e:
+                    print e # prints command and return value
+                    print e.output # prints process output
 
 def getBitcodeLibrariesOption():
     libraries = []
