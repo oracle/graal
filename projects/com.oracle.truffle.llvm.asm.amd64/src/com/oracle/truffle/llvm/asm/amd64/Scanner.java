@@ -289,8 +289,8 @@ class StartStates {
 public class Scanner {
 	static final char EOL = '\n';
 	static final int  eofSym = 0;
-	static final int maxT = 24;
-	static final int noSym = 24;
+	static final int maxT = 29;
+	static final int noSym = 29;
 
 
 	public Buffer buffer; // scanner buffer
@@ -333,6 +333,11 @@ public class Scanner {
 		literals.put("andl", new Integer(12));
 		literals.put("orl", new Integer(13));
 		literals.put("xorl", new Integer(14));
+		literals.put("shll", new Integer(15));
+		literals.put("shrl", new Integer(16));
+		literals.put("sall", new Integer(17));
+		literals.put("sarl", new Integer(18));
+		literals.put("movl", new Integer(19));
 
 	}
 
@@ -456,29 +461,29 @@ public class Scanner {
 					if (ch == 'x') {AddCh(); state = 11; break;}
 					else {state = 0; break;}
 				case 11:
-					{t.kind = 15; break loop;}
+					{t.kind = 20; break loop;}
 				case 12:
-					{t.kind = 16; break loop;}
+					{t.kind = 21; break loop;}
 				case 13:
 					if (ch == 'x') {AddCh(); state = 14; break;}
 					else {state = 0; break;}
 				case 14:
-					{t.kind = 17; break loop;}
-				case 15:
-					{t.kind = 18; break loop;}
-				case 16:
-					{t.kind = 19; break loop;}
-				case 17:
-					{t.kind = 20; break loop;}
-				case 18:
-					{t.kind = 21; break loop;}
-				case 19:
 					{t.kind = 22; break loop;}
+				case 15:
+					{t.kind = 23; break loop;}
+				case 16:
+					{t.kind = 24; break loop;}
+				case 17:
+					{t.kind = 25; break loop;}
+				case 18:
+					{t.kind = 26; break loop;}
+				case 19:
+					{t.kind = 27; break loop;}
 				case 20:
 					if (ch == '$') {AddCh(); state = 21; break;}
 					else {state = 0; break;}
 				case 21:
-					{t.kind = 23; break loop;}
+					{t.kind = 28; break loop;}
 				case 22:
 					if (ch == 'e') {AddCh(); state = 23; break;}
 					else {state = 0; break;}
