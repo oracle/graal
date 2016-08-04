@@ -317,13 +317,13 @@ def pullInstallDragonEgg(args=None):
     """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
     toolDir = join(_toolDir, "tools/dragonegg")
     mx.ensure_dir_exists(toolDir)
-    url = 'http://llvm.org/releases/3.2/dragonegg-3.2.src.tar.gz'
+    url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/dragonegg-3.2.src.tar.gz'
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
     if mx.get_os() == 'darwin':
         gccToolDir = join(_toolDir, "tools/gcc")
-        url = 'http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-4.6.4.tar.gz'
+        url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-4.6.4.tar.gz'
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
