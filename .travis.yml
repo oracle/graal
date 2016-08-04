@@ -31,9 +31,9 @@ install:
   - pip install astroid==1.1.0 --user `whoami`
   - pip install pylint==1.1.0 --user `whoami`
   - git clone https://github.com/graalvm/mx
-  - wget -O mx/ecj.jar 'http://lafo.ssw.uni-linz.ac.at/sulong-deps/ecj-4.5.2.jar'
+  - wget -O mx/ecj.jar 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/ecj-4.5.2.jar'
   - export JDT=`pwd`/mx/ecj.jar
-  - wget http://lafo.ssw.uni-linz.ac.at/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
+  - wget https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
   - export ECLIPSE_EXE=eclipse/eclipse
   - export DEFAULT_VM=server
