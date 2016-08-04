@@ -185,7 +185,7 @@ public class VerifyDebugUsageTest {
     private static class InvalidGraalErrorGuaranteePhase extends Phase {
         @Override
         protected void run(StructuredGraph graph) {
-            GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s", graph.toString());
+            GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s %s %s", graph, graph, graph, graph.toString());
         }
     }
 

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.verify;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,7 +90,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
             }
             if (callee.getDeclaringClass().isAssignableFrom(graalErrorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
                 if (calleeName.equals("guarantee")) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                    verifyParameters(t, graph, t.arguments(), stringType, 0);
                 }
                 if (calleeName.equals("<init>") && callee.getSignature().getParameterCount(false) == 2) {
                     verifyParameters(t, graph, t.arguments(), stringType, 1);
@@ -101,58 +100,77 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         return true;
     }
 
-    private static void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph graph, NodeInputList<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
-        // TRANSIENT end VARARGS modifiers share the same encoding, for methods VARARGS is set if
-        // they have var arg parameters
-        if (Modifier.isTransient(callTarget.targetMethod().getModifiers()) && args.get(args.count() - 1) instanceof NewArrayNode) {
+    private static void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
+        if (callTarget.targetMethod().isVarArgs() && args.get(args.count() - 1) instanceof NewArrayNode) {
             // unpack the arguments to the var args
             List<Node> unpacked = new ArrayList<>(args.snapshot());
             NewArrayNode varArgParameter = (NewArrayNode) unpacked.remove(unpacked.size() - 1);
+            int firstVarArg = unpacked.size();
             for (Node usage : varArgParameter.usages()) {
                 if (usage instanceof StoreIndexedNode) {
                     StoreIndexedNode si = (StoreIndexedNode) usage;
                     unpacked.add(si.value());
                 }
             }
-            verifyParameters(graph, unpacked, stringType, startArgIdx);
+            verifyParameters(callerGraph, callTarget.targetMethod(), unpacked, stringType, startArgIdx, firstVarArg);
         } else {
-            verifyParameters(graph, args.snapshot(), stringType, startArgIdx);
+            verifyParameters(callerGraph, callTarget.targetMethod(), args, stringType, startArgIdx, -1);
         }
     }
 
-    private static void verifyParameters(StructuredGraph graph, List<? extends Node> args, ResolvedJavaType stringType, int startArgIdx) {
+    private static void verifyParameters(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, List<? extends Node> args, ResolvedJavaType stringType, int startArgIdx, int varArgsIndex) {
         int argIdx = startArgIdx;
-        for (Node arg : args) {
+        int varArgsElementIndex = 0;
+        boolean reportVarArgs = false;
+        for (int i = 0; i < args.size(); i++) {
+            Node arg = args.get(i);
             if (arg instanceof Invoke) {
+                reportVarArgs = varArgsIndex >= 0 && argIdx >= varArgsIndex;
                 Invoke invoke = (Invoke) arg;
                 CallTargetNode callTarget = invoke.callTarget();
                 if (callTarget instanceof MethodCallTargetNode) {
                     ResolvedJavaMethod m = ((MethodCallTargetNode) callTarget).targetMethod();
                     if (m.getName().equals("toString")) {
                         int bci = invoke.bci();
-                        verifyStringConcat(graph, bci, argIdx, m);
-                        verifyToStringCall(graph, stringType, m, bci, argIdx);
+                        int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
+                        verifyStringConcat(callerGraph, verifiedCallee, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1, m);
+                        verifyToStringCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
                     }
                 }
+            }
+            if (varArgsIndex >= 0 && i >= varArgsIndex) {
+                varArgsElementIndex++;
             }
             argIdx++;
         }
     }
 
-    private static void verifyStringConcat(StructuredGraph graph, int bci, int argIdx, ResolvedJavaMethod callee) {
+    private static void verifyStringConcat(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, int bci, int argIdx, int varArgsElementIndex, ResolvedJavaMethod callee) {
         if (callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuilder;") || callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuffer;")) {
-            StackTraceElement e = graph.method().asStackTraceElement(bci);
-            throw new VerificationError(
-                            "%s: parameter %d of call to %s appears to be a String concatenation expression.%n" + "    Use one of the multi-parameter Debug.log() methods or Debug.logv() instead.", e,
-                            argIdx, callee.format("%H.%n(%p)"));
+            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
+            if (varArgsElementIndex >= 0) {
+                throw new VerificationError(
+                                "In %s: element %d of parameter %d of call to %s appears to be a String concatenation expression.%n", e, varArgsElementIndex, argIdx,
+                                verifiedCallee.format("%H.%n(%p)"));
+            } else {
+                throw new VerificationError(
+                                "In %s: parameter %d of call to %s appears to be a String concatenation expression.%n", e, argIdx, verifiedCallee.format("%H.%n(%p)"));
+            }
         }
     }
 
-    private static void verifyToStringCall(StructuredGraph graph, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx) {
+    private static void verifyToStringCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
+                    int varArgsElementIndex) {
         if (callee.getSignature().getParameterCount(false) == 0 && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
-            StackTraceElement e = graph.method().asStackTraceElement(bci);
-            throw new VerificationError("%s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
-                            callee.format("%H.%n(%p)"));
+            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
+            if (varArgsElementIndex >= 0) {
+                throw new VerificationError(
+                                "In %s: element %d of parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.",
+                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"));
+            } else {
+                throw new VerificationError("In %s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
+                                verifiedCallee.format("%H.%n(%p)"));
+            }
         }
     }
 }
