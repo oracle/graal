@@ -76,8 +76,13 @@ def executeGate():
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
+    with Task('TestJRuby', tasks) as t:
+        if t: runTestJRuby()
+    with Task('TestArgon2', tasks) as t:
+        if t: runTestArgon2(optimize=False)
 
 def travis1(args=None):
+    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, Sulong, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithEcj', tasks) as t:
         if t:
@@ -109,6 +114,7 @@ def travis1(args=None):
         if t: runLLVMTestCases()
 
 def travis2(args=None):
+    """executes the second Travis job (Javac build, GCC execution test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -116,6 +122,7 @@ def travis2(args=None):
         if t: runGCCTestCases()
 
 def travis3(args=None):
+    """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -125,6 +132,7 @@ def travis3(args=None):
         if t: runCompileTestCases()
 
 def travisJRuby(args=None):
+    """executes the JRuby Travis job (Javac build, JRuby test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -132,6 +140,7 @@ def travisJRuby(args=None):
         if t: runTestJRuby()
 
 def travisArgon2(args=None):
+    """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -574,7 +583,7 @@ def compileArgon2(main, optimize, cflags=None):
         outputFile = '%s.ll' % src
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
         if optimize:
-            opt(['-S', '-o', outputFile, '-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn', outputFile])
+            opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
     link(['-o', argon2Bin] + ['%s.ll' % x for x in argon2Src])
 
 def runTestArgon2Kats(args=None):
@@ -697,7 +706,7 @@ def compileWithGCC(args=None):
 
 
 def opt(args=None):
-    """"Runs opt."""
+    """runs opt"""
     ensureLLVMBinariesExist()
     optPath = _toolDir + 'tools/llvm/bin/opt'
     return mx.run([optPath] + args)
@@ -762,18 +771,38 @@ def suBench(args=None):
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
     return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
+def getStandardLLVMOptFlags():
+    """gets the optimal LLVM opt flags for Sulong"""
+    return ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn']
+
+def getRemoveExceptionHandlingLLVMOptFlags():
+    """gets the LLVM opt flags that remove C++ exception handling if possible"""
+    return ['-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg']
+
+def getOptimalLLVMOptFlags(sourceFile):
+    """gets the optimal LLVM opt flags for Sulong based on an original file source name (such as test.c)"""
+    _, ext = os.path.splitext(sourceFile)
+    if ext == '.c':
+        return getStandardLLVMOptFlags()
+    elif ext == '.cpp':
+        return getStandardLLVMOptFlags() + getRemoveExceptionHandlingLLVMOptFlags()
+    else:
+        exit(ext + " is not supported!")
+
+def suOptimalOpt(args=None):
+    """use opt with the optimal opt flags for Sulong"""
+    opt(getStandardLLVMOptFlags() + args)
+
 def compileWithClangOpt(inputFile, outputFile='test.ll'):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', outputFile])
     elif ext == '.cpp':
         compileWithClangPP(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
+    opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -783,6 +812,13 @@ def suOptBench(args=None):
     outputFile = 'test.ll'
     compileWithClangOpt(inputFile, outputFile)
     return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
+
+def suOptCompile(args=None):
+    """compiles a given benchmark and optimizes it with opt"""
+    ensureLLVMBinariesExist()
+    inputFile = args[0]
+    outputFile = 'test.ll'
+    compileWithClangOpt(inputFile, outputFile)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -817,7 +853,12 @@ def mdlCheck(args=None):
         for f in files:
             if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
                 absPath = path + '/' + f
-                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032,~MD033', absPath])
+                mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
+                try:
+                    subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
+                except subprocess.CalledProcessError as e:
+                    print e # prints command and return value
+                    print e.output # prints process output
 
 def getBitcodeLibrariesOption():
     libraries = []
@@ -895,6 +936,8 @@ mx.update_commands(_suite, {
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
+    'su-optimize' : [suOptimalOpt, ''],
+    'su-compile-optimize' : [suOptCompile, ''],
     'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],
