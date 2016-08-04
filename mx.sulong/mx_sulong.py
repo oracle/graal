@@ -892,6 +892,17 @@ def checkCFile(targetFile):
         return False
     return True
 
+def checkNoHttp(args=None):
+    """checks that https is used instead of http in Travis and the mx script"""
+    files = [__file__, ".travis.yml"]
+    for f in files:
+        line_number = 0
+        for line in open(f):
+            if "http" + chr(58) + "//" in line:
+                print "http:" + chr(58) + " in line " + str(line_number) + " could be a security issue! please change to https://"
+                exit(-1)
+            line_number += 1
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -938,5 +949,6 @@ mx.update_commands(_suite, {
     'su-travis-argon2' : [travisArgon2, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
-    'su-clangformatcheck' : [clangformatcheck, '']
+    'su-clangformatcheck' : [clangformatcheck, ''],
+    'su-httpcheck' : [checkNoHttp, '']
 })

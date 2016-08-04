@@ -55,6 +55,7 @@ env:
   - TEST_COMMAND='mx checkstyle'
   - TEST_COMMAND='mx checkoverlap'
   - TEST_COMMAND='mx canonicalizeprojects'
+  - TEST_COMMAND='mx su-httpcheck'
   - TEST_COMMAND='mx su-travis1'
   - TEST_COMMAND='mx su-travis2'
   - TEST_COMMAND='mx su-travis3'
