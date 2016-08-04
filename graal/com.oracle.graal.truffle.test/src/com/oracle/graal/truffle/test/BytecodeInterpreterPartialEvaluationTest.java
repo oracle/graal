@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -73,8 +74,20 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
             }
             if (result > 100) {
                 /* Dead branch, just to have exception-throwing calls during partial evaluation. */
-                boundary();
-                boundary();
+                try {
+                    boundary();
+                    boundary();
+                } catch (ControlFlowException ex) {
+                    CompilerDirectives.transferToInterpreter();
+                } catch (RuntimeException ex) {
+                    /* A complicated exception handler to stress the loop detection. */
+                    for (int i = 0; i < result; i++) {
+                        if (i == 42) {
+                            throw ex;
+                        }
+                    }
+                    CompilerDirectives.transferToInterpreter();
+                }
             }
             return result;
         } else {
@@ -417,6 +430,115 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 22: */Bytecode.POP,
                         /* 23: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 8));
+    }
+
+    @Test
+    public void irreducibleLoop01() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */0,
+                        /* 2: */Bytecode.IFZERO,
+                        /* 3: */7,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.POP,
+                        /* 7: */Bytecode.CONST,
+                        /* 8: */1,
+                        /* 9: */Bytecode.IFZERO,
+                        /* 10: */4,
+                        /* 11: */Bytecode.CONST,
+                        /* 12: */42,
+                        /* 13: */Bytecode.RETURN};
+        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop01", bytecodes, 0, 3));
+    }
+
+    @Test
+    public void irreducibleLoop02() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */0,
+                        /* 2: */Bytecode.IFZERO,
+                        /* 3: */7,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.POP,
+                        /* 7: */Bytecode.CONST,
+                        /* 8: */1,
+                        /* 9: */Bytecode.IFZERO,
+                        /* 10: */4,
+                        /* 11: */Bytecode.CONST,
+                        /* 12: */1,
+                        /* 13: */Bytecode.IFZERO,
+                        /* 14: */0,
+                        /* 15: */Bytecode.CONST,
+                        /* 16: */42,
+                        /* 17: */Bytecode.RETURN};
+        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop02", bytecodes, 0, 3));
+    }
+
+    @Test
+    public void irreducibleLoop03() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */1,
+                        /* 2: */Bytecode.POP,
+                        /* 3: */Bytecode.CONST,
+                        /* 4: */0,
+                        /* 5: */Bytecode.IFZERO,
+                        /* 6: */10,
+                        /* 7: */Bytecode.CONST,
+                        /* 8: */1,
+                        /* 9: */Bytecode.POP,
+                        /* 10: */Bytecode.CONST,
+                        /* 11: */1,
+                        /* 12: */Bytecode.IFZERO,
+                        /* 13: */7,
+                        /* 14: */Bytecode.CONST,
+                        /* 15: */1,
+                        /* 16: */Bytecode.IFZERO,
+                        /* 17: */3,
+
+                        /* 18: */Bytecode.CONST,
+                        /* 19: */1,
+                        /* 20: */Bytecode.IFZERO,
+                        /* 21: */18,
+
+                        /* 22: */Bytecode.CONST,
+                        /* 23: */42,
+                        /* 24: */Bytecode.RETURN};
+        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop03", bytecodes, 0, 3));
+    }
+
+    @Test
+    public void irreducibleLoop04() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */0,
+                        /* 2: */Bytecode.IFZERO,
+                        /* 3: */7,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.POP,
+
+                        /* 7: */Bytecode.CONST,
+                        /* 8: */1,
+                        /* 9: */Bytecode.IFZERO,
+                        /* 10: */7,
+
+                        /* 11: */Bytecode.CONST,
+                        /* 12: */1,
+                        /* 13: */Bytecode.IFZERO,
+                        /* 14: */4,
+
+                        /* 15: */Bytecode.CONST,
+                        /* 16: */1,
+                        /* 17: */Bytecode.IFZERO,
+                        /* 18: */15,
+
+                        /* 19: */Bytecode.CONST,
+                        /* 20: */42,
+                        /* 21: */Bytecode.RETURN};
+        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop04", bytecodes, 0, 3));
     }
 
     @Test(timeout = 2000)
