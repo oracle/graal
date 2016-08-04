@@ -583,7 +583,7 @@ def compileArgon2(main, optimize, cflags=None):
         outputFile = '%s.ll' % src
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
         if optimize:
-            opt(['-S', '-o', outputFile, '-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn', outputFile])
+            opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
     link(['-o', argon2Bin] + ['%s.ll' % x for x in argon2Src])
 
 def runTestArgon2Kats(args=None):
@@ -771,18 +771,38 @@ def suBench(args=None):
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
     return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
+def getStandardLLVMOptFlags():
+    """gets the optimal LLVM opt flags for Sulong"""
+    return ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn']
+
+def getRemoveExceptionHandlingLLVMOptFlags():
+    """gets the LLVM opt flags that remove C++ exception handling if possible"""
+    return ['-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg']
+
+def getOptimalLLVMOptFlags(sourceFile):
+    """gets the optimal LLVM opt flags for Sulong based on an original file source name (such as test.c)"""
+    _, ext = os.path.splitext(sourceFile)
+    if ext == '.c':
+        return getStandardLLVMOptFlags()
+    elif ext == '.cpp':
+        return getStandardLLVMOptFlags() + getRemoveExceptionHandlingLLVMOptFlags()
+    else:
+        exit(ext + " is not supported!")
+
+def suOptimalOpt(args=None):
+    """use opt with the optimal opt flags for Sulong"""
+    opt(getStandardLLVMOptFlags() + args)
+
 def compileWithClangOpt(inputFile, outputFile='test.ll'):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', outputFile])
     elif ext == '.cpp':
         compileWithClangPP(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
+    opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -792,6 +812,13 @@ def suOptBench(args=None):
     outputFile = 'test.ll'
     compileWithClangOpt(inputFile, outputFile)
     return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
+
+def suOptCompile(args=None):
+    """compiles a given benchmark and optimizes it with opt"""
+    ensureLLVMBinariesExist()
+    inputFile = args[0]
+    outputFile = 'test.ll'
+    compileWithClangOpt(inputFile, outputFile)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -909,6 +936,8 @@ mx.update_commands(_suite, {
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
+    'su-optimize' : [suOptimalOpt, ''],
+    'su-compile-optimize' : [suOptCompile, ''],
     'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],
