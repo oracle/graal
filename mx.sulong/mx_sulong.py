@@ -173,8 +173,7 @@ def pullTestFramework(args=None):
 def pullBenchmarkGame(args=None):
     """downloads the benchmarks"""
     mx.ensure_dir_exists(_benchGameSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/benchmarksgame-scm-latest.tar.gz",
-            "https://alioth.debian.org/snapshots.php?group_id=100815"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"]
     localPath = pullsuite(_benchGameSuiteDir, urls)
     tar(localPath, _benchGameSuiteDir, ['benchmarksgame-2014-08-31/benchmarksgame/bench/'], stripLevels=3)
     os.remove(localPath)
@@ -202,17 +201,13 @@ def pullLLVMBinaries(args=None):
         return
     elif osStr == 'linux':
         if arch == 'amd64':
-            urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz',
-                    'http://llvm.org/releases/3.2/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz']
+            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz']
         else:
-            urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz',
-                    'http://llvm.org/releases/3.2/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz']
+            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz']
     elif osStr == 'darwin':
-        urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz',
-                'http://llvm.org/releases/3.2/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz']
+        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz']
     elif osStr == 'cygwin':
-        urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz',
-                'http://llvm.org/releases/3.2/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
+        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
     else:
         print osStr, arch, "not supported!"
     localPath = pullsuite(toolDir, urls)
@@ -322,13 +317,13 @@ def pullInstallDragonEgg(args=None):
     """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
     toolDir = join(_toolDir, "tools/dragonegg")
     mx.ensure_dir_exists(toolDir)
-    url = 'http://llvm.org/releases/3.2/dragonegg-3.2.src.tar.gz'
+    url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/dragonegg-3.2.src.tar.gz'
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
     if mx.get_os() == 'darwin':
         gccToolDir = join(_toolDir, "tools/gcc")
-        url = 'http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-4.6.4.tar.gz'
+        url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-4.6.4.tar.gz'
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
@@ -344,8 +339,7 @@ def pullInstallDragonEgg(args=None):
 def pullLLVMSuite(args=None):
     """downloads the official (non Truffle) LLVM test suite"""
     mx.ensure_dir_exists(_llvmSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/test-suite-3.2.src.tar.gz",
-            "http://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz"]
     localPath = pullsuite(_llvmSuiteDir, urls)
     tar(localPath, _llvmSuiteDir)
     os.remove(localPath)
@@ -403,10 +397,7 @@ def pullGCCSuite(args=None):
     """downloads the GCC test suite"""
     suiteDir = _gccSuiteDir
     mx.ensure_dir_exists(suiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/gcc-5.2.0.tar.gz",
-            "ftp://gd.tuwien.ac.at/gnu/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-            "ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-            "http://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"]
     localPath = pullsuite(suiteDir, urls)
     tar(localPath, suiteDir, ['gcc-5.2.0/gcc/testsuite/'])
     os.remove(localPath)
@@ -414,8 +405,7 @@ def pullGCCSuite(args=None):
 def pullNWCCSuite(args=None):
     """downloads the NWCC test suite"""
     mx.ensure_dir_exists(_nwccSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/nwcc_0.8.3.tar.gz",
-            "http://sourceforge.net/projects/nwcc/files/nwcc/nwcc%200.8.3/nwcc_0.8.3.tar.gz/download"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"]
     localPath = pullsuite(_nwccSuiteDir, urls)
     tar(localPath, _nwccSuiteDir, ['nwcc_0.8.3/tests/', 'nwcc_0.8.3/test2/'], stripLevels=1)
     os.remove(localPath)
@@ -423,8 +413,7 @@ def pullNWCCSuite(args=None):
 def pullArgon2(args=None):
     """downloads Argon2"""
     mx.ensure_dir_exists(_argon2Dir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/phc-winner-argon2-20160406.tar.gz",
-            "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz"]
     localPath = pullsuite(_argon2Dir, urls)
     tar(localPath, _argon2Dir, ['phc-winner-argon2-20160406/'], stripLevels=1)
     os.remove(localPath)
@@ -549,7 +538,7 @@ def runCompileTestCases(args=None):
 
 def runTestJRuby(args=None):
     """tests that JRuby can use this version of Sulong to compile and run C extensions"""
-    rubyUrl = 'http://github.com/jruby/jruby.git'
+    rubyUrl = 'https://github.com/jruby/jruby.git'
     rubyBranch = 'truffle-head'
     suitesDir = os.path.abspath(join(_suite.dir, '..'))
     jrubyDir = join(suitesDir, 'jruby')
@@ -903,6 +892,17 @@ def checkCFile(targetFile):
         return False
     return True
 
+def checkNoHttp(args=None):
+    """checks that https is used instead of http in Travis and the mx script"""
+    files = [__file__, ".travis.yml"]
+    for f in files:
+        line_number = 0
+        for line in open(f):
+            if "http" + chr(58) + "//" in line:
+                print "http:" + chr(58) + " in line " + str(line_number) + " could be a security issue! please change to https://"
+                exit(-1)
+            line_number += 1
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -949,5 +949,6 @@ mx.update_commands(_suite, {
     'su-travis-argon2' : [travisArgon2, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
-    'su-clangformatcheck' : [clangformatcheck, '']
+    'su-clangformatcheck' : [clangformatcheck, ''],
+    'su-httpcheck' : [checkNoHttp, '']
 })
