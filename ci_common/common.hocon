@@ -2,9 +2,9 @@
 overlay = eb9c68cd6c37a30d09e625b17fe0c4036e10766c
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u92-jvmci-0.17", platformspecific: true}
+java8 : {name : labsjdk, version : "8u92-jvmci-0.18", platformspecific: true}
 java9 : {name : labsjdk, version : "9-HSCOMPSNAPSHOT", platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u92-jvmci-0.17-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u92-jvmci-0.18-fastdebug", platformspecific: true}
 
 common : {
   timelimit : "30:00"
