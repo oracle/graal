@@ -76,8 +76,13 @@ def executeGate():
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
+    with Task('TestJRuby', tasks) as t:
+        if t: runTestJRuby()
+    with Task('TestArgon2', tasks) as t:
+        if t: runTestArgon2(optimize=False)
 
 def travis1(args=None):
+    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, Sulong, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithEcj', tasks) as t:
         if t:
@@ -109,6 +114,7 @@ def travis1(args=None):
         if t: runLLVMTestCases()
 
 def travis2(args=None):
+    """executes the second Travis job (Javac build, GCC execution test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -116,6 +122,7 @@ def travis2(args=None):
         if t: runGCCTestCases()
 
 def travis3(args=None):
+    """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -125,6 +132,7 @@ def travis3(args=None):
         if t: runCompileTestCases()
 
 def travisJRuby(args=None):
+    """executes the JRuby Travis job (Javac build, JRuby test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -132,6 +140,7 @@ def travisJRuby(args=None):
         if t: runTestJRuby()
 
 def travisArgon2(args=None):
+    """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -697,7 +706,7 @@ def compileWithGCC(args=None):
 
 
 def opt(args=None):
-    """"Runs opt."""
+    """runs opt"""
     ensureLLVMBinariesExist()
     optPath = _toolDir + 'tools/llvm/bin/opt'
     return mx.run([optPath] + args)
