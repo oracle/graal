@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.nodeinfo.InputType.Condition;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
@@ -30,7 +29,6 @@ import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.spi.Lowerable;
@@ -48,21 +46,15 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the load.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
     public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
-    @OptionalInput(Condition) LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, accessKind, locationIdentity, null);
-    }
-
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
         super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
-        this.guardingCondition = condition;
     }
 
-    public LogicNode getGuardingCondition() {
-        return guardingCondition;
+    public UnsafeLoadNode(NodeClass<? extends UnsafeLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
+        super(c, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
     }
 
     @Override
@@ -98,7 +90,7 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeLoadNode(object(), location, accessKind(), identity, guardingCondition);
+        return new UnsafeLoadNode(object(), location, accessKind(), identity);
     }
 
     @NodeIntrinsic

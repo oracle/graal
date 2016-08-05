@@ -109,6 +109,7 @@ import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.extended.GetClassNode;
+import com.oracle.graal.nodes.extended.GuardedUnsafeLoadNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.LoadMethodNode;
@@ -471,7 +472,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     protected void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
-        if (load.getGuardingCondition() == null && !graph.getGuardsStage().allowsFloatingGuards() && addReadBarrier(load)) {
+        if (!(load instanceof GuardedUnsafeLoadNode) && !graph.getGuardsStage().allowsFloatingGuards() && addReadBarrier(load)) {
             unsafeLoadSnippets.lower(load, tool);
         } else {
             super.lowerUnsafeLoadNode(load, tool);

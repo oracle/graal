@@ -47,6 +47,7 @@ import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -112,6 +113,10 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             return ConstantFoldUtil.tryConstantFold(tool.getConstantFieldProvider(), tool.getConstantReflection(), tool.getMetaAccess(), field(), forObject.asJavaConstant());
         }
         return null;
+    }
+
+    public ConstantNode asConstant(CanonicalizerTool tool, JavaConstant constant) {
+        return ConstantFoldUtil.tryConstantFold(tool.getConstantFieldProvider(), tool.getConstantReflection(), tool.getMetaAccess(), field(), constant);
     }
 
     private PhiNode asPhi(CanonicalizerTool tool, ValueNode forObject) {
