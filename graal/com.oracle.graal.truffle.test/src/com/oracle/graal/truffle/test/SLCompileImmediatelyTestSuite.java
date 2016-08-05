@@ -52,7 +52,8 @@ public class SLCompileImmediatelyTestSuite {
          * in the interpreter. And we wait until compilation finishes so that we really execute the
          * compiled method. This leads to a lot of compilation, but that is the purpose of this
          * test. It also leads to a lot of deoptimization, since the first time a method is compiled
-         * it has all nodes in the uninitialized specialization. This means that most methods are compiled multiple times, in different specialization states.
+         * it has all nodes in the uninitialized specialization. This means that most methods are
+         * compiled multiple times, in different specialization states.
          */
         Map<OptionValue<?>, Object> newOptionValues = new HashMap<>();
         newOptionValues.put(TruffleCompilerOptions.TruffleCompileImmediately, true);
