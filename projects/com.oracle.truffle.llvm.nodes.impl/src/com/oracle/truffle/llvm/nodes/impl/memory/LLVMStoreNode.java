@@ -554,7 +554,7 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMFunctionDescriptor currentValue = values[i].executeFunction(frame);
+                LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeFunction(frame);
                 LLVMHeap.putFunctionIndex(currentAddress, currentValue.getFunctionIndex());
                 currentAddress = currentAddress.increment(stride);
             }
