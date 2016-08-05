@@ -134,25 +134,25 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(Object object, String message) {
+        if (!dumpFrontend && isFrontendObject(object)) {
+            return;
+        }
+
+        if (cfgPrinter == null) {
+            cfgFile = getCFGPath().toFile();
+            try {
+                OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
+                cfgPrinter = new CFGPrinter(out);
+            } catch (FileNotFoundException e) {
+                throw new GraalError("Could not open " + cfgFile.getAbsolutePath());
+            }
+            TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
+        }
+
+        if (!checkMethodScope()) {
+            return;
+        }
         try {
-            if (!dumpFrontend && isFrontendObject(object)) {
-                return;
-            }
-
-            if (cfgPrinter == null) {
-                cfgFile = getCFGPath().toFile();
-                try {
-                    OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
-                    cfgPrinter = new CFGPrinter(out);
-                } catch (FileNotFoundException e) {
-                    throw new GraalError("Could not open " + cfgFile.getAbsolutePath());
-                }
-                TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
-            }
-
-            if (!checkMethodScope()) {
-                return;
-            }
             if (curMethod instanceof ResolvedJavaMethod) {
                 cfgPrinter.method = (ResolvedJavaMethod) curMethod;
             }
