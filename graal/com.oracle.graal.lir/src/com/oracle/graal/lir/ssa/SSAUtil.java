@@ -100,7 +100,7 @@ public final class SSAUtil {
         assert label.getIncomingSize() == jump.getOutgoingSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getIncomingSize(), jump.getOutgoingSize());
         assert label.getPhiSize() == jump.getPhiSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getPhiSize(), jump.getPhiSize());
 
-        for (int i = 0; i < label.getIncomingSize(); i++) {
+        for (int i = 0; i < label.getPhiSize(); i++) {
             visitor.visit(label.getIncomingValue(i), jump.getOutgoingValue(i));
         }
     }
