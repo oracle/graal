@@ -20,37 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.debug;
+package com.oracle.graal.nodes.debug.instrumentation;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+/**
+ * Nodes implementing {@code InstrumentationInliningCallback} will be notify of the
+ * preInlineInstrumentation event and the postInlineInstrumentation event upon inlining
+ * instrumentation.
+ */
+public interface InstrumentationInliningCallback {
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.LoweringTool;
+    void preInlineInstrumentation(InstrumentationNode instrumentation);
 
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class RuntimeStringNode extends FixedWithNextNode implements Lowerable {
-
-    public static final NodeClass<RuntimeStringNode> TYPE = NodeClass.create(RuntimeStringNode.class);
-
-    private final String value;
-
-    public RuntimeStringNode(String value, Stamp stamp) {
-        super(TYPE, stamp);
-        this.value = value;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
+    void postInlineInstrumentation(InstrumentationNode instrumentation);
 
 }

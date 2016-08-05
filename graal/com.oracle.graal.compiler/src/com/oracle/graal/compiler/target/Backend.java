@@ -30,6 +30,8 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
@@ -43,8 +45,10 @@ import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.phases.tiers.TargetProvider;
 import com.oracle.graal.phases.util.Providers;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -53,6 +57,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Represents a compiler backend for Graal.
@@ -131,7 +136,62 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed
      * to the VM for code installation.
      */
-    public abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationResult compilationResult);
+    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationResult compilationResult);
+
+    /**
+     * Installs code based on a given compilation result.
+     *
+     * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
+     *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
+     * @param compilationResult the code to be compiled
+     * @param predefinedInstalledCode a pre-allocated {@link InstalledCode} object to use as a
+     *            reference to the installed code. If {@code null}, a new {@link InstalledCode}
+     *            object will be created.
+     * @param speculationLog the speculation log to be used
+     * @param isDefault specifies if the installed code should be made the default implementation of
+     *            {@code compRequest.getMethod()}. The default implementation for a method is the
+     *            code executed for standard calls to the method. This argument is ignored if
+     *            {@code compRequest == null}.
+     * @return a reference to the compiled and ready-to-run installed code
+     * @throws BailoutException if the code installation failed
+     */
+    @SuppressWarnings("try")
+    public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult,
+                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
+        try (Scope s2 = Debug.scope("CodeInstall", getProviders().getCodeCache(), compilationResult)) {
+            CompiledCode compiledCode = createCompiledCode(method, compilationResult);
+            return getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    /**
+     * Installs code based on a given compilation result.
+     *
+     * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
+     *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
+     * @param compilationResult the code to be compiled
+     * @return a reference to the compiled and ready-to-run installed code
+     * @throws BailoutException if the code installation failed
+     */
+    public InstalledCode addInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult) {
+        return createInstalledCode(method, compilationResult, null, null, false);
+    }
+
+    /**
+     * Installs code based on a given compilation result and sets it as the default code to be used
+     * when {@code method} is invoked.
+     *
+     * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
+     *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
+     * @param compilationResult the code to be compiled
+     * @return a reference to the compiled and ready-to-run installed code
+     * @throws BailoutException if the code installation failed
+     */
+    public InstalledCode createDefaultInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult) {
+        return createInstalledCode(method, compilationResult, null, null, true);
+    }
 
     /**
      * Emits the code for a given graph.

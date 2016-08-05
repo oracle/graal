@@ -49,7 +49,35 @@ public final class GraalServices {
      */
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        return Java8OrEarlier ? Services.load(service) : ServiceLoader.load(service);
+        if (Java8OrEarlier) {
+            return Services.load(service);
+        }
+        ServiceLoader<S> iterable = ServiceLoader.load(service);
+        return new Iterable<S>() {
+            @Override
+            public Iterator<S> iterator() {
+                Iterator<S> iterator = iterable.iterator();
+                return new Iterator<S>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public S next() {
+                        S provider = iterator.next();
+                        // Allow Graal extensions to access JVMCI assuming they have JVMCIPermission
+                        Services.exportJVMCITo(provider.getClass());
+                        return provider;
+                    }
+
+                    @Override
+                    public void remove() {
+                        iterator.remove();
+                    }
+                };
+            }
+        };
     }
 
     /**
@@ -79,8 +107,13 @@ public final class GraalServices {
         } catch (ServiceConfigurationError e) {
             // If the service is required we will bail out below.
         }
-        if (singleProvider == null && required) {
-            throw new InternalError(String.format("No provider for %s found", service.getName()));
+        if (singleProvider == null) {
+            if (required) {
+                throw new InternalError(String.format("No provider for %s found", service.getName()));
+            }
+        } else {
+            // Allow Graal extensions to access JVMCI assuming they have JVMCIPermission
+            Services.exportJVMCITo(singleProvider.getClass());
         }
         return singleProvider;
     }

@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -129,10 +128,7 @@ public class InvokeGraal {
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains
              * the machine code into an actual executable memory location.
              */
-            CompiledCode compiledCode = backend.createCompiledCode(method, compilationResult);
-            InstalledCode installedCode = codeCache.addCode(method, compiledCode, null, null);
-
-            return installedCode;
+            return backend.addInstalledCode(method, compilationResult);
         } catch (Throwable ex) {
             throw Debug.handle(ex);
         }

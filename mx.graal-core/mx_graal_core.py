@@ -35,7 +35,7 @@ import mx
 from mx_gate import Task
 
 from mx_unittest import unittest
-from mx_javamodules import as_java_module, get_module_deps
+from mx_javamodules import as_java_module
 import mx_gate
 import mx_unittest
 import mx_microbench
@@ -81,87 +81,48 @@ def _check_jvmci_version(jdk):
 
 _check_jvmci_version(jdk)
 
-if isJDK8:
-    class JVMCIClasspathEntry(object):
+class JVMCIClasspathEntry(object):
+    """
+    Denotes a distribution that is put on the JVMCI class path.
+
+    :param str name: the name of the `JARDistribution` to be deployed
+    """
+    def __init__(self, name):
+        self._name = name
+
+    def dist(self):
         """
-        Denotes a distribution that is put on the JVMCI class path.
-
-        :param str name: the name of the `JARDistribution` to be deployed
+        Gets the `JARDistribution` deployed on the JVMCI class path.
         """
-        def __init__(self, name):
-            self._name = name
+        return mx.distribution(self._name)
 
-        def dist(self):
-            """
-            Gets the `JARDistribution` deployed on the JVMCI class path.
-            """
-            return mx.distribution(self._name)
-
-        def get_path(self):
-            """
-            Gets the path to the distribution jar file.
-
-            :rtype: str
-            """
-            return self.dist().classpath_repr()
-
-    #: The deployed Graal distributions
-    _jvmci_classpath = [
-        JVMCIClasspathEntry('GRAAL'),
-    ]
-
-    def add_jvmci_classpath_entry(entry):
+    def get_path(self):
         """
-        Appends an entry to the JVMCI classpath.
+        Gets the path to the distribution jar file.
+
+        :rtype: str
         """
-        _jvmci_classpath.append(entry)
+        return self.dist().classpath_repr()
 
-else:
-    class GraalModuleDescriptor(object):
-        """
-        Describes the module containing Graal.
+#: The deployed Graal distributions
+_jvmci_classpath = [
+    JVMCIClasspathEntry('GRAAL'),
+]
 
-        :param str distName: name of the `JARDistribution` that creates the Graal module jar
-        """
-        def __init__(self, name):
-            self._name = name
-
-        def dist(self):
-            """
-            Gets the `JARDistribution` that creates the Graal module jar.
-
-            :rtype: `JARDistribution
-            """
-            return mx.distribution(self._name)
-
-        def get_module_jar(self):
-            """
-            Gets the path to the module jar file.
-
-            :rtype: str
-            """
-            return as_java_module(self.dist(), jdk).jarpath
-
-    #: The `GraalModuleDescriptor` for the Graal module
-    _graal_module_descriptor = GraalModuleDescriptor('GRAAL')
-
-    def set_graal_module(descriptor):
-        """
-        Sets the deployed Graal module.
-        """
-        global _graal_module_descriptor
-        assert descriptor != None
-        _graal_module_descriptor = descriptor
+def add_jvmci_classpath_entry(entry):
+    """
+    Appends an entry to the JVMCI classpath.
+    """
+    _jvmci_classpath.append(entry)
 
 _bootclasspath_appends = []
 
 def add_bootclasspath_append(dep):
     """
-    Adds a dependency that must be appended to the boot class path
+    Adds a distribution that must be appended to the boot class path
     """
-    assert isinstance(dep, mx.ClasspathDependency)
+    assert dep.isJARDistribution(), dep.name + ' is not a distribution'
     _bootclasspath_appends.append(dep)
-
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
@@ -450,68 +411,72 @@ def _unittest_config_participant(config):
     if cp:
         cp = _uniqify(cp.split(os.pathsep))
         if isJDK8:
-            # Remove entries from class path that are in Graal
-            excluded = set()
-            for entry in _jvmci_classpath:
-                dist = entry.dist()
-                excluded.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
-                excluded.add(dist.path)
-            cp = os.pathsep.join([e for e in cp if e not in excluded])
+            # Remove entries from class path that are in Graal or on the boot class path
+            redundantClasspathEntries = set()
+            for dist in [entry.dist() for entry in _jvmci_classpath]:
+                redundantClasspathEntries.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
+                redundantClasspathEntries.add(dist.path)
+            cp = os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
             vmArgs[cpIndex] = cp
         else:
-            # Remove entries from class path that are in the Graal
-            assert _graal_module_descriptor is not None
-            module = as_java_module(_graal_module_descriptor.dist(), jdk)
+            deployedModules = []
+            redundantClasspathEntries = set()
+            for dist in [entry.dist() for entry in _jvmci_classpath] + _bootclasspath_appends:
+                deployedModule = as_java_module(dist, jdk)
+                deployedModules.append(deployedModule)
+                redundantClasspathEntries.update(mx.classpath(dist, preferProjects=False, jdk=jdk).split(os.pathsep))
+                redundantClasspathEntries.update(mx.classpath(dist, preferProjects=True, jdk=jdk).split(os.pathsep))
 
-            junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
-            excluded = frozenset([classpathEntry.classpath_repr() for classpathEntry in get_module_deps(module.dist)] + junitCp)
-
-            cp = [classpathEntry for classpathEntry in cp if classpathEntry not in excluded]
-
+            # Remove entries from the class path that are in the deployed modules
+            cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
             vmArgs[cpIndex] = os.pathsep.join(cp)
 
             # Junit libraries are made into automatic modules so that they are visible to tests
-            # patched into Graal. These automatic modules must be declared to be read by
+            # patched into modules. These automatic modules must be declared to be read by
             # Graal which means they must also be made root modules (i.e., ``-addmods``)
             # since ``-XaddReads`` can only be applied to root modules.
+            junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
             junitModules = [_automatic_module_name(e) for e in junitCp]
             vmArgs.extend(['-modulepath', os.pathsep.join(junitCp)])
-            vmArgs.extend(['-addmods', ','.join(junitModules)])
-            vmArgs.extend(['-XaddReads:' + module.name + '=' + ','.join(junitModules)])
+            vmArgs.extend(['-addmods', ','.join(junitModules + [m.name for m in deployedModules])])
+            for deployedModule in deployedModules:
+                vmArgs.append('-XaddReads:' + deployedModule.name + '=' + ','.join(junitModules))
 
-            # Explicitly export JVMCI to Graal
+            # Explicitly export concealed JVMCI packages required by Graal. Even though
+            # normally exported via jdk.vm.ci.services.Services.exportJVMCITo(), the
+            # Junit harness wants to access JVMCI classes (e.g., when loading classes
+            # to find test methods) without going through that entry point.
             addedExports = {}
-            for concealingModule, packages in module.concealedRequires.iteritems():
-                if concealingModule == 'jdk.vm.ci':
-                    for package in packages:
-                        addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
+            for deployedModule in deployedModules:
+                for concealingModule, packages in deployedModule.concealedRequires.iteritems():
+                    if concealingModule == 'jdk.vm.ci':
+                        for package in packages:
+                            addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
-            patches = []
-            graalConcealedPackages = list(module.conceals)
+            patches = {}
             pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
             for classpathEntry in cp:
-                # Export concealed JDK packages used by the class path entry
-                _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, 'ALL-UNNAMED')
+                # Export concealed packages used by the class path entry
+                _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, 'ALL-UNNAMED', deployedModules)
 
-                # Patch the class path entry into Graal if it defines packages already defined by Graal.
-                # Packages definitions cannot be split between modules.
-                packages = frozenset(_defined_packages(classpathEntry))
-                if not packages.isdisjoint(module.packages):
-                    patches.append(classpathEntry)
-                    extraPackages = packages - module.packages
-                    if extraPackages:
-                        # From http://openjdk.java.net/jeps/261:
-                        # If a package found in a module definition on a patch path is not already exported
-                        # by that module then it will, still, not be exported. It can be exported explicitly
-                        # via either the reflection API or the -XaddExports option.
-                        graalConcealedPackages.extend(extraPackages)
+                for deployedModule in deployedModules:
+                    assert deployedModule.dist.path != classpathEntry, deployedModule.dist.path + ' should no longer be on the class path'
+                    # Patch the class path entry into a module if it defines packages already defined by the module.
+                    # Packages definitions cannot be split between modules.
+                    classpathEntryPackages = frozenset(_defined_packages(classpathEntry))
+                    if not classpathEntryPackages.isdisjoint(deployedModule.packages):
+                        patches.setdefault(deployedModule.name, []).append(classpathEntry)
+                        extraPackages = classpathEntryPackages - frozenset(deployedModule.exports.iterkeys())
+                        if extraPackages:
+                            # From http://openjdk.java.net/jeps/261:
+                            # If a package found in a module definition on a patch path is not already exported
+                            # by that module then it will, still, not be exported. It can be exported explicitly
+                            # via either the reflection API or the -XaddExports option.
+                            for package in extraPackages:
+                                addedExports.setdefault(deployedModule.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
 
-            if patches:
-                vmArgs.append('-Xpatch:' + module.name + '=' + os.pathsep.join(patches))
-
-            # Export all Graal packages to make them available to test classes
-            for package in graalConcealedPackages:
-                addedExports.setdefault(module.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
+            for moduleName, cpEntries in patches.iteritems():
+                vmArgs.append('-Xpatch:' + moduleName + '=' + os.pathsep.join(cpEntries))
 
             vmArgs.extend(['-XaddExports:' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
 
@@ -576,7 +541,7 @@ def _automatic_module_name(modulejar):
     name = re.sub(r'^\.', '', name) # drop leading dots
     return re.sub(r'\.$', '', name) # drop trailing dots
 
-def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module):
+def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module, modulepath):
     """
     Adds exports for concealed packages imported by the project whose output directory matches `classpathEntry`.
 
@@ -584,10 +549,11 @@ def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, 
     :param dict pathToProject: map from an output directory to its defining `JavaProject`
     :param dict exports: map from a module/package specifier to the set of modules it must be exported to
     :param str module: the name of the module containing the classes in `classpathEntry`
+    :param list modulepath: modules to be searched for concealed packages
     """
     project = pathToProject.get(classpathEntry, None)
     if project:
-        concealed = project.get_concealed_imported_packages(jdk)
+        concealed = project.get_concealed_imported_packages(jdk, modulepath)
         for concealingModule, packages in concealed.iteritems():
             for package in packages:
                 exports.setdefault(concealingModule + '/' + package, set()).add(module)
@@ -613,19 +579,6 @@ def _extract_added_exports(args, addedExports):
         else:
             res.append(arg)
     return res
-
-def _index_of(haystack, needles):
-    """
-    Gets the index of the first entry in `haystack` that matches an item in `needles`.
-
-    :param list haystack: list to search
-    :param list needles: the items to search for
-    :return: index of first needles in `haystack` or -1 if not found
-    """
-    for i in range(len(haystack)):
-        if haystack[i] in needles:
-            return i
-    return -1
 
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
@@ -667,28 +620,41 @@ def _parseVmArgs(args, addDefaultArgs=True):
         argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
         argsPrefix.append('-Xbootclasspath/a:' + os.pathsep.join([dep.classpath_repr() for dep in _bootclasspath_appends]))
     else:
-        assert _graal_module_descriptor is not None
-        module = as_java_module(_graal_module_descriptor.dist(), jdk)
+        deployedDists = [entry.dist() for entry in _jvmci_classpath] + \
+                        [e for e in _bootclasspath_appends if e.isJARDistribution()]
+        deployedModules = [as_java_module(dist, jdk) for dist in deployedDists]
+
+        # Set or update module path to include Graal and its dependencies as modules
+        graalModulepath = []
+        for deployedModule in deployedModules:
+            graalModulepath.extend([jmd.jarpath for jmd in deployedModule.modulepath if jmd.jarpath])
+            graalModulepath.append(deployedModule.jarpath)
+        graalModulepath = _uniqify(graalModulepath)
 
         # Update added exports to include concealed JDK packages required by Graal
         addedExports = {}
         args = _extract_added_exports(args, addedExports)
-        for concealingModule, packages in module.concealedRequires.iteritems():
-            # No need to explicitly export JVMCI - it's exported via reflection
-            if concealingModule != 'jdk.vm.ci':
-                for package in packages:
-                    addedExports.setdefault(concealingModule + '/' + package, set()).add(module.name)
+        for deployedModule in deployedModules:
+            for concealingModule, packages in deployedModule.concealedRequires.iteritems():
+                # No need to explicitly export JVMCI - it's exported via reflection
+                if concealingModule != 'jdk.vm.ci':
+                    for package in packages:
+                        addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
+
         for export, targets in addedExports.iteritems():
             argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
 
-        # Set or update module path to include Graal
-        mpIndex = _index_of(args, ['-modulepath', '-mp'])
-        if mpIndex != -1:
-            assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
-            args[mpIndex + 1] = args[mpIndex + 1] + os.pathsep + module.jarpath
-        else:
+        # Extend or set -modulepath argument
+        mpUpdated = False
+        for mpIndex in range(len(args)):
+            if args[mpIndex] in ['-modulepath', '-mp']:
+                assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
+                args[mpIndex + 1] = os.pathsep.join(_uniqify(args[mpIndex + 1].split(os.pathsep) + graalModulepath))
+                mpUpdated = True
+                break
+        if not mpUpdated:
             argsPrefix.append('-modulepath')
-            argsPrefix.append(module.jarpath)
+            argsPrefix.append(os.pathsep.join(graalModulepath))
 
     # Set the JVMCI compiler to Graal
     argsPrefix.append('-Djvmci.Compiler=graal')
@@ -790,6 +756,7 @@ mx.update_commands(_suite, {
 })
 
 def mx_post_parse_cmd_line(opts):
+    mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
     add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))

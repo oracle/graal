@@ -77,6 +77,7 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.options.StableOptionValue;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
+import com.oracle.graal.replacements.InlineGraalDirectivesPlugin;
 import com.oracle.graal.replacements.MethodHandlePlugin;
 import com.oracle.graal.replacements.NodeIntrinsificationProvider;
 import com.oracle.graal.replacements.ReplacementsImpl;
@@ -124,6 +125,7 @@ public class HotSpotGraphBuilderPlugins {
         if (InlineDuringParsing.getValue()) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
+        plugins.appendInlineInvokePlugin(new InlineGraalDirectivesPlugin());
 
         invocationPlugins.defer(new Runnable() {
 

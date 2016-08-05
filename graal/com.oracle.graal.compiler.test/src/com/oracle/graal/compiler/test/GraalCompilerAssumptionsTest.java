@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.compiler.test;
 
+import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public abstract class GraalCompilerAssumptionsTest extends GraalCompilerTest {
 
@@ -66,8 +65,7 @@ public abstract class GraalCompilerAssumptionsTest extends GraalCompilerTest {
         checkGraph(expectedAssumption, graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);
-        CompiledCode compiledCode = getBackend().createCompiledCode(javaMethod, compilationResult);
-        final InstalledCode installedCode = getProviders().getCodeCache().setDefaultCode(javaMethod, compiledCode);
+        final InstalledCode installedCode = getBackend().createDefaultInstalledCode(javaMethod, compilationResult);
         assertTrue(installedCode.isValid());
         if (classToLoad != null) {
             String fullName = getClass().getName() + "$" + classToLoad;

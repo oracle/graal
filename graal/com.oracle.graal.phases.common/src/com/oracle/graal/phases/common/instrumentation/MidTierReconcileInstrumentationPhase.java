@@ -24,31 +24,33 @@ package com.oracle.graal.phases.common.instrumentation;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
+import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
 import com.oracle.graal.nodes.java.RawMonitorEnterNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.instrumentation.nodes.InstrumentationNode;
-import com.oracle.graal.phases.common.instrumentation.nodes.MonitorProxyNode;
 
+/**
+ * The {@code MidTierReconcileInstrumentationPhase} reconciles the InstrumentationNodes right after
+ * lowering in the mid tier. Concretely, it attempts to unproxify the targets of the
+ * InstrumentationNodes.
+ */
 public class MidTierReconcileInstrumentationPhase extends Phase {
-
-    private static RawMonitorEnterNode unproxify(MonitorProxyNode proxy) {
-        for (RawMonitorEnterNode monitorEnter : proxy.getMonitorId().usages().filter(RawMonitorEnterNode.class)) {
-            if (monitorEnter.object() == proxy.target()) {
-                return monitorEnter;
-            }
-        }
-        return null;
-    }
 
     @Override
     protected void run(StructuredGraph graph) {
         for (InstrumentationNode instrumentationNode : graph.getNodes().filter(InstrumentationNode.class)) {
-            instrumentationNode.onMidTierReconcileInstrumentation();
-            ValueNode target = instrumentationNode.target();
+            ValueNode target = instrumentationNode.getTarget();
             if (target instanceof MonitorProxyNode) {
-                instrumentationNode.replaceFirstInput(target, unproxify((MonitorProxyNode) target));
+                RawMonitorEnterNode monitorEnter = ((MonitorProxyNode) target).findFirstMatch();
+                if (monitorEnter != null) {
+                    instrumentationNode.replaceFirstInput(target, monitorEnter);
+                } else {
+                    // we cannot find valid AccessMonitorNode for the proxy, detach the
+                    // instrumentation
+                    graph.removeFixed(instrumentationNode);
+                }
             } else if (target instanceof FixedValueAnchorNode) {
                 instrumentationNode.replaceFirstInput(target, GraphUtil.unproxify(target));
             }

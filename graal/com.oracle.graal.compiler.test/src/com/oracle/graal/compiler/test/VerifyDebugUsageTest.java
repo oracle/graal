@@ -30,6 +30,7 @@ import org.junit.Test;
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -181,6 +182,36 @@ public class VerifyDebugUsageTest {
 
     }
 
+    private static class InvalidGraalErrorGuaranteePhase extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s %s %s", graph, graph, graph, graph.toString());
+        }
+    }
+
+    private static class ValidGraalErrorGuaranteePhase extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s", graph);
+        }
+    }
+
+    public static Object sideEffect;
+
+    private static class InvalidGraalErrorCtorPhase extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            sideEffect = new GraalError("No Error %s", graph.toString());
+        }
+    }
+
+    private static class ValidGraalErrorCtorPhase extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            sideEffect = new GraalError("Error %s", graph);
+        }
+    }
+
     @Test(expected = VerificationError.class)
     public void testLogInvalid() {
         testDebugUsageClass(InvalidLogUsagePhase.class);
@@ -239,6 +270,26 @@ public class VerifyDebugUsageTest {
     @Test
     public void testDumpValid() {
         testDebugUsageClass(ValidDumpUsagePhase.class);
+    }
+
+    @Test(expected = VerificationError.class)
+    public void testGraalGuaranteeInvalid() {
+        testDebugUsageClass(InvalidGraalErrorGuaranteePhase.class);
+    }
+
+    @Test
+    public void testGraalGuaranteeValid() {
+        testDebugUsageClass(ValidGraalErrorGuaranteePhase.class);
+    }
+
+    @Test(expected = VerificationError.class)
+    public void testGraalCtorInvalid() {
+        testDebugUsageClass(InvalidGraalErrorCtorPhase.class);
+    }
+
+    @Test
+    public void testGraalCtorValid() {
+        testDebugUsageClass(ValidGraalErrorCtorPhase.class);
     }
 
     @SuppressWarnings("try")
