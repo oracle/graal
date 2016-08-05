@@ -106,7 +106,7 @@ public class ExpandLogicPhase extends Phase {
     }
 
     @Override
-    public float codeSizeIncrease() {
-        return 2.0f;
+    public boolean checkContract() {
+        return false;
     }
 }
