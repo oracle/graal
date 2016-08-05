@@ -86,6 +86,10 @@ public abstract class NodeFactoryFacadeComposite implements NodeFactoryFacade {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (method.getName().equals("setUpFacade")) {
+                method.invoke(first, args);
+                method.invoke(second, args);
+            }
             Object factoryResult = method.invoke(first, args);
             if (factoryResult == null || isEmptyOptional(factoryResult)) {
                 return method.invoke(second, args);

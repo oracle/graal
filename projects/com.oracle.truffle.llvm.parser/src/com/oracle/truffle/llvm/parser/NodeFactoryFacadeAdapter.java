@@ -68,6 +68,10 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
+    public void setUpFacade(LLVMParserRuntime runtime) {
+    }
+
+    @Override
     public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index) {
         return null;
     }
