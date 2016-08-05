@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
@@ -52,8 +53,8 @@ public class LLVMFunctionStartNode extends RootNode {
     private final String functionName;
     @CompilationFinal private LLVMStackFrameNuller[] nullers;
 
-    public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, FrameDescriptor frameDescriptor, String functionName) {
-        super(LLVMLanguage.class, null, frameDescriptor);
+    public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor, String functionName) {
+        super(LLVMLanguage.class, sourceSection, frameDescriptor);
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
@@ -118,6 +119,10 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String toString() {
+        return functionName;
+    }
+
+    public String getFunctionName() {
         return functionName;
     }
 

@@ -3,6 +3,7 @@ import os
 from os.path import join
 import shutil
 import subprocess
+import sys
 
 import mx
 import mx_findbugs
@@ -17,6 +18,7 @@ _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testDir = join(_root, "com.oracle.truffle.llvm.test/")
+_argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
@@ -129,6 +131,13 @@ def travisJRuby(args=None):
     with Task('TestJRuby', tasks) as t:
         if t: runTestJRuby()
 
+def travisArgon2(args=None):
+    tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestArgon2', tasks) as t:
+        if t: runTestArgon2(optimize=False)
+
 def localGate(args=None):
     """executes the gate without downloading the dependencies and without building"""
     executeGate()
@@ -145,10 +154,11 @@ def pullTools(args=None):
     pullLLVMBinaries()
 
 def pullTestFramework(args=None):
-    """downloads the test suites (GCC, LLVM, NWCC)"""
+    """downloads the test suites (GCC, LLVM, NWCC, Argon2)"""
     pullGCCSuite()
     pullLLVMSuite()
     pullNWCCSuite()
+    pullArgon2()
 
 # platform independent
 def pullBenchmarkGame(args=None):
@@ -401,11 +411,20 @@ def pullNWCCSuite(args=None):
     tar(localPath, _nwccSuiteDir, ['nwcc_0.8.3/tests/', 'nwcc_0.8.3/test2/'], stripLevels=1)
     os.remove(localPath)
 
+def pullArgon2(args=None):
+    """downloads Argon2"""
+    mx.ensure_dir_exists(_argon2Dir)
+    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/phc-winner-argon2-20160406.tar.gz",
+            "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz"]
+    localPath = pullsuite(_argon2Dir, urls)
+    tar(localPath, _argon2Dir, ['phc-winner-argon2-20160406/'], stripLevels=1)
+    os.remove(localPath)
+
 def truffle_extract_VM_args(args, useDoubleDash=False):
     vmArgs, remainder = [], []
     if args is not None:
         for (i, arg) in enumerate(args):
-            if any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-agentlib']) or arg in ['-esa']:
+            if any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-da', '-agentlib']) or arg in ['-esa']:
                 vmArgs += [arg]
             elif useDoubleDash and arg == '--':
                 remainder += args[i:]
@@ -425,7 +444,7 @@ def extract_compiler_args(args, useDoubleDash=False):
                 remainder += [arg]
     return compilerArgs, remainder
 
-def runLLVM(args=None):
+def runLLVM(args=None, out=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgsWithLibs = truffle_extract_VM_args(args)
     sulongArgs = []
@@ -435,7 +454,7 @@ def runLLVM(args=None):
             libNames.append(arg)
         else:
             sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, jdk=mx.get_jdk(tag='jvmci'))
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
     """runs all the test cases"""
@@ -545,6 +564,61 @@ def runTestJRuby(args=None):
     mx.run(['ruby', 'tool/jt.rb', 'test', 'specs', '--graal', ':capi'], cwd=jrubyDir)
     mx.run(['ruby', 'tool/jt.rb', 'test', 'cexts'], cwd=jrubyDir)
 
+def compileArgon2(main, optimize, cflags=None):
+    if cflags is None:
+        cflags = []
+    argon2Src = ['src/argon2', 'src/core', 'src/blake2/blake2b', 'src/thread', 'src/encoding', 'src/ref', 'src/%s' % main, '../pthread-stub/pthread']
+    argon2Bin = '%s.su' % main
+    for src in argon2Src:
+        inputFile = '%s.c' % src
+        outputFile = '%s.ll' % src
+        compileWithClang(['-S', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
+        if optimize:
+            opt(['-S', '-o', outputFile, '-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn', outputFile])
+    link(['-o', argon2Bin] + ['%s.ll' % x for x in argon2Src])
+
+def runTestArgon2Kats(args=None):
+    for v in ['16', '19']:
+        for t in ['i', 'd']:
+            sys.stdout.write("argon2%s v=%s: " % (t, v))
+
+            if v == '19':
+                kats = 'kats/argon2%s' % t
+            else:
+                kats = 'kats/argon2%s_v%s' % (t, v)
+
+            ret = runLLVM(args + ['genkat.su', t, v], out=open('tmp', 'w'))
+            if ret == 0:
+                ret = mx.run(['diff', 'tmp', kats])
+                if ret == 0:
+                    print 'OK'
+                else:
+                    print 'ERROR'
+                    return ret
+            else:
+                print 'FAILED'
+                return ret
+
+    return 0
+
+def runTestArgon2(args=None, optimize=False):
+    """runs Argon2 tests with Sulong"""
+
+    ensureArgon2Exists()
+    os.chdir(_argon2Dir)
+    if args is None:
+        args = []
+    # TODO: Enable assertions
+    #args.extend(['-ea', '-esa'])
+
+    compileArgon2('genkat', optimize, ['-DGENKAT'])
+    ret = runTestArgon2Kats(args)
+    if ret != 0:
+        return ret
+
+    compileArgon2('test', optimize)
+    return runLLVM(args + ['test.su'])
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -563,7 +637,7 @@ def getSearchPathOption(lib_args=None):
         '-lstdc++': ['libstdc++.so.6', 'libstdc++.6.dylib'],
         '-lgmp': ['libgmp.so.10', 'libgmp.10.dylib'],
         '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib'],
-        '-lpcre': ['libpcre.so', 'libpcre.dylib']
+        '-lpcre': ['libpcre.so.3', 'libpcre.dylib']
     }
     osStr = mx.get_os()
     index = {'linux': 0, 'darwin': 1}[mx.get_os()]
@@ -675,6 +749,11 @@ def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
     if not os.path.exists(_clangPath):
         pullLLVMBinaries()
+
+def ensureArgon2Exists():
+    """downloads Argon2 if not downloaded yet"""
+    if not os.path.exists(_argon2Dir):
+        pullArgon2()
 
 def suBench(args=None):
     """runs a given benchmark with Sulong"""
@@ -811,6 +890,7 @@ mx.update_commands(_suite, {
     'su-tests-asm' : [runAsmTestCases, ''],
     'su-tests-compile' : [runCompileTestCases, ''],
     'su-tests-jruby' : [runTestJRuby, ''],
+    'su-tests-argon2' : [runTestArgon2, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
@@ -823,6 +903,7 @@ mx.update_commands(_suite, {
     'su-travis2' : [travis2, ''],
     'su-travis3' : [travis3, ''],
     'su-travis-jruby' : [travisJRuby, ''],
+    'su-travis-argon2' : [travisArgon2, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, '']

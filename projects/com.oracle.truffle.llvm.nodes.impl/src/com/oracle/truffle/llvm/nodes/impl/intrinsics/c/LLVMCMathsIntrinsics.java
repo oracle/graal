@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.impl.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
@@ -119,6 +120,26 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         public double executeIntrinsic(double value) {
             return Math.abs(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMDoubleNode.class)
+    public abstract static class LLVMExp extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.exp(value);
+        }
+
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMDoubleNode.class), @NodeChild(type = LLVMDoubleNode.class)})
+    public abstract static class LLVMPow extends LLVMDoubleIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double a, double b) {
+            return Math.pow(a, b);
         }
 
     }
