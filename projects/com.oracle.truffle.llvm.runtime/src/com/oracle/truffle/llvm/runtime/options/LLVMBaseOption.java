@@ -63,6 +63,7 @@ public enum LLVMBaseOption implements LLVMOption {
                     null,
                     LLVMOptions::parseString,
                     PropertyCategory.TESTS),
+    NODE_CONFIGURATION("NodeConfiguration", "The node configuration (node factory) to be used in Sulong.", "default", LLVMOptions::parseString, PropertyCategory.GENERAL),
     STACK_SIZE_KB("StackSizeKB", "The stack size in KB.", 81920L, LLVMOptions::parseLong, PropertyCategory.GENERAL),
     DYN_LIBRARY_PATHS(
                     "DynamicNativeLibraryPath",
