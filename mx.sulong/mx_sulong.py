@@ -76,8 +76,13 @@ def executeGate():
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
+    with Task('TestJRuby', tasks) as t:
+        if t: runTestJRuby()
+    with Task('TestArgon2', tasks) as t:
+        if t: runTestArgon2(optimize=False)
 
 def travis1(args=None):
+    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, Sulong, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithEcj', tasks) as t:
         if t:
@@ -109,6 +114,7 @@ def travis1(args=None):
         if t: runLLVMTestCases()
 
 def travis2(args=None):
+    """executes the second Travis job (Javac build, GCC execution test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -116,6 +122,7 @@ def travis2(args=None):
         if t: runGCCTestCases()
 
 def travis3(args=None):
+    """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -125,6 +132,7 @@ def travis3(args=None):
         if t: runCompileTestCases()
 
 def travisJRuby(args=None):
+    """executes the JRuby Travis job (Javac build, JRuby test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -132,6 +140,7 @@ def travisJRuby(args=None):
         if t: runTestJRuby()
 
 def travisArgon2(args=None):
+    """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
@@ -164,8 +173,7 @@ def pullTestFramework(args=None):
 def pullBenchmarkGame(args=None):
     """downloads the benchmarks"""
     mx.ensure_dir_exists(_benchGameSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/benchmarksgame-scm-latest.tar.gz",
-            "https://alioth.debian.org/snapshots.php?group_id=100815"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"]
     localPath = pullsuite(_benchGameSuiteDir, urls)
     tar(localPath, _benchGameSuiteDir, ['benchmarksgame-2014-08-31/benchmarksgame/bench/'], stripLevels=3)
     os.remove(localPath)
@@ -193,17 +201,13 @@ def pullLLVMBinaries(args=None):
         return
     elif osStr == 'linux':
         if arch == 'amd64':
-            urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz',
-                    'http://llvm.org/releases/3.2/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz']
+            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz']
         else:
-            urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz',
-                    'http://llvm.org/releases/3.2/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz']
+            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz']
     elif osStr == 'darwin':
-        urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz',
-                'http://llvm.org/releases/3.2/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz']
+        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz']
     elif osStr == 'cygwin':
-        urls = ['http://lafo.ssw.uni-linz.ac.at/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz',
-                'http://llvm.org/releases/3.2/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
+        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
     else:
         print osStr, arch, "not supported!"
     localPath = pullsuite(toolDir, urls)
@@ -313,13 +317,13 @@ def pullInstallDragonEgg(args=None):
     """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
     toolDir = join(_toolDir, "tools/dragonegg")
     mx.ensure_dir_exists(toolDir)
-    url = 'http://llvm.org/releases/3.2/dragonegg-3.2.src.tar.gz'
+    url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/dragonegg-3.2.src.tar.gz'
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
     if mx.get_os() == 'darwin':
         gccToolDir = join(_toolDir, "tools/gcc")
-        url = 'http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-4.6.4.tar.gz'
+        url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-4.6.4.tar.gz'
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
@@ -335,8 +339,7 @@ def pullInstallDragonEgg(args=None):
 def pullLLVMSuite(args=None):
     """downloads the official (non Truffle) LLVM test suite"""
     mx.ensure_dir_exists(_llvmSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/test-suite-3.2.src.tar.gz",
-            "http://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz"]
     localPath = pullsuite(_llvmSuiteDir, urls)
     tar(localPath, _llvmSuiteDir)
     os.remove(localPath)
@@ -394,10 +397,7 @@ def pullGCCSuite(args=None):
     """downloads the GCC test suite"""
     suiteDir = _gccSuiteDir
     mx.ensure_dir_exists(suiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/gcc-5.2.0.tar.gz",
-            "ftp://gd.tuwien.ac.at/gnu/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-            "ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-            "http://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"]
     localPath = pullsuite(suiteDir, urls)
     tar(localPath, suiteDir, ['gcc-5.2.0/gcc/testsuite/'])
     os.remove(localPath)
@@ -405,8 +405,7 @@ def pullGCCSuite(args=None):
 def pullNWCCSuite(args=None):
     """downloads the NWCC test suite"""
     mx.ensure_dir_exists(_nwccSuiteDir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/nwcc_0.8.3.tar.gz",
-            "http://sourceforge.net/projects/nwcc/files/nwcc/nwcc%200.8.3/nwcc_0.8.3.tar.gz/download"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"]
     localPath = pullsuite(_nwccSuiteDir, urls)
     tar(localPath, _nwccSuiteDir, ['nwcc_0.8.3/tests/', 'nwcc_0.8.3/test2/'], stripLevels=1)
     os.remove(localPath)
@@ -414,8 +413,7 @@ def pullNWCCSuite(args=None):
 def pullArgon2(args=None):
     """downloads Argon2"""
     mx.ensure_dir_exists(_argon2Dir)
-    urls = ["http://lafo.ssw.uni-linz.ac.at/sulong-deps/phc-winner-argon2-20160406.tar.gz",
-            "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz"]
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz"]
     localPath = pullsuite(_argon2Dir, urls)
     tar(localPath, _argon2Dir, ['phc-winner-argon2-20160406/'], stripLevels=1)
     os.remove(localPath)
@@ -540,7 +538,7 @@ def runCompileTestCases(args=None):
 
 def runTestJRuby(args=None):
     """tests that JRuby can use this version of Sulong to compile and run C extensions"""
-    rubyUrl = 'http://github.com/jruby/jruby.git'
+    rubyUrl = 'https://github.com/jruby/jruby.git'
     rubyBranch = 'truffle-head'
     suitesDir = os.path.abspath(join(_suite.dir, '..'))
     jrubyDir = join(suitesDir, 'jruby')
@@ -574,7 +572,7 @@ def compileArgon2(main, optimize, cflags=None):
         outputFile = '%s.ll' % src
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
         if optimize:
-            opt(['-S', '-o', outputFile, '-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn', outputFile])
+            opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
     link(['-o', argon2Bin] + ['%s.ll' % x for x in argon2Src])
 
 def runTestArgon2Kats(args=None):
@@ -697,7 +695,7 @@ def compileWithGCC(args=None):
 
 
 def opt(args=None):
-    """"Runs opt."""
+    """runs opt"""
     ensureLLVMBinariesExist()
     optPath = _toolDir + 'tools/llvm/bin/opt'
     return mx.run([optPath] + args)
@@ -762,18 +760,38 @@ def suBench(args=None):
     compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
     return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
 
+def getStandardLLVMOptFlags():
+    """gets the optimal LLVM opt flags for Sulong"""
+    return ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn']
+
+def getRemoveExceptionHandlingLLVMOptFlags():
+    """gets the LLVM opt flags that remove C++ exception handling if possible"""
+    return ['-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg']
+
+def getOptimalLLVMOptFlags(sourceFile):
+    """gets the optimal LLVM opt flags for Sulong based on an original file source name (such as test.c)"""
+    _, ext = os.path.splitext(sourceFile)
+    if ext == '.c':
+        return getStandardLLVMOptFlags()
+    elif ext == '.cpp':
+        return getStandardLLVMOptFlags() + getRemoveExceptionHandlingLLVMOptFlags()
+    else:
+        exit(ext + " is not supported!")
+
+def suOptimalOpt(args=None):
+    """use opt with the optimal opt flags for Sulong"""
+    opt(getStandardLLVMOptFlags() + args)
+
 def compileWithClangOpt(inputFile, outputFile='test.ll'):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
         compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', outputFile])
     elif ext == '.cpp':
         compileWithClangPP(['-S', '-emit-llvm', '-o', outputFile, inputFile])
-        opt(['-S', '-o', outputFile, '-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg', outputFile])
     else:
         exit(ext + " is not supported!")
-    opt(['-S', '-o', outputFile, outputFile, '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'])
+    opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -783,6 +801,13 @@ def suOptBench(args=None):
     outputFile = 'test.ll'
     compileWithClangOpt(inputFile, outputFile)
     return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
+
+def suOptCompile(args=None):
+    """compiles a given benchmark and optimizes it with opt"""
+    ensureLLVMBinariesExist()
+    inputFile = args[0]
+    outputFile = 'test.ll'
+    compileWithClangOpt(inputFile, outputFile)
 
 def clangBench(args=None):
     """ Executes a benchmark with the system default Clang"""
@@ -817,7 +842,12 @@ def mdlCheck(args=None):
         for f in files:
             if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
                 absPath = path + '/' + f
-                subprocess.check_output(['mdl', '-r~MD026,~MD002,~MD029,~MD032,~MD033', absPath])
+                mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
+                try:
+                    subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
+                except subprocess.CalledProcessError as e:
+                    print e # prints command and return value
+                    print e.output # prints process output
 
 def getBitcodeLibrariesOption():
     libraries = []
@@ -862,6 +892,17 @@ def checkCFile(targetFile):
         return False
     return True
 
+def checkNoHttp(args=None):
+    """checks that https is used instead of http in Travis and the mx script"""
+    files = [__file__, ".travis.yml"]
+    for f in files:
+        line_number = 0
+        for line in open(f):
+            if "http" + chr(58) + "//" in line:
+                print "http:" + chr(58) + " in line " + str(line_number) + " could be a security issue! please change to https://"
+                exit(-1)
+            line_number += 1
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -895,6 +936,8 @@ mx.update_commands(_suite, {
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
+    'su-optimize' : [suOptimalOpt, ''],
+    'su-compile-optimize' : [suOptCompile, ''],
     'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],
@@ -906,5 +949,6 @@ mx.update_commands(_suite, {
     'su-travis-argon2' : [travisArgon2, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
-    'su-clangformatcheck' : [clangformatcheck, '']
+    'su-clangformatcheck' : [clangformatcheck, ''],
+    'su-httpcheck' : [checkNoHttp, '']
 })

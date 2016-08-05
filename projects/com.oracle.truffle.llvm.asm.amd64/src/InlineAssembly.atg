@@ -31,13 +31,11 @@
  * files. You can download the parser generator Coco/R from http://ssw.jku.at/coco/. Then run
  * "java -jar ../Coco.jar InlineAssembly.atg"
  */
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import java.io.ByteArrayInputStream;
+
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
 COMPILER InlineAssembly
 
@@ -61,35 +59,51 @@ IGNORE "\n\t\r"
 PRODUCTIONS
 
 InlineAssembly<> =
-										(.LLVMI32Node node = null;.)
+										(..)
   "\""
-  (AddSubOperation<out node> | IncDecOperation<out node> | LogicOperation<out node>)
+  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<>)
+  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<>}
   "\""
-  										(.root = factory.finishInline(node);.)
+  										(.root = factory.finishInline();.)
   .
 
-AddSubOperation<out LLVMI32Node n> =	(.String op; LLVMI32Node left = null, right = null;.)
+AddSubOperation<> =						(.String op; String left = null, right = null;.)
   AddSubOp<out op>
-  ((Register<out left, 1> "," Register<out right, 2>)
+  ((Register<out left> "," Register<out right>)
   |
-  (Immediate<out left> "," Register<out right, 1>))
-   ";"									(.n = factory.createBinary(op, left, right);.)
+  (Immediate<out left> "," Register<out right>)
+   )";"									(.factory.createBinaryOperation(op, left, right);.)
    .
 
-IncDecOperation<out LLVMI32Node n> =	(.String op; LLVMI32Node left = null;.)
+IncDecOperation<> =						(.String op; String left = null;.)
   IncDecOp<out op>
-  Register<out left, 1>					
-  ";"									(.n = factory.createUnary(op, left);.)
+  Register<out left>					
+  ";"									(.factory.createUnaryOperation(op, left);.)
   .
 
-LogicOperation<out LLVMI32Node n> =		(.String op = null; LLVMI32Node left = null, right = null; n = null;.)
+LogicOperation<> =						(.String op = null; String left = null, right = null;.)
   ((UnaryLogicOp<out op> 
-  Register<out left, 1>)				(.n = factory.createUnary(op, left);.)
+  Register<out left>)	  				(.factory.createUnaryOperation(op, left);.)
   | (BinaryLogicOp<out op>
-  Register<out left, 1>
-  "," Register<out right, 2>			(.n = factory.createBinary(op, left, right);.)
+  Register<out left>
+  "," Register<out right>				(.factory.createBinaryOperation(op, left, right);.)
   ))";"
   .
+  
+ShiftOperation<> = 						(.String op = null; String left = null, right = null;.)
+  ShiftOp<out op>
+  Immediate<out left> "," Register<out right>
+  										(.factory.createBinaryOperation(op, left, right);.)
+  ";"
+  .
+  
+MoveOperation<> =						(.String op; String left = null, right = null;.)
+  MoveOp<out op>
+  ((Register<out left> "," Register<out right>)
+  |
+  (Immediate<out left> "," Register<out right>)
+   )";"									(.factory.createBinaryOperation(op, left, right);.)
+   .
   
 AddSubOp<out String op> 				(.op = la.val;.)
   = "addl"
@@ -110,8 +124,19 @@ BinaryLogicOp<out String op>			(.op = la.val;.)
   | "orl"
   | "xorl"
   .
+  
+ShiftOp<out String op>					(.op = la.val;.)
+  = "shll"
+  | "shrl"
+  | "sall"
+  | "sarl"
+  .
+  
+MoveOp<out String op>					(.op = la.val;.)
+  = "movl"
+  .  
 
-Register<out LLVMI32Node n, int index> =
+Register<out String reg> =
   ( "%eax"
   | "%ebx"
   | "%ecx"
@@ -120,13 +145,13 @@ Register<out LLVMI32Node n, int index> =
   | "%ebp"
   | "%esi"
   | "%edi"
-  )										(.n = LLVMI32ArgNodeGen.create(index);.)
+  )										(.reg = t.val; factory.addFrameSlot(reg, this.retType);.)
   .
 
-Immediate<out LLVMI32Node n> =			(.n = null;.)
+Immediate<out String n> =				(.n = null;.)
     "$$"
-  ( number								(.n = new LLVMAMD64ImmNode(Integer.parseInt(t.val));.)
-  | hexNumber							(.n = new LLVMAMD64ImmNode(Integer.parseInt(t.val.substring(2), 16));.)
+  ( number								(.n = t.val;.)
+  | hexNumber							(.n = t.val;.)
   )										
   .
 
