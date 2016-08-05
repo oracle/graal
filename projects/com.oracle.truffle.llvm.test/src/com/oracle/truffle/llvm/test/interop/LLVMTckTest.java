@@ -202,20 +202,6 @@ public class LLVMTckTest extends TruffleTCK {
     @Override
     @Ignore
     @Test
-    public void testMaxOrMinValue() throws Exception {
-        super.testMaxOrMinValue();
-    }
-
-    @Override
-    @Ignore
-    @Test
-    public void testMaxOrMinValue2() throws Exception {
-        super.testMaxOrMinValue2();
-    }
-
-    @Override
-    @Ignore
-    @Test
     public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws Exception {
         super.testSumRealOfComplexNumbersAsStructuredDataRowBased();
     }
