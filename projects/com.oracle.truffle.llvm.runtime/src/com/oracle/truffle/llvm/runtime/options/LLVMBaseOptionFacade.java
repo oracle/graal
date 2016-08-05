@@ -133,4 +133,8 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.STACK_SIZE_KB);
     }
 
+    public static String getNodeConfiguration() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.NODE_CONFIGURATION);
+    }
+
 }
