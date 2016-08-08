@@ -319,7 +319,7 @@ public class OptimizedOSRLoopNodeTest {
     @Theory
     public void testThreadSafety(OSRLoopFactory factory) {
         if (System.getProperty("java.version").startsWith("9")) {
-        	// ignore test on JDK9
+            // ignore test on JDK9
             return;
         }
         int threshold = OSR_THRESHOLD;
