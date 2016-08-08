@@ -45,6 +45,17 @@ import mx_graal_tools #pylint: disable=unused-import
 
 _suite = mx.suite('graal-core')
 
+""" Prefix for running the VM. """
+_vm_prefix = None
+
+def get_vm_prefix(asList=True):
+    """
+    Get the prefix for running the VM (e.g. "gdb --args").
+    """
+    if asList:
+        return _vm_prefix.split() if _vm_prefix is not None else []
+    return _vm_prefix
+
 #: The JDK used to build and run Graal.
 jdk = mx.get_jdk(tag='default')
 
@@ -683,7 +694,7 @@ def _check_bootstrap_config(args):
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     _check_bootstrap_config(args)
-    cmd = [jdk.java] + ['-server'] + args
+    cmd = get_vm_prefix() + [jdk.java] + ['-server'] + args
     return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 _JVMCI_JDK_TAG = 'jvmci'
@@ -750,6 +761,10 @@ class GraalArchiveParticipant:
     def __closing__(self):
         pass
 
+mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
+mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
+mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
+
 mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
@@ -760,3 +775,5 @@ def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
     add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))
+    global _vm_prefix
+    _vm_prefix = opts.vm_prefix
