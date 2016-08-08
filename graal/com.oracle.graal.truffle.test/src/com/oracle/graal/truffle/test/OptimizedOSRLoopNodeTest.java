@@ -24,8 +24,6 @@ package com.oracle.graal.truffle.test;
 
 import static org.junit.Assert.assertSame;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -45,10 +43,10 @@ import com.oracle.graal.truffle.OptimizedOSRLoopNode;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -320,10 +318,6 @@ public class OptimizedOSRLoopNodeTest {
      */
     @Theory
     public void testThreadSafety(OSRLoopFactory factory) {
-        if (System.getProperty("java.version").startsWith("9")) {
-            Assert.assertTrue("Test quarantined for JDK 9 until 2016-08-08: GR-1139", LocalDate.now(ZoneId.of("UTC")).isBefore(LocalDate.of(2016, 8, 8)));
-            return;
-        }
         int threshold = OSR_THRESHOLD;
         IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
             TestRootNode rootNode = new TestRootNode(factory, new TestRepeatingNode());
