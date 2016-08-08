@@ -318,6 +318,10 @@ public class OptimizedOSRLoopNodeTest {
      */
     @Theory
     public void testThreadSafety(OSRLoopFactory factory) {
+        if (System.getProperty("java.version").startsWith("9")) {
+            // ignore test on JDK9
+            return;
+        }
         int threshold = OSR_THRESHOLD;
         IntStream.generate(() -> 10).limit(10).parallel().forEach(i -> {
             TestRootNode rootNode = new TestRootNode(factory, new TestRepeatingNode());
