@@ -47,6 +47,7 @@ public final class LLVMPaths {
     static final File PROJECT_ROOT = new File(LLVMBaseOptionFacade.getProjectRoot() + File.separator + LLVMPaths.class.getPackage().getName());
 
     public static final File LOCAL_TESTS = new File(PROJECT_ROOT, "tests/");
+    static final File LIFETIME_ANALYSIS_REFERENCE_FILES = new File(PROJECT_ROOT, "lifetime/");
     static final File EXTERNAL_TEST_SUITES = new File(PROJECT_ROOT, "suites/");
     static final File EXTERNAL_TEST_SUITES_EXECUTION_CONFIG = new File(PROJECT_ROOT, "suites-configs/");
     static final File EXTERNAL_TEST_SUITES_COMPILE_CONFIG = new File(PROJECT_ROOT, "suites-configs-compile/");

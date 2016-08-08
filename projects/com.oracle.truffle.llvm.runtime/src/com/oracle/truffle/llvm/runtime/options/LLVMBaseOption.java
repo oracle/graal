@@ -57,6 +57,12 @@ public enum LLVMBaseOption implements LLVMOption {
                     false,
                     LLVMOptions::parseBoolean,
                     PropertyCategory.TESTS),
+    LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT(
+                    "LifetimeTestsGenerateReferenceOutput",
+                    "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.",
+                    false,
+                    LLVMOptions::parseBoolean,
+                    PropertyCategory.TESTS),
     TEST_DISCOVERY_PATH(
                     "TestDiscoveryPath",
                     "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.",

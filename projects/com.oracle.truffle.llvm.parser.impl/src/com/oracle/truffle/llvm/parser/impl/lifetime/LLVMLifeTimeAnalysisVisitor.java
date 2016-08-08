@@ -59,6 +59,7 @@ import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.intel.llvm.ireditor.lLVM_IR.impl.LocalValueRefImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.impl.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.LLVMReadVisitor;
@@ -84,9 +85,9 @@ public final class LLVMLifeTimeAnalysisVisitor {
         phiRefs = LLVMPhiVisitor.visit(function);
     }
 
-    static class LifeTimeAnalysisResultImpl implements LLVMLifeTimeAnalysisResult {
+    static class LifeTimeAnalysisResultImpl extends LLVMLifeTimeAnalysisResult {
 
-        public LifeTimeAnalysisResultImpl(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
+        LifeTimeAnalysisResultImpl(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
             this.beginDead = beginDead;
             this.endDead = endDead;
         }
@@ -107,6 +108,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
     }
 
     public static LLVMLifeTimeAnalysisResult visit(FunctionDef function, FrameDescriptor frameDescriptor) {
+        LLVMParserAsserts.assertNoNullElement(frameDescriptor.getSlots());
         LifeTimeAnalysisResultImpl mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
         if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
             printAnalysisResults(function, mapping.getEndDead());
@@ -263,7 +265,8 @@ public final class LLVMLifeTimeAnalysisVisitor {
             while (it.hasNext()) {
                 blockKills.addAll(bbEndKills.get(it.next()));
             }
-            convertedMap.put(bb, blockKills.toArray(new FrameSlot[blockKills.size()]));
+            FrameSlot[] blockKillArr = blockKills.toArray(new FrameSlot[blockKills.size()]);
+            convertedMap.put(bb, blockKillArr);
         }
         return convertedMap;
     }

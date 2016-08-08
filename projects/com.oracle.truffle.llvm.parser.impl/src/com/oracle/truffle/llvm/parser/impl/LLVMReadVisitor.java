@@ -249,7 +249,7 @@ public final class LLVMReadVisitor {
             LocalValueRef localValueRef = (LocalValueRef) valueRef;
             LocalValue localValue = localValueRef.getRef();
             String name = localValue.getName();
-            reads.add(frameDescriptor.findFrameSlot(name));
+            reads.add(frameDescriptor.findOrAddFrameSlot(name));
         } else {
             throw new AssertionError(valueRef);
         }
