@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
 import com.oracle.truffle.llvm.tools.GCC;
 import com.oracle.truffle.llvm.tools.LLC;
+import com.oracle.truffle.llvm.tools.LLVMAssembler;
 import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
@@ -125,9 +126,22 @@ public class TestHelper {
         return TestCaseFiles.createFromCompiledFile(toBeCompiled, destinationFile, flags);
     }
 
+    public static TestCaseFiles compileLLVMIRToLLVMBC(TestCaseFiles caseFile) {
+        File llvmBinaryCodeFile = TestHelper.getTempBCFile(caseFile.getBitCodeFile());
+        LLVMAssembler.assembleToBitcodeFile(caseFile.getBitCodeFile(), llvmBinaryCodeFile);
+        return TestCaseFiles.createFromCompiledFile(caseFile.getBitCodeFile(), llvmBinaryCodeFile, caseFile.getExpectedResult(), caseFile.getFlags());
+    }
+
     public static File getTempLLFile(File toBeCompiled, String optionName) {
         String absolutePathToFileName = absolutePathToFileName(toBeCompiled);
         String outputFileName = PathUtil.replaceExtension(absolutePathToFileName, "." + optionName + Constants.TMP_EXTENSION + Constants.LLVM_BITFILE_EXTENSION);
+        File destinationFile = new File(LLVMPaths.TEMP_DIRECTORY, outputFileName);
+        return destinationFile;
+    }
+
+    public static File getTempBCFile(File toBeCompiled) {
+        String absolutePathToFileName = absolutePathToFileName(toBeCompiled);
+        String outputFileName = PathUtil.replaceExtension(absolutePathToFileName, "." + Constants.TMP_EXTENSION + Constants.LLVM_BINARYFILE_EXTENSION);
         File destinationFile = new File(LLVMPaths.TEMP_DIRECTORY, outputFileName);
         return destinationFile;
     }

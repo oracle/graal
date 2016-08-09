@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.test;
 
 public class Constants {
 
+    static final String LLVM_BINARYFILE_EXTENSION = ".bc";
     static final String LLVM_BITFILE_EXTENSION = ".ll";
     static final String TMP_EXTENSION = ".temp";
 

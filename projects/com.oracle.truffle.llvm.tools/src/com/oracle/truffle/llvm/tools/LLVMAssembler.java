@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
+import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class LLVMAssembler {
@@ -40,6 +41,12 @@ public final class LLVMAssembler {
 
     public static void assembleToBitcodeFile(File irFile) {
         String compilationCommand = LLVMToolPaths.LLVM_ASSEMBLER + " " + irFile.getAbsolutePath();
+        ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
+    }
+
+    public static void assembleToBitcodeFile(File irFile, File destFile) {
+        final String args = " -o=" + destFile.getAbsolutePath() + " " + irFile.getAbsolutePath();
+        final String compilationCommand = LLVMToolPaths.LLVM_ASSEMBLER + args;
         ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
     }
 
