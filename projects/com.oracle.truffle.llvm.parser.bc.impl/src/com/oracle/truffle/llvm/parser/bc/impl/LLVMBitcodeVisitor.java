@@ -242,7 +242,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         Symbol g = global;
 
         while (g instanceof GlobalAlias) {
-            g = aliases.get((GlobalAlias) g);
+            g = aliases.get(g);
         }
 
         if (g instanceof GlobalValueSymbol) {

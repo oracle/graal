@@ -136,7 +136,7 @@ public class LLVM {
 
                     library.readContents(dependentLibrary -> {
                         context.addLibraryToNativeLookup(dependentLibrary);
-                    } , source -> {
+                    }, source -> {
                         LLVMParserResult parserResult;
                         try {
                             parserResult = parseString(source, context);
