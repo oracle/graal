@@ -28,6 +28,8 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackT
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.ListIterator;
 import java.util.function.Supplier;
@@ -73,8 +75,14 @@ import com.oracle.graal.truffle.TruffleCompiler;
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import com.oracle.graal.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 import com.oracle.nfi.api.NativeFunctionInterface;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
@@ -309,7 +317,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
         if (TraceTruffleTransferToInterpreter.getValue()) {
-            TraceTraceTransferToInterpreterHelper.traceTransferToInterpreter(getVMConfig());
+            TraceTraceTransferToInterpreterHelper.traceTransferToInterpreter(this, getVMConfig());
         }
     }
 
@@ -344,23 +352,99 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         }
 
-        static void traceTransferToInterpreter(GraalHotSpotVMConfig config) {
+        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, GraalHotSpotVMConfig config) {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
             long pendingTransferToInterpreterAddress = thread + config.pendingTransferToInterpreterOffset;
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
+                logTransferToInterpreter(runtime);
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
-
-                logTransferToInterpreter();
             }
         }
 
-        private static void logTransferToInterpreter() {
-            final int skip = 3;
+        private static String formatStackFrame(FrameInstance frameInstance, CallTarget target) {
+            StringBuilder builder = new StringBuilder();
+            if (target instanceof RootCallTarget) {
+                RootNode root = ((RootCallTarget) target).getRootNode();
+                String name = root.getName();
+                if (name == null) {
+                    builder.append("unnamed-root");
+                } else {
+                    builder.append(name);
+                }
+                Node callNode = frameInstance.getCallNode();
+                SourceSection sourceSection = null;
+                if (callNode != null) {
+                    sourceSection = callNode.getEncapsulatingSourceSection();
+                }
+                if (sourceSection == null) {
+                    sourceSection = root.getSourceSection();
+                }
+
+                if (sourceSection == null) {
+                    builder.append("(Unknown)");
+                } else {
+                    Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
+                    Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+
+                    String pathString;
+                    try {
+                        pathString = path.relativize(filePath).toString();
+                    } catch (IllegalArgumentException e) {
+                        // relativation failed
+                        pathString = sourceSection.getSource().getName();
+                    }
+                    builder.append("(").append(pathString).append(":").append(sourceSection.getStartLine()).append(")");
+                }
+
+                if (target instanceof OptimizedCallTarget) {
+                    OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
+                    if (callTarget.isValid()) {
+                        builder.append(" <opt>");
+                    }
+                    if (callTarget.getSourceCallTarget() != null) {
+                        builder.append(" <split-" + Integer.toHexString(callTarget.hashCode()) + ">");
+                    }
+                }
+
+            } else {
+                builder.append(target.toString());
+            }
+            return builder.toString();
+        }
+
+        private static void logTransferToInterpreter(final HotSpotTruffleRuntime runtime) {
             final int limit = TraceTruffleStackTraceLimit.getValue();
+
+            runtime.log("[truffle] transferToInterpreter at");
+            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+                int frameIndex = 0;
+
+                @Override
+                public Object visitFrame(FrameInstance frameInstance) {
+                    CallTarget target = frameInstance.getCallTarget();
+                    StringBuilder line = new StringBuilder("  ");
+                    if (frameIndex > 0) {
+                        line.append("  ");
+                    }
+                    line.append(formatStackFrame(frameInstance, target));
+                    frameIndex++;
+
+                    runtime.log(line.toString());
+                    if (frameIndex < limit) {
+                        return null;
+                    } else {
+                        runtime.log("    ...");
+                        return frameInstance;
+                    }
+                }
+
+            });
+            final int skip = 3;
+
             StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-            String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
-            TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
+            String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
+            runtime.log(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
         }
     }
 }
