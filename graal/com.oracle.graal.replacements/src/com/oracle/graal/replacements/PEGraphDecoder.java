@@ -385,6 +385,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                         parameterPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope);
+
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "After graph cleanup");
         assert methodScope.graph.verify();
 
         try {

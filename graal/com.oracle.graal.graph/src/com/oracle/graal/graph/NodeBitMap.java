@@ -140,6 +140,14 @@ public final class NodeBitMap implements NodeIterable<Node> {
         }
     }
 
+    public void subtract(NodeBitMap other) {
+        assert graph() == other.graph();
+        int commonLength = Math.min(bits.length, other.bits.length);
+        for (int i = 0; i < commonLength; i++) {
+            bits[i] &= ~other.bits[i];
+        }
+    }
+
     public void grow() {
         nodeCount = Math.max(nodeCount, graph().nodeIdCount());
         int newLength = sizeForNodeCount(nodeCount);
