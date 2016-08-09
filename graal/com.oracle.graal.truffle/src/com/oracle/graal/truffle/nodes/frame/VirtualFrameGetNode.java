@@ -67,7 +67,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                  */
                 LogicNode comparison = new IntegerEqualsNode(actualTag, getConstant(accessTag));
                 tool.addNode(comparison);
-                tool.addNode(new FixedGuardNode(comparison, DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile));
+                tool.addNode(new FixedGuardNode(comparison, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile));
             }
 
             ValueNode dataEntry = tool.getEntry(dataVirtual, getFrameSlotIndex());

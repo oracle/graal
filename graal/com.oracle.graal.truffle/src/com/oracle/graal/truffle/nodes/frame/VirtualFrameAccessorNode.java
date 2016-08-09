@@ -75,7 +75,7 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode {
         LogicNode condition = LogicConstantNode.contradiction();
         tool.addNode(condition);
         JavaConstant speculation = graph().getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
-        tool.addNode(new FixedGuardNode(condition, DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateReprofile, speculation, false));
+        tool.addNode(new FixedGuardNode(condition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateReprofile, speculation, false));
 
         if (getStackKind() == JavaKind.Void) {
             tool.delete();
