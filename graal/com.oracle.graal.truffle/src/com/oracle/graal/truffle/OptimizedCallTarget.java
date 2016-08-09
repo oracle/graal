@@ -216,12 +216,20 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     protected final Object callProxy(VirtualFrame frame) {
+        final boolean inCompiled = CompilerDirectives.inCompiledCode();
         try {
             return getRootNode().execute(frame);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
+            if (CompilerDirectives.inInterpreter() && inCompiled) {
+                notifyDeoptimized(frame);
+            }
         }
+    }
+
+    private void notifyDeoptimized(VirtualFrame frame) {
+        runtime().getCompilationNotify().notifyCompilationDeoptimized(this, frame);
     }
 
     private synchronized void initialize() {

@@ -24,6 +24,7 @@ package com.oracle.graal.truffle;
 
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -83,6 +84,8 @@ public interface GraalTruffleCompilationListener {
      *            <code>null</code>.
      */
     void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason);
+
+    void notifyCompilationDeoptimized(OptimizedCallTarget target, Frame frame);
 
     /**
      * Invoked as the compiler gets shut down.
