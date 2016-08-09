@@ -26,6 +26,8 @@ projects/*/\bin
 projects/*/\.checkstyle
 projects/*/*.iml
 projects/*/\.factorypath
+projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2/**
+projects/com.oracle.truffle.llvm.test/argon2/pthread-stub/*.ll
 projects/com.oracle.truffle.llvm.test/suites/**
 projects/com.oracle.truffle.llvm.tools/tools/**
 projects/com.oracle.truffle.llvm.bench/languagegame/**

@@ -95,6 +95,8 @@ public class LLVMGlobalRootNode extends RootNode {
                     endExecutionTime = System.currentTimeMillis();
                     printExecutionTime();
                 }
+
+                executeDestructorFunctions();
                 if (i != executionCount - 1) {
                     executeStaticInits();
                 }
@@ -120,6 +122,14 @@ public class LLVMGlobalRootNode extends RootNode {
         List<RootCallTarget> staticInits = context.getStaticInitializers();
         for (RootCallTarget callTarget : staticInits) {
             callTarget.call(staticInits);
+        }
+    }
+
+    @TruffleBoundary
+    private void executeDestructorFunctions() {
+        List<RootCallTarget> destructorFunctions = context.getDestructorFunctions();
+        for (RootCallTarget callTarget : destructorFunctions) {
+            callTarget.call(destructorFunctions);
         }
     }
 

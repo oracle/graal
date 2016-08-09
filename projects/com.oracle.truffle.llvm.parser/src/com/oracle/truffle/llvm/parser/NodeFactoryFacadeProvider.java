@@ -29,19 +29,21 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import java.util.Map;
+public interface NodeFactoryFacadeProvider {
 
-public interface LLVMParserResult {
+    /**
+     * Returns the node factory which controls which Truffle nodes Sulong creates from the parser
+     * AST.
+     *
+     * @return the node factory
+     */
+    NodeFactoryFacade getNodeFactoryFacade();
 
-    RootCallTarget getMainFunction();
-
-    Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions();
-
-    RootCallTarget getStaticInits();
-
-    RootCallTarget getStaticDestructors();
-
-    RootCallTarget getDestructorFunctions();
+    /**
+     * Gets the name of the node factory, which is used to let the user select which one to
+     * instantiate.
+     *
+     * @return the name of the node factory configuration
+     */
+    String getConfigurationName();
 }

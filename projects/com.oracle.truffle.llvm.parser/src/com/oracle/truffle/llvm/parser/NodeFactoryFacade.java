@@ -68,6 +68,14 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
  */
 public interface NodeFactoryFacade {
 
+    /**
+     * Sets up the facade with its {@link LLVMParserRuntime} before its first use.
+     *
+     * @param runtime
+     */
+    // also update {@link NodeFactoryFacadeComposite} when changing or removing this name
+    void setUpFacade(LLVMParserRuntime runtime);
+
     LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index);
 
     LLVMExpressionNode createExtractElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode index);
@@ -309,4 +317,5 @@ public interface NodeFactoryFacade {
     Object allocateGlobalVariable(GlobalVariable globalVariable);
 
     RootNode createStaticInitsRootNode(LLVMNode[] staticInits);
+
 }

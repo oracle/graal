@@ -27,21 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import java.util.Map;
+import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.NodeFactoryFacadeProvider;
+import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 
-public interface LLVMParserResult {
+public class NodeFactoryFacadeProviderImpl implements NodeFactoryFacadeProvider {
 
-    RootCallTarget getMainFunction();
+    @Override
+    public NodeFactoryFacade getNodeFactoryFacade() {
+        return new NodeFactoryFacadeImpl();
+    }
 
-    Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions();
+    @Override
+    public String getConfigurationName() {
+        return "default";
+    }
 
-    RootCallTarget getStaticInits();
-
-    RootCallTarget getStaticDestructors();
-
-    RootCallTarget getDestructorFunctions();
 }

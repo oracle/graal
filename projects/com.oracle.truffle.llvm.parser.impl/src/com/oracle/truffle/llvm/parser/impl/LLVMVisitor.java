@@ -207,12 +207,18 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         private final RootCallTarget mainFunction;
         private final RootCallTarget staticInits;
         private final RootCallTarget staticDestructors;
+        private final RootCallTarget destructorFunctions;
         private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
 
-        ParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
+        ParserResult(RootCallTarget mainFunction,
+                        RootCallTarget staticInits,
+                        RootCallTarget staticDestructors,
+                        RootCallTarget destructorFunctions,
+                        Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
             this.mainFunction = mainFunction;
             this.staticInits = staticInits;
             this.staticDestructors = staticDestructors;
+            this.destructorFunctions = destructorFunctions;
             this.parsedFunctions = parsedFunctions;
         }
 
@@ -235,6 +241,11 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         public RootCallTarget getStaticDestructors() {
             return staticDestructors;
         }
+
+        @Override
+        public RootCallTarget getDestructorFunctions() {
+            return destructorFunctions;
+        }
     }
 
     private static LLVMFunctionDescriptor searchFunction(Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions, String toSearch) {
@@ -253,15 +264,18 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         RootCallTarget staticInitsTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(staticInits));
         deallocations = globalDeallocations.toArray(new LLVMNode[globalDeallocations.size()]);
         RootCallTarget staticDestructorsTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(deallocations));
+        LLVMNode[] destructorFunctionsArray = destructorFunctions.toArray(new LLVMNode[destructorFunctions.size()]);
+        RootCallTarget destructorFunctionsTarget = Truffle.getRuntime().createCallTarget(
+                        factoryFacade.createStaticInitsRootNode(destructorFunctionsArray));
         if (mainFunction == null) {
-            return new ParserResult(null, staticInitsTarget, staticDestructorsTarget, parsedFunctions);
+            return new ParserResult(null, staticInitsTarget, staticDestructorsTarget, destructorFunctionsTarget, parsedFunctions);
         }
         RootCallTarget mainCallTarget = parsedFunctions.get(mainFunction);
         RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, mainArgs, mainSourceFile, mainFunction.getParameterTypes());
         RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
         RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getReturnType());
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
-        return new ParserResult(wrappedCallTarget, staticInitsTarget, staticDestructorsTarget, parsedFunctions);
+        return new ParserResult(wrappedCallTarget, staticInitsTarget, staticDestructorsTarget, destructorFunctionsTarget, parsedFunctions);
     }
 
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
@@ -362,6 +376,31 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
+    private void addFunctionAttribute(GlobalVariable globalVar, List<LLVMNode> targetList) {
+        ResolvedArrayType type = (ResolvedArrayType) typeResolver.resolve(globalVar.getType());
+        int size = type.getSize();
+        Object allocGlobalVariable = findOrAllocateGlobal(globalVar);
+        ResolvedType structType = type.getContainedType(0);
+        int structSize = LLVMTypeHelper.getByteSize(structType);
+        for (int i = 0; i < size; i++) {
+            LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(allocGlobalVariable, LLVMBaseType.ADDRESS);
+            LLVMExpressionNode iNode = factoryFacade.createLiteral(i, LLVMBaseType.I32);
+            LLVMExpressionNode structPointer = factoryFacade.createGetElementPtr(LLVMBaseType.I32, globalVarAddress, iNode, structSize);
+            LLVMExpressionNode loadedStruct = factoryFacade.createLoad(structType, structPointer);
+            ResolvedType functionType = structType.getContainedType(1);
+            int indexedTypeLength = LLVMTypeHelper.getAlignmentByte(functionType);
+            LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
+            LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
+            LLVMExpressionNode loadedFunction = factoryFacade.createLoad(functionType, functionLoadTarget);
+            LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot())};
+            assert argNodes.length == factoryFacade.getArgStartIndex().get();
+            LLVMNode functionCall = factoryFacade.createFunctionCall(loadedFunction, argNodes, LLVMBaseType.VOID);
+            targetList.add(functionCall);
+        }
+    }
+
+    private final List<LLVMNode> destructorFunctions = new ArrayList<>();
+
     private List<LLVMNode> addGlobalVars(LLVMVisitor visitor, List<GlobalVariable> globalVariables) {
         frameDescriptor = globalFrameDescriptor = new FrameDescriptor();
         stackPointerSlot = frameDescriptor.addFrameSlot(STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
@@ -372,28 +411,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 globalVarNodes.add(globalVarWrite);
             }
             if (globalVar.getName().equals("@llvm.global_ctors")) {
-                ResolvedArrayType type = (ResolvedArrayType) typeResolver.resolve(globalVar.getType());
-                int size = type.getSize();
-                Object allocGlobalVariable = findOrAllocateGlobal(globalVar);
-                ResolvedType structType = type.getContainedType(0);
-                int structSize = LLVMTypeHelper.getByteSize(structType);
-                for (int i = 0; i < size; i++) {
-                    LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(allocGlobalVariable, LLVMBaseType.ADDRESS);
-                    LLVMExpressionNode iNode = factoryFacade.createLiteral(i, LLVMBaseType.I32);
-                    LLVMExpressionNode structPointer = factoryFacade.createGetElementPtr(LLVMBaseType.I32, globalVarAddress, iNode, structSize);
-                    LLVMExpressionNode loadedStruct = factoryFacade.createLoad(structType, structPointer);
-                    ResolvedType functionType = structType.getContainedType(1);
-                    int indexedTypeLength = LLVMTypeHelper.getAlignmentByte(functionType);
-                    LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
-                    LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
-                    LLVMExpressionNode loadedFunction = factoryFacade.createLoad(functionType, functionLoadTarget);
-                    LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot())};
-                    assert argNodes.length == factoryFacade.getArgStartIndex().get();
-                    LLVMNode functionCall = factoryFacade.createFunctionCall(loadedFunction, argNodes, LLVMBaseType.VOID);
-                    globalVarNodes.add(functionCall);
-                }
-            } else if (globalVar.getName().equals("llvm.global_dtors")) {
-                throw new AssertionError("destructors not yet supported!");
+                addFunctionAttribute(globalVar, globalVarNodes);
+            } else if (globalVar.getName().equals("@llvm.global_dtors")) {
+                addFunctionAttribute(globalVar, destructorFunctions);
             }
         }
         return globalVarNodes;

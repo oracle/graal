@@ -8,7 +8,7 @@ import sys
 import mx
 import mx_findbugs
 
-from mx_unittest import unittest
+from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
 from mx_gitlogcheck import logCheck
 
@@ -36,6 +36,17 @@ _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
+
+def _unittest_config_participant(config):
+    """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
+    (vmArgs, mainClass, mainClassArgs) = config
+    cpIndex, _ = mx.find_classpath_arg(vmArgs)
+    junitCp = mx.classpath("com.oracle.mxtool.junit")
+    sulongCp = ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])
+    vmArgs[cpIndex] = junitCp + ":" + sulongCp
+    return (vmArgs, mainClass, mainClassArgs)
+
+add_config_participant(_unittest_config_participant)
 
 sulongDistributions = [
     'SULONG',
