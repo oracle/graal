@@ -1011,13 +1011,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 } else {
                     // all inputs are virtual: check if they're compatible and without identity
                     boolean compatible = true;
-                    boolean hasIdentity = false;
                     VirtualObjectNode firstVirtual = virtualObjs[0];
                     for (int i = 0; i < states.length; i++) {
                         VirtualObjectNode virtual = virtualObjs[i];
-                        hasIdentity |= virtual.hasIdentity();
-                        boolean identitySurvives = virtual.hasIdentity() && Arrays.asList(mergedVirtualObjects).contains(virtual.getObjectId());
-                        if (identitySurvives || !firstVirtual.type().equals(virtual.type()) || firstVirtual.entryCount() != virtual.entryCount()) {
+                        if (virtual.hasIdentity() || !firstVirtual.type().equals(virtual.type()) || firstVirtual.entryCount() != virtual.entryCount()) {
                             compatible = false;
                             break;
                         }
@@ -1026,7 +1023,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             break;
                         }
                     }
-                    if (compatible && !hasIdentity) {
+                    if (compatible) {
                         VirtualObjectNode virtual = getValueObjectVirtual(phi, virtualObjs[0]);
                         mergeEffects.addFloatingNode(virtual, "valueObjectNode");
                         mergeEffects.deleteNode(phi);
