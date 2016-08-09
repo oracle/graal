@@ -29,32 +29,43 @@
  */
 package com.oracle.truffle.llvm.parser.impl;
 
-import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
-public final class LLVMParserAsserts {
+import com.intel.llvm.ireditor.lLVM_IR.BasicBlock;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction;
+import com.intel.llvm.ireditor.lLVM_IR.MiddleInstruction;
+import com.intel.llvm.ireditor.lLVM_IR.NamedMiddleInstruction;
 
-    private LLVMParserAsserts() {
+public final class LLVMWriteVisitor {
+
+    private final FunctionDef function;
+    private final Set<String> writtenVariables = new HashSet<>();
+
+    private LLVMWriteVisitor(FunctionDef function) {
+        this.function = function;
     }
 
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError(Arrays.toString(objects));
+    public static Set<String> visit(FunctionDef function) {
+        return new LLVMWriteVisitor(function).visitFunction();
+    }
+
+    private Set<String> visitFunction() {
+        for (BasicBlock block : function.getBasicBlocks()) {
+            for (Instruction instr : block.getInstructions()) {
+                visitInstruction(instr);
             }
         }
-        return objects;
+        return writtenVariables;
     }
 
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
-        }
-    }
-
-    public static <T> void assertNoNullElement(Iterable<T> it) {
-        for (T obj : it) {
-            if (obj == null) {
-                throw new AssertionError(it);
+    private void visitInstruction(Instruction instr) {
+        if (instr instanceof MiddleInstruction) {
+            MiddleInstruction middleInstr = (MiddleInstruction) instr;
+            if (middleInstr.getInstruction() instanceof NamedMiddleInstruction) {
+                NamedMiddleInstruction namedMiddleInstr = (NamedMiddleInstruction) middleInstr.getInstruction();
+                writtenVariables.add(namedMiddleInstr.getName());
             }
         }
     }

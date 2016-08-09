@@ -53,7 +53,7 @@ public final class LLVMPhiVisitor {
 
     private final Map<BasicBlock, List<Phi>> basicBlockReferences = new HashMap<>();
 
-    static class Phi {
+    public static class Phi {
 
         private final ValueRef valueRef;
         private final Type type;

@@ -153,6 +153,16 @@ public abstract class TestSuiteBase {
 
     public static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
+        private boolean withOptimizations;
+
+        public TestCaseGeneratorImpl(boolean withOptimizations) {
+            this.withOptimizations = withOptimizations;
+        }
+
+        public TestCaseGeneratorImpl() {
+            withOptimizations = true;
+        }
+
         @Override
         public TestCaseFiles getBitCodeTestCaseFiles(SpecificationEntry bitCodeFile) {
             return TestCaseFiles.createFromBitCodeFile(bitCodeFile.getFile(), bitCodeFile.getFlags());
@@ -177,8 +187,10 @@ public abstract class TestSuiteBase {
                     try {
                         TestCaseFiles compiledFiles = TestHelper.compileToLLVMIRWithClang(toBeCompiledFile, dest, toBeCompiled.getFlags(), builder);
                         files.add(compiledFiles);
-                        TestCaseFiles optimized = getOptimizedTestCase(compiledFiles);
-                        files.add(optimized);
+                        if (withOptimizations) {
+                            TestCaseFiles optimized = getOptimizedTestCase(compiledFiles);
+                            files.add(optimized);
+                        }
                     } catch (Exception e) {
                         return Collections.emptyList();
                     }

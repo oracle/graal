@@ -19,6 +19,7 @@ _root = join(_suite.dir, "projects/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testDir = join(_root, "com.oracle.truffle.llvm.test/")
 _argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
+_lifetimeReferenceDir = join(_testDir, "lifetime/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
@@ -141,6 +142,8 @@ def travis3(args=None):
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
+    with Task('TestLifetime', tasks) as t:
+        if t: runLifetimeTestCases()
 
 def travisJRuby(args=None):
     """executes the JRuby Travis job (Javac build, JRuby test cases)"""
@@ -429,6 +432,14 @@ def pullArgon2(args=None):
     tar(localPath, _argon2Dir, ['phc-winner-argon2-20160406/'], stripLevels=1)
     os.remove(localPath)
 
+def pullLifetime(args=None):
+    """downloads the lifetime reference outputs"""
+    mx.ensure_dir_exists(_lifetimeReferenceDir)
+    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref.tar.gz"]
+    localPath = pullsuite(_lifetimeReferenceDir, urls)
+    tar(localPath, _lifetimeReferenceDir)
+    os.remove(localPath)
+
 def truffle_extract_VM_args(args, useDoubleDash=False):
     vmArgs, remainder = [], []
     if args is not None:
@@ -520,6 +531,12 @@ def runTypeTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
+
+def runLifetimeTestCases(args=None):
+    """runs the lifetime analysis test cases"""
+    ensureLifetimeReferenceExists()
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestLifetimeAnalysisGCC'])
 
 def runPolyglotTestCases(args=None):
     """runs the type test cases"""
@@ -764,6 +781,11 @@ def ensureArgon2Exists():
     if not os.path.exists(_argon2Dir):
         pullArgon2()
 
+def ensureLifetimeReferenceExists():
+    """downloads the lifetime analysis reference outputs if not downloaded yet"""
+    if not os.path.exists(_lifetimeReferenceDir):
+        pullLifetime()
+
 def suBench(args=None):
     """runs a given benchmark with Sulong"""
     ensureLLVMBinariesExist()
@@ -943,6 +965,7 @@ mx.update_commands(_suite, {
     'su-tests-compile' : [runCompileTestCases, ''],
     'su-tests-jruby' : [runTestJRuby, ''],
     'su-tests-argon2' : [runTestArgon2, ''],
+    'su-tests-lifetime' : [runLifetimeTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],

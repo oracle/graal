@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.parser.impl.lifetime;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,7 +59,10 @@ import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.intel.llvm.ireditor.lLVM_IR.impl.LocalValueRefImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.impl.LLVMParserAsserts;
+import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
+import com.oracle.truffle.llvm.parser.impl.LLVMReadVisitor;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
@@ -82,17 +85,19 @@ public final class LLVMLifeTimeAnalysisVisitor {
         phiRefs = LLVMPhiVisitor.visit(function);
     }
 
-    public static class LifeTimeAnalysisResult {
+    static class LifeTimeAnalysisResultImpl extends LLVMLifeTimeAnalysisResult {
 
-        public LifeTimeAnalysisResult(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
+        LifeTimeAnalysisResultImpl(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
             this.beginDead = beginDead;
             this.endDead = endDead;
         }
 
+        @Override
         public Map<BasicBlock, FrameSlot[]> getBeginDead() {
             return beginDead;
         }
 
+        @Override
         public Map<BasicBlock, FrameSlot[]> getEndDead() {
             return endDead;
         }
@@ -102,8 +107,9 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     }
 
-    public static LifeTimeAnalysisResult visit(FunctionDef function, FrameDescriptor frameDescriptor) {
-        LifeTimeAnalysisResult mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
+    public static LLVMLifeTimeAnalysisResult visit(FunctionDef function, FrameDescriptor frameDescriptor) {
+        LLVMParserAsserts.assertNoNullElement(frameDescriptor.getSlots());
+        LifeTimeAnalysisResultImpl mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
         if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
             printAnalysisResults(function, mapping.getEndDead());
         }
@@ -161,7 +167,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
 
     }
 
-    private LifeTimeAnalysisResult visit() {
+    private LifeTimeAnalysisResultImpl visit() {
         initializeInstructionReads();
         initializeInstructionInOuts();
         initializeVariableDefinitions();
@@ -173,7 +179,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
             Set<FrameSlot> bbBegin = bbBeginKills.get(block);
             beginKills.put(block, bbBegin.toArray(new FrameSlot[bbBegin.size()]));
         }
-        return new LifeTimeAnalysisResult(beginKills, endKills);
+        return new LifeTimeAnalysisResultImpl(beginKills, endKills);
     }
 
     private Map<Instruction, List<FrameSlot>> instructionReads = new HashMap<>();
@@ -259,7 +265,8 @@ public final class LLVMLifeTimeAnalysisVisitor {
             while (it.hasNext()) {
                 blockKills.addAll(bbEndKills.get(it.next()));
             }
-            convertedMap.put(bb, blockKills.toArray(new FrameSlot[blockKills.size()]));
+            FrameSlot[] blockKillArr = blockKills.toArray(new FrameSlot[blockKills.size()]);
+            convertedMap.put(bb, blockKillArr);
         }
         return convertedMap;
     }

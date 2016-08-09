@@ -126,24 +126,25 @@ import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.impl.LLVMLifeTimeAnalysisVisitor.LifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter.DataSpecConverter;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutParser;
 import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutParser.DataTypeSpecification;
+import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
+import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
@@ -540,7 +541,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         Map<BasicBlock, FrameSlot[]> deadSlotsAtBeginBlock;
         Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
         if (LLVMBaseOptionFacade.lifeTimeAnalysisEnabled()) {
-            LifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
+            LLVMLifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
             deadSlotsAtBeginBlock = analysisResult.getBeginDead();
             deadSlotsAfterBlock = analysisResult.getEndDead();
         } else {

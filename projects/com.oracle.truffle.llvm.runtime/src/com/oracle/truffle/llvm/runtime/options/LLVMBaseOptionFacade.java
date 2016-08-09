@@ -101,6 +101,10 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.REMOTE_TEST_CASES_AS_LOCAL);
     }
 
+    public static boolean generateLifetimeReferenceOutput() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT);
+    }
+
     public static boolean printPerformanceWarnings() {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.PRINT_PERFORMANCE_WARNINGS);
     }

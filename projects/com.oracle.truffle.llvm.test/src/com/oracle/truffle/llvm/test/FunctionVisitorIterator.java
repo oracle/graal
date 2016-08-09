@@ -27,36 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.test;
 
-import java.util.Arrays;
+import java.io.File;
+import java.util.List;
 
-public final class LLVMParserAsserts {
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.xtext.resource.XtextResource;
+import org.eclipse.xtext.resource.XtextResourceSet;
 
-    private LLVMParserAsserts() {
+import com.google.inject.Injector;
+import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.Model;
+
+public class FunctionVisitorIterator {
+
+    interface LLVMFunctionVisitor {
+        void visit(FunctionDef def);
     }
 
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError(Arrays.toString(objects));
+    public static void visitFunctions(LLVMFunctionVisitor visitor, File source) {
+        LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
+        Injector injector = setup.createInjectorAndDoEMFRegistration();
+        XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
+        resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
+        Resource resource = resourceSet.getResource(URI.createURI(source.getPath()), true);
+        EList<EObject> contents = resource.getContents();
+        if (contents.size() == 0) {
+            throw new IllegalStateException("empty file?");
+        }
+        Model model = (Model) contents.get(0);
+
+        List<EObject> objects = model.eContents();
+        for (EObject object : objects) {
+            if (object instanceof FunctionDef) {
+                visitor.visit((FunctionDef) object);
             }
         }
-        return objects;
-    }
 
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
-        }
-    }
-
-    public static <T> void assertNoNullElement(Iterable<T> it) {
-        for (T obj : it) {
-            if (obj == null) {
-                throw new AssertionError(it);
-            }
-        }
     }
 
 }
