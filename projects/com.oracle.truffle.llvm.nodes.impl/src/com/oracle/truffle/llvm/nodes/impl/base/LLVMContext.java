@@ -49,6 +49,7 @@ public class LLVMContext extends ExecutionContext {
 
     private final List<RootCallTarget> staticInitializers = new ArrayList<>();
     private final List<RootCallTarget> staticDestructors = new ArrayList<>();
+    private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
 
     private final LLVMFunctionRegistry registry;
 
@@ -132,12 +133,20 @@ public class LLVMContext extends ExecutionContext {
         staticDestructors.add(staticDestructor);
     }
 
+    public void registerDestructorFunction(RootCallTarget destructorFunction) {
+        destructorFunctions.add(destructorFunction);
+    }
+
     public void registerStaticInitializer(RootCallTarget staticInitializer) {
         staticInitializers.add(staticInitializer);
     }
 
     public List<RootCallTarget> getStaticDestructors() {
         return staticDestructors;
+    }
+
+    public List<RootCallTarget> getDestructorFunctions() {
+        return destructorFunctions;
     }
 
     public List<RootCallTarget> getStaticInitializers() {
