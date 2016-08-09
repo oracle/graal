@@ -141,6 +141,8 @@ def travis3(args=None):
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
+    with Task('TestLifetime', tasks) as t:
+        if t: runLifetimeTestCases()
 
 def travisJRuby(args=None):
     """executes the JRuby Travis job (Javac build, JRuby test cases)"""
@@ -520,6 +522,11 @@ def runTypeTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
+
+def runLifetimeTestCases(args=None):
+    """runs the lifetime analysis test cases"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestLifetimeAnalysisGCC'])
 
 def runPolyglotTestCases(args=None):
     """runs the type test cases"""
@@ -943,6 +950,7 @@ mx.update_commands(_suite, {
     'su-tests-compile' : [runCompileTestCases, ''],
     'su-tests-jruby' : [runTestJRuby, ''],
     'su-tests-argon2' : [runTestArgon2, ''],
+    'su-tests-lifetime' : [runLifetimeTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
