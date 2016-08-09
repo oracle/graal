@@ -40,6 +40,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -55,6 +61,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMAddressT
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNodeFactory.LLVMFunctionCallChainNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNative80BitFloatCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNativeAddressCallNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
@@ -63,11 +70,30 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMCallNode {
 
     public static final int ARG_START_INDEX = 1;
+
+    private static Object doExecute(VirtualFrame frame, Node foreignExecute, TruffleObject value, Object[] rawArgs, ToLLVMNode toLLVM, LLVMRuntimeType expectedType) {
+        int argsLength = rawArgs.length - ARG_START_INDEX;
+        Object[] args = new Object[argsLength];
+        for (int i = ARG_START_INDEX, j = 0; i < rawArgs.length; i++, j++) {
+            args[j] = rawArgs[i];
+        }
+        try {
+            Object rawValue = ForeignAccess.sendExecute(foreignExecute, frame, value, args);
+            return toLLVM.convert(frame, rawValue, expectedType);
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static int getFunctionArgumentLength(VirtualFrame frame) {
+        return frame.getArguments().length - ARG_START_INDEX;
+    }
 
     protected static LLVMExpressionNode[] prepareForNative(LLVMExpressionNode[] originalArgs, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
@@ -126,30 +152,33 @@ public abstract class LLVMCallNode {
 
         @Child private LLVMFunctionNode functionNode;
         private final LLVMContext context;
+        private final LLVMRuntimeType returnType;
 
-        public LLVMUnresolvedCallNode(LLVMFunctionNode functionNode, LLVMExpressionNode[] args, LLVMContext context) {
+        public LLVMUnresolvedCallNode(LLVMFunctionNode functionNode, LLVMExpressionNode[] args, LLVMRuntimeType returnType, LLVMContext context) {
             super(args);
             this.functionNode = functionNode;
             this.context = context;
+            this.returnType = returnType;
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
             CompilerDirectives.transferToInterpreter();
             if (functionNode instanceof LLVMFunctionLiteralNode) {
-                LLVMFunctionDescriptor function = functionNode.executeFunction(frame);
-                CallTarget callTarget = context.getFunction(function);
+                TruffleObject function = functionNode.executeFunction(frame);
+                LLVMFunctionDescriptor llvmFunction = (LLVMFunctionDescriptor) function;
+                CallTarget callTarget = context.getFunction(llvmFunction);
                 if (callTarget == null) {
-                    NativeFunctionHandle nativeHandle = context.getNativeHandle(function, prepareForNative(getArgs(), context));
+                    NativeFunctionHandle nativeHandle = context.getNativeHandle(llvmFunction, prepareForNative(getArgs(), context));
                     if (nativeHandle == null) {
-                        throw new IllegalStateException("could not find function " + function.getName());
+                        throw new IllegalStateException("could not find function " + llvmFunction.getName());
                     }
-                    return replace(getResolvedNativeCall(function, nativeHandle, getArgs(), context)).executeGeneric(frame);
+                    return replace(getResolvedNativeCall(llvmFunction, nativeHandle, getArgs(), context)).executeGeneric(frame);
                 } else {
                     return replace(new LLVMResolvedDirectCallNode(callTarget, getArgs())).executeGeneric(frame);
                 }
             } else {
-                LLVMFunctionCallChain rootNode = LLVMFunctionCallChainNodeGen.create(context, getArgs());
+                LLVMFunctionCallChain rootNode = LLVMFunctionCallChainNodeGen.create(context, getArgs(), returnType);
                 return replace(new LLVMFunctionCallChainStartNode(functionNode, rootNode, getArgs())).executeGeneric(frame);
             }
         }
@@ -234,6 +263,8 @@ public abstract class LLVMCallNode {
 
         @Child private LLVMFunctionCallChain chain;
         @Child private LLVMFunctionNode functionCallNode;
+        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child private Node foreignExecute;
 
         public LLVMFunctionCallChainStartNode(LLVMFunctionNode functionCallNode, LLVMFunctionCallChain chain, LLVMExpressionNode[] args) {
             super(args);
@@ -244,8 +275,16 @@ public abstract class LLVMCallNode {
         @Override
         public Object executeGeneric(VirtualFrame frame) {
             Object[] args = evaluateArgs(frame);
-            LLVMFunctionDescriptor function = functionCallNode.executeFunction(frame);
-            return chain.executeDispatch(frame, function, args);
+            TruffleObject function = functionCallNode.executeFunction(frame);
+            if (function instanceof LLVMFunctionDescriptor) {
+                return chain.executeDispatch(frame, (LLVMFunctionDescriptor) function, args);
+            } else {
+                if (foreignExecute == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignExecute = insert(Message.createExecute(getFunctionArgumentLength(frame)).createNode());
+                }
+                return doExecute(frame, foreignExecute, function, args, toLLVM, chain.returnType);
+            }
         }
 
     }
@@ -259,11 +298,14 @@ public abstract class LLVMCallNode {
         @CompilationFinal private boolean printedNativePerformanceWarning;
         @CompilationFinal private boolean printedExceedInlineCacheWarning;
 
+        private final LLVMRuntimeType returnType;
+
         protected static final int INLINE_CACHE_SIZE = LLVMBaseOptionFacade.getInlineCacheSize();
 
-        public LLVMFunctionCallChain(LLVMContext context, LLVMExpressionNode[] nodes) {
+        public LLVMFunctionCallChain(LLVMContext context, LLVMExpressionNode[] nodes, LLVMRuntimeType returnType) {
             this.context = context;
             this.nodes = nodes;
+            this.returnType = returnType;
         }
 
         public abstract Object executeDispatch(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments);

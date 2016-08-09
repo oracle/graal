@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
@@ -51,7 +52,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI64VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
@@ -204,10 +204,9 @@ public class LLVMArgNode {
 
         @Specialization
         @Override
-        public LLVMFunctionDescriptor executeFunction(VirtualFrame frame) {
-            return (LLVMFunctionDescriptor) frame.getArguments()[getIndex()];
+        public TruffleObject executeFunction(VirtualFrame frame) {
+            return (TruffleObject) frame.getArguments()[getIndex()];
         }
-
     }
 
     @NodeField(name = "index", type = int.class)
