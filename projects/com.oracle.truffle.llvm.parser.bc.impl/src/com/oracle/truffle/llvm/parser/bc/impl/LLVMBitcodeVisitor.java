@@ -42,7 +42,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
@@ -157,10 +159,12 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         method.accept(visitor);
 
+        LLVMBasicBlockNode[] basicBlocks = visitor.getBlocks();
+
         return LLVMBlockFactory.createFunctionBlock(
                         visitor.getReturnSlot(),
                         visitor.getBlocks(),
-                        null, visitor.getNullers());
+                        new LLVMStackFrameNuller[basicBlocks.length][0], visitor.getNullers());
     }
 
     private static List<LLVMNode> createParameters(FrameDescriptor frame, List<FunctionParameter> parameters) {
