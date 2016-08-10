@@ -645,6 +645,17 @@ def runTestArgon2(args=None, optimize=False):
     compileArgon2('test', optimize)
     return runLLVM(args + ['test.su'])
 
+def runBenchArgon2(args=None, optimize=False):
+    """runs Argon2 bench with Sulong"""
+
+    ensureArgon2Exists()
+    os.chdir(_argon2Dir)
+    if args is None:
+        args = []
+
+    compileArgon2('bench', optimize)
+    return runLLVM(args + ['bench.su'])
+
 def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -966,6 +977,7 @@ mx.update_commands(_suite, {
     'su-tests-jruby' : [runTestJRuby, ''],
     'su-tests-argon2' : [runTestArgon2, ''],
     'su-tests-lifetime' : [runLifetimeTestCases, ''],
+    'su-bench-argon2' : [runBenchArgon2, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
