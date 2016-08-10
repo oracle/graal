@@ -24,23 +24,16 @@ package com.oracle.graal.truffle.test;
 
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
 
 public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -222,49 +215,32 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
     public static final class InputStringIterator {
 
-        private final FrameSlot inputString;
-        private final FrameSlot index;
+        private int index = 0;
 
-        public InputStringIterator(FrameSlot inputString, FrameSlot index) {
-            this.inputString = inputString;
-            this.index = index;
+        public boolean hasNext(byte[] inputString) {
+            return index < inputString.length;
         }
 
-        public int getIndex(VirtualFrame frame) {
-            return FrameUtil.getIntSafe(frame, index);
-        }
-
-        public boolean hasNext(VirtualFrame frame) {
-            int i = getIndex(frame);
-            byte[] bytes = (byte[]) FrameUtil.getObjectSafe(frame, inputString);
-            return i < bytes.length;
-        }
-
-        public byte next(VirtualFrame frame) {
-            int i = getIndex(frame);
-            byte[] bytes = (byte[]) FrameUtil.getObjectSafe(frame, inputString);
-            byte b = bytes[i++];
-            frame.setInt(index, i);
-            return b;
+        public byte next(byte[] inputString) {
+            return inputString[index++];
         }
     }
 
     public static class TRegexDFAExecutorNode extends Node {
 
-        private final InputStringIterator inputStringIterator;
+        private final InputStringIterator inputStringIterator = new InputStringIterator();
         private final int entry;
 
         @Children
         private final DFAStateNode[] states;
 
-        public TRegexDFAExecutorNode(InputStringIterator inputStringIterator, int entry, DFAStateNode[] states) {
-            this.inputStringIterator = inputStringIterator;
+        public TRegexDFAExecutorNode(int entry, DFAStateNode[] states) {
             this.entry = entry;
             this.states = states;
         }
 
         @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-        protected boolean execute(VirtualFrame frame) {
+        protected boolean execute(byte[] inputString) {
             CompilerAsserts.compilationConstant(states.length);
             int ip = entry;
             int successor = -1;
@@ -277,10 +253,10 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
                 if (curState.isFinalState()) {
                     break;
                 }
-                if (!inputStringIterator.hasNext(frame)) {
+                if (!inputStringIterator.hasNext(inputString)) {
                     break;
                 }
-                successor = curState.executeSuccessorIndex(inputStringIterator.next(frame));
+                successor = curState.executeSuccessorIndex(inputStringIterator.next(inputString));
                 int[] successors = curState.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
                     if (i == successor) {
@@ -297,15 +273,10 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
     public class TRegexRootNode extends RootNode {
 
-        private final FrameSlot inputString;
-        private final FrameSlot index;
-
         private final TRegexDFAExecutorNode executorNode;
 
-        public TRegexRootNode(FrameDescriptor frameDescriptor, FrameSlot inputString, FrameSlot index, TRegexDFAExecutorNode executorNode) {
+        public TRegexRootNode(FrameDescriptor frameDescriptor, TRegexDFAExecutorNode executorNode) {
             super(MockLanguage.class, null, frameDescriptor);
-            this.inputString = inputString;
-            this.index = index;
             this.executorNode = executorNode;
         }
 
@@ -313,13 +284,11 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         public final Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             final String input = (String) args[0];
-            frame.setObject(inputString, getBytes(input));
-            frame.setInt(index, 0);
-            return executorNode.execute(frame);
+            return executorNode.execute(getBytes(input));
         }
 
         private byte[] getBytes(String input) {
-            char[] chars = StringUtil.getBackingCharArray(input);
+            char[] chars = input.toCharArray();
             byte[] bytes = new byte[chars.length * 2];
             for (int i = 0; i < chars.length; i++) {
                 bytes[i * 2] = (byte) (chars[i] >> Byte.SIZE);
@@ -331,11 +300,8 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
     private RootNode createRootNode(int initialState, DFAStateNode[] states) {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot inputString = frameDescriptor.addFrameSlot("inputString", FrameSlotKind.Object);
-        FrameSlot index = frameDescriptor.addFrameSlot("index", FrameSlotKind.Int);
-        InputStringIterator inputStringIterator = new InputStringIterator(inputString, index);
-        TRegexDFAExecutorNode executorNode = new TRegexDFAExecutorNode(inputStringIterator, initialState, states);
-        return new TRegexRootNode(frameDescriptor, inputString, index, executorNode);
+        TRegexDFAExecutorNode executorNode = new TRegexDFAExecutorNode(initialState, states);
+        return new TRegexRootNode(frameDescriptor, executorNode);
     }
 
     private static void assertMatches(RootNode program, String input) {
@@ -350,7 +316,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program, String input) {
         assertMatches(program, input);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(program);
-        partialEval(compilable, new Object[] {input}, StructuredGraph.AllowAssumptions.YES);
+        partialEval(compilable, new Object[]{input}, StructuredGraph.AllowAssumptions.YES);
         // fail on Exceptions only for now
     }
 
@@ -367,44 +333,44 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         // DFA for /ab|cd/
         int initialState = 0;
         DFAStateNode[] states = createStates(7);
-        states[0].setSuccessors(new int[] { 3, 0 });
-        states[0].setMatchers(new ByteMatcher[] {
+        states[0].setSuccessors(new int[]{3, 0});
+        states[0].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[1].setSuccessors(new int[] { 4, 0 });
-        states[1].setMatchers(new ByteMatcher[] {
+        states[1].setSuccessors(new int[]{4, 0});
+        states[1].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[2].setSuccessors(new int[] { 3, 0 });
-        states[2].setMatchers(new ByteMatcher[] {
+        states[2].setSuccessors(new int[]{3, 0});
+        states[2].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
         states[2].setFinalState();
-        states[3].setSuccessors(new int[] { 3, 1, 5, 0 });
-        states[3].setMatchers(new ByteMatcher[] {
+        states[3].setSuccessors(new int[]{3, 1, 5, 0});
+        states[3].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x61),
                 SingleByteMatcher.create(0x63),
                 AnyByteMatcher.create()
         });
-        states[4].setSuccessors(new int[] { 3, 1, 2, 5, 0 });
-        states[4].setMatchers(new ByteMatcher[] {
+        states[4].setSuccessors(new int[]{3, 1, 2, 5, 0});
+        states[4].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x61),
                 SingleByteMatcher.create(0x62),
                 SingleByteMatcher.create(0x63),
                 AnyByteMatcher.create()
         });
-        states[5].setSuccessors(new int[] { 6, 0 });
-        states[5].setMatchers(new ByteMatcher[] {
+        states[5].setSuccessors(new int[]{6, 0});
+        states[5].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[6].setSuccessors(new int[] { 3, 1, 5, 2, 0 });
-        states[6].setMatchers(new ByteMatcher[] {
+        states[6].setSuccessors(new int[]{3, 1, 5, 2, 0});
+        states[6].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x61),
                 SingleByteMatcher.create(0x63),
@@ -419,31 +385,31 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     public void abSTARc() {
         int initialState = 0;
         DFAStateNode[] states = createStates(5);
-        states[0].setSuccessors(new int[] { 1, 0 });
-        states[0].setMatchers(new ByteMatcher[] {
+        states[0].setSuccessors(new int[]{1, 0});
+        states[0].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[1].setSuccessors(new int[] { 1, 2, 0 });
-        states[1].setMatchers(new ByteMatcher[] {
+        states[1].setSuccessors(new int[]{1, 2, 0});
+        states[1].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x61),
                 AnyByteMatcher.create()
         });
-        states[2].setSuccessors(new int[] { 3, 0 });
-        states[2].setMatchers(new ByteMatcher[] {
+        states[2].setSuccessors(new int[]{3, 0});
+        states[2].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[3].setSuccessors(new int[] { 1, 4, 2, 0 });
-        states[3].setMatchers(new ByteMatcher[] {
+        states[3].setSuccessors(new int[]{1, 4, 2, 0});
+        states[3].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x63),
                 RangeByteMatcher.create(0x61, 0x62),
                 AnyByteMatcher.create()
         });
-        states[4].setSuccessors(new int[] { 1, 0 });
-        states[4].setMatchers(new ByteMatcher[] {
+        states[4].setSuccessors(new int[]{1, 0});
+        states[4].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
@@ -456,55 +422,55 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     public void xabORxcd() {
         int initialState = 0;
         DFAStateNode[] states = createStates(9);
-        states[0].setSuccessors(new int[] { 3, 0 });
-        states[0].setMatchers(new ByteMatcher[] {
+        states[0].setSuccessors(new int[]{3, 0});
+        states[0].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[1].setSuccessors(new int[] { 4, 0 });
-        states[1].setMatchers(new ByteMatcher[] {
+        states[1].setSuccessors(new int[]{4, 0});
+        states[1].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[2].setSuccessors(new int[] { 3, 0 });
-        states[2].setMatchers(new ByteMatcher[] {
+        states[2].setSuccessors(new int[]{3, 0});
+        states[2].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
         states[2].setFinalState();
-        states[3].setSuccessors(new int[] { 3, 5, 0 });
-        states[3].setMatchers(new ByteMatcher[] {
+        states[3].setSuccessors(new int[]{3, 5, 0});
+        states[3].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x78),
                 AnyByteMatcher.create()
         });
-        states[4].setSuccessors(new int[] { 3, 2, 5, 0 });
-        states[4].setMatchers(new ByteMatcher[] {
+        states[4].setSuccessors(new int[]{3, 2, 5, 0});
+        states[4].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x62),
                 SingleByteMatcher.create(0x78),
                 AnyByteMatcher.create()
         });
-        states[5].setSuccessors(new int[] { 6, 0 });
-        states[5].setMatchers(new ByteMatcher[] {
+        states[5].setSuccessors(new int[]{6, 0});
+        states[5].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[6].setSuccessors(new int[] { 3, 1, 7, 5, 0 });
-        states[6].setMatchers(new ByteMatcher[] {
+        states[6].setSuccessors(new int[]{3, 1, 7, 5, 0});
+        states[6].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x61),
                 SingleByteMatcher.create(0x62),
                 SingleByteMatcher.create(0x78),
                 AnyByteMatcher.create()
         });
-        states[7].setSuccessors(new int[] { 8, 0 });
-        states[7].setMatchers(new ByteMatcher[] {
+        states[7].setSuccessors(new int[]{8, 0});
+        states[7].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 AnyByteMatcher.create()
         });
-        states[8].setSuccessors(new int[] { 3, 2, 5, 0 });
-        states[8].setMatchers(new ByteMatcher[] {
+        states[8].setSuccessors(new int[]{3, 2, 5, 0});
+        states[8].setMatchers(new ByteMatcher[]{
                 SingleByteMatcher.create(0x00),
                 SingleByteMatcher.create(0x63),
                 SingleByteMatcher.create(0x78),
@@ -512,33 +478,5 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         });
 
         assertPartialEvalEqualsAndRunsCorrect(createRootNode(initialState, states), "xxxxxxxxxxaxxxcxxxxabbbbcxxxxxxxxx");
-    }
-
-    public static class StringUtil {
-        private static final MethodHandle FIELD_HANDLE;
-
-        static {
-            Field field;
-            try {
-                field = String.class.getDeclaredField("value");
-            } catch (NoSuchFieldException ex) {
-                throw new RuntimeException(ex.getMessage(), ex);
-            }
-            field.setAccessible(true);
-
-            try {
-                FIELD_HANDLE = MethodHandles.lookup().unreflectGetter(field);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("unable to initialize field handle", e);
-            }
-        }
-
-        public static char[] getBackingCharArray(String str) {
-            try {
-                return (char[]) FIELD_HANDLE.invokeExact(str);
-            } catch (Throwable e) {
-                throw new IllegalStateException();
-            }
-        }
     }
 }
