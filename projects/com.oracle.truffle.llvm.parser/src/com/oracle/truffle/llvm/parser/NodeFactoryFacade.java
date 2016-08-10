@@ -318,4 +318,11 @@ public interface NodeFactoryFacade {
 
     RootNode createStaticInitsRootNode(LLVMNode[] staticInits);
 
+    /**
+     * Returns whether function calls expect an implicit stack pointer argument.
+     *
+     * @return true if the parser should pass an implicit stack pointer argument for function calls
+     */
+    Optional<Boolean> hasStackPointerArgument();
+
 }

@@ -396,7 +396,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
-        return LLVMFunctionFactory.createFunctionArgNode(i, clazz);
+        return LLVMFunctionFactory.createFunctionArgNode(this, i, clazz);
     }
 
     @Override
@@ -423,6 +423,11 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public RootNode createStaticInitsRootNode(LLVMNode[] staticInits) {
         return new LLVMStaticInitsBlockNode(staticInits, runtime.getGlobalFrameDescriptor(), LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
                         runtime.getStackPointerSlot());
+    }
+
+    @Override
+    public Optional<Boolean> hasStackPointerArgument() {
+        return Optional.of(true);
     }
 
 }

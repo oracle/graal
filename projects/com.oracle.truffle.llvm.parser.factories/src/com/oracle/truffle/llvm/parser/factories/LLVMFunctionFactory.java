@@ -85,7 +85,6 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI64VectorA
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI8ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI8VectorArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMIVarBitArgNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode.LLVMUnresolvedCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNode.LLVMVoidCallUnboxNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory.LLVM80BitFloatCallUnboxNodeGen;
@@ -107,6 +106,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeF
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
+import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -279,8 +279,8 @@ public final class LLVMFunctionFactory {
         }
     }
 
-    public static LLVMNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
-        int realIndex = LLVMCallNode.ARG_START_INDEX + i;
+    public static LLVMNode createFunctionArgNode(NodeFactoryFacade facade, int i, Class<? extends Node> clazz) {
+        int realIndex = facade.getArgStartIndex().get() + i;
         LLVMNode argNode;
         if (clazz.equals(LLVMI32Node.class)) {
             argNode = LLVMArgNodeFactory.LLVMI32ArgNodeGen.create(realIndex);

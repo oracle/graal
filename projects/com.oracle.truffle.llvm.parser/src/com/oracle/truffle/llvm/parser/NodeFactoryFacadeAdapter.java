@@ -338,4 +338,9 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
         return null;
     }
 
+    @Override
+    public Optional<Boolean> hasStackPointerArgument() {
+        return Optional.empty();
+    }
+
 }
