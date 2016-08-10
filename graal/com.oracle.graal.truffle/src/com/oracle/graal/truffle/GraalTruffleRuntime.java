@@ -71,6 +71,7 @@ import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -633,6 +634,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
                 l.notifyCompilationGraalTierFinished(target, graph);
+            }
+        }
+
+        @Override
+        public void notifyCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+            for (GraalTruffleCompilationListener l : compilationListeners) {
+                l.notifyCompilationDeoptimized(target, frame);
             }
         }
 

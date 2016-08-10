@@ -222,36 +222,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     }
 
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
-        if (shouldCompile()) {
-            RootNode root = getRootNode();
-            Node parent = getParent();
-            if (speculationLog == null) {
-                speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
-            }
-            OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()));
-            osrTarget.setSpeculationLog(speculationLog);
-            // let the old parent re-adopt the children
-            parent.adoptChildren();
-            osrTarget.compile();
-            return osrTarget;
-        } else {
-            return null;
+        RootNode root = getRootNode();
+        Node parent = getParent();
+        if (speculationLog == null) {
+            speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
         }
-    }
-
-    private boolean shouldCompile() {
-        Node node = getParent();
-        while (node != null) {
-            if (node instanceof OptimizedOSRLoopNode) {
-                OptimizedCallTarget target = ((OptimizedOSRLoopNode) node).getCompiledOSRLoop();
-                if (target != null) {
-                    // parent loop node is already compiling
-                    return false;
-                }
-            }
-            node = node.getParent();
-        }
-        return true;
+        OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()));
+        osrTarget.setSpeculationLog(speculationLog);
+        // let the old parent re-adopt the children
+        parent.adoptChildren();
+        osrTarget.compile();
+        return osrTarget;
     }
 
     @Override
