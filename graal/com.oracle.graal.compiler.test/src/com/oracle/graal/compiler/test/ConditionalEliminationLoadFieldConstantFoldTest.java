@@ -29,10 +29,7 @@ import org.junit.Test;
 
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
 import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
 import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
 
@@ -271,12 +268,10 @@ public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompil
     @Test(expected = AssertionError.class)
     @SuppressWarnings("try")
     public void test06() {
-        try (OverrideScope os = OptionValue.override(DominatorConditionalEliminationPhase.Options.FoldFinalFieldLoads, true)) {
-            Result actual = executeActual(getResolvedJavaMethod("foldThatIsNotAllowed"), null, C2_CONST);
-            UNSAFE.putObject(C2_CONST, C2_C1_OFFSET, C1_CONST);
-            Result expected = executeExpected(getResolvedJavaMethod("foldThatIsNotAllowed"), null, C2_CONST);
-            Assert.assertEquals(expected.returnValue, actual.returnValue);
-        }
+        Result actual = executeActual(getResolvedJavaMethod("foldThatIsNotAllowed"), null, C2_CONST);
+        UNSAFE.putObject(C2_CONST, C2_C1_OFFSET, C1_CONST);
+        Result expected = executeExpected(getResolvedJavaMethod("foldThatIsNotAllowed"), null, C2_CONST);
+        Assert.assertEquals(expected.returnValue, actual.returnValue);
     }
 
     @SuppressWarnings("try")
@@ -285,9 +280,7 @@ public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompil
         CanonicalizerPhase c = new CanonicalizerPhase();
         c.apply(g, getDefaultHighTierContext());
         new EarlyReadEliminationPhase(c).apply(g, getDefaultHighTierContext());
-        try (OverrideScope os = OptionValue.override(DominatorConditionalEliminationPhase.Options.FoldFinalFieldLoads, true)) {
-            new IterativeConditionalEliminationPhase(c, false).apply(g, getDefaultHighTierContext());
-        }
+        new IterativeConditionalEliminationPhase(c, false).apply(g, getDefaultHighTierContext());
         Assert.assertEquals("Nr of Ifs left does not match", nrOfIfsAfter, g.getNodes().filter(IfNode.class).count());
         c.apply(g, getDefaultHighTierContext());
         return g;
