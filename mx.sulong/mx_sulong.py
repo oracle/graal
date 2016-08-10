@@ -94,7 +94,7 @@ def executeGate():
         if t: runTestArgon2(optimize=False)
 
 def travis1(args=None):
-    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, Sulong, and LLVM test cases)"""
+    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithEcj', tasks) as t:
         if t:
@@ -120,8 +120,6 @@ def travis1(args=None):
         if t: runAsmTestCases()
     with Task('TestTypes', tasks) as t:
         if t: runTypeTestCases()
-    with Task('TestSulong', tasks) as t:
-        if t: runTruffleTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
 
@@ -144,6 +142,14 @@ def travis3(args=None):
         if t: runCompileTestCases()
     with Task('TestLifetime', tasks) as t:
         if t: runLifetimeTestCases()
+
+def travisTestSulong(args=None):
+    """executes the Sulong test cases (which also stress compilation)"""
+    tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestSulong', tasks) as t:
+        if t: runTruffleTestCases()
 
 def travisJRuby(args=None):
     """executes the JRuby Travis job (Javac build, JRuby test cases)"""
@@ -525,7 +531,7 @@ def runTruffleTestCases(args=None):
     ensureLLVMBinariesExist()
     ensureDragonEggExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.SulongTestSuite"])
+    return unittest(getCommonUnitTestOptions() + ['-Dsulong.ExecutionCount=1000'] + vmArgs + ["com.oracle.truffle.llvm.test.SulongTestSuite"])
 
 def runTypeTestCases(args=None):
     """runs the type test cases"""
@@ -991,6 +997,7 @@ mx.update_commands(_suite, {
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
     'su-travis3' : [travis3, ''],
+    'su-travis-sulong' : [travisTestSulong, ''],
     'su-travis-jruby' : [travisJRuby, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-gitlogcheck' : [logCheck, ''],
