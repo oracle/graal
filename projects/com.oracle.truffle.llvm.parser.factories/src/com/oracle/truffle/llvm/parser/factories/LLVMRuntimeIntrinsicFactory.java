@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.replacements.amd64.AMD64MathSubstitutions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
@@ -111,23 +110,33 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFac
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWritePFactory;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
+/**
+ * This class creates intrinsic functions and is designed to be inherited.
+ */
 public class LLVMRuntimeIntrinsicFactory {
 
     public static Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optConfig) {
+        return new LLVMRuntimeIntrinsicFactory(optConfig).getFactories();
+    }
 
-        Map<String, NodeFactory<? extends LLVMNode>> intrinsics = new HashMap<>();
-        // Fortran
-        intrinsics.put("@_gfortran_abort", LLVMAbortFactory.getInstance());
+    protected final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
+    protected final LLVMOptimizationConfiguration optConfig;
 
-        // C
-        intrinsics.put("@abort", LLVMAbortFactory.getInstance());
-        intrinsics.put("@exit", LLVMExitFactory.getInstance());
+    protected LLVMRuntimeIntrinsicFactory(LLVMOptimizationConfiguration optConfig) {
+        intrinsics = new HashMap<>();
+        this.optConfig = optConfig;
+    }
 
+    protected Map<String, NodeFactory<? extends LLVMNode>> getFactories() {
+        intrinsifyAbortIntrinsics(intrinsics);
         if (optConfig.intrinsifyCLibraryFunctions()) {
-            intrinsifyCFunctions(intrinsics);
+            intrinsifyMathFunctions(intrinsics);
         }
+        intrinsifyInteropIntrinsics(intrinsics);
+        return intrinsics;
+    }
 
-        // Interop intrinsics
+    protected static void intrinsifyInteropIntrinsics(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
         intrinsics.put("@truffle_import", LLVMTruffleImportFactory.getInstance());
         intrinsics.put("@truffle_import_cached", LLVMTruffleImportCachedFactory.getInstance());
         intrinsics.put("@truffle_address_to_function", LLVMTruffleAddressToFunctionFactory.getInstance());
@@ -200,18 +209,34 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@truffle_read_n_bytes", LLVMTruffleReadNBytesFactory.getInstance());
 
         intrinsics.put("@truffle_is_truffle_object", LLVMTruffleIsTruffleObjectFactory.getInstance());
-
-        return intrinsics;
     }
 
     /**
-     * Intrinsifications of functions (e.g. the C function <code>sin</code>) especially make sense
-     * when Graal intrinsifies the corresponding Java method calls, e.g.
-     * {@link java.lang.Math#sin(double)}. Currently, the Graal intrinsifications for some
-     * trigonometric functions in {@link AMD64MathSubstitutions} are still twice as slow as their C
-     * counterparts.
+     *
+     * This method intrinsifies functions that exit the process such as <code>abort</code> or
+     * <code>exit</code> in C or <code>_gfortran_abort</code> in Fortran. Not intrinsifying these
+     * functions and directly executing the JVM process upon their invocation would not desirable,
+     * since cleanups or exit functions (such as shared library destructors or functions registered
+     * by <code>atexit</code>) could not be executed. Additionally, a failing JUnit test would then
+     * also exit the process instead of executing the remaining test cases.
+     *
+     * @param intrinsics
      */
-    private static void intrinsifyCFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
+    protected static void intrinsifyAbortIntrinsics(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
+        // Fortran
+        intrinsics.put("@_gfortran_abort", LLVMAbortFactory.getInstance());
+        // C
+        intrinsics.put("@abort", LLVMAbortFactory.getInstance());
+        intrinsics.put("@exit", LLVMExitFactory.getInstance());
+    }
+
+    /**
+     * This method intrinsifies functions from the <code>math.h</code> header file of the C standard
+     * library. Intrinsifications of these functions (e.g. the C function <code>exp</code>)
+     * especially make sense when Graal intrinsifies the corresponding Java method calls, e.g.
+     * {@link java.lang.Math#exp(double)}.
+     */
+    protected static void intrinsifyMathFunctions(Map<String, NodeFactory<? extends LLVMNode>> intrinsics) {
         intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
         intrinsics.put("@log", LLVMLogFactory.getInstance());
         intrinsics.put("@log10", LLVMLog10Factory.getInstance());
