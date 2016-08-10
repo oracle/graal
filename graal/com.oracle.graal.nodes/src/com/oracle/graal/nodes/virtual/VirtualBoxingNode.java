@@ -33,13 +33,17 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public final class VirtualBoxingNode extends VirtualInstanceNode {
+public class VirtualBoxingNode extends VirtualInstanceNode {
 
     public static final NodeClass<VirtualBoxingNode> TYPE = NodeClass.create(VirtualBoxingNode.class);
     protected final JavaKind boxingKind;
 
     public VirtualBoxingNode(ResolvedJavaType type, JavaKind boxingKind) {
-        super(TYPE, type, false);
+        this(TYPE, type, boxingKind);
+    }
+
+    public VirtualBoxingNode(NodeClass<? extends VirtualBoxingNode> c, ResolvedJavaType type, JavaKind boxingKind) {
+        super(c, type, false);
         this.boxingKind = boxingKind;
     }
 

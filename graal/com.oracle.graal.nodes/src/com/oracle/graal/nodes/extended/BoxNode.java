@@ -51,14 +51,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * methods in Integer, Long, etc.
  */
 @NodeInfo(cycles = CYCLES_100, size = SIZE_50)
-public final class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
+public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
     @Input private ValueNode value;
-    private final JavaKind boxingKind;
+    protected final JavaKind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)));
+        this(TYPE, value, resultType, boxingKind);
+    }
+
+    public BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+        super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)));
         this.value = value;
         this.boxingKind = boxingKind;
     }
@@ -85,12 +89,15 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
         return this;
     }
 
+    protected VirtualBoxingNode createVirtualBoxingNode() {
+        return new VirtualBoxingNode(StampTool.typeOrNull(stamp()), boxingKind);
+    }
+
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(getValue());
-        ResolvedJavaType type = StampTool.typeOrNull(stamp());
 
-        VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
+        VirtualBoxingNode newVirtual = createVirtualBoxingNode();
         assert newVirtual.getFields().length == 1;
 
         tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), false);
