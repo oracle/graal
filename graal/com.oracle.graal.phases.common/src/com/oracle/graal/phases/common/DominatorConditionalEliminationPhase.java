@@ -405,7 +405,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
             }
 
             Pair<InfoElement, Stamp> recursiveFoldStamp(Node node, InfoElementProvider info) {
-                if (node instanceof LoadFieldNode && ((LoadFieldNode) node).field().isFinal()) {
+                if (node instanceof LoadFieldNode) {
                     Pair<InfoElement, Stamp> pair = foldFromConstLoadField((LoadFieldNode) node, info);
                     if (pair != null) {
                         return pair;
@@ -445,8 +445,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                                 return new Pair<>(foldResult.first, result);
                             }
                         }
-                    } else if ((x instanceof LoadFieldNode && ((LoadFieldNode) x).field().isFinal()) ||
-                                    (y instanceof LoadFieldNode && ((LoadFieldNode) y).field().isFinal())) {
+                    } else if (x instanceof LoadFieldNode || y instanceof LoadFieldNode) {
                         boolean useX = x instanceof LoadFieldNode;
                         Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(useX ? x : y, info);
                         if (foldResult != null) {
