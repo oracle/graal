@@ -25,5 +25,6 @@ int main(int argc, char **argv) {
   if (fileStat.st_size <= 0) {
     return 6;
   }
+  close(file);
   return 0;
 }

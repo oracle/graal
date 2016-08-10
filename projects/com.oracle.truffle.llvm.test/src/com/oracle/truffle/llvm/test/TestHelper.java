@@ -149,7 +149,9 @@ public class TestHelper {
     public static ProcessResult executeLLVMBinary(File bitcodeFile) {
         try {
             File objectFile = File.createTempFile(absolutePathToFileName(bitcodeFile), ".o");
+            objectFile.deleteOnExit();
             File executable = File.createTempFile(absolutePathToFileName(bitcodeFile), ".out");
+            executable.deleteOnExit();
             LLC.compileBitCodeToObjectFile(bitcodeFile, objectFile);
             GCC.compileObjectToMachineCode(objectFile, executable);
             String command = executable.getAbsolutePath();

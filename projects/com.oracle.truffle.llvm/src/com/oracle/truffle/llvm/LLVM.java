@@ -236,10 +236,7 @@ public class LLVM {
     }
 
     public static LLVMParserResult parseString(Source source, LLVMContext context) throws IOException {
-        LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
-        Injector injector = setup.createInjectorAndDoEMFRegistration();
-        XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
-        resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
+        XtextResourceSet resourceSet = createResourceSet();
         Resource resource = resourceSet.createResource(URI.createURI("dummy:/sulong.ll"));
         try (InputStream in = new StringInputStream(source.getCode())) {
             resource.load(in, resourceSet.getLoadOptions());
@@ -250,14 +247,13 @@ public class LLVM {
         }
         Model model = (Model) contents.get(0);
         LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
-        return llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
+        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
+        resource.unload();
+        return parserResult;
     }
 
     public static LLVMParserResult parseFile(Source source, LLVMContext context) {
-        LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
-        Injector injector = setup.createInjectorAndDoEMFRegistration();
-        XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
-        resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
+        XtextResourceSet resourceSet = createResourceSet();
         Resource resource = resourceSet.getResource(URI.createURI(source.getPath()), true);
         EList<EObject> contents = resource.getContents();
         if (contents.size() == 0) {
@@ -265,7 +261,17 @@ public class LLVM {
         }
         Model model = (Model) contents.get(0);
         LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
-        return llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
+        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
+        resource.unload();
+        return parserResult;
+    }
+
+    private static XtextResourceSet createResourceSet() {
+        LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
+        Injector injector = setup.createInjectorAndDoEMFRegistration();
+        XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
+        resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
+        return resourceSet;
     }
 
     public static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
