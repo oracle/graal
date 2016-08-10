@@ -29,13 +29,14 @@
  */
 package uk.ac.man.cs.llvm.ir;
 
+import java.math.BigInteger;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public interface ConstantGenerator {
 
     void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs);
 
-    void createBlockAddress(Type type, int method, int block);
+    void createBlockAddress(Type type, int function, int block);
 
     void createCastExpression(Type type, int opcodee, int value);
 
@@ -52,6 +53,8 @@ public interface ConstantGenerator {
     void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds);
 
     void createInteger(Type type, long value);
+
+    void createInteger(Type type, BigInteger value);
 
     void createNull(Type type);
 

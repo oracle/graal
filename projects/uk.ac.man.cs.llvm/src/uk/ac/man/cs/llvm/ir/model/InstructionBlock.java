@@ -70,7 +70,7 @@ import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public final class InstructionBlock implements InstructionGenerator, ValueSymbol {
 
-    private final FunctionDefinition method;
+    private final FunctionDefinition function;
 
     private final int blockIndex;
 
@@ -78,8 +78,8 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
 
     private String name = ValueSymbol.UNKNOWN;
 
-    public InstructionBlock(FunctionDefinition method, int index) {
-        this.method = method;
+    public InstructionBlock(FunctionDefinition function, int index) {
+        this.function = function;
         this.blockIndex = index;
     }
 
@@ -91,7 +91,7 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
 
     private void addInstruction(Instruction element) {
         if (element instanceof ValueInstruction) {
-            method.getSymbols().addSymbol(element);
+            function.getSymbols().addSymbol(element);
         }
         instructions.add(element);
     }
@@ -100,7 +100,7 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createAllocation(Type type, int count, int align) {
         addInstruction(new AllocateInstruction(
                         type,
-                        method.getSymbols().getSymbol(count),
+                        function.getSymbols().getSymbol(count),
                         align));
     }
 
@@ -112,8 +112,8 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
 
         BinaryOperationInstruction operation = new BinaryOperationInstruction(type, operator, Flag.decode(operator, flags));
 
-        operation.setLHS(method.getSymbols().getSymbol(lhs, operation));
-        operation.setRHS(method.getSymbols().getSymbol(rhs, operation));
+        operation.setLHS(function.getSymbols().getSymbol(lhs, operation));
+        operation.setRHS(function.getSymbols().getSymbol(rhs, operation));
 
         addInstruction(operation);
     }
@@ -121,28 +121,28 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     @Override
     public void createBranch(int block) {
         addInstruction(new BranchInstruction(
-                        method.getBlock(block)));
+                        function.getBlock(block)));
     }
 
     @Override
     public void createBranch(int condition, int blockTrue, int blockFalse) {
         addInstruction(new ConditionalBranchInstruction(
-                        method.getSymbols().getSymbol(condition),
-                        method.getBlock(blockTrue),
-                        method.getBlock(blockFalse)));
+                        function.getSymbols().getSymbol(condition),
+                        function.getBlock(blockTrue),
+                        function.getBlock(blockFalse)));
     }
 
     @Override
     public void createCall(Type type, int target, int[] arguments) {
         Call call;
         if (type == MetaType.VOID) {
-            call = new VoidCallInstruction(method.getSymbols().getSymbol(target));
+            call = new VoidCallInstruction(function.getSymbols().getSymbol(target));
         } else {
-            call = new CallInstruction(type, method.getSymbols().getSymbol(target));
+            call = new CallInstruction(type, function.getSymbols().getSymbol(target));
         }
 
         for (int i = 0; i < arguments.length; i++) {
-            call.addArgument(method.getSymbols().getSymbol(arguments[i], call));
+            call.addArgument(function.getSymbols().getSymbol(arguments[i], call));
         }
 
         addInstruction(call);
@@ -152,7 +152,7 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createCast(Type type, int opcode, int value) {
         CastInstruction cast = new CastInstruction(type, CastOperator.decode(opcode));
 
-        cast.setValue(method.getSymbols().getSymbol(value, cast));
+        cast.setValue(function.getSymbols().getSymbol(value, cast));
 
         addInstruction(cast);
     }
@@ -161,8 +161,8 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createCompare(Type type, int opcode, int lhs, int rhs) {
         CompareInstruction compare = new CompareInstruction(type, CompareOperator.decode(opcode));
 
-        compare.setLHS(method.getSymbols().getSymbol(lhs, compare));
-        compare.setRHS(method.getSymbols().getSymbol(rhs, compare));
+        compare.setLHS(function.getSymbols().getSymbol(lhs, compare));
+        compare.setRHS(function.getSymbols().getSymbol(rhs, compare));
 
         addInstruction(compare);
     }
@@ -171,15 +171,15 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createExtractElement(Type type, int vector, int index) {
         addInstruction(new ExtractElementInstruction(
                         type,
-                        method.getSymbols().getSymbol(vector),
-                        method.getSymbols().getSymbol(index)));
+                        function.getSymbols().getSymbol(vector),
+                        function.getSymbols().getSymbol(index)));
     }
 
     @Override
     public void createExtractValue(Type type, int aggregate, int index) {
         addInstruction(new ExtractValueInstruction(
                         type,
-                        method.getSymbols().getSymbol(aggregate),
+                        function.getSymbols().getSymbol(aggregate),
                         index));
     }
 
@@ -187,9 +187,9 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createGetElementPointer(Type type, int pointer, int[] indices, boolean isInbounds) {
         GetElementPointerInstruction gep = new GetElementPointerInstruction(type, isInbounds);
 
-        gep.setBasePointer(method.getSymbols().getSymbol(pointer, gep));
+        gep.setBasePointer(function.getSymbols().getSymbol(pointer, gep));
         for (int i = 0; i < indices.length; i++) {
-            gep.addIndex(method.getSymbols().getSymbol(indices[i], gep));
+            gep.addIndex(function.getSymbols().getSymbol(indices[i], gep));
         }
 
         addInstruction(gep);
@@ -199,10 +199,10 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createIndirectBranch(int address, int[] successors) {
         InstructionBlock[] blocks = new InstructionBlock[successors.length];
         for (int i = 0; i < successors.length; i++) {
-            blocks[i] = method.getBlock(successors[i]);
+            blocks[i] = function.getBlock(successors[i]);
         }
         addInstruction(new IndirectBranchInstruction(
-                        method.getSymbols().getSymbol(address),
+                        function.getSymbols().getSymbol(address),
                         blocks));
     }
 
@@ -210,25 +210,25 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createInsertElement(Type type, int vector, int index, int value) {
         addInstruction(new InsertElementInstruction(
                         type,
-                        method.getSymbols().getSymbol(vector),
-                        method.getSymbols().getSymbol(index),
-                        method.getSymbols().getSymbol(value)));
+                        function.getSymbols().getSymbol(vector),
+                        function.getSymbols().getSymbol(index),
+                        function.getSymbols().getSymbol(value)));
     }
 
     @Override
     public void createInsertValue(Type type, int aggregate, int index, int value) {
         addInstruction(new InsertValueInstruction(
                         type,
-                        method.getSymbols().getSymbol(aggregate),
+                        function.getSymbols().getSymbol(aggregate),
                         index,
-                        method.getSymbols().getSymbol(value)));
+                        function.getSymbols().getSymbol(value)));
     }
 
     @Override
     public void createLoad(Type type, int source, int align, boolean isVolatile) {
         LoadInstruction load = new LoadInstruction(type, align, isVolatile);
 
-        load.setSource(method.getSymbols().getSymbol(source, load));
+        load.setSource(function.getSymbols().getSymbol(source, load));
 
         addInstruction(load);
     }
@@ -239,8 +239,8 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
 
         for (int i = 0; i < values.length; i++) {
             phi.addCase(
-                            method.getSymbols().getSymbol(values[i], phi),
-                            method.getBlock(blocks[i]));
+                            function.getSymbols().getSymbol(values[i], phi),
+                            function.getBlock(blocks[i]));
         }
 
         addInstruction(phi);
@@ -255,7 +255,7 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createReturn(int value) {
         ReturnInstruction ret = new ReturnInstruction();
 
-        ret.setValue(method.getSymbols().getSymbol(value, ret));
+        ret.setValue(function.getSymbols().getSymbol(value, ret));
 
         addInstruction(ret);
     }
@@ -264,9 +264,9 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void createSelect(Type type, int condition, int trueValue, int falseValue) {
         SelectInstruction select = new SelectInstruction(type);
 
-        select.setCondition(method.getSymbols().getSymbol(condition, select));
-        select.setTrueValue(method.getSymbols().getSymbol(trueValue, select));
-        select.setFalseValue(method.getSymbols().getSymbol(falseValue, select));
+        select.setCondition(function.getSymbols().getSymbol(condition, select));
+        select.setTrueValue(function.getSymbols().getSymbol(trueValue, select));
+        select.setFalseValue(function.getSymbols().getSymbol(falseValue, select));
 
         addInstruction(select);
     }
@@ -274,17 +274,17 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     @Override
     public void createShuffleVector(Type type, int vector1, int vector2, int mask) {
         addInstruction(new ShuffleVectorInstruction(type,
-                        method.getSymbols().getSymbol(vector1),
-                        method.getSymbols().getSymbol(vector2),
-                        method.getSymbols().getSymbol(mask)));
+                        function.getSymbols().getSymbol(vector1),
+                        function.getSymbols().getSymbol(vector2),
+                        function.getSymbols().getSymbol(mask)));
     }
 
     @Override
     public void createStore(int destination, int source, int align, boolean isVolatile) {
         StoreInstruction store = new StoreInstruction(align, isVolatile);
 
-        store.setDestination(method.getSymbols().getSymbol(destination, store));
-        store.setSource(method.getSymbols().getSymbol(source, store));
+        store.setDestination(function.getSymbols().getSymbol(destination, store));
+        store.setSource(function.getSymbols().getSymbol(source, store));
 
         addInstruction(store);
     }
@@ -295,13 +295,13 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
         InstructionBlock[] blocks = new InstructionBlock[caseBlocks.length];
 
         for (int i = 0; i < values.length; i++) {
-            values[i] = method.getSymbols().getSymbol(caseValues[i]);
-            blocks[i] = method.getBlock(caseBlocks[i]);
+            values[i] = function.getSymbols().getSymbol(caseValues[i]);
+            blocks[i] = function.getBlock(caseBlocks[i]);
         }
 
         addInstruction(new SwitchInstruction(
-                        method.getSymbols().getSymbol(condition),
-                        method.getBlock(defaultBlock),
+                        function.getSymbols().getSymbol(condition),
+                        function.getBlock(defaultBlock),
                         values,
                         blocks));
     }
@@ -311,12 +311,12 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
         InstructionBlock[] blocks = new InstructionBlock[caseBlocks.length];
 
         for (int i = 0; i < blocks.length; i++) {
-            blocks[i] = method.getBlock(caseBlocks[i]);
+            blocks[i] = function.getBlock(caseBlocks[i]);
         }
 
         addInstruction(new SwitchOldInstruction(
-                        method.getSymbols().getSymbol(condition),
-                        method.getBlock(defaultBlock),
+                        function.getSymbols().getSymbol(condition),
+                        function.getBlock(defaultBlock),
                         caseConstants,
                         blocks));
     }

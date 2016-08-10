@@ -47,6 +47,7 @@ import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
+import uk.ac.man.cs.llvm.ir.model.GlobalAlias;
 import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
 import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
@@ -128,6 +129,10 @@ public final class LLVMFrameDescriptors {
 
         public Map<String, Map<InstructionBlock, List<FrameSlot>>> getSlots() {
             return slots;
+        }
+
+        @Override
+        public void visit(GlobalAlias alias) {
         }
 
         @Override

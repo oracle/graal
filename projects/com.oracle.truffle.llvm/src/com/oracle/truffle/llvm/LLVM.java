@@ -127,6 +127,10 @@ public class LLVM {
                     }
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
+                } else if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE)) {
+                    LLVMParserResult parserResult = parseBitcodeFile(code, context);
+                    mainFunction[0] = parserResult.getMainFunction();
+                    handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
 

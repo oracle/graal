@@ -95,6 +95,7 @@ import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
@@ -283,6 +284,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     default:
                         return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(bits, constant.getValue()));
                 }
+            }
+            if (symbol instanceof BigIntegerConstant) {
+                BigIntegerConstant constant = (BigIntegerConstant) symbol;
+                int bits = ((IntegerType) constant.getType()).getBitCount();
+                return new LLVMIVarBitLiteralNode(LLVMIVarBit.create(bits, constant.getValue().toByteArray()));
             }
             if (symbol instanceof FloatingPointConstant) {
                 FloatingPointConstant constant = (FloatingPointConstant) symbol;

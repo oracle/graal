@@ -53,7 +53,7 @@ public class Module implements ParserListener {
 
     protected final List<TargetInformation> info = new ArrayList<>();
 
-    protected final List<FunctionType> methods = new ArrayList<>();
+    protected final List<FunctionType> functions = new ArrayList<>();
 
     protected final List<Type> symbols = new ArrayList<>();
 
@@ -73,18 +73,18 @@ public class Module implements ParserListener {
                 return version.createConstants(types, symbols, generator);
 
             case FUNCTION: {
-                FunctionType method = methods.remove(0);
+                FunctionType function = functions.remove(0);
 
                 FunctionGenerator gen = generator.generateFunction();
 
                 List<Type> sym = new ArrayList<>(symbols);
 
-                for (Type arg : method.getArgumentTypes()) {
+                for (Type arg : function.getArgumentTypes()) {
                     gen.createParameter(arg);
                     sym.add(arg);
                 }
 
-                return version.createMethod(types, sym, gen, mode);
+                return version.createFunction(types, sym, gen, mode);
             }
             case IDENTIFICATION:
                 return new Identification();
@@ -130,9 +130,21 @@ public class Module implements ParserListener {
                 createFunction(args);
                 break;
 
+            case ALIAS_OLD:
+                createAliasOld(args);
+                break;
+
             default:
                 break;
         }
+    }
+
+    protected void createAliasOld(long[] args) {
+        Type type = types.get(args[0]);
+        int value = (int) args[1];
+
+        generator.createAlias(type, value);
+        symbols.add(type);
     }
 
     protected void createFunction(long[] args) {
@@ -142,7 +154,7 @@ public class Module implements ParserListener {
         generator.createFunction(type, isPrototype);
         symbols.add(type);
         if (!isPrototype) {
-            methods.add(type);
+            functions.add(type);
         }
     }
 

@@ -29,11 +29,13 @@
  */
 package uk.ac.man.cs.llvm.ir.model;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
+import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
@@ -66,7 +68,7 @@ public final class ModelModule implements ModuleGenerator {
 
     private final Symbols symbols = new Symbols();
 
-    private int currentMethod = -1;
+    private int currentFunction = -1;
 
     public ModelModule() {
     }
@@ -87,6 +89,14 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
+    public void createAlias(Type type, int aliasedValue) {
+        GlobalAlias alias = new GlobalAlias(type, aliasedValue);
+
+        symbols.addSymbol(alias);
+        variables.add(alias);
+    }
+
+    @Override
     public void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs) {
         boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
 
@@ -98,10 +108,10 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createBlockAddress(Type type, int method, int block) {
+    public void createBlockAddress(Type type, int function, int block) {
         symbols.addSymbol(new BlockAddressConstant(
                         type,
-                        symbols.getSymbol(method),
+                        symbols.getSymbol(function),
                         null));
     }
 
@@ -162,11 +172,16 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
+    public void createInteger(Type type, BigInteger value) {
+        symbols.addSymbol(new BigIntegerConstant((IntegerType) type, value));
+    }
+
+    @Override
     public void createFunction(FunctionType type, boolean isPrototype) {
         if (isPrototype) {
-            FunctionDeclaration method = new FunctionDeclaration(type);
-            symbols.addSymbol(method);
-            declares.add(method);
+            FunctionDeclaration function = new FunctionDeclaration(type);
+            symbols.addSymbol(function);
+            declares.add(function);
         } else {
             FunctionDefinition method = new FunctionDefinition(type);
             symbols.addSymbol(method);
@@ -210,15 +225,15 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public FunctionGenerator generateFunction() {
-        while (++currentMethod < symbols.getSize()) {
-            Symbol symbol = symbols.getSymbol(currentMethod);
+        while (++currentFunction < symbols.getSize()) {
+            Symbol symbol = symbols.getSymbol(currentFunction);
             if (symbol instanceof FunctionDefinition) {
-                FunctionDefinition method = (FunctionDefinition) symbol;
-                method.getSymbols().addSymbols(symbols);
-                return method;
+                FunctionDefinition function = (FunctionDefinition) symbol;
+                function.getSymbols().addSymbols(symbols);
+                return function;
             }
         }
-        throw new RuntimeException("Trying to generate undefined method");
+        throw new RuntimeException("Trying to generate undefined function");
     }
 
     @Override

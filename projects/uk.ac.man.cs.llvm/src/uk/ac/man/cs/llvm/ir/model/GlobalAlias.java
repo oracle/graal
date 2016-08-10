@@ -27,43 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.bc;
+package uk.ac.man.cs.llvm.ir.model;
 
-public enum Primitive {
-    ALIGNMENT(true, Integer.SIZE),
-    DEAFULT_ID(true, 6),
-    CHAR6(true, 6),
+import uk.ac.man.cs.llvm.ir.types.Type;
 
-    ABBREVIATED_RECORD_OPERANDS(false, 5),
-    SUBBLOCK_ID(false, 8),
-    SUBBLOCK_ID_SIZE(false, 4),
-    UNABBREVIATED_RECORD_ID(false, 6),
-    UNABBREVIATED_RECORD_OPERAND(false, 6),
-    UNABBREVIATED_RECORD_OPS(false, 6),
+public final class GlobalAlias extends GlobalValueSymbol {
 
-    USER_OPERAND_ARRAY_LENGTH(false, 6),
-    USER_OPERAND_DATA(false, 5),
-    USER_OPERAND_LITERAL(false, 8),
-    USER_OPERAND_TYPE(true, 3);
-
-    private final boolean isFixed;
-
-    private final int bits;
-
-    Primitive(boolean isFixed, int bits) {
-        this.isFixed = isFixed;
-        this.bits = bits;
+    public GlobalAlias(Type type, int aliasedValue) {
+        super(type, aliasedValue, 0);
     }
 
-    public int getBits() {
-        return bits;
+    @Override
+    protected void accept(ModelVisitor visitor) {
+        visitor.visit(this);
     }
 
-    public boolean isFixed() {
-        return isFixed;
+    @Override
+    public int getAlign() {
+        return getValue() instanceof GlobalValueSymbol ? ((GlobalValueSymbol) getValue()).getAlign() : getAlign();
     }
 
-    public boolean isVariableBitRate() {
-        return !isFixed();
+    @Override
+    public int getInitialiser() {
+        // aliases always have a value so compensate for zero test is super class
+        return super.getInitialiser() + 1;
     }
 }

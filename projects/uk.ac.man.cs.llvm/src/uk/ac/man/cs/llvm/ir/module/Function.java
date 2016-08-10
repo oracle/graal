@@ -196,7 +196,7 @@ public class Function implements ParserListener {
                 break;
 
             default:
-                System.out.printf("BLOCK #12-METHOD: INSTRUCTION %s%n", record);
+                System.out.printf("BLOCK #12-FUNCTION: INSTRUCTION %s%n", record);
                 break;
         }
     }
@@ -245,16 +245,16 @@ public class Function implements ParserListener {
     protected void crateCall(long[] args) {
         int i = 2;
 
-        FunctionType method = (FunctionType) types.get(args[i++]);
+        FunctionType function = (FunctionType) types.get(args[i++]);
 
         int target = getIndex(args[i++]);
         int[] arguments = new int[args.length - i];
         int j = 0;
-        while (i < arguments.length) {
+        while (j < arguments.length) {
             arguments[j++] = getIndex(args[i++]);
         }
 
-        Type type = method.getReturnType();
+        Type type = function.getReturnType();
 
         code.createCall(type, target, arguments);
 

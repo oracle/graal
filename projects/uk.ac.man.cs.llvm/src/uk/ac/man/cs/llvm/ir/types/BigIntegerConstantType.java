@@ -27,43 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.bc;
+package uk.ac.man.cs.llvm.ir.types;
 
-public enum Primitive {
-    ALIGNMENT(true, Integer.SIZE),
-    DEAFULT_ID(true, 6),
-    CHAR6(true, 6),
+import java.math.BigInteger;
 
-    ABBREVIATED_RECORD_OPERANDS(false, 5),
-    SUBBLOCK_ID(false, 8),
-    SUBBLOCK_ID_SIZE(false, 4),
-    UNABBREVIATED_RECORD_ID(false, 6),
-    UNABBREVIATED_RECORD_OPERAND(false, 6),
-    UNABBREVIATED_RECORD_OPS(false, 6),
+public final class BigIntegerConstantType implements Type {
 
-    USER_OPERAND_ARRAY_LENGTH(false, 6),
-    USER_OPERAND_DATA(false, 5),
-    USER_OPERAND_LITERAL(false, 8),
-    USER_OPERAND_TYPE(true, 3);
+    public final IntegerType type;
 
-    private final boolean isFixed;
+    private final BigInteger value;
 
-    private final int bits;
-
-    Primitive(boolean isFixed, int bits) {
-        this.isFixed = isFixed;
-        this.bits = bits;
+    public BigIntegerConstantType(IntegerType type, BigInteger value) {
+        this.type = type;
+        this.value = value;
     }
 
-    public int getBits() {
-        return bits;
+    @Override
+    public IntegerType getType() {
+        return type;
     }
 
-    public boolean isFixed() {
-        return isFixed;
+    public BigInteger getValue() {
+        return value;
     }
 
-    public boolean isVariableBitRate() {
-        return !isFixed();
+    @Override
+    public int sizeof() {
+        return type.sizeof();
+    }
+
+    @Override
+    public String toString() {
+        if (getType().getBitCount() == 1) {
+            return value.equals(BigInteger.ZERO) ? "i1 false" : "i1 true";
+        }
+        return String.format("%s %s", type, value);
     }
 }

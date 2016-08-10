@@ -46,7 +46,7 @@ public class FunctionV32 extends FunctionV38 {
     @Override
     protected void createAllocation(long[] args) {
         int i = 0;
-        Type type = types.get(args[0]);
+        Type type = types.get(args[i++]);
         i++; // Unused parameter
         int count = getIndexV0(args[i++]);
         int align = getAlign(args[i++]);
@@ -62,7 +62,7 @@ public class FunctionV32 extends FunctionV38 {
         int target = getIndex(args[i++]);
         int[] arguments = new int[args.length - i];
         int j = 0;
-        while (i < arguments.length) {
+        while (j < arguments.length) {
             arguments[j++] = getIndex(args[i++]);
         }
 
