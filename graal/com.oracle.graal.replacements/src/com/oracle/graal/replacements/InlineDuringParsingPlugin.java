@@ -35,10 +35,23 @@ public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        if (method.hasBytecodes() && method.getDeclaringClass().isLinked() && method.canBeInlined() && !method.isSynchronized() && checkSize(method, args) &&
-                        b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-            return new InlineInfo(method, false);
+        // @formatter:off
+        if (method.hasBytecodes() &&
+            method.getDeclaringClass().isLinked() &&
+            method.canBeInlined()) {
+
+            // Test force inlining first
+            if (method.shouldBeInlined()) {
+                return new InlineInfo(method, false);
+            }
+
+            if (!method.isSynchronized() &&
+                checkSize(method, args) &&
+                b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
+                return new InlineInfo(method, false);
+            }
         }
+        // @formatter:on
         return null;
     }
 
