@@ -36,7 +36,7 @@
  * there is just one thing to do - the {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder
  * creator of the virtual machine} needs to turn debugging on when constructing its polyglot
  * execution engine:
- * 
+ *
  * <pre>
  * vm = {@link com.oracle.truffle.api.vm.PolyglotEngine#buildNew()}.
  *     {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
@@ -52,7 +52,7 @@
  *         }
  *     }).{@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#build() build()};
  * </pre>
- * 
+ *
  * The debugging is controlled by events emitted by the Truffle virtual machine at important
  * moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent} is sent when a call to
  * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} is
@@ -93,13 +93,6 @@
  * language-agnostic. A {@link com.oracle.truffle.api.TruffleLanguage language implementation}
  * enables debugging by supplying extra information in every AST that configures debugger behavior
  * for code written in that particular language.
- * <p>
- * This extra information is expressed as
- * {@linkplain com.oracle.truffle.api.source.SourceSection#withTags(java.lang.String...) tags}. The
- * language implementation applies tags to the {@link com.oracle.truffle.api.source.SourceSection
- * source information} associated with {@link com.oracle.truffle.api.nodes.Node nodes} relevant to
- * debugging. At this time the debugger requries two tags for basic behavior; more tags may be
- * required in the future as the debugger acquires more functionality.
  * <ul>
  * <li>{@link com.oracle.truffle.api.debug.Debugger#HALT_TAG}: must be applied to every Node where
  * the debugger should halt during ordinary <em>stepping</em>. This typically corresponds to
