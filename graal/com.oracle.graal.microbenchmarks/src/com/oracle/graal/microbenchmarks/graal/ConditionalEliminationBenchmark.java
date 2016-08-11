@@ -72,7 +72,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
     @Benchmark
     @Warmup(iterations = 20)
-    public void nullness(Nullness s, @SuppressWarnings("unused") GraalState g) {
+    public void nullness(Nullness s, GraalState g) {
         new DominatorConditionalEliminationPhase(false).apply(s.graph, new PhaseContext(g.providers));
     }
 
@@ -123,7 +123,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public void search(Search s, @SuppressWarnings("unused") GraalState g) {
+    public void search(Search s, GraalState g) {
         new DominatorConditionalEliminationPhase(false).apply(s.graph, new PhaseContext(g.providers));
     }
 }
