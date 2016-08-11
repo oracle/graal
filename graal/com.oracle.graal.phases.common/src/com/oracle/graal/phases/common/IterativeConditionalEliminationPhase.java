@@ -54,7 +54,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
         int count = 0;
         while (true) {
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                new DominatorConditionalEliminationPhase(fullSchedule).apply(graph);
+                new DominatorConditionalEliminationPhase(fullSchedule).apply(graph, context);
             }
             if (listener.getNodes().isEmpty()) {
                 break;

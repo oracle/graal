@@ -47,7 +47,6 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.ConditionAnchorNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedNode;
@@ -70,6 +69,7 @@ import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.GuardedUnsafeLoadNode;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
@@ -505,12 +505,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      */
     protected void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
-        if (load.getGuardingCondition() != null) {
-            ConditionAnchorNode valueAnchorNode = graph.add(new ConditionAnchorNode(load.getGuardingCondition()));
-            ReadNode memoryRead = createUnsafeRead(graph, load, valueAnchorNode);
-            graph.replaceFixedWithFixed(load, valueAnchorNode);
-            graph.addAfterFixed(valueAnchorNode, memoryRead);
+        if (load instanceof GuardedUnsafeLoadNode) {
+            GuardedUnsafeLoadNode guardedLoad = (GuardedUnsafeLoadNode) load;
+            GuardingNode guard = guardedLoad.getGuard();
+            if (guard == null) {
+                // can float freely if the guard folded away
+                ReadNode memoryRead = createUnsafeRead(graph, load, null);
+                memoryRead.setForceFixed(false);
+                graph.replaceFixedWithFixed(load, memoryRead);
+            } else {
+                // must be guarded, but flows below the guard
+                ReadNode memoryRead = createUnsafeRead(graph, load, guard);
+                graph.replaceFixedWithFixed(load, memoryRead);
+            }
         } else {
+            // never had a guarding condition so it must be fixed, creation of the read will force
+            // it to be fixed
             ReadNode memoryRead = createUnsafeRead(graph, load, null);
             graph.replaceFixedWithFixed(load, memoryRead);
         }

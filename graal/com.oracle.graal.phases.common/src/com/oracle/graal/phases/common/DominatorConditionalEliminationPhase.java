@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
 import com.oracle.graal.compiler.common.type.IntegerStamp;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
@@ -44,11 +45,13 @@ import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeMap;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.BinaryOpLogicNode;
 import com.oracle.graal.nodes.ConditionAnchorNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.DeoptimizingGuard;
 import com.oracle.graal.nodes.FixedGuardNode;
@@ -67,6 +70,8 @@ import com.oracle.graal.nodes.calc.AndNode;
 import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
 import com.oracle.graal.nodes.calc.BinaryNode;
 import com.oracle.graal.nodes.calc.IntegerEqualsNode;
+import com.oracle.graal.nodes.calc.ObjectEqualsNode;
+import com.oracle.graal.nodes.calc.PointerEqualsNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
@@ -74,21 +79,24 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
+import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.TypeSwitchNode;
 import com.oracle.graal.nodes.spi.NodeWithState;
 import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.Phase;
+import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.LoweringPhase.Frame;
 import com.oracle.graal.phases.schedule.SchedulePhase;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
 
-public class DominatorConditionalEliminationPhase extends Phase {
+public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
     private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
     private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private static final DebugCounter counterIfsKilled = Debug.counter("CE_KilledIfs");
+    private static final DebugCounter counterLFFolded = Debug.counter("ConstantLFFolded");
     private final boolean fullSchedule;
 
     public DominatorConditionalEliminationPhase(boolean fullSchedule) {
@@ -97,7 +105,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
             Function<Block, Iterable<? extends Node>> blockToNodes;
             Function<Node, Block> nodeToBlock;
@@ -127,7 +135,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 nodeToBlock = n -> cfg.blockFor(n);
                 startBlock = cfg.getStartBlock();
             }
-            new Instance(graph, blockToNodes, nodeToBlock).processBlock(startBlock);
+            new Instance(graph, blockToNodes, nodeToBlock, context).processBlock(startBlock);
         }
     }
 
@@ -136,18 +144,20 @@ public class DominatorConditionalEliminationPhase extends Phase {
         protected Deque<LoopExitNode> loopExits;
         protected final Function<Block, Iterable<? extends Node>> blockToNodes;
         protected final Function<Node, Block> nodeToBlock;
+        protected final CanonicalizerTool tool;
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
          */
         private Deque<PendingTest> pendingTests;
 
         public Instance(StructuredGraph graph, Function<Block, Iterable<? extends Node>> blockToNodes,
-                        Function<Node, Block> nodeToBlock) {
+                        Function<Node, Block> nodeToBlock, PhaseContext context) {
             map = graph.createNodeMap();
             loopExits = new ArrayDeque<>();
             this.blockToNodes = blockToNodes;
             this.nodeToBlock = nodeToBlock;
             pendingTests = new ArrayDeque<>();
+            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions());
         }
 
         public void processBlock(Block startBlock) {
@@ -294,6 +304,25 @@ public class DominatorConditionalEliminationPhase extends Phase {
             }
 
             protected void registerNewCondition(LogicNode condition, boolean negated, ValueNode guard) {
+                if (!negated && condition instanceof PointerEqualsNode) {
+                    PointerEqualsNode pe = (PointerEqualsNode) condition;
+                    ValueNode x = pe.getX();
+                    ValueNode y = pe.getY();
+                    if (y.isConstant()) {
+                        JavaConstant constant = y.asJavaConstant();
+                        Stamp succeeding = pe.getSucceedingStampForX(negated);
+                        if (succeeding == null && pe instanceof ObjectEqualsNode && guard instanceof FixedGuardNode) {
+                            succeeding = y.stamp();
+                        }
+                        if (succeeding != null) {
+                            if (y.stamp() instanceof ObjectStamp) {
+                                GuardedConstantStamp cos = new GuardedConstantStamp(constant, (ObjectStamp) succeeding);
+                                registerNewStamp(x, cos, guard);
+                                return;
+                            }
+                        }
+                    }
+                }
                 if (condition instanceof UnaryOpLogicNode) {
                     UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
@@ -333,7 +362,55 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 registerCondition(condition, negated, guard);
             }
 
+            @SuppressWarnings("try")
+            private Pair<InfoElement, Stamp> foldFromConstLoadField(LoadFieldNode loadFieldNode, InfoElementProvider info) {
+                ValueNode object = loadFieldNode.object();
+                if (!loadFieldNode.field().isStatic()) {
+                    // look if we got stamp info for the object and return the constant stamp
+                    Pair<InfoElement, Stamp> pair = getConstantObjectStamp(info, object);
+                    if (pair == null) {
+                        pair = recursiveFoldStamp(object, info);
+                    }
+                    if (pair != null) {
+                        Stamp s = pair.second;
+                        if (s instanceof GuardedConstantStamp) {
+                            ConstantNode c = tryFoldFromLoadField(loadFieldNode, pair.second);
+                            if (c != null) {
+                                counterLFFolded.increment();
+                                if (c.stamp() instanceof ObjectStamp) {
+                                    GuardedConstantStamp cos = new GuardedConstantStamp(c.asJavaConstant(), (ObjectStamp) c.stamp());
+                                    return new Pair<>(pair.first, cos);
+                                }
+                                return new Pair<>(pair.first, c.stamp());
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+
+            private ConstantNode tryFoldFromLoadField(LoadFieldNode lf, Stamp x) {
+                GuardedConstantStamp cos = (GuardedConstantStamp) x;
+                return lf.asConstant(tool, cos.objectConstant);
+            }
+
+            private Pair<InfoElement, Stamp> getConstantObjectStamp(InfoElementProvider infos, ValueNode n) {
+                for (InfoElement infoElement : infos.getInfoElements(n)) {
+                    Stamp s = infoElement.getStamp();
+                    if (s instanceof GuardedConstantStamp) {
+                        return new Pair<>(infoElement, s);
+                    }
+                }
+                return null;
+            }
+
             Pair<InfoElement, Stamp> recursiveFoldStamp(Node node, InfoElementProvider info) {
+                if (node instanceof LoadFieldNode) {
+                    Pair<InfoElement, Stamp> pair = foldFromConstLoadField((LoadFieldNode) node, info);
+                    if (pair != null) {
+                        return pair;
+                    }
+                }
                 if (node instanceof UnaryNode) {
                     UnaryNode unary = (UnaryNode) node;
                     ValueNode value = unary.getValue();
@@ -364,6 +441,15 @@ public class DominatorConditionalEliminationPhase extends Phase {
                         Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(x, info);
                         if (foldResult != null) {
                             Stamp result = binary.foldStamp(foldResult.second, y.stamp());
+                            if (result != null) {
+                                return new Pair<>(foldResult.first, result);
+                            }
+                        }
+                    } else if (x instanceof LoadFieldNode || y instanceof LoadFieldNode) {
+                        boolean useX = x instanceof LoadFieldNode;
+                        Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(useX ? x : y, info);
+                        if (foldResult != null) {
+                            Stamp result = binary.foldStamp(useX ? foldResult.second : x.stamp(), useX ? y.stamp() : foldResult.second);
                             if (result != null) {
                                 return new Pair<>(foldResult.first, result);
                             }
@@ -860,5 +946,20 @@ public class DominatorConditionalEliminationPhase extends Phase {
         public void popElement() {
             infos.remove(infos.size() - 1);
         }
+    }
+
+    private static class GuardedConstantStamp extends ObjectStamp {
+        private final JavaConstant objectConstant;
+
+        GuardedConstantStamp(JavaConstant objectConstant, ObjectStamp succeedingStamp) {
+            super(succeedingStamp.type(), succeedingStamp.isExactType(), succeedingStamp.nonNull(), succeedingStamp.alwaysNull());
+            this.objectConstant = objectConstant;
+        }
+
+    }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 1.5f;
     }
 }

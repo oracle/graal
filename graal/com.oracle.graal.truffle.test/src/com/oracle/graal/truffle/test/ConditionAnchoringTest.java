@@ -131,7 +131,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
         // apply DominatorConditionalEliminationPhase
         DominatorConditionalEliminationPhase conditionalElimination = new DominatorConditionalEliminationPhase(false);
-        conditionalElimination.apply(graph);
+        conditionalElimination.apply(graph, context);
 
         floatingReads = graph.getNodes().filter(FloatingReadNode.class).filter(n -> ((FloatingReadNode) n).getLocationIdentity() instanceof ObjectLocationIdentity);
         conditionAnchors = graph.getNodes().filter(ConditionAnchorNode.class);
