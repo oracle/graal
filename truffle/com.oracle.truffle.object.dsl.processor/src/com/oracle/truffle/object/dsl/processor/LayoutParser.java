@@ -187,6 +187,9 @@ public class LayoutParser {
 
     private void parseShapeConstructor(ExecutableElement methodElement) {
         List<? extends VariableElement> parameters = methodElement.getParameters();
+        if (!parameters.isEmpty()) {
+            hasShapeProperties = true;
+        }
 
         if (superLayout != null) {
             final List<PropertyModel> superShapeProperties = superLayout.getAllShapeProperties();
@@ -201,7 +204,6 @@ public class LayoutParser {
             setPropertyType(element, property, element.asType());
             parseConstructorParameterAnnotations(property, element);
             property.setIsShapeProperty(true);
-            hasShapeProperties = true;
         }
     }
 
@@ -211,7 +213,7 @@ public class LayoutParser {
 
         List<? extends VariableElement> parameters = methodElement.getParameters();
 
-        if (hasShapeProperties || (superLayout != null && superLayout.hasShapeProperties())) {
+        if (hasShapeProperties) {
             if (parameters.isEmpty()) {
                 processor.reportError(methodElement, "If an @Layout has shape properties the constructor must have parameters");
             }
