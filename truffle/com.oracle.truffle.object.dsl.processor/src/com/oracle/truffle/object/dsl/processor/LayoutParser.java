@@ -187,11 +187,14 @@ public class LayoutParser {
 
     private void parseShapeConstructor(ExecutableElement methodElement) {
         List<? extends VariableElement> parameters = methodElement.getParameters();
+        if (!parameters.isEmpty()) {
+            hasShapeProperties = true;
+        }
 
         if (superLayout != null) {
             final List<PropertyModel> superShapeProperties = superLayout.getAllShapeProperties();
             checkSharedParameters(methodElement, parameters, superShapeProperties);
-            parameters = parameters.subList(superLayout.getAllShapeProperties().size(), parameters.size());
+            parameters = parameters.subList(superShapeProperties.size(), parameters.size());
         }
 
         for (VariableElement element : parameters) {
@@ -201,7 +204,6 @@ public class LayoutParser {
             setPropertyType(element, property, element.asType());
             parseConstructorParameterAnnotations(property, element);
             property.setIsShapeProperty(true);
-            hasShapeProperties = true;
         }
     }
 
@@ -211,7 +213,7 @@ public class LayoutParser {
 
         List<? extends VariableElement> parameters = methodElement.getParameters();
 
-        if (hasShapeProperties || (superLayout != null && superLayout.hasShapeProperties())) {
+        if (hasShapeProperties) {
             if (parameters.isEmpty()) {
                 processor.reportError(methodElement, "If an @Layout has shape properties the constructor must have parameters");
             }
@@ -232,11 +234,6 @@ public class LayoutParser {
             parameters = parameters.subList(1, parameters.size());
         }
 
-        if (superLayout != null) {
-            final List<PropertyModel> superProperties = superLayout.getAllInstanceProperties();
-            checkSharedParameters(methodElement, parameters, superProperties);
-        }
-
         addConstructorProperties(methodElement, parameters);
     }
 
@@ -250,11 +247,6 @@ public class LayoutParser {
             processor.reportError(methodElement, "build() must have Object[] for return type");
         }
 
-        if (superLayout != null) {
-            final List<PropertyModel> superProperties = superLayout.getAllInstanceProperties();
-            checkSharedParameters(methodElement, parameters, superProperties);
-        }
-
         addConstructorProperties(methodElement, parameters);
     }
 
@@ -266,7 +258,14 @@ public class LayoutParser {
     }
 
     private void addConstructorProperties(ExecutableElement methodElement, List<? extends VariableElement> parameters) {
-        for (VariableElement element : parameters) {
+        List<? extends VariableElement> ownParameters = parameters;
+        if (superLayout != null) {
+            final List<PropertyModel> superProperties = superLayout.getAllInstanceProperties();
+            checkSharedParameters(methodElement, parameters, superProperties);
+            ownParameters = parameters.subList(superProperties.size(), parameters.size());
+        }
+
+        for (VariableElement element : ownParameters) {
             final String parameterName = element.getSimpleName().toString();
 
             if (parameterName.equals("factory")) {
@@ -597,10 +596,6 @@ public class LayoutParser {
         final List<PropertyModel> models = new ArrayList<>();
 
         for (String propertyName : constructorProperties) {
-            if (superLayout != null && superLayout.hasProperty(propertyName)) {
-                continue;
-            }
-
             models.add(getProperty(propertyName).build());
         }
 

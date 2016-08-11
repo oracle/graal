@@ -135,4 +135,9 @@ public class PropertyModel {
         return isShapeProperty;
     }
 
+    @Override
+    public String toString() {
+        return name + " type=" + type + " shape=" + isShapeProperty;
+    }
+
 }

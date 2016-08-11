@@ -466,12 +466,6 @@ public class LayoutGenerator {
             stream.println(") {");
         }
 
-        for (PropertyModel property : layout.getAllShapeProperties()) {
-            if (!property.getType().getKind().isPrimitive() && !property.isNullable()) {
-                stream.printf("        assert %s != null;%n", property.getName());
-            }
-        }
-
         stream.printf("        return LAYOUT.createShape(new %sType(", layout.getName());
 
         if (layout.hasShapeProperties()) {
