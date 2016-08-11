@@ -539,13 +539,6 @@ public final class REPLServer {
         return info;
     }
 
-    @Deprecated
-    BreakpointInfo setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.StandardSyntaxTag tag, boolean oneShot) throws IOException {
-        final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
-        info.activate();
-        return info;
-    }
-
     synchronized BreakpointInfo findBreakpoint(int id) {
         return breakpoints.get(id);
     }
@@ -591,31 +584,6 @@ public final class REPLServer {
             return breakpoint.getLocationDescription();
         }
 
-    }
-
-    final class TagBreakpointInfo extends BreakpointInfo {
-        private final com.oracle.truffle.api.instrument.StandardSyntaxTag tag;
-
-        private TagBreakpointInfo(com.oracle.truffle.api.instrument.StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
-            super(ignoreCount, oneShot);
-            this.tag = tag;
-        }
-
-        @Override
-        protected void activate() throws IOException {
-            breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
-            // TODO (mlvdv) check if resolved
-            breakpoints.put(uid, this);
-
-        }
-
-        @Override
-        String describeLocation() {
-            if (breakpoint == null) {
-                return "Tag: " + tag;
-            }
-            return breakpoint.getLocationDescription();
-        }
     }
 
     abstract class BreakpointInfo {

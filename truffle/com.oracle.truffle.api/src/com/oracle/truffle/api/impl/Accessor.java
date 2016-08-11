@@ -84,8 +84,6 @@ public abstract class Accessor {
 
         public abstract Object getInstrumentationHandler(Object vm);
 
-        public abstract Object getInstrumenter(Object vm);
-
         public abstract Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName);
 
         public abstract void dispatchEvent(Object vm, Object event, int type);
@@ -96,7 +94,7 @@ public abstract class Accessor {
     }
 
     public abstract static class LanguageSupport {
-        public abstract Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Object instrumenter, Map<String, Object> config);
+        public abstract Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config);
 
         public abstract Object eval(TruffleLanguage<?> l, Source s, Map<Source, CallTarget> cache) throws IOException;
 
@@ -105,10 +103,6 @@ public abstract class Accessor {
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 
         public abstract Object languageGlobal(TruffleLanguage.Env env);
-
-        public abstract boolean isInstrumentable(Node node, TruffleLanguage<?> language);
-
-        public abstract Object createWrapperNode(Node node, TruffleLanguage<?> language);
 
         public abstract void dispose(TruffleLanguage<?> impl, Env env);
 
@@ -139,10 +133,6 @@ public abstract class Accessor {
         public abstract void onLoad(RootNode rootNode);
     }
 
-    public abstract static class OldInstrumentSupport {
-        public abstract void probeAST(RootNode rootNode);
-    }
-
     protected abstract static class Frames {
         protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
@@ -152,7 +142,6 @@ public abstract class Accessor {
     private static Accessor.LanguageSupport API;
     private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
-    private static Accessor.OldInstrumentSupport INSTRUMENT;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
     private static Accessor.Frames FRAMES;
@@ -184,18 +173,6 @@ public abstract class Accessor {
                 return null;
             }
 
-            @SuppressWarnings("deprecation")
-            @Override
-            protected boolean isInstrumentable(Node node) {
-                return false;
-            }
-
-            @SuppressWarnings("deprecation")
-            @Override
-            protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-                return null;
-            }
-
             @Override
             protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
                 return null;
@@ -205,11 +182,6 @@ public abstract class Accessor {
         new Node() {
         }.getRootNode();
 
-        try {
-            Class.forName("com.oracle.truffle.api.instrument.Instrumenter", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
-        }
         conditionallyInitDebugger();
     }
 
@@ -240,11 +212,6 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             NODES = this.nodes();
-        } else if (this.getClass().getSimpleName().endsWith("Instrument")) {
-            if (INSTRUMENT != null) {
-                throw new IllegalStateException();
-            }
-            INSTRUMENT = this.oldInstrumentSupport();
         } else if (this.getClass().getSimpleName().endsWith("InstrumentHandler")) {
             if (INSTRUMENTHANDLER != null) {
                 throw new IllegalStateException();
@@ -270,10 +237,6 @@ public abstract class Accessor {
 
     protected Accessor.Nodes nodes() {
         return NODES;
-    }
-
-    protected OldInstrumentSupport oldInstrumentSupport() {
-        return INSTRUMENT;
     }
 
     protected LanguageSupport languageSupport() {

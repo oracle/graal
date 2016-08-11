@@ -208,17 +208,6 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated
-     */
-    @Deprecated
-    public final void applyInstrumentation() {
-        if (isInstrumentable()) {
-            Node.ACCESSOR.probeAST(this);
-        }
-    }
-
-    /**
      * Does this contain AST content that it is possible to instrument.
      *
      * @since 0.8 or earlier

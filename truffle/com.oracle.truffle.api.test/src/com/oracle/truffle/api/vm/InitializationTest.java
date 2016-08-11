@@ -92,38 +92,6 @@ public class InitializationTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    private static class ANodeWrapper extends ANode implements com.oracle.truffle.api.instrument.WrapperNode {
-        @Child ANode child;
-        @Child private com.oracle.truffle.api.instrument.EventHandlerNode eventHandlerNode;
-
-        ANodeWrapper(ANode node) {
-            super(1);  // dummy
-            this.child = node;
-        }
-
-        @Override
-        public Node getChild() {
-            return child;
-        }
-
-        @Override
-        public com.oracle.truffle.api.instrument.Probe getProbe() {
-            return eventHandlerNode.getProbe();
-        }
-
-        @Override
-        public void insertEventHandlerNode(com.oracle.truffle.api.instrument.EventHandlerNode eventHandler) {
-            this.eventHandlerNode = eventHandler;
-        }
-
-        @Override
-        public String instrumentationInfo() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
     private abstract static class AbstractLanguage extends TruffleLanguage<Object> {
     }
 
@@ -162,25 +130,5 @@ public class InitializationTest {
             throw new UnsupportedOperationException();
         }
 
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        public com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return node instanceof ANode;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
-        }
     }
 }
