@@ -82,12 +82,23 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
         }
     }
 
+    private static final Location[] NO_LOCATIONS = {};
+    private static final int[] NO_SIZES = {};
+
     @Override
     public ReferenceMap finish(LIRFrameState state) {
-        Location[] objects = new Location[objectCount];
-        Location[] derivedBase = new Location[objectCount];
-        int[] sizeInBytes = new int[objectCount];
-
+        Location[] objects;
+        Location[] derivedBase;
+        int[] sizeInBytes;
+        if (objectCount == 0) {
+            objects = NO_LOCATIONS;
+            derivedBase = NO_LOCATIONS;
+            sizeInBytes = NO_SIZES;
+        } else {
+            objects = new Location[objectCount];
+            derivedBase = new Location[objectCount];
+            sizeInBytes = new int[objectCount];
+        }
         int idx = 0;
         for (Value obj : objectValues) {
             LIRKind kind = (LIRKind) obj.getValueKind();
