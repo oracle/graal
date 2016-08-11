@@ -195,7 +195,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         if (global == null || global.getValue() == null) {
             return null;
         } else {
-            LLVMExpressionNode constant = LLVMBitcodeHelper.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stack);
+            LLVMExpressionNode constant = LLVMBitcodeHelper.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stack, labels);
             if (constant != null) {
                 Type type = ((PointerType) global.getType()).getPointeeType();
                 LLVMBaseType baseType = LLVMBitcodeHelper.toBaseType(type).getType();
@@ -262,7 +262,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             }
             return address;
         } else {
-            return LLVMBitcodeHelper.toConstantNode(g, 0, this::getGlobalVariable, context, null);
+            return LLVMBitcodeHelper.toConstantNode(g, 0, this::getGlobalVariable, context, null, labels);
         }
     }
 
