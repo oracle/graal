@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-public interface LIRGeneratorTool extends BenchmarkCounterFactory, ValueKindFactory<LIRKind> {
+public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
     /**
      * Factory for creating moves.

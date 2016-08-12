@@ -32,7 +32,7 @@ import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.DiagnosticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 import com.oracle.graal.lir.profiling.MoveProfiler.MoveStatistics;
@@ -62,24 +62,23 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
-        BenchmarkCounterFactory counterFactory = context.counterFactory;
-        new Analyzer(target, lirGenRes, counterFactory).run();
+        new Analyzer(target, lirGenRes, context.diagnosticLirGenTool).run();
     }
 
     static class Analyzer {
         private final TargetDescription target;
         private final LIRGenerationResult lirGenRes;
-        private final BenchmarkCounterFactory counterFactory;
+        private final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
         private final LIRInsertionBuffer buffer;
         private String cachedGroupName;
         private final List<String> names;
         private final List<String> groups;
         private final List<Value> increments;
 
-        Analyzer(TargetDescription target, LIRGenerationResult lirGenRes, BenchmarkCounterFactory counterFactory) {
+        Analyzer(TargetDescription target, LIRGenerationResult lirGenRes, DiagnosticLIRGeneratorTool diagnosticLirGenTool) {
             this.target = target;
             this.lirGenRes = lirGenRes;
-            this.counterFactory = counterFactory;
+            this.diagnosticLirGenTool = diagnosticLirGenTool;
             this.buffer = new LIRInsertionBuffer();
             this.names = new ArrayList<>();
             this.groups = new ArrayList<>();
@@ -123,7 +122,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             if (size > 0) { // Don't pollute LIR when nothing has to be done
                 assert size > 0 && size == groups.size() && size == increments.size();
                 List<LIRInstruction> instructions = lirGenRes.getLIR().getLIRforBlock(block);
-                LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[size]), groups.toArray(new String[size]),
+                LIRInstruction inst = diagnosticLirGenTool.createMultiBenchmarkCounter(names.toArray(new String[size]), groups.toArray(new String[size]),
                                 increments.toArray(new Value[size]));
                 assert inst != null;
                 buffer.init(instructions);

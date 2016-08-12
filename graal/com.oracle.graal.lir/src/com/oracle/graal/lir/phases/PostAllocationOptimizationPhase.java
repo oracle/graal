@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.DiagnosticLIRGeneratorTool;
 
 public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
 
     public static final class PostAllocationOptimizationContext {
-        public final BenchmarkCounterFactory counterFactory;
+        public final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
 
-        public PostAllocationOptimizationContext(BenchmarkCounterFactory counterFactory) {
-            this.counterFactory = counterFactory;
+        public PostAllocationOptimizationContext(DiagnosticLIRGeneratorTool diagnosticTool) {
+            this.diagnosticLirGenTool = diagnosticTool;
         }
     }
 }

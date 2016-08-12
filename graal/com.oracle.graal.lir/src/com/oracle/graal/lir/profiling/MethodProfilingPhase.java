@@ -32,7 +32,7 @@ import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.DiagnosticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -46,21 +46,20 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
-        BenchmarkCounterFactory counterFactory = context.counterFactory;
-        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
+        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), context.diagnosticLirGenTool).run();
     }
 
     private class Analyzer {
         private final LIR lir;
-        private final BenchmarkCounterFactory counterFactory;
+        private final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
         private final LIRInsertionBuffer buffer;
         private final String compilationUnitName;
         private final ConstantValue increment;
 
-        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
+        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, DiagnosticLIRGeneratorTool diagnosticLirGenTool) {
             this.lir = lir;
             this.compilationUnitName = compilationUnitName;
-            this.counterFactory = counterFactory;
+            this.diagnosticLirGenTool = diagnosticLirGenTool;
             this.buffer = new LIRInsertionBuffer();
             this.increment = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_1);
         }
@@ -84,7 +83,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
             assert instructions.get(0) instanceof LabelOp : "Not a LabelOp: " + instructions.get(0);
             assert !(instructions.get(1) instanceof LabelOp) : "Is a LabelOp: " + instructions.get(1);
 
-            LIRInstruction op = counterFactory.createBenchmarkCounter(compilationUnitName, group, increment);
+            LIRInstruction op = diagnosticLirGenTool.createBenchmarkCounter(compilationUnitName, group, increment);
             buffer.init(instructions);
             buffer.append(1, op);
             buffer.finish();
