@@ -123,8 +123,7 @@ public class PolyglotEngine {
     private final OutputStream out;
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
-    private final Object instrumenter; // old instrumentation
-    private final Object instrumentationHandler; // new instrumentation
+    private final Object instrumentationHandler;
     private final Map<String, Instrument> instruments;
     private final List<Object[]> config;
     private final Object[] debugger = {null};
@@ -156,7 +155,6 @@ public class PolyglotEngine {
         this.handlers = null;
         this.globals = null;
         this.executor = null;
-        this.instrumenter = null;
         this.instrumentationHandler = null;
         this.instruments = null;
         this.config = null;
@@ -175,7 +173,6 @@ public class PolyglotEngine {
         this.handlers = handlers;
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
-        this.instrumenter = null; // SPI.createInstrumenter(this);
         this.config = config;
         // this.debugger = SPI.createDebugger(this, this.instrumenter);
         // new instrumentation
@@ -1177,7 +1174,7 @@ public class PolyglotEngine {
         TruffleLanguage.Env getEnv(boolean create, boolean clear) {
             TruffleLanguage.Env tmp = env;
             if (tmp == null && create) {
-                env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, instrumenter, getArgumentsForLanguage());
+                env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, getArgumentsForLanguage());
             }
             if (clear) {
                 env = null;
@@ -1297,12 +1294,6 @@ public class PolyglotEngine {
                     throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType" + mimeType + " among " + vm.langs);
                 }
                 return language;
-            }
-
-            @Override
-            public Object getInstrumenter(Object obj) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? ExecutionImpl.findVM() : obj);
-                return vm == null ? null : vm.instrumenter;
             }
 
             @Override

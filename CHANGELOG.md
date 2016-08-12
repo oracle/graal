@@ -2,7 +2,15 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Next Version
+## NextVersion:
+* Remove deprecated instrumentation API package com.oracle.truffle.api.instrument and all its classes.
+* Remove deprecated API method TruffleLanguage#isInstrumentable(Node), TruffleLanguage#getVisualizer(), TruffleLanguage#createWrapperNode(), TruffleLanguage.Env#instrumenter(), RootNode#applyInstrumentation()
+* Remove deprecated API Debugger#setTagBreakpoint
+* Remove deprecated API RootNode#applyInstrumentation
+* Remove deprecated tagging API in SourceSection and Source.
+
+
+## Version 0.16
 * [Layout](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/object/dsl/Layout.html)
   now accepts an alternative way to construct an object with the `build` method instead of `create`.
 

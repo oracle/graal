@@ -565,12 +565,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     static final class AccessorNodes extends Accessor {
-        void probeAST(RootNode rootNode) {
-            OldInstrumentSupport instrument = oldInstrumentSupport();
-            if (instrument != null) {
-                instrument.probeAST(rootNode);
-            }
-        }
 
         @Override
         protected void onLoopCount(Node source, int iterations) {

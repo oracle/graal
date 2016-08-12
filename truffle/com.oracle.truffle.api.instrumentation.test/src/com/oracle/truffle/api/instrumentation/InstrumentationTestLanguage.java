@@ -515,18 +515,4 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         return false;
     }
 
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        throw new UnsupportedOperationException();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-        throw new UnsupportedOperationException();
-    }
-
 }

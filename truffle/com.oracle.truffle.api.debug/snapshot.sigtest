@@ -38,8 +38,6 @@ fld public final static java.lang.String HALT_TAG = "debug-HALT"
 meth public boolean pause()
 meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,com.oracle.truffle.api.source.LineLocation,boolean) throws java.io.IOException
 meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,java.net.URI,int,boolean) throws java.io.IOException
-meth public com.oracle.truffle.api.debug.Breakpoint setTagBreakpoint(int,com.oracle.truffle.api.instrument.SyntaxTag,boolean) throws java.io.IOException
- anno 0 java.lang.Deprecated()
 meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
 supr java.lang.Object
