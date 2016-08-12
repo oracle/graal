@@ -49,10 +49,10 @@ install:
   - |
       if [ "$JDK" == "jdk8" ]
       then
-        JDK_TAR=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.17-linux-amd64.tar.gz
-        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.17/jdk1.8.0_91-jvmci-0.17-linux-amd64.tar.gz -O $JDK_TAR
+        JDK_TAR=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.19-linux-amd64.tar.gz
+        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.19/jdk1.8.0_91-jvmci-0.19-linux-amd64.tar.gz -O $JDK_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xzf $JDK_TAR
-        export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.17
+        export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-jvmci-0.19
       fi
   - |
       if [ "$JDK" == "jdk9" ]
