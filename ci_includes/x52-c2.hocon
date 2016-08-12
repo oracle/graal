@@ -14,7 +14,8 @@ x52.c2 : {
 builds += [
   ${bench-dacapo}              ${x52.c2} { name: "bench-dacapo-linux-x52-c2" }
   ${bench-scala-dacapo}        ${x52.c2} { name: "bench-scala-dacapo-linux-x52-c2" }
-  ${bench-specjvm2008}         ${x52.c2} { name: "bench-specjvm2008-linux-x52-c2" }
+  ${bench-specjvm2008-Single}  ${x52.c2} { name: "bench-specjvm2008-Single-linux-x52-c2" }
+  ${bench-specjvm2008-OneVM}   ${x52.c2} { name: "bench-specjvm2008-OneVM-linux-x52-c2" }  
   ${bench-specjbb2015}         ${x52.c2} { name: "bench-specjbb2015-linux-x52-c2" }
 #  ${bench-micros-graal}        ${x52.c2} { name: "bench-jmh-micros-graal-linux-x52-c2" }
 ]

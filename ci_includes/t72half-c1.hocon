@@ -15,7 +15,8 @@ t72half.c1 : {
 builds += [
   ${bench-dacapo}              ${t72half.c1} { name: "bench-dacapo-solaris-t72half-c1" }
   ${bench-scala-dacapo}        ${t72half.c1} { name: "bench-scala-dacapo-solaris-t72half-c1" }
-  ${bench-specjvm2008}         ${t72half.c1} { name: "bench-specjvm2008-solaris-t72half-c1" }
+  ${bench-specjvm2008-Single}  ${t72half.c1} { name: "bench-specjvm2008-Single-solaris-t72half-c1" }
+  ${bench-specjvm2008-OneVM}   ${t72half.c1} { name: "bench-specjvm2008-OneVm-solaris-t72half-c1" }  
   ${bench-specjbb2015}         ${t72half.c1} { name: "bench-specjbb2015-solaris-t72half-c1" }
 #  ${bench-micros-graal}        ${t72half.c1} { name: "bench-jmh-micros-graal-solaris-t72half-c1" }
 ]
