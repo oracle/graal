@@ -23,11 +23,26 @@
 package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 public interface DiagnosticLIRGeneratorTool {
     LIRInstruction createBenchmarkCounter(String name, String group, Value increment);
 
     LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments);
+
+    SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues);
+
+    SaveRegistersOp createZapRegisters();
+
+    /**
+     * Marker interface for {@link LIRInstruction instructions} that should be succeeded with a
+     * {@link DiagnosticLIRGeneratorTool#createZapRegisters() ZapRegisterOp} in if assertions are
+     * enabled.
+     */
+    interface ZapRegistersAfterInstruction {
+    }
 }
