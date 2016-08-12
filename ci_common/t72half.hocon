@@ -16,7 +16,8 @@ builds += [
   ${t72half.default} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-solaris-t72half" }
   ${t72half.default} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-solaris-t72half" }
   ${t72half.default} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-solaris-t72half" }
-  ${t72half.default} ${bench-specjvm2008}         { name: "bench-specjvm2008-solaris-t72half" }
+  ${t72half.default} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-solaris-t72half" }
+  ${t72half.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-solaris-t72half" }  
   ${t72half.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-solaris-t72half" }
   ${t72half.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-solaris-t72half" }
 ]

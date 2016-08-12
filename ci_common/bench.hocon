@@ -8,7 +8,8 @@ bench-jvmci : {
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
-  mx-specjvm2008: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
+  mx-specjvm2008-Single: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
+  mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
@@ -68,19 +69,31 @@ bench-specjbb2005: ${bench-common-8} {
 }
 
 # SPECJvm2008-related targets
-
 bench-specjvm2008: ${bench-common-8} {
-  targets: [bench, post-merge]
   downloads: {
     SPECJVM2008: { name: specjvm2008, version: "1.01" }
   }
-  run: [
-    ${bench-jvmci.mx-specjvm2008} ${bench-arguments} [
-      "--", "-it", "240s", "-wt", "120s"
-    ]
-  ]
   timelimit: "2:50:00"
 }
+
+bench-specjvm2008-Single: ${bench-specjvm2008} {
+  targets += [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
+      "--", "-it", "240s", "-wt", "120s"
+    ]
+  ]  
+}
+
+bench-specjvm2008-OneVM: ${bench-specjvm2008} {
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
+      "--", "-it", "240s", "-wt", "120s"
+    ]
+  ]  
+}
+
 
 # SPECjbb2015-related targets
 

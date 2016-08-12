@@ -537,11 +537,15 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
+        suite_name = self.name()
+        if benchmarks and len(benchmarks) == 1:
+            suite_name = suite_name +  "-single"
         return [
           mx_benchmark.StdOutRule(
             r"^Score on (?P<benchmark>[a-zA-Z0-9\._]+): (?P<score>[0-9]+((,|\.)[0-9]+)?) ops/m$", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": suite_name,
               "vm": "jvmci",
               "config.name": "default",
               "metric.name": "throughput",
