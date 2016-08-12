@@ -37,6 +37,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.UnsignedMath;
@@ -58,6 +59,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AbsNode;
 import com.oracle.graal.nodes.calc.CompareNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
+import com.oracle.graal.nodes.calc.IntegerEqualsNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
 import com.oracle.graal.nodes.calc.NarrowNode;
 import com.oracle.graal.nodes.calc.ReinterpretNode;
@@ -107,6 +109,7 @@ import com.oracle.graal.replacements.nodes.arithmetic.IntegerSubExactNode;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -119,7 +122,7 @@ import sun.misc.Unsafe;
  */
 public class StandardGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean allowDeoptimization) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean allowDeoptimization) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
@@ -141,6 +144,7 @@ public class StandardGraphBuilderPlugins {
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins);
         registerJFRThrowablePlugins(plugins);
+        registerMethodHandleImplPlugins(plugins, snippetReflection);
     }
 
     private static final Field STRING_VALUE_FIELD;
@@ -237,6 +241,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
                 // Emits a null-check for the otherwise unused receiver
@@ -244,6 +249,7 @@ public class StandardGraphBuilderPlugins {
                 b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazz, true));
                 return true;
             }
+
         });
 
         r.register1("loadFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | LOAD_STORE));
@@ -373,6 +379,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Float, b.recursiveAppend(new AbsNode(value).canonical(null, value)));
@@ -855,6 +862,44 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
                 b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), throwable, message));
                 return true;
+            }
+        });
+    }
+
+    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
+        Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl");
+        r.register2("profileBoolean", boolean.class, int[].class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode counters) {
+                if (result.isConstant()) {
+                    b.push(JavaKind.Boolean, result);
+                    return true;
+                }
+                if (counters.isConstant()) {
+                    ValueNode newResult = result;
+                    int[] ctrs = snippetReflection.asObject(int[].class, (JavaConstant) counters.asConstant());
+                    if (ctrs != null && ctrs.length == 2) {
+                        int falseCount = ctrs[0];
+                        int trueCount = ctrs[1];
+                        int totalCount = trueCount + falseCount;
+
+                        if (totalCount == 0) {
+                            b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
+                        } else if (falseCount == 0 || trueCount == 0) {
+                            boolean expected = falseCount == 0 ? true : false;
+                            LogicNode condition = b.add(IntegerEqualsNode.create(result, b.add(ConstantNode.forBoolean(!expected)), /* constantReflection */ null));
+                            b.append(new FixedGuardNode(condition, DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
+                            newResult = b.add(ConstantNode.forBoolean(expected));
+                        } else {
+                            // We cannot use BranchProbabilityNode here since there's no guarantee
+                            // the result of MethodHandleImpl.profileBoolean() is used as the
+                            // test in an `if` statement (as required by BranchProbabilityNode).
+                        }
+                    }
+                    b.addPush(JavaKind.Boolean, newResult);
+                    return true;
+                }
+                return false;
             }
         });
     }
