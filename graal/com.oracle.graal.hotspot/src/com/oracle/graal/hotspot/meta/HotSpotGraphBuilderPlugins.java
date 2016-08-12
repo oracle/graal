@@ -141,7 +141,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerStableOptionPlugins(invocationPlugins, snippetReflection);
                 registerAESPlugins(invocationPlugins, config);
                 registerCRC32Plugins(invocationPlugins, config);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, true);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, true);
 
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
