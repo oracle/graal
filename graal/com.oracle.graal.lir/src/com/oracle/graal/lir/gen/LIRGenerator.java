@@ -54,6 +54,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.options.Option;
@@ -508,5 +509,25 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         throw GraalError.unimplemented();
+    }
+
+    /**
+     * @param zappedRegisters registers to be zapped
+     * @param zapValues values used for zapping
+     */
+    @Override
+    public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        return null;
+    }
+
+    @Override
+    public SaveRegistersOp createZapRegisters() {
+        Register[] zappedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters().toArray();
+        JavaConstant[] zapValues = new JavaConstant[zappedRegisters.length];
+        for (int i = 0; i < zappedRegisters.length; i++) {
+            PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
+            zapValues[i] = zapValueForKind(kind);
+        }
+        return createZapRegisters(zappedRegisters, zapValues);
     }
 }

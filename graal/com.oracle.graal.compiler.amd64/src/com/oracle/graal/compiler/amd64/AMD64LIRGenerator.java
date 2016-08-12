@@ -50,6 +50,7 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.amd64.AMD64AddressValue;
@@ -70,6 +71,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64PauseOp;
+import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
@@ -77,6 +79,7 @@ import com.oracle.graal.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -441,5 +444,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        return new AMD64ZapRegistersOp(zappedRegisters, zapValues);
     }
 }
