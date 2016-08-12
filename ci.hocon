@@ -1,5 +1,6 @@
 # Build targets
 builds = []
+suite-root = "./"
 
 jvm-config.default = "graal-core"
 jvm-config.tracera = "graal-core-tracera"

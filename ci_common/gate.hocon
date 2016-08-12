@@ -5,6 +5,7 @@ gateTest : {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["build,test"]
   ]
 }
@@ -14,6 +15,7 @@ gateTestCTW : {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["build,ctw"]
   ]
 }
@@ -23,6 +25,7 @@ gateTestBenchmark : {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["build,benchmarktest"]
   ]
 }
@@ -32,6 +35,7 @@ gateBootstrap : {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["build,bootstrap"]
   ]
 }
@@ -41,6 +45,7 @@ gateBootstrapLite : {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["build,bootstraplite"]
   ]
 }
@@ -67,6 +72,7 @@ gateStyle : ${java8Downloads} {
     EXTRA_VM_ARGS : ""
   }
   run : [
+    ${chdirToSuite}
     ${gateCmd} ["style,fullbuild"]
   ]
 }
