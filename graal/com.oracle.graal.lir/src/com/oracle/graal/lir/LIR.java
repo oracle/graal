@@ -170,11 +170,12 @@ public final class LIR extends LIRGenerator.VariableProvider {
         if (ops.size() == 0) {
             return false;
         }
+        assert ops.get(0) instanceof LabelOp : String.format("Not a Label %s (Block %s)", ops.get(0).getClass(), block);
         LIRInstruction opWithExceptionEdge = null;
         int index = 0;
         int lastIndex = ops.size() - 1;
         for (LIRInstruction op : ops.subList(0, lastIndex)) {
-            assert !(op instanceof BlockEndOp) : op.getClass();
+            assert !(op instanceof BlockEndOp) : String.format("BlockEndOp %s (Block %s)", op.getClass(), block);
             LabelRef exceptionEdge = getExceptionEdge(op);
             if (exceptionEdge != null) {
                 assert opWithExceptionEdge == null : "multiple ops with an exception edge not allowed";
@@ -185,7 +186,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
             index++;
         }
         LIRInstruction end = ops.get(lastIndex);
-        assert end instanceof BlockEndOp : end.getClass();
+        assert end instanceof BlockEndOp : String.format("Not a BlockEndOp %s (Block %s)", end.getClass(), block);
         return true;
     }
 
