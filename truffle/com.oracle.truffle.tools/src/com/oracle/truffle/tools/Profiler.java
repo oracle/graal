@@ -389,14 +389,10 @@ public final class Profiler {
     // custom version of SourceSection#getShortDescription
     private static String getShortDescription(SourceSection sourceSection) {
         if (sourceSection.getSource() == null) {
-            return sourceSection.getIdentifier();
+            return sourceSection.getShortDescription();
         }
         StringBuilder b = new StringBuilder();
-        if (sourceSection.getIdentifier() != null) {
-            b.append(sourceSection.getSource().getName());
-        } else {
-            b.append("<unknown>");
-        }
+        b.append(sourceSection.getSource().getName());
         b.append(":");
         if (sourceSection.getStartLine() == sourceSection.getEndLine()) {
             b.append(sourceSection.getStartLine());

@@ -782,6 +782,7 @@ public abstract class Source {
         clearTextMap();
     }
 
+    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int, int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source.
      * <p>
@@ -797,16 +798,44 @@ public abstract class Source {
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
         return createSectionImpl(identifier, startLine, startColumn, charIndex, length);
     }
 
-    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length) {
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
+    /**
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @since 0.17
+     */
+    public final SourceSection createSection(int startLine, int startColumn, int charIndex, int length) {
+        checkRange(charIndex, length);
+        return createSectionImpl(startLine, startColumn, charIndex, length);
     }
 
+    @Deprecated
+    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length) {
+        return new SourceSection(this, identifier, startLine, startColumn, charIndex, length);
+    }
+
+    private SourceSection createSectionImpl(int startLine, int startColumn, int charIndex, int length) {
+        return new SourceSection(this, startLine, startColumn, charIndex, length);
+    }
+
+    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
      * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
@@ -824,7 +853,9 @@ public abstract class Source {
      * @throws IllegalArgumentException if arguments are outside the text of the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
         if (startColumn > getTextMap().lineLength(startLine)) {
@@ -834,6 +865,33 @@ public abstract class Source {
         return createSectionImpl(identifier, startLine, startColumn, startOffset, length);
     }
 
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if arguments are outside the text of the source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int startLine, int startColumn, int length) {
+        final int lineStartOffset = getTextMap().lineStartOffset(startLine);
+        if (startColumn > getTextMap().lineLength(startLine)) {
+            throw new IllegalArgumentException("column out of range");
+        }
+        final int startOffset = lineStartOffset + startColumn - 1;
+        return createSectionImpl(startLine, startColumn, startOffset, length);
+    }
+
+    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
      * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
@@ -853,12 +911,40 @@ public abstract class Source {
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
+     * @deprecated
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
         return createSectionImpl(identifier, startLine, startColumn, charIndex, length);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     *
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int charIndex, int length) throws IllegalArgumentException {
+        checkRange(charIndex, length);
+        final int startLine = getLineNumber(charIndex);
+        final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
+        return createSectionImpl(startLine, startColumn, charIndex, length);
     }
 
     void checkRange(int charIndex, int length) {

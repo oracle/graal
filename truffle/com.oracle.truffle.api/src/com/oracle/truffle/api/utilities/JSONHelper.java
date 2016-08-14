@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,16 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.nodes.Node;
+
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class JSONHelper {
@@ -65,16 +65,7 @@ public class JSONHelper {
     public static void dumpNewNode(Node newNode) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
-                            "\", \"language\": \"" + newNode.getLanguage() + "\"" + getSourceSectionInfo(newNode) + " },\n");
-        }
-    }
-
-    private static String getSourceSectionInfo(Node newNode) {
-        SourceSection sourceSection = newNode.getSourceSection();
-        if (sourceSection != null) {
-            return ", \"identifier\": \"" + sourceSection.getIdentifier() + "\" ";
-        } else {
-            return "";
+                            "\", \"language\": \"" + newNode.getLanguage() + "\"" + " },\n");
         }
     }
 
