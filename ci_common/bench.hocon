@@ -18,9 +18,11 @@ bench-jvmci : {
 
 bench-common-8 : ${java8Downloads} {
   setup: [
+    ${chdirToSuite}
     ["mx", "build"]
   ]
   teardown : [
+    ${chdirToSuite}
     ${bench-jvmci.mx-teardown}
   ]
 }
@@ -28,6 +30,7 @@ bench-common-8 : ${java8Downloads} {
 bench-dacapo: ${bench-common-8} {
   targets : [bench, post-merge]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-dacapo} ${bench-arguments}
   ]
 }
@@ -35,6 +38,7 @@ bench-dacapo: ${bench-common-8} {
 bench-dacapo-timing: ${bench-common-8} {
   targets: [daily]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
   ]
 }
@@ -44,6 +48,7 @@ bench-dacapo-timing: ${bench-common-8} {
 bench-scala-dacapo: ${bench-common-8} {
   targets: [bench, post-merge]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
   ]
 }
@@ -51,6 +56,7 @@ bench-scala-dacapo: ${bench-common-8} {
 bench-scala-dacapo-timing: ${bench-common-8} {
   targets: [daily]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
   ]
 }
@@ -63,6 +69,7 @@ bench-specjbb2005: ${bench-common-8} {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
   ]
   timelimit: "2:00:00"
@@ -79,19 +86,21 @@ bench-specjvm2008: ${bench-common-8} {
 bench-specjvm2008-Single: ${bench-specjvm2008} {
   targets += [bench, post-merge]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
       "--", "-it", "240s", "-wt", "120s"
     ]
-  ]  
+  ]
 }
 
 bench-specjvm2008-OneVM: ${bench-specjvm2008} {
   targets: [bench, weekly]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
       "--", "-it", "240s", "-wt", "120s"
     ]
-  ]  
+  ]
 }
 
 
@@ -100,6 +109,7 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} {
 bench-specjbb2015: ${bench-common-8} {
   targets: [bench, post-merge]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
   downloads: {
@@ -113,6 +123,7 @@ bench-specjbb2015: ${bench-common-8} {
 bench-micros-graal: ${bench-common-8} {
   targets: [weekly]
   run: [
+    ${chdirToSuite}
     ${bench-jvmci.mx-micros-graal} ${bench-arguments}
   ]
 }
