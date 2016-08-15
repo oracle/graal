@@ -782,7 +782,6 @@ public abstract class Source {
         clearTextMap();
     }
 
-    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int, int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source.
      * <p>
@@ -798,7 +797,8 @@ public abstract class Source {
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int, int,
+     *             int)
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
@@ -853,7 +853,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if arguments are outside the text of the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int, int)
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
@@ -911,7 +911,7 @@ public abstract class Source {
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     * @deprecated
+     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int)
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {

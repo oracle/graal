@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## NextVersion:
+* Remove support for the "identifier" associated with each SourceSection
 * Remove deprecated instrumentation API package com.oracle.truffle.api.instrument and all its classes.
 * Remove deprecated API method TruffleLanguage#isInstrumentable(Node), TruffleLanguage#getVisualizer(), TruffleLanguage#createWrapperNode(), TruffleLanguage.Env#instrumenter(), RootNode#applyInstrumentation()
 * Remove deprecated API Debugger#setTagBreakpoint
