@@ -152,6 +152,10 @@ public abstract class LayoutStrategy {
         object.copyProperties(original, deletedParentShape);
     }
 
+    protected static Property relocateShadow(Property property, Location newLocation) {
+        return ((PropertyImpl) property).relocateShadow(newLocation);
+    }
+
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
         return directReplaceProperty(shape, oldProperty, newProperty);
     }
