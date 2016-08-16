@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -96,14 +98,21 @@ public abstract class ShapeImpl extends Shape {
     @CompilationFinal protected volatile Assumption leafAssumption;
 
     /**
-     * Shape transition map; lazily initialized.
+     * Shape transition map; lazily initialized. One of:
+     * <ol>
+     * <li>{@code null}: empty map
+     * <li>{@link Map.Entry}: immutable single entry map
+     * <li>{@link Map}: mutable multiple entry map
+     * </ol>
      *
      * @see #getTransitionMapForRead()
-     * @see #getTransitionMapForWrite()
+     * @see #addTransitionInternal(Transition, ShapeImpl)
      */
-    private volatile Map<Transition, ShapeImpl> transitionMap;
+    private volatile Object transitionMap;
 
     private final Transition transitionFromParent;
+
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Object.class, "transitionMap");
 
     /**
      * Private constructor.
@@ -248,25 +257,44 @@ public abstract class ShapeImpl extends Shape {
         addTransitionInternal(transition, next);
     }
 
-    private void addTransitionInternal(Transition transition, ShapeImpl next) {
-        getTransitionMapForWrite().put(transition, next);
+    private void addTransitionInternal(Transition transition, ShapeImpl successor) {
+        Object prev;
+        Object next;
+        do {
+            prev = TRANSITION_MAP_UPDATER.get(this);
+            if (prev == null) {
+                invalidateLeafAssumption();
+                next = new AbstractMap.SimpleImmutableEntry<>(transition, successor);
+            } else if (prev instanceof Map.Entry<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) prev;
+                ConcurrentHashMap<Transition, ShapeImpl> map = new ConcurrentHashMap<>();
+                map.put(entry.getKey(), entry.getValue());
+                map.put(transition, successor);
+                next = map;
+            } else {
+                assert prev instanceof Map<?, ?>;
+                @SuppressWarnings("unchecked")
+                Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) prev;
+                map.put(transition, successor);
+                break;
+            }
+        } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
     }
 
     public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
-        return transitionMap != null ? transitionMap : Collections.<Transition, ShapeImpl> emptyMap();
-    }
-
-    private Map<Transition, ShapeImpl> getTransitionMapForWrite() {
-        if (transitionMap != null) {
-            return transitionMap;
+        Object trans = transitionMap;
+        if (trans == null) {
+            return Collections.<Transition, ShapeImpl> emptyMap();
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            return Collections.singletonMap(entry.getKey(), entry.getValue());
         } else {
-            synchronized (getMutex()) {
-                if (transitionMap != null) {
-                    return transitionMap;
-                }
-                invalidateLeafAssumption();
-                return transitionMap = new ConcurrentHashMap<>();
-            }
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map;
         }
     }
 
