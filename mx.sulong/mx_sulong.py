@@ -502,7 +502,7 @@ def runBenchmarkTestCases(args=None):
     ensureDragonEggExists()
     ensureBenchmarkSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.BenchmarkGameSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.ShootoutsTestSuite"])
 
 def runGCCTestCases(args=None):
     """runs the GCC test suite"""
