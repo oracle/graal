@@ -151,6 +151,25 @@ public abstract class TestSuiteBase {
         List<TestCaseFiles> getCompiledTestCaseFiles(SpecificationEntry toBeCompiled);
     }
 
+    protected static class TestCaseGeneratorAdapter implements TestCaseGenerator {
+
+        @Override
+        public ProgrammingLanguage[] getSupportedLanguages() {
+            return new ProgrammingLanguage[0];
+        }
+
+        @Override
+        public TestCaseFiles getBitCodeTestCaseFiles(SpecificationEntry bitCodeFile) {
+            return null;
+        }
+
+        @Override
+        public List<TestCaseFiles> getCompiledTestCaseFiles(SpecificationEntry toBeCompiled) {
+            return Collections.emptyList();
+        }
+
+    }
+
     public static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
         private boolean withOptimizations;
