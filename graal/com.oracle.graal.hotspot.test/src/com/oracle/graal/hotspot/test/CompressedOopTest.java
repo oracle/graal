@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
@@ -106,7 +105,6 @@ public class CompressedOopTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore
     public void test3() throws Exception {
         HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("compareAndSwapTest", Object.class, Object.class, Object.class);
         Object initial = new Object();
