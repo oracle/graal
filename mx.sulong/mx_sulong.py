@@ -92,6 +92,8 @@ def executeGate():
         if t: runTestJRuby()
     with Task('TestArgon2', tasks) as t:
         if t: runTestArgon2(optimize=False)
+    with Task('TestMainArgs', tasks) as t:
+        if t: runMainArgTestCases()
 
 def travis1(args=None):
     """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
@@ -122,6 +124,8 @@ def travis1(args=None):
         if t: runTypeTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
+    with Task('TestMainArgs', tasks) as t:
+        if t: runMainArgTestCases()
 
 def travis2(args=None):
     """executes the second Travis job (Javac build, GCC execution test cases)"""
@@ -494,6 +498,7 @@ def runTests(args=None):
     runTckTestCases()
     runAsmTestCases()
     runBenchmarkTestCases()
+    runMainArgTestCases()
 
 def runBenchmarkTestCases(args=None):
     """runs the test cases from the language benchmark game"""
@@ -563,6 +568,11 @@ def runAsmTestCases(args=None):
     """runs the asm test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.inlineassembly.LLVMInlineAssemblyTest'])
+
+def runMainArgTestCases(args=None):
+    """runs the test cases that exercise the passing of arguments to the main function"""
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.LLVMMainArgTestSuite'])
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
@@ -650,17 +660,6 @@ def runTestArgon2(args=None, optimize=False):
 
     compileArgon2('test', optimize)
     return runLLVM(args + ['test.su'])
-
-def runBenchArgon2(args=None, optimize=False):
-    """runs Argon2 bench with Sulong"""
-
-    ensureArgon2Exists()
-    os.chdir(_argon2Dir)
-    if args is None:
-        args = []
-
-    compileArgon2('bench', optimize)
-    return runLLVM(args + ['bench.su'])
 
 def getCommonOptions(lib_args=None):
     return [
@@ -983,7 +982,7 @@ mx.update_commands(_suite, {
     'su-tests-jruby' : [runTestJRuby, ''],
     'su-tests-argon2' : [runTestArgon2, ''],
     'su-tests-lifetime' : [runLifetimeTestCases, ''],
-    'su-bench-argon2' : [runBenchArgon2, ''],
+    'su-tests-main-arg' : [runMainArgTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
