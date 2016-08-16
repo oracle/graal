@@ -29,11 +29,9 @@
  */
 package com.oracle.truffle.llvm.test;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -41,18 +39,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.test.AbstractMainArgsTestBase.ProgramWithMainArgs;
+import com.oracle.truffle.llvm.test.ShootoutsTestSuite.Benchmark;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
 
 @RunWith(Parameterized.class)
-public class BenchmarkGameSuite extends TestSuiteBase {
-
-    private Benchmark bench;
-
-    public BenchmarkGameSuite(Benchmark bench) {
-        this.bench = bench;
-    }
+public class ShootoutsTestSuite extends AbstractMainArgsTestBase<Benchmark> {
 
     /**
      * TODOS. knucletoide folder: include folder <br />
@@ -63,7 +56,7 @@ public class BenchmarkGameSuite extends TestSuiteBase {
      * regexdna: does not terminate <br />
      * revcomp: does not terminate
      */
-    enum Benchmark {
+    enum Benchmark implements ProgramWithMainArgs {
 
         C_BINARY_TREES_1("binarytrees/binarytrees.gcc-2.gcc.c", 12),
         C_BINARY_TREES_2("binarytrees/binarytrees.gcc.c", 12),
@@ -72,8 +65,8 @@ public class BenchmarkGameSuite extends TestSuiteBase {
         C_FASTA1("fasta/fasta.cint.c", 100),
         C_FASTA2("fasta/fasta.gcc-4.gcc.c", 100),
         C_FASTA3("fasta/fasta.gcc-5.gcc.c", 100),
-        C_FASTA_REDUX1("fastaredux/fastaredux.gcc-2.gcc.c", null),
-        C_FASTA_REDUX2("fastaredux/fastaredux.gcc-3.gcc.c", null),
+        C_FASTA_REDUX1("fastaredux/fastaredux.gcc-2.gcc.c"),
+        C_FASTA_REDUX2("fastaredux/fastaredux.gcc-3.gcc.c"),
         C_MANDELBROT1("mandelbrot/mandelbrot.cint-2.cint.c", 500),
         C_MANDELBROT2("mandelbrot/mandelbrot.gcc-2.gcc.c", 500),
         C_MANDELBROT3("mandelbrot/mandelbrot.gcc-8.gcc.c", 500),
@@ -85,42 +78,54 @@ public class BenchmarkGameSuite extends TestSuiteBase {
         C_PIDIGITS2("pidigits/pidigits.gcc.c", 10000);
 
         private File file;
-        private String arg;
-        private Set<TestCaseFlag> flags;
+        private String[] args;
+        private Set<TestCaseFlag> flags = new HashSet<>();
 
-        Benchmark(String path, Object arg) {
-            this(path, arg, Collections.emptySet());
-        }
-
-        Benchmark(String path, Object arg, Set<TestCaseFlag> flags) {
+        Benchmark(String path, Object... arg) {
             this.file = new File(LLVMPaths.BENCHMARK_GAME_SUITE, path);
-            this.arg = arg == null ? null : arg.toString();
-            this.flags = flags;
+            String[] convertedArgs = new String[arg.length];
+            for (int i = 0; i < arg.length; i++) {
+                convertedArgs[i] = arg[i].toString();
+            }
+            this.args = convertedArgs;
         }
+
+        @Override
+        public File getFile() {
+            return file;
+        }
+
+        @Override
+        public List<String> getMainArgs() {
+            return Arrays.asList(args);
+        }
+
+        @Override
+        public Set<TestCaseFlag> getFlags() {
+            return flags;
+        }
+    }
+
+    public ShootoutsTestSuite(Benchmark program) {
+        super(program);
     }
 
     @Parameterized.Parameters
     public static List<Benchmark[]> getTestFiles() {
-        List<Benchmark[]> files = new ArrayList<>();
-        for (Benchmark bench : Benchmark.values()) {
-            files.add(new Benchmark[]{bench});
-        }
-        return files;
+        return getTestFiles(Arrays.asList(Benchmark.values()));
     }
 
+    @Override
+    protected TestCaseFiles getTestCaseFiles(Benchmark prog) {
+        return TestHelper.compileToLLVMIRWithClang(prog.getFile(),
+                        TestHelper.getTempLLFile(prog.getFile(), "_main"), prog.getFlags(),
+                        ClangOptions.builder().optimizationLevel(OptimizationLevel.O1));
+    }
+
+    @Override
     @Test
     public void test() throws Throwable {
-        File f = bench.file;
-        TestCaseFiles compileResult = TestHelper.compileToLLVMIRWithClang(f, TestHelper.getTempLLFile(f, "_main"), bench.flags, ClangOptions.builder().optimizationLevel(OptimizationLevel.O1));
-        int truffleResult;
-        if (bench.arg != null) {
-            truffleResult = LLVM.executeMain(compileResult.getBitCodeFile(), bench.arg);
-        } else {
-            truffleResult = LLVM.executeMain(compileResult.getBitCodeFile());
-        }
-        if (!compileResult.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE)) {
-            assertEquals(0, truffleResult);
-        }
+        super.test();
     }
 
 }
