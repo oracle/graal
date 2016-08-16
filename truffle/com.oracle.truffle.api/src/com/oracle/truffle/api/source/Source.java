@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +34,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Objects;
 
@@ -533,21 +534,23 @@ public abstract class Source {
         fileCacheEnabled = enabled;
     }
 
+    static String read(File file) throws IOException {
+        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+    }
+
     static String read(Reader reader) throws IOException {
-        final BufferedReader bufferedReader = new BufferedReader(reader);
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
-
         try {
             while (true) {
-                final int n = bufferedReader.read(buffer);
+                final int n = reader.read(buffer);
                 if (n == -1) {
                     break;
                 }
                 builder.append(buffer, 0, n);
             }
         } finally {
-            bufferedReader.close();
+            reader.close();
         }
         return builder.toString();
     }
