@@ -797,8 +797,8 @@ public abstract class Source {
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
      * @since 0.8 or earlier
-     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int, int,
-     *             int)
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int, int, int)}
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
@@ -835,7 +835,6 @@ public abstract class Source {
         return new SourceSection(this, startLine, startColumn, charIndex, length);
     }
 
-    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
      * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
@@ -853,7 +852,8 @@ public abstract class Source {
      * @throws IllegalArgumentException if arguments are outside the text of the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int, int)
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int, int)}
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
@@ -891,7 +891,6 @@ public abstract class Source {
         return createSectionImpl(startLine, startColumn, startOffset, length);
     }
 
-    /* Deprecation note: "identifier" deprecated, replace with #createSection(int, int) */
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
      * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
@@ -911,7 +910,8 @@ public abstract class Source {
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     * @deprecated "identifier" being removed from SourceSection, use #createSection(int, int)
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int)}
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
@@ -963,7 +963,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if the line does not exist the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     * @deprecated "identifier" being removed from SourceSection, use #createSection(int)
+     * @deprecated "identifier" being removed from SourceSection, use {@link #createSection(int)}
      */
     @Deprecated
     public final SourceSection createSection(String identifier, int lineNumber) {
