@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,8 +125,8 @@ public class TruffleRuntimeTest {
     @Test
     public void testGetCallTargets3() {
         Source source1 = Source.newBuilder("a\nb\n").name("").mimeType("content/unknown").build();
-        SourceSection sourceSection1 = source1.createSection("foo", 1);
-        SourceSection sourceSection2 = source1.createSection("bar", 2);
+        SourceSection sourceSection1 = source1.createSection(1);
+        SourceSection sourceSection2 = source1.createSection(2);
 
         RootNode rootNode1 = createTestRootNode(sourceSection1);
         RootNode rootNode2 = createTestRootNode(sourceSection2);

@@ -963,11 +963,29 @@ public abstract class Source {
      * @throws IllegalArgumentException if the line does not exist the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
+     * @deprecated "identifier" being removed from SourceSection, use #createSection(int)
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int lineNumber) {
         final int charIndex = getTextMap().lineStartOffset(lineNumber);
         final int length = getTextMap().lineLength(lineNumber);
         return createSection(identifier, charIndex, length);
+    }
+
+    /**
+     * Creates a representation of a line of text in the source identified only by line number, from
+     * which the character information will be computed.
+     *
+     * @param lineNumber 1-based line number of the first character in the section
+     * @return newly created object representing the specified line
+     * @throws IllegalArgumentException if the line does not exist the source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int lineNumber) {
+        final int charIndex = getTextMap().lineStartOffset(lineNumber);
+        final int length = getTextMap().lineLength(lineNumber);
+        return createSection(charIndex, length);
     }
 
     /**
