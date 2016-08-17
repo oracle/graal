@@ -41,13 +41,16 @@ public final class ObjectStorageOptions {
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     // Debug options (should be final)
-    public static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
-    public static final boolean DumpShapesDOT = booleanOption(OPTION_PREFIX + "DumpShapesDOT", false);
-    public static final boolean DumpShapesJSON = booleanOption(OPTION_PREFIX + "DumpShapesJSON", false);
-    public static final boolean DumpShapesIGV = booleanOption(OPTION_PREFIX + "DumpShapesIGV", false);
-    public static final boolean DumpShapes = DumpShapesDOT || DumpShapesJSON || DumpShapesIGV;
-    public static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
+
+    static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
+    static final boolean DumpDebugCounters = booleanOption(OPTION_PREFIX + "DumpDebugCounters", true);
+
+    static final boolean DumpShapesDOT = booleanOption(OPTION_PREFIX + "DumpShapesDOT", false);
+    static final boolean DumpShapesJSON = booleanOption(OPTION_PREFIX + "DumpShapesJSON", false);
+    static final boolean DumpShapesIGV = booleanOption(OPTION_PREFIX + "DumpShapesIGV", false);
+    static final boolean DumpShapes = DumpShapesDOT || DumpShapesJSON || DumpShapesIGV;
+    static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
     public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
     public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);

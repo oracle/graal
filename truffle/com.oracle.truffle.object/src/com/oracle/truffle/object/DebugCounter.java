@@ -80,6 +80,17 @@ public abstract class DebugCounter {
                 out.println(counter);
             }
         }
+
+        static {
+            assert ObjectStorageOptions.DebugCounters;
+            if (ObjectStorageOptions.DumpDebugCounters) {
+                Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                    public void run() {
+                        dumpCounters(System.out);
+                    }
+                }));
+            }
+        }
     }
 
     private static final class Dummy extends DebugCounter {
