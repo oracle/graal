@@ -248,6 +248,10 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.get(key);
     }
 
+    public final PropertyMap getPropertyMap() {
+        return propertyMap;
+    }
+
     public final void addDirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
@@ -303,12 +307,28 @@ public abstract class ShapeImpl extends Shape {
         return transitionMap == null;
     }
 
-    public final PropertyMap getPropertyMap() {
-        return propertyMap;
+    private ShapeImpl queryTransitionImpl(Transition transition) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            if (entry.getKey().equals(transition)) {
+                return entry.getValue();
+            } else {
+                return null;
+            }
+        } else {
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map.get(transition);
+        }
     }
 
     public final ShapeImpl queryTransition(Transition transition) {
-        ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
+        ShapeImpl cachedShape = queryTransitionImpl(transition);
         if (cachedShape != null) {
             shapeCacheHitCount.inc();
             return cachedShape;
