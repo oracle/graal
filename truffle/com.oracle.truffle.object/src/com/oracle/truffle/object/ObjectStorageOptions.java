@@ -41,7 +41,7 @@ public final class ObjectStorageOptions {
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     // Debug options (should be final)
-    public static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", true);
+    public static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
     public static final boolean DumpShapesDOT = booleanOption(OPTION_PREFIX + "DumpShapesDOT", false);
     public static final boolean DumpShapesJSON = booleanOption(OPTION_PREFIX + "DumpShapesJSON", false);
