@@ -35,7 +35,19 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
-import uk.ac.man.cs.llvm.ir.model.constants.*;
+
+import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.Constant;
+import uk.ac.man.cs.llvm.ir.model.constants.DeferredBlockAddressConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.CastOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;

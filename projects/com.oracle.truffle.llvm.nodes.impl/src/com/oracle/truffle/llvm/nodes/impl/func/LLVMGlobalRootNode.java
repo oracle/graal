@@ -101,18 +101,25 @@ public class LLVMGlobalRootNode extends RootNode {
 
     protected Object executeIteration(VirtualFrame frame, int iteration, Object[] args) {
         Object result;
+
+        if (iteration != 0) {
+            executeStaticInits();
+            executeConstructorFunctions();
+        }
+
         if (printExecutionTime) {
             startExecutionTime = System.currentTimeMillis();
         }
+
         result = main.call(frame, args);
+
         if (printExecutionTime) {
             endExecutionTime = System.currentTimeMillis();
             printExecutionTime();
         }
 
-        executeDestructorFunctions();
         if (iteration != executionCount - 1) {
-            executeStaticInits();
+            executeDestructorFunctions();
         }
         return result;
     }
@@ -125,9 +132,17 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @TruffleBoundary
     protected void executeStaticInits() {
-        List<RootCallTarget> staticInits = context.getStaticInitializers();
-        for (RootCallTarget callTarget : staticInits) {
-            callTarget.call(staticInits);
+        List<RootCallTarget> globalVarInits = context.getGlobalVarInits();
+        for (RootCallTarget callTarget : globalVarInits) {
+            callTarget.call(globalVarInits);
+        }
+    }
+
+    @TruffleBoundary
+    private void executeConstructorFunctions() {
+        List<RootCallTarget> constructorFunctions = context.getConstructorFunctions();
+        for (RootCallTarget callTarget : constructorFunctions) {
+            callTarget.call(constructorFunctions);
         }
     }
 

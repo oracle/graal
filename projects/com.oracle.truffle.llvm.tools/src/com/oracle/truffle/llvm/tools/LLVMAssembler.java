@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class LLVMAssembler {

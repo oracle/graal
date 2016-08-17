@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -40,13 +41,22 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
     private final RootCallTarget mainFunction;
     private final RootCallTarget staticInits;
     private final RootCallTarget staticDestructors;
+    private final List<RootCallTarget> constructorFunctions;
+    private final List<RootCallTarget> destructorFunctions;
     private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
 
-    public LLVMBitcodeParserResult(RootCallTarget mainFunction, RootCallTarget staticInits, RootCallTarget staticDestructors, Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions) {
+    public LLVMBitcodeParserResult(RootCallTarget mainFunction,
+                    RootCallTarget staticInits,
+                    RootCallTarget staticDestructors,
+                    Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions,
+                    List<RootCallTarget> constructorFunctions,
+                    List<RootCallTarget> destructorFunctions) {
         this.mainFunction = mainFunction;
         this.staticInits = staticInits;
         this.staticDestructors = staticDestructors;
         this.parsedFunctions = parsedFunctions;
+        this.constructorFunctions = constructorFunctions;
+        this.destructorFunctions = destructorFunctions;
     }
 
     @Override
@@ -60,17 +70,22 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
     }
 
     @Override
-    public RootCallTarget getStaticInits() {
+    public RootCallTarget getGlobalVarInits() {
         return staticInits;
     }
 
     @Override
-    public RootCallTarget getStaticDestructors() {
+    public RootCallTarget getGlobalVarDeallocs() {
         return staticDestructors;
     }
 
     @Override
-    public RootCallTarget getDestructorFunctions() {
-        return null;
+    public List<RootCallTarget> getConstructorFunctions() {
+        return constructorFunctions;
+    }
+
+    @Override
+    public List<RootCallTarget> getDestructorFunctions() {
+        return destructorFunctions;
     }
 }
