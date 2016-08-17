@@ -57,16 +57,16 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
  */
 public class LLVMGlobalRootNode extends RootNode {
 
-    private final DirectCallNode main;
-    @CompilationFinal private final Object[] arguments;
-    private final LLVMContext context;
+    protected final DirectCallNode main;
+    @CompilationFinal protected final Object[] arguments;
+    protected final LLVMContext context;
     // FIXME instead make the option system "PE safe"
-    private final boolean printNativeStats = LLVMBaseOptionFacade.printNativeCallStats();
-    private final int executionCount = LLVMBaseOptionFacade.getExecutionCount();
-    private final boolean printExecutionTime = LLVMBaseOptionFacade.printExecutionTime();
-    private final FrameSlot stackPointerSlot;
-    private long startExecutionTime;
-    private long endExecutionTime;
+    protected final boolean printNativeStats = LLVMBaseOptionFacade.printNativeCallStats();
+    protected final int executionCount = LLVMBaseOptionFacade.getExecutionCount();
+    protected final boolean printExecutionTime = LLVMBaseOptionFacade.printExecutionTime();
+    protected final FrameSlot stackPointerSlot;
+    protected long startExecutionTime;
+    protected long endExecutionTime;
 
     public LLVMGlobalRootNode(FrameSlot stackSlot, FrameDescriptor descriptor, LLVMContext context, CallTarget main, Object... arguments) {
         super(LLVMLanguage.class, null, descriptor);
@@ -87,19 +87,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
                 realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
-                if (printExecutionTime) {
-                    startExecutionTime = System.currentTimeMillis();
-                }
-                result = main.call(frame, realArgs);
-                if (printExecutionTime) {
-                    endExecutionTime = System.currentTimeMillis();
-                    printExecutionTime();
-                }
-
-                executeDestructorFunctions();
-                if (i != executionCount - 1) {
-                    executeStaticInits();
-                }
+                result = executeIteration(frame, i, realArgs);
             }
             return result;
         } catch (LLVMExitException e) {
@@ -111,14 +99,32 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
+    protected Object executeIteration(VirtualFrame frame, int iteration, Object[] args) {
+        Object result;
+        if (printExecutionTime) {
+            startExecutionTime = System.currentTimeMillis();
+        }
+        result = main.call(frame, args);
+        if (printExecutionTime) {
+            endExecutionTime = System.currentTimeMillis();
+            printExecutionTime();
+        }
+
+        executeDestructorFunctions();
+        if (iteration != executionCount - 1) {
+            executeStaticInits();
+        }
+        return result;
+    }
+
     @TruffleBoundary
-    private void printExecutionTime() {
+    protected void printExecutionTime() {
         long executionTime = endExecutionTime - startExecutionTime;
         LLVMLogger.unconditionalInfo("execution time: " + executionTime + " ms");
     }
 
     @TruffleBoundary
-    private void executeStaticInits() {
+    protected void executeStaticInits() {
         List<RootCallTarget> staticInits = context.getStaticInitializers();
         for (RootCallTarget callTarget : staticInits) {
             callTarget.call(staticInits);
@@ -126,7 +132,7 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    private void executeDestructorFunctions() {
+    protected void executeDestructorFunctions() {
         List<RootCallTarget> destructorFunctions = context.getDestructorFunctions();
         for (RootCallTarget callTarget : destructorFunctions) {
             callTarget.call(destructorFunctions);
@@ -134,7 +140,7 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    private static void printNativeCallStats(LLVMContext context) {
+    protected static void printNativeCallStats(LLVMContext context) {
         Map<LLVMFunctionDescriptor, Integer> nativeFunctionCallSites = context.getNativeFunctionLookupStats();
         // Checkstyle: stop
         if (!nativeFunctionCallSites.isEmpty()) {

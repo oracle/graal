@@ -174,7 +174,7 @@ public final class LLVMFunctionFactory {
         }
     }
 
-    private static LLVMExpressionNode createArgNode(int argIndex, LLVMBaseType paramType) throws AssertionError {
+    public static LLVMExpressionNode createArgNode(int argIndex, LLVMBaseType paramType) throws AssertionError {
         switch (paramType) {
             case I1:
                 return LLVMI1ArgNodeGen.create(argIndex);
@@ -222,6 +222,11 @@ public final class LLVMFunctionFactory {
     public static LLVMNode createFunctionCall(LLVMFunctionNode functionNode, LLVMExpressionNode[] argNodes, LLVMBaseType llvmType) {
         LLVMUnresolvedCallNode unresolvedCallNode = new LLVMUnresolvedCallNode(functionNode, argNodes, LLVMTypeHelper.convertType(new LLVMType(llvmType)),
                         LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()));
+        return createUnresolvedNodeWrapping(llvmType, unresolvedCallNode);
+
+    }
+
+    public static LLVMNode createUnresolvedNodeWrapping(LLVMBaseType llvmType, LLVMExpressionNode unresolvedCallNode) {
         if (LLVMTypeHelper.isVectorType(llvmType)) {
             return LLVMVectorCallUnboxNodeGen.create(unresolvedCallNode);
         } else {
@@ -256,7 +261,6 @@ public final class LLVMFunctionFactory {
                     throw new AssertionError(llvmType);
             }
         }
-
     }
 
     public static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {

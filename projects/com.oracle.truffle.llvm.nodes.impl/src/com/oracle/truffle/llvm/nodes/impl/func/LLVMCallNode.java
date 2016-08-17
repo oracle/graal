@@ -132,7 +132,7 @@ public abstract class LLVMCallNode {
         }
 
         @ExplodeLoop
-        Object[] evaluateArgs(VirtualFrame frame) {
+        protected Object[] evaluateArgs(VirtualFrame frame) {
             Object[] argValues = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
                 argValues[i] = args[i].executeGeneric(frame);
