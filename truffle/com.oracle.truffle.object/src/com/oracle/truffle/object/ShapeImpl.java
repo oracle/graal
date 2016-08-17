@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -96,14 +98,22 @@ public abstract class ShapeImpl extends Shape {
     @CompilationFinal protected volatile Assumption leafAssumption;
 
     /**
-     * Shape transition map; lazily initialized.
+     * Shape transition map; lazily initialized. One of:
+     * <ol>
+     * <li>{@code null}: empty map
+     * <li>{@link Map.Entry}: immutable single entry map
+     * <li>{@link Map}: mutable multiple entry map
+     * </ol>
      *
      * @see #getTransitionMapForRead()
-     * @see #getTransitionMapForWrite()
+     * @see #addTransitionInternal(Transition, ShapeImpl)
      */
-    private volatile Map<Transition, ShapeImpl> transitionMap;
+    private volatile Object transitionMap;
 
     private final Transition transitionFromParent;
+
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Object.class, "transitionMap");
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, Assumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Assumption.class, "leafAssumption");
 
     /**
      * Private constructor.
@@ -238,6 +248,10 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.get(key);
     }
 
+    public final PropertyMap getPropertyMap() {
+        return propertyMap;
+    }
+
     public final void addDirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
@@ -248,34 +262,69 @@ public abstract class ShapeImpl extends Shape {
         addTransitionInternal(transition, next);
     }
 
-    private void addTransitionInternal(Transition transition, ShapeImpl next) {
-        getTransitionMapForWrite().put(transition, next);
+    private void addTransitionInternal(Transition transition, ShapeImpl successor) {
+        Object prev;
+        Object next;
+        do {
+            prev = TRANSITION_MAP_UPDATER.get(this);
+            if (prev == null) {
+                invalidateLeafAssumption();
+                next = new AbstractMap.SimpleImmutableEntry<>(transition, successor);
+            } else if (prev instanceof Map.Entry<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) prev;
+                ConcurrentHashMap<Transition, ShapeImpl> map = new ConcurrentHashMap<>();
+                map.put(entry.getKey(), entry.getValue());
+                map.put(transition, successor);
+                next = map;
+            } else {
+                assert prev instanceof Map<?, ?>;
+                @SuppressWarnings("unchecked")
+                Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) prev;
+                map.put(transition, successor);
+                break;
+            }
+        } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
     }
 
     public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
-        return transitionMap != null ? transitionMap : Collections.<Transition, ShapeImpl> emptyMap();
-    }
-
-    private Map<Transition, ShapeImpl> getTransitionMapForWrite() {
-        if (transitionMap != null) {
-            return transitionMap;
+        Object trans = transitionMap;
+        if (trans == null) {
+            return Collections.<Transition, ShapeImpl> emptyMap();
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            return Collections.singletonMap(entry.getKey(), entry.getValue());
         } else {
-            synchronized (getMutex()) {
-                if (transitionMap != null) {
-                    return transitionMap;
-                }
-                invalidateLeafAssumption();
-                return transitionMap = new ConcurrentHashMap<>();
-            }
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map;
         }
     }
 
-    public final PropertyMap getPropertyMap() {
-        return propertyMap;
+    private ShapeImpl queryTransitionImpl(Transition transition) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            if (entry.getKey().equals(transition)) {
+                return entry.getValue();
+            } else {
+                return null;
+            }
+        } else {
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map.get(transition);
+        }
     }
 
     public final ShapeImpl queryTransition(Transition transition) {
-        ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
+        ShapeImpl cachedShape = queryTransitionImpl(transition);
         if (cachedShape != null) {
             shapeCacheHitCount.inc();
             return cachedShape;
@@ -488,24 +537,30 @@ public abstract class ShapeImpl extends Shape {
 
     @Override
     public final boolean isLeaf() {
-        return leafAssumption == null || leafAssumption.isValid();
+        Assumption assumption = leafAssumption;
+        return assumption == null || assumption.isValid();
     }
 
     @Override
     public final Assumption getLeafAssumption() {
-        if (leafAssumption == null) {
+        Assumption assumption = leafAssumption;
+        if (assumption != null) {
+            return assumption;
+        } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (getMutex()) {
-                if (leafAssumption == null) {
-                    leafAssumption = isLeafHelper() ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
+            Assumption prev;
+            Assumption next;
+            do {
+                prev = LEAF_ASSUMPTION_UPDATER.get(this);
+                if (prev != null) {
+                    return prev;
+                } else {
+                    boolean isLeafShape = transitionMap == null;
+                    next = isLeafShape ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
                 }
-            }
+            } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
+            return next;
         }
-        return leafAssumption;
-    }
-
-    private boolean isLeafHelper() {
-        return getTransitionMapForRead().isEmpty();
     }
 
     private static Assumption createLeafAssumption() {
@@ -513,12 +568,16 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private void invalidateLeafAssumption() {
-        Assumption assumption = leafAssumption;
-        if (assumption != null) {
-            assumption.invalidate();
-        } else {
-            leafAssumption = NeverValidAssumption.INSTANCE;
-        }
+        Assumption prev;
+        do {
+            prev = LEAF_ASSUMPTION_UPDATER.get(this);
+            if (prev == NeverValidAssumption.INSTANCE) {
+                break;
+            }
+            if (prev != null) {
+                prev.invalidate();
+            }
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, NeverValidAssumption.INSTANCE));
     }
 
     @Override
