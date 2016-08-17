@@ -303,10 +303,6 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    private boolean isTransitionMapEmpty() {
-        return transitionMap == null;
-    }
-
     private ShapeImpl queryTransitionImpl(Transition transition) {
         Object trans = transitionMap;
         if (trans == null) {
@@ -559,15 +555,12 @@ public abstract class ShapeImpl extends Shape {
                 if (prev != null) {
                     return prev;
                 } else {
-                    next = isLeafHelper() ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
+                    boolean isLeafShape = transitionMap == null;
+                    next = isLeafShape ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
         }
-    }
-
-    private boolean isLeafHelper() {
-        return isTransitionMapEmpty();
     }
 
     private static Assumption createLeafAssumption() {
