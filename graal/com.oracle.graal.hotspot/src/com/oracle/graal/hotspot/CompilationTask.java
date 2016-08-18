@@ -223,7 +223,7 @@ public class CompilationTask {
                     final long stop = TimeSource.getTimeNS();
                     final long duration = (stop - start) / 1000000;
                     final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
-                    final int bytecodeSize = result.getBytecodeSize();
+                    final int bytecodeSize = result != null ? result.getBytecodeSize() : 0;
                     final long allocatedBytesAfter = Lazy.threadMXBean.getThreadAllocatedBytes(threadId);
                     final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
 
