@@ -25,6 +25,7 @@ package com.oracle.graal.lir.alloc.lsra;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -317,7 +318,7 @@ public class MoveResolver {
                 }
             }
 
-            ArrayList<AllocatableValue> busySpillSlots = new ArrayList<>();
+            ArrayList<AllocatableValue> busySpillSlots = null;
             while (mappingFrom.size() > 0) {
                 boolean processedInterval = false;
 
@@ -334,13 +335,19 @@ public class MoveResolver {
                         } else {
                             insertMove(mappingFromOpr.get(i), toInterval);
                         }
-                        busySpillSlots.add(toInterval.location());
+                        if (isStackSlot(toInterval.location())) {
+                            if (busySpillSlots == null) {
+                                busySpillSlots = new ArrayList<>(2);
+                            }
+                            busySpillSlots.add(toInterval.location());
+                        }
                         mappingFrom.remove(i);
                         mappingFromOpr.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromInterval != null && isRegister(fromInterval.location()) && !busySpillSlots.contains(fromInterval.spillSlot())) {
+                    } else if (fromInterval != null && isRegister(fromInterval.location()) &&
+                                    (busySpillSlots == null || !busySpillSlots.contains(fromInterval.spillSlot()))) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
