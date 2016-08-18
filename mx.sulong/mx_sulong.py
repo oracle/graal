@@ -54,6 +54,25 @@ sulongDistributions = [
     'SULONG_TEST'
 ]
 
+# the files that should be checked to not contain http links (but https ones)
+httpCheckFiles = [
+    __file__,
+    ".travis.yml"
+]
+
+# the file paths that we want to check with clang-format
+clangFormatCheckPaths = [
+    _suite.dir + '/include',
+    _testDir,
+    _interopTestDir,
+    _libPath
+]
+
+# the file paths on which we want to use the mdl Markdown file checker
+mdlCheckDirectories = [
+    _suite.dir
+]
+
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
     executeGate()
@@ -887,16 +906,17 @@ def standardLinkerCommands(args=None):
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
-    for path, _, files in os.walk('.'):
-        for f in files:
-            if f.endswith('.md') and (path.startswith('./projects') or path is '.'):
-                absPath = path + '/' + f
-                mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
-                try:
-                    subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
-                except subprocess.CalledProcessError as e:
-                    print e # prints command and return value
-                    print e.output # prints process output
+    for mdlCheckPath in mdlCheckDirectories:
+        for path, _, files in os.walk(mdlCheckPath):
+            for f in files:
+                if f.endswith('.md'):
+                    absPath = path + '/' + f
+                    mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
+                    try:
+                        subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
+                    except subprocess.CalledProcessError as e:
+                        print e # prints command and return value
+                        print e.output # prints process output
 
 def getBitcodeLibrariesOption():
     libraries = []
@@ -914,16 +934,14 @@ def getBitcodeLibrariesOption():
 
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
-    checkCFile(_suite.dir + '/include/truffle.h')
-    checkCFiles(_testDir)
-    checkCFiles(_interopTestDir)
-    checkCFiles(_libPath)
+    for f in clangFormatCheckPaths:
+        checkCFiles(f)
 
 def checkCFiles(targetDir):
     error = False
     for path, _, files in os.walk(targetDir):
         for f in files:
-            if f.endswith('.c') or f.endswith('.cpp'):
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h'):
                 if not checkCFile(path + '/' + f):
                     error = True
     if error:
@@ -943,8 +961,7 @@ def checkCFile(targetFile):
 
 def checkNoHttp(args=None):
     """checks that https is used instead of http in Travis and the mx script"""
-    files = [__file__, ".travis.yml"]
-    for f in files:
+    for f in httpCheckFiles:
         line_number = 0
         for line in open(f):
             if "http" + chr(58) + "//" in line:
