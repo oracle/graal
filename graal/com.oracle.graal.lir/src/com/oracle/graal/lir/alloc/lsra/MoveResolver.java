@@ -317,10 +317,11 @@ public class MoveResolver {
                 }
             }
 
-            int spillCandidate = -1;
+            ArrayList<AllocatableValue> busySpillSlots = new ArrayList<>();
             while (mappingFrom.size() > 0) {
                 boolean processedInterval = false;
 
+                int spillCandidate = -1;
                 for (i = mappingFrom.size() - 1; i >= 0; i--) {
                     Interval fromInterval = mappingFrom.get(i);
                     Interval toInterval = mappingTo.get(i);
@@ -333,12 +334,13 @@ public class MoveResolver {
                         } else {
                             insertMove(mappingFromOpr.get(i), toInterval);
                         }
+                        busySpillSlots.add(toInterval.location());
                         mappingFrom.remove(i);
                         mappingFromOpr.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromInterval != null && isRegister(fromInterval.location())) {
+                    } else if (fromInterval != null && isRegister(fromInterval.location()) && !busySpillSlots.contains(fromInterval.spillSlot())) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
