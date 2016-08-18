@@ -40,13 +40,13 @@ import com.oracle.graal.compiler.common.spi.LIRKindTool;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.CompressEncoding;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.HotSpotLockStack;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -69,7 +69,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64PrefetchOp;
 import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
-import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -399,8 +398,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                     assert !generationResult.getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
                     generationResult.getCalleeSaveInfo().put(currentRuntimeCallInfo, save);
                     emitRestoreRegisters(save);
-                } else {
-                    assert zapRegisters();
                 }
             }
         }
@@ -438,23 +435,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
         return result;
-    }
-
-    protected AMD64ZapRegistersOp emitZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
-        AMD64ZapRegistersOp zap = new AMD64ZapRegistersOp(zappedRegisters, zapValues);
-        append(zap);
-        return zap;
-    }
-
-    protected boolean zapRegisters() {
-        Register[] zappedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters().toArray();
-        JavaConstant[] zapValues = new JavaConstant[zappedRegisters.length];
-        for (int i = 0; i < zappedRegisters.length; i++) {
-            PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
-            zapValues[i] = zapValueForKind(kind);
-        }
-        getResult().getCalleeSaveInfo().put(currentRuntimeCallInfo, emitZapRegisters(zappedRegisters, zapValues));
-        return true;
     }
 
     @Override

@@ -534,4 +534,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
         this.debugInfoBuilder = debugInfoBuilder;
     }
+
+    @Override
+    public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        throw GraalError.unimplemented();
+    }
+
 }

@@ -340,4 +340,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         this.debugInfoBuilder = debugInfoBuilder;
     }
 
+    @Override
+    public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        throw GraalError.unimplemented();
+    }
+
 }

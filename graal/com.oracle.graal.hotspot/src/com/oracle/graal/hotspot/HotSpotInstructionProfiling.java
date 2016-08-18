@@ -36,7 +36,7 @@ import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.gen.BenchmarkCounterFactory;
+import com.oracle.graal.lir.gen.DiagnosticLIRGeneratorTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 
@@ -55,22 +55,21 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
-        BenchmarkCounterFactory counterFactory = context.counterFactory;
-        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
+        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), context.diagnosticLirGenTool).run();
     }
 
     private class Analyzer {
         private final TargetDescription target;
         private final LIR lir;
-        private final BenchmarkCounterFactory counterFactory;
+        private final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
         private final LIRInsertionBuffer buffer;
         private final String compilationUnitName;
 
-        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
+        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, DiagnosticLIRGeneratorTool diagnosticLirGenTool) {
             this.target = target;
             this.lir = lir;
             this.compilationUnitName = compilationUnitName;
-            this.counterFactory = counterFactory;
+            this.diagnosticLirGenTool = diagnosticLirGenTool;
             this.buffer = new LIRInsertionBuffer();
         }
 
@@ -97,7 +96,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
                 // assembly in method HotSpotInstructionProfiling.countInstructions
                 increments[i] = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_0);
             }
-            HotSpotCounterOp op = (HotSpotCounterOp) counterFactory.createMultiBenchmarkCounter(names, groups, increments);
+            HotSpotCounterOp op = (HotSpotCounterOp) diagnosticLirGenTool.createMultiBenchmarkCounter(names, groups, increments);
             LIRInstruction inst = new InstructionCounterOp(op, instructionsToProfile);
             assert inst != null;
             buffer.init(instructions);

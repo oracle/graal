@@ -37,6 +37,7 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.Opcode;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import com.oracle.graal.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -130,7 +131,7 @@ public class AMD64Call {
         }
     }
 
-    public abstract static class ForeignCallOp extends CallOp {
+    public abstract static class ForeignCallOp extends CallOp implements ZapRegistersAfterInstruction {
         public static final LIRInstructionClass<ForeignCallOp> TYPE = LIRInstructionClass.create(ForeignCallOp.class);
 
         protected final ForeignCallLinkage callTarget;
