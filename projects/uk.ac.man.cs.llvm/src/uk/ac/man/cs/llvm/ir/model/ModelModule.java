@@ -35,12 +35,13 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
+
 import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.Constant;
+import uk.ac.man.cs.llvm.ir.model.constants.DeferredBlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
@@ -109,10 +110,10 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public void createBlockAddress(Type type, int function, int block) {
-        symbols.addSymbol(new BlockAddressConstant(
+        symbols.addSymbol(new DeferredBlockAddressConstant(
                         type,
                         symbols.getSymbol(function),
-                        null));
+                        block));
     }
 
     @Override

@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -236,6 +237,7 @@ public abstract class TestSuiteBase {
     protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen) throws IOException, AssertionError {
         TestSpecification testSpecification = SpecificationFileReader.readSpecificationFolder(configFile, testSuite);
         List<SpecificationEntry> includedFiles = testSpecification.getIncludedFiles();
+        List<TestCaseFiles[]> testCaseFiles;
         if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
             List<SpecificationEntry> excludedFiles = testSpecification.getExcludedFiles();
             File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), LLVMBaseOptionFacade.getTestDiscoveryPath());
@@ -261,11 +263,24 @@ public abstract class TestSuiteBase {
                 }
             }
             LLVMLogger.info("\tfinished collecting files");
-            return discoveryTestCases;
+            testCaseFiles = discoveryTestCases;
         } else {
             List<TestCaseFiles[]> includedFileTestCases = collectIncludedFiles(includedFiles, gen);
-            return includedFileTestCases;
+            testCaseFiles = includedFileTestCases;
         }
+        // compile to *.bc files to test the binary parser
+        if (LLVMBaseOptionFacade.testBinaryParser()) {
+            List<TestCaseFiles[]> allLLVMBitcodeFiles = testCaseFiles.stream().map(t -> {
+                TestCaseFiles[] llvmBinaryFiles = Arrays.copyOf(t, t.length);
+                for (int i = 0; i < llvmBinaryFiles.length; i++) {
+                    llvmBinaryFiles[i] = TestHelper.compileLLVMIRToLLVMBC(llvmBinaryFiles[i]);
+                }
+                return llvmBinaryFiles;
+            }).collect(Collectors.toList());
+            testCaseFiles.clear();
+            testCaseFiles.addAll(allLLVMBitcodeFiles);
+        }
+        return testCaseFiles;
     }
 
     private static List<TestCaseFiles[]> collectIncludedFiles(List<SpecificationEntry> specificationEntries, TestCaseGenerator gen) throws AssertionError {

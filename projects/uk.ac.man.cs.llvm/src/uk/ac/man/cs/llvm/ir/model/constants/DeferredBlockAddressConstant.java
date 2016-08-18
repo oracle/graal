@@ -27,12 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test;
+package uk.ac.man.cs.llvm.ir.model.constants;
 
-public class Constants {
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.types.Type;
 
-    static final String LLVM_BINARYFILE_EXTENSION = ".bc";
-    static final String LLVM_BITFILE_EXTENSION = ".ll";
-    static final String TMP_EXTENSION = ".temp";
+public class DeferredBlockAddressConstant extends AbstractConstant {
 
+    private final FunctionDefinition function;
+
+    private final int block;
+
+    public DeferredBlockAddressConstant(Type type, Symbol function, int block) {
+        super(type);
+        this.function = (FunctionDefinition) function;
+        this.block = block;
+    }
+
+    public int getBlock() {
+        return block;
+    }
+
+    public Symbol getFunction() {
+        return function;
+    }
 }

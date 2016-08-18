@@ -42,6 +42,10 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.PRINT_FUNCTION_ASTS);
     }
 
+    public static boolean testBinaryParser() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.TEST_BINARY_PARSER);
+    }
+
     public static String getRemoteTestBootClassPath() {
         if (LLVMOptions.getParsedProperty(LLVMBaseOption.REMOTE_TEST_BOOT_CLASSPATH) == null) {
             throw new AssertionError();

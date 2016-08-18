@@ -29,18 +29,6 @@
  */
 package com.oracle.truffle.llvm.test;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.Clang;
@@ -49,6 +37,17 @@ import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
 import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RunWith(Parameterized.class)
 /**
@@ -77,8 +76,12 @@ public class SulongTestSuite extends TestSuiteBase {
 
     private static List<TestCaseFiles[]> getFilesRecursively(File currentFolder) {
         List<TestCaseFiles> allBitcodeFiles = new ArrayList<>();
+
+        // *.ll files
         List<File> byteCodeFiles = TestHelper.collectFilesWithExtension(currentFolder, ProgrammingLanguage.LLVM);
         allBitcodeFiles.addAll(byteCodeFiles.stream().map(t -> TestCaseFiles.createFromBitCodeFile(t, Collections.emptySet())).collect(Collectors.toList()));
+
+        // C, C++, Objective C files
         List<File> cFiles = TestHelper.collectFilesWithExtension(currentFolder, Clang.getSupportedLanguages());
         allBitcodeFiles.addAll(getClangCompiledFiles(cFiles, OptimizationLevel.NONE, false));
         List<TestCaseFiles> optimizedFiles = new ArrayList<>();
@@ -92,6 +95,14 @@ public class SulongTestSuite extends TestSuiteBase {
         allBitcodeFiles.addAll(getClangCompiledFiles(cFiles, OptimizationLevel.O2, true));
         allBitcodeFiles.addAll(getClangCompiledFiles(cFiles, OptimizationLevel.O3, true));
         allBitcodeFiles.addAll(optimizedFiles);
+
+        // compile to *.bc files to test the binary parser
+        if (LLVMBaseOptionFacade.testBinaryParser()) {
+            List<TestCaseFiles> allLLVMBitcodeFiles = allBitcodeFiles.stream().map(TestHelper::compileLLVMIRToLLVMBC).collect(Collectors.toList());
+            allBitcodeFiles.clear();
+            allBitcodeFiles.addAll(allLLVMBitcodeFiles);
+        }
+
         return allBitcodeFiles.parallelStream().map(t -> new TestCaseFiles[]{t}).collect(Collectors.toList());
     }
 

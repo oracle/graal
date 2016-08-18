@@ -98,7 +98,7 @@ public final class TestCaseFiles {
     private static void checkBitCodeFile(File bitCodeFile) {
         assert bitCodeFile != null;
         String extension = PathUtil.getExtension(bitCodeFile.getName());
-        if (!Constants.LLVM_BITFILE_EXTENSION.equals(extension)) {
+        if (!Constants.LLVM_BITFILE_EXTENSION.equals(extension) && !Constants.LLVM_BINARYFILE_EXTENSION.equals(extension)) {
             throw new IllegalArgumentException(bitCodeFile + " is not a bitcode file!");
         }
     }

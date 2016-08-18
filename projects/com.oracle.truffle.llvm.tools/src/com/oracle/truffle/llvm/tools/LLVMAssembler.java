@@ -43,4 +43,10 @@ public final class LLVMAssembler {
         ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
     }
 
+    public static void assembleToBitcodeFile(File irFile, File destFile) {
+        final String args = " -o=" + destFile.getAbsolutePath() + " " + irFile.getAbsolutePath();
+        final String compilationCommand = LLVMToolPaths.LLVM_ASSEMBLER + args;
+        ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
+    }
+
 }
