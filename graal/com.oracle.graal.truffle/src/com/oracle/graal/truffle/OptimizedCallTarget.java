@@ -107,7 +107,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         this.rootNode.adoptChildren();
-        this.rootNode.applyInstrumentation();
     }
 
     public Assumption getNodeRewritingAssumption() {
