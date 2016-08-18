@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.Layout;
@@ -39,44 +38,39 @@ public class ShapeTest {
         Layout layout = new DefaultLayoutFactory().createLayout(Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong));
 
         Shape rootShape = layout.createShape(new ObjectType());
-        Assert.assertEquals(id(rootShape) + "{}", rootShape.toString());
+        DOTestAsserts.assertShape("{}", rootShape);
 
         Shape aInt = rootShape.defineProperty("a", 1, 0);
-        Assert.assertEquals(id(aInt) + "{\"a\":int@0" + "\n}", aInt.toString());
+        DOTestAsserts.assertShape("{\"a\":int@0" + "\n}", aInt);
 
         Shape aObj = aInt.defineProperty("a", new Object(), 0);
-        Assert.assertEquals(id(aObj) + "{\"a\":Object@0" + "\n}", aObj.toString());
+        DOTestAsserts.assertShape("{\"a\":Object@0" + "\n}", aObj);
 
         Shape aObjBInt = aObj.defineProperty("b", 2, 0);
-        Assert.assertEquals(id(aObjBInt) + "{" +
+        DOTestAsserts.assertShape("{" +
                         "\"b\":int@1,\n" +
                         "\"a\":Object@0" +
-                        "\n}", aObjBInt.toString());
+                        "\n}", aObjBInt);
 
         Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
-        Assert.assertEquals(id(aIntBObj) + "{" +
+        DOTestAsserts.assertShape("{" +
                         "\"b\":Object@0,\n" +
                         "\"a\":int@0" +
-                        "\n}", aIntBObj.toString());
+                        "\n}", aIntBObj);
 
         Shape bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
-        Assert.assertEquals(id(bool) + "{\"bool\":boolean@0\n}", bool.toString());
+        DOTestAsserts.assertShape("{\"bool\":boolean@0\n}", bool);
 
         Shape str = rootShape.addProperty(Property.create("str", rootShape.allocator().locationForType(String.class), 0));
-        Assert.assertEquals(id(str) + "{\"str\":Object@0\n}", str.toString());
+        DOTestAsserts.assertShape("{\"str\":Object@0\n}", str);
 
         Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
-        Assert.assertEquals(id(shapeWithExtArray) + "{" +
+        DOTestAsserts.assertShape("{" +
                         "\"e\":long[0],\n" +
                         "\"d\":double@2,\n" +
                         "\"c\":boolean@1,\n" +
                         "\"b\":Object@0,\n" +
                         "\"a\":int@0" +
-                        "\n}", shapeWithExtArray.toString());
+                        "\n}", shapeWithExtArray);
     }
-
-    private static String id(Shape shape) {
-        return "@" + Integer.toHexString(shape.hashCode());
-    }
-
 }

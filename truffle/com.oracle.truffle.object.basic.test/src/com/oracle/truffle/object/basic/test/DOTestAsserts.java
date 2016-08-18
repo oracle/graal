@@ -26,9 +26,13 @@ import org.junit.Assert;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.ShapeImpl;
+import com.oracle.truffle.object.basic.BasicLocations.FieldLocation;
 import com.oracle.truffle.object.basic.BasicLocations.PrimitiveLocationDecorator;
+import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
+import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
 
 public abstract class DOTestAsserts {
 
@@ -47,8 +51,30 @@ public abstract class DOTestAsserts {
     }
 
     public static void assertSameLocation(Location location1, Location location2) {
-        Assert.assertEquals(
-                        ((PrimitiveLocationDecorator) location1).getInternalLocation(),
-                        ((PrimitiveLocationDecorator) location2).getInternalLocation());
+        Assert.assertSame(getInternalLocation(location1), getInternalLocation(location2));
+    }
+
+    public static void assertNotSameLocation(Location location1, Location location2) {
+        Assert.assertNotSame(getInternalLocation(location1), getInternalLocation(location2));
+    }
+
+    private static FieldLocation getInternalLocation(Location location) {
+        if (location instanceof PrimitiveLocationDecorator) {
+            return (FieldLocation) ((PrimitiveLocationDecorator) location).getInternalLocation();
+        } else if (location instanceof SimpleLongFieldLocation) {
+            return (FieldLocation) location;
+        } else if (location instanceof SimpleObjectFieldLocation) {
+            return (FieldLocation) location;
+        } else {
+            throw new AssertionError("Could not find internal location of " + location);
+        }
+    }
+
+    public static void assertShape(String fields, Shape shape) {
+        Assert.assertEquals(shapeId(shape) + fields, shape.toString());
+    }
+
+    private static String shapeId(Shape shape) {
+        return "@" + Integer.toHexString(shape.hashCode());
     }
 }
