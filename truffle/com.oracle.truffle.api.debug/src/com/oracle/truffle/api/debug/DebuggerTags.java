@@ -49,8 +49,8 @@ public final class DebuggerTags {
      *
      * {@link com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode}
      *
-     * The {@link Debugger} will then make sure it always {@link SuspendedEvent suspends execution}
-     * at such program locations.
+     * All created {@link DebuggerSession debugger sessions} will suspend on these locations
+     * unconditionally.
      *
      * @since 0.14
      */

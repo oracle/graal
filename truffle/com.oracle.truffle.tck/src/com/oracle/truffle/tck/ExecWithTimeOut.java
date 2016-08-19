@@ -24,65 +24,44 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.vm.EventConsumer;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.IOException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendedCallback;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
  * Example of an execution shielded by a timeout. Used in {@link SuspendedEvent#prepareKill()}
  * javadoc.
  */
 // BEGIN: com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets
-class ExecWithTimeOut extends EventConsumer<SuspendedEvent> //
-                implements Runnable {
+class ExecWithTimeOut {
 
     boolean pauseRequested;
-    boolean pauseResult;
-
-    ExecWithTimeOut() {
-        super(SuspendedEvent.class);
-    }
-
-    void registerEventHandler(PolyglotEngine.Builder builder) {
-        // register as handler of SuspendedEvent
-        builder.onEvent(this);
-    }
-
-    private void initTimeOut(ScheduledExecutorService executor) {
-        // schedule pausing actions after a timeout
-        executor.schedule(this, 10, TimeUnit.SECONDS);
-    }
-
-    @Override
-    public void run() {
-        // if the script is running too long
-        pauseRequested = true;
-        final Debugger debugger = getDebugger();
-        // request pause to generate SuspendedEvent
-        pauseResult = debugger.pause();
-    }
-
-    @Override
-    protected void on(SuspendedEvent event) {
-        if (pauseRequested) {
-            // when execution stops either debug or kill it:
-            event.prepareKill();
-        }
-    }
 
     void executeWithTimeOut(
                     ScheduledExecutorService executor, // run us later
                     PolyglotEngine.Value function, // unknown function
                     Object parameter // parameter of the function
     ) throws IOException {
-        initTimeOut(executor);
+        executor.schedule(new Runnable() {
+            public void run() {
+                Debugger.find(engine).startSession(new SuspendedCallback() {
+                    public void onSuspend(SuspendedEvent event) {
+                        pauseRequested = true;
+                        event.prepareKill();
+                    }
+                });
+            }
+        }, 10, TimeUnit.SECONDS);
+
         Throwable caught = null;
         try {
             // execute with timer on
@@ -90,26 +69,16 @@ class ExecWithTimeOut extends EventConsumer<SuspendedEvent> //
         } catch (ThreadDeath t) {
             caught = t;
         }
-        assertTrue("Pause requested", pauseRequested);
-        assertTrue("Pause performed successfully", pauseResult);
-        assertNotNull("Execution ended with throwable", caught);
-        assertEquals("Our Exception", // prepareKill produces
-                        "com.oracle.truffle.api.debug.KillException", //
-                        caught.getClass().getName());
+        if (pauseRequested) {
+            assertTrue("Pause requested", pauseRequested);
+            assertNotNull("Execution ended with throwable", caught);
+            assertEquals("Our Exception", // prepareKill produces
+                            "com.oracle.truffle.api.debug.KillException", //
+                            caught.getClass().getName());
+        }
     }
     // FINISH: com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets
 
-    public void tckSnippets() {
-    }
-
     PolyglotEngine engine;
-    Debugger foundDebugger;
-
-    Debugger getDebugger() {
-        if (foundDebugger == null) {
-            foundDebugger = Debugger.find(engine);
-        }
-        return foundDebugger;
-    }
 
 }

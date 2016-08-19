@@ -38,7 +38,6 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.TypedLocation;
-import com.oracle.truffle.object.basic.DOTestAsserts;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 @RunWith(Parameterized.class)

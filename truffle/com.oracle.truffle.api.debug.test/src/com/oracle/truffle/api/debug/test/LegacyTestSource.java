@@ -27,13 +27,18 @@ package com.oracle.truffle.api.debug.test;
 import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
 import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
 
-import com.oracle.truffle.api.source.Source;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 
-final class TestSource {
+import com.oracle.truffle.api.source.Source;
+
+final class LegacyTestSource {
+
+    /*
+     * TODO remove class with deprecated API.
+     */
 
     static Source createBlock2(String sourceName) {
         return Source.newBuilder("ROOT(\n" +
@@ -108,7 +113,7 @@ final class TestSource {
         return file;
     }
 
-    private TestSource() {
+    private LegacyTestSource() {
     }
 
 }

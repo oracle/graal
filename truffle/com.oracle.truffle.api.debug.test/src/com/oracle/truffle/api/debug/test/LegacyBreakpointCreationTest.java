@@ -39,7 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
@@ -48,8 +47,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 /**
  * Creating and modifying breakpoints; no actual executions.
  */
-public final class BreakpointCreationTest {
+@SuppressWarnings("deprecation")
+public final class LegacyBreakpointCreationTest {
 
+    /*
+     * TODO remove class with deprecated API.
+     */
     private Debugger db;
     protected PolyglotEngine engine;
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -88,7 +91,7 @@ public final class BreakpointCreationTest {
         assertEquals("ignorecount 0", 0, b1.getIgnoreCount());
         assertEquals("no hits yet", 0, b1.getHitCount());
         assertNull("no condition set", b1.getCondition());
-        assertEquals("initial state", State.ENABLED_UNRESOLVED, b1.getState());
+        assertEquals("initial state", Breakpoint.State.ENABLED_UNRESOLVED, b1.getState());
 
         // Make some state changes
         final int newIgnoreCount = 9;
@@ -110,7 +113,7 @@ public final class BreakpointCreationTest {
 
         // Dispose breakpoint at line 1
         b1.dispose();
-        assertEquals("breakpoint is disposed", State.DISPOSED, b1.getState());
+        assertEquals("breakpoint is disposed", Breakpoint.State.DISPOSED, b1.getState());
         assertEquals("one breakpoint left", 1, db.getBreakpoints().size());
         assertSame("second breakpoint remains", b2, db.getBreakpoints().iterator().next());
 

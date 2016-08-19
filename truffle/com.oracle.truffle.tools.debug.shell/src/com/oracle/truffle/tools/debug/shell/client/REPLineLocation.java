@@ -35,8 +35,8 @@ final class REPLineLocation {
     private final int lineNumber;
 
     /**
-     * Attempts to extract description of a source line from {@code arg[1]}, either
-     * "<source name>:<n>" or just "<n>".
+     * Attempts to extract description of a source line from {@code arg[1]}, either "<source name>:
+     * <n>" or just "<n>".
      */
     static REPLineLocation parse(REPLClientContext context, String[] args) throws IllegalArgumentException {
         if (args.length == 1) {

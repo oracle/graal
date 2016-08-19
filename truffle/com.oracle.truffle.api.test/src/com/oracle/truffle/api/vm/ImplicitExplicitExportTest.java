@@ -42,10 +42,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -166,7 +168,7 @@ public class ImplicitExplicitExportTest {
             if (code.getCode().startsWith("parse=")) {
                 throw new IOException(code.getCode().substring(6));
             }
-            return new ValueCallTarget(code, this);
+            return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
 
         @Override
@@ -195,6 +197,7 @@ public class ImplicitExplicitExportTest {
             return null;
         }
 
+        @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
             final Node node = createFindContextNode();
@@ -229,22 +232,18 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    private static final class ValueCallTarget implements RootCallTarget {
+    private static final class ValueRootNode extends RootNode {
         private final Source code;
         private final AbstractExportImportLanguage language;
 
-        private ValueCallTarget(Source code, AbstractExportImportLanguage language) {
+        private ValueRootNode(Source code, AbstractExportImportLanguage language) {
+            super(language.getClass(), null, null);
             this.code = code;
             this.language = language;
         }
 
         @Override
-        public RootNode getRootNode() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Object call(Object... arguments) {
+        public Object execute(VirtualFrame frame) {
             return language.importExport(code);
         }
     }

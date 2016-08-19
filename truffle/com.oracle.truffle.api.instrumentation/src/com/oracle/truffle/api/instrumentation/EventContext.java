@@ -35,8 +35,9 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Represents the context of an instrumentation event.
  *
- * Instances of {@link EventContext} should be neither stored, cached nor hashed. The equality and
- * hashing behavior is undefined.
+ * Instances of {@link EventContext} should be neither stored, cached nor hashed. One exception is
+ * when they are stored in {@link ExecutionEventNode} implementations. The equality and hashing
+ * behavior is undefined.
  *
  * @see ExecutionEventNodeFactory
  * @see ExecutionEventListener
@@ -97,6 +98,23 @@ public final class EventContext {
      */
     public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
         return InstrumentationHandler.ACCESSOR.parse(null, source, getInstrumentedNode(), argumentNames);
+    }
+
+    /**
+     * Returns the execution event node that was inserted at this location given an event binding.
+     * This is useful to disambiguate multiple bindings from each other when installed at the same
+     * source location.
+     *
+     * @param binding the binding to lookup
+     * @since 0.17
+     */
+    @SuppressWarnings("cast")
+    public ExecutionEventNode lookupExecutionEventNode(EventBinding<? extends ExecutionEventNodeFactory> binding) {
+        if (!(binding.getElement() instanceof ExecutionEventNodeFactory)) {
+            // security check for unsafe generics casts
+            throw new IllegalArgumentException(String.format("Binding is not a subtype of %s.", ExecutionEventNodeFactory.class.getSimpleName()));
+        }
+        return probeNode.lookupExecutionEventNode(binding);
     }
 
     /*
