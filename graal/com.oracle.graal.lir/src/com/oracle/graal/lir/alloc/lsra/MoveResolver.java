@@ -25,6 +25,7 @@ package com.oracle.graal.lir.alloc.lsra;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -317,10 +318,11 @@ public class MoveResolver {
                 }
             }
 
-            int spillCandidate = -1;
+            ArrayList<AllocatableValue> busySpillSlots = null;
             while (mappingFrom.size() > 0) {
                 boolean processedInterval = false;
 
+                int spillCandidate = -1;
                 for (i = mappingFrom.size() - 1; i >= 0; i--) {
                     Interval fromInterval = mappingFrom.get(i);
                     Interval toInterval = mappingTo.get(i);
@@ -333,12 +335,19 @@ public class MoveResolver {
                         } else {
                             insertMove(mappingFromOpr.get(i), toInterval);
                         }
+                        if (isStackSlot(toInterval.location())) {
+                            if (busySpillSlots == null) {
+                                busySpillSlots = new ArrayList<>(2);
+                            }
+                            busySpillSlots.add(toInterval.location());
+                        }
                         mappingFrom.remove(i);
                         mappingFromOpr.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromInterval != null && isRegister(fromInterval.location())) {
+                    } else if (fromInterval != null && isRegister(fromInterval.location()) &&
+                                    (busySpillSlots == null || !busySpillSlots.contains(fromInterval.spillSlot()))) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
