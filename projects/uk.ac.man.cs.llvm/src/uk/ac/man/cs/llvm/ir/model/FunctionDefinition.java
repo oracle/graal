@@ -100,6 +100,14 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     @Override
     public void exitFunction() {
         int identifier = 1; // Zero clashes with entry block in sulong
+
+        // in K&R style function declarations the parameters are not assigned names
+        for (FunctionParameter parameter : parameters) {
+            if (ValueSymbol.UNKNOWN.equals(parameter.getName())) {
+                parameter.setName(String.valueOf(identifier++));
+            }
+        }
+
         for (InstructionBlock block : blocks) {
             if (block.getName().equals(ValueSymbol.UNKNOWN)) {
                 block.setName(String.valueOf(identifier++));
