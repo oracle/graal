@@ -643,34 +643,7 @@ public class PolyglotEngine {
         ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
             @Override
             protected Object compute() throws IOException {
-                Object obj = globals.get(globalName);
-                if (obj == null) {
-                    for (Language dl : langs.values()) {
-                        TruffleLanguage.Env env = dl.getEnv(false);
-                        if (env == null) {
-                            continue;
-                        }
-                        obj = Access.LANGS.findExportedSymbol(env, globalName, true);
-                        if (obj != null) {
-                            lang[0] = dl.getImpl(true);
-                            break;
-                        }
-                    }
-                }
-                if (obj == null) {
-                    for (Language dl : langs.values()) {
-                        TruffleLanguage.Env env = dl.getEnv(false);
-                        if (env == null) {
-                            continue;
-                        }
-                        obj = Access.LANGS.findExportedSymbol(env, globalName, true);
-                        if (obj != null) {
-                            lang[0] = dl.getImpl(true);
-                            break;
-                        }
-                    }
-                }
-                return obj;
+                return importSymbol(lang, globalName);
             }
         };
         try {
@@ -682,6 +655,30 @@ public class PolyglotEngine {
             // OK, go on
         }
         return new ExecutorValue(lang, compute);
+    }
+
+    final Object importSymbol(TruffleLanguage<?>[] arr, String globalName) {
+        Object g = globals.get(globalName);
+        if (g != null) {
+            return g;
+        }
+        Set<Language> uniqueLang = new LinkedHashSet<>(langs.values());
+        for (int onlyExplicit = 1; onlyExplicit >= 0; onlyExplicit--) {
+            for (Language dl : uniqueLang) {
+                TruffleLanguage<?> l = dl.getImpl(false);
+                TruffleLanguage.Env env = dl.getEnv(false);
+                if (l == arr[0] || l == null || env == null) {
+                    continue;
+                }
+                Object obj = Access.LANGS.findExportedSymbol(env, globalName, onlyExplicit == 1);
+                if (obj != null) {
+                    arr[0] = l;
+                    return obj;
+                }
+            }
+        }
+        arr[0] = null;
+        return null;
     }
 
     private boolean checkThread() {
@@ -1305,34 +1302,7 @@ public class PolyglotEngine {
             @Override
             public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
                 PolyglotEngine vm = (PolyglotEngine) vmObj;
-                Object g = vm.globals.get(globalName);
-                if (g != null) {
-                    return g;
-                }
-                Set<Language> uniqueLang = new LinkedHashSet<>(vm.langs.values());
-                for (Language dl : uniqueLang) {
-                    TruffleLanguage<?> l = dl.getImpl(false);
-                    TruffleLanguage.Env env = dl.getEnv(false);
-                    if (l == ownLang || l == null || env == null) {
-                        continue;
-                    }
-                    Object obj = Access.LANGS.findExportedSymbol(env, globalName, true);
-                    if (obj != null) {
-                        return obj;
-                    }
-                }
-                for (Language dl : uniqueLang) {
-                    TruffleLanguage<?> l = dl.getImpl(false);
-                    TruffleLanguage.Env env = dl.getEnv(false);
-                    if (l == ownLang || l == null || env == null) {
-                        continue;
-                    }
-                    Object obj = Access.LANGS.findExportedSymbol(env, globalName, false);
-                    if (obj != null) {
-                        return obj;
-                    }
-                }
-                return null;
+                return vm.importSymbol(new TruffleLanguage<?>[]{ownLang}, globalName);
             }
 
             @Override
