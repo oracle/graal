@@ -57,7 +57,7 @@ sulongDistributions = [
 # the files that should be checked to not contain http links (but https ones)
 httpCheckFiles = [
     __file__,
-    ".travis.yml"
+    _suite.dir + "/.travis.yml"
 ]
 
 # the file paths that we want to check with clang-format
