@@ -117,3 +117,35 @@ In Eclipse, set a breakpoint, navigate to
 of the debug configurations, e.g.,`truffle-attach-localhost-8000`.
 After clicking `Debug`, execution starts and the program should stop at
 the specified breakpoint.
+
+## Errors
+
+### `UnsatisfiedLinkError` in `HotSpotNativeFunctionInterface`
+
+With new installations of Sulong it can happen, that a shared
+library needed by the test cases (or other parts of Sulong) cannot be found.
+
+For example, the following error could appear:
+
+    Exception in thread "main" java.lang.UnsatisfiedLinkError:
+    /usr/lib/libxml2.so: cannot open shared object file: No such file or directory
+        at com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface.getLibraryHandle(HotSpotNativeFunctionInterface.java:68)
+        at com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface.getLibraryHandle(HotSpotNativeFunctionInterface.java:1)
+        at com.oracle.truffle.llvm.nativeint.NativeLookup.getNativeFunctionHandles(NativeLookup.java:99)
+        at com.oracle.truffle.llvm.nativeint.NativeLookup.getLibraryHandles(NativeLookup.java:84)
+        at com.oracle.truffle.llvm.nativeint.NativeLookup.lookupSymbol(NativeLookup.java:120)
+        at com.oracle.truffle.llvm.nativeint.NativeLookup.getNativeHandle(NativeLookup.java:153)
+
+In case of an `UnsatisfiedLinkError`, first check whether the external
+dependencies are installed. You can check the package names of the
+external dependencies for Ubuntu in the `.travis.yml` file.
+There you can find the command `sudo apt-get install -y libxml2-dev`
+to install the library on Ubuntu. For other distributions, you usually
+can find packages with the same content under a similar name.
+
+If installing the library does not solve the problem, then probably
+because the shared library is expected to be at a certain location,
+such as in `/usr/lib` in the example above.
+In such a case, first identify the location of the library (e.g.,
+`locate libxml2.so`) and then create a link to the library in the
+expected location (e.g., `ln -s /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/libxml2.so`).
