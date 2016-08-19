@@ -230,6 +230,25 @@ public final class Debugger {
     private DebugExecutionContext currentDebugContext;
 
     /**
+     * Sets a breakpoint to halt at a source section.
+     * <p>
+     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
+     * assumed to be in the same language as the code location where attached.
+     *
+     *
+     * @param ignoreCount number of hits to ignore before halting
+     * @param sourceSection where to set the breakpoint
+     * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
+     * @return a new breakpoint, initially enabled
+     * @throws IOException if the breakpoint can not be set.
+     * @since TBD
+     */
+    @TruffleBoundary
+    public Breakpoint setSourceSectionBreakpoint(int ignoreCount, SourceSection sourceSection, boolean oneShot) throws IOException {
+        return breakpoints.create(ignoreCount, sourceSection, oneShot);
+    }
+
+    /**
      * Sets a breakpoint to halt at a source line.
      * <p>
      * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be

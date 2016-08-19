@@ -36,6 +36,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+
 import java.io.File;
 
 public class BreakpointTest extends AbstractDebugTest {
@@ -82,6 +84,28 @@ public class BreakpointTest extends AbstractDebugTest {
         }).resume();
         expectSuspendedEvent().checkState(3, true, "STATEMENT").resume();
         getEngine().eval(test2);
+        assertExecutedOK();
+    }
+
+    @Test
+    public void testBreakpointOnSourceSection() throws Throwable {
+        Source test = TestSource.createCall("testBreakOnSourceSection");
+        final SourceSection section = test.createSection(null, 3, 5, 12);
+        final Debugger debugger = getDebugger();
+        expectExecutionEvent().stepInto();
+        expectSuspendedEvent().checkState(5, true, "STATEMENT").run(new Runnable() {
+
+            public void run() {
+                try {
+                    debugger.setSourceSectionBreakpoint(0, section, false);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+        }).resume();
+        expectSuspendedEvent().checkState(3, true, "STATEMENT\n  ").resume();   // FIXME-SourceSection
+        getEngine().eval(test);
         assertExecutedOK();
     }
 

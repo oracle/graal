@@ -65,6 +65,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -90,8 +91,9 @@ final class BreakpointFactory {
     }
 
     /**
-     * Map: Location key ==> attached breakpoints, where key is either a {@link LineLocation} or
-     * {@linkplain String tag}; there may be no more than one breakpoint per key.
+     * Map: Location key ==> attached breakpoints, where key is either a {@link LineLocation}, a
+     * {@link SourceSection} or {@linkplain String tag}; there may be no more than one breakpoint
+     * per key.
      */
     private final Map<Object, BreakpointImpl> breakpoints = new HashMap<>();
     /**
@@ -158,6 +160,41 @@ final class BreakpointFactory {
             breakpointsActiveUnchanged.invalidate();
             this.breakpointsActive = breakpointsActive;
         }
+    }
+
+    /**
+     * Creates a new source section breakpoint if one doesn't already exist. If one does exist, then
+     * resets the <em>ignore count</em>.
+     * <p>
+     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
+     * assumed to be in the same language as the code location where attached.
+     *
+     * @param sourceSection where to set the breakpoint
+     * @param ignoreCount number of initial hits before the breakpoint starts causing breaks.
+     * @param oneShot whether the breakpoint should dispose itself after one hit
+     * @return a possibly new breakpoint
+     * @throws IOException if a breakpoint already exists at the location and the ignore count is
+     *             the same
+     */
+    Breakpoint create(int ignoreCount, SourceSection sourceSection, boolean oneShot) throws IOException {
+        BreakpointImpl breakpoint = breakpoints.get(sourceSection);
+        if (breakpoint == null) {
+            final SourceSectionFilter query = SourceSectionFilter.newBuilder().sourceIs(sourceSection.getSource()).sourceSectionEquals(sourceSection).tagIs(StandardTags.StatementTag.class).build();
+            breakpoint = createBreakpoint(sourceSection, query, ignoreCount, oneShot);
+            if (TRACE) {
+                trace("NEW " + breakpoint.getShortDescription());
+            }
+            breakpoints.put(sourceSection, breakpoint);
+        } else {
+            if (ignoreCount == breakpoint.getIgnoreCount()) {
+                throw new IOException("Breakpoint already set at source section: " + sourceSection);
+            }
+            breakpoint.setIgnoreCount(ignoreCount);
+            if (TRACE) {
+                trace("CHANGED ignoreCount %s", breakpoint.getShortDescription());
+            }
+        }
+        return breakpoint;
     }
 
     /**
