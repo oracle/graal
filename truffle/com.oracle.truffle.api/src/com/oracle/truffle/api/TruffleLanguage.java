@@ -40,7 +40,10 @@ import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 /**
  * <p>
@@ -329,7 +332,7 @@ public abstract class TruffleLanguage<C> {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
-        private final Object[] services;
+        private final List<Object> services;
         private final Map<String, Object> config;
 
         Env(Object vm, TruffleLanguage<?> lang, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config) {
@@ -340,7 +343,7 @@ public abstract class TruffleLanguage<C> {
             this.lang = lang;
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, vm, lang, this);
-            this.services = collectedServices.toArray();
+            this.services = new ArrayList<>(collectedServices);
             this.config = config;
             this.langCtx = new LangCtx<>(lang, this);
         }
@@ -479,6 +482,7 @@ public abstract class TruffleLanguage<C> {
         public Map<String, Object> getConfig() {
             return config;
         }
+
     }
 
     static final AccessAPI API = new AccessAPI();
@@ -515,30 +519,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object eval(TruffleLanguage<?> language, Source source, Map<Source, CallTarget> cache) throws IOException {
-            CallTarget target = cache.get(source);
-            if (target == null) {
-                target = language.parse(source, null);
-                if (target == null) {
-                    throw new IOException("Parsing has not produced a CallTarget for " + source);
-                }
-                cache.put(source, target);
-            }
-            try {
-                return target.call();
-            } catch (ThreadDeath ex) {
-                throw ex;
-            } catch (Throwable ex) {
-                throw new IOException(ex);
-            }
-        }
-
-        @Override
         @SuppressWarnings({"rawtypes"})
-        public Object evalInContext(Object vm, Object ev, String code, Node node, MaterializedFrame frame) throws IOException {
+        public Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame) throws IOException {
             RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
-            final Env env = AccessAPI.engineAccess().findEnv(vm, languageType);
+            final Env env = AccessAPI.engineAccess().findEnv(sourceVM, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
             return lang.evalInContext(source, node, frame);
@@ -574,6 +559,12 @@ public abstract class TruffleLanguage<C> {
         public String toString(TruffleLanguage<?> language, Env env, Object obj) {
             return env.langCtx.toString(language, obj);
         }
+
+        @Override
+        public Object getVM(Env env) {
+            return env.vm;
+        }
+
     }
 
 }

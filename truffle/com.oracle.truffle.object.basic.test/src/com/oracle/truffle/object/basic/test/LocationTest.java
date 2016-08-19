@@ -35,7 +35,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.api.object.TypedLocation;
-import com.oracle.truffle.object.basic.DOTestAsserts;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class LocationTest {

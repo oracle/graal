@@ -47,7 +47,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
 import com.oracle.truffle.api.interop.Message;
@@ -56,7 +58,6 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
@@ -1669,10 +1670,7 @@ public abstract class TruffleTCK {
         final ExecWithTimeOut timeOutExecution = new ExecWithTimeOut();
         ScheduledExecutorService executor = new MockExecutorService();
 
-        Builder builder = PolyglotEngine.newBuilder();
-        timeOutExecution.registerEventHandler(builder);
-        timeOutExecution.engine = prepareVM(builder);
-        timeOutExecution.getDebugger(); // pre-initialize foundDebugger
+        timeOutExecution.engine = prepareVM(PolyglotEngine.newBuilder());
         PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
 
         int index = RANDOM.nextInt(50) + 50;
@@ -1687,34 +1685,23 @@ public abstract class TruffleTCK {
     /** @since 0.15 */
     @Test
     public void testRootNodeName() throws Exception {
-        final boolean[] isPrepared = new boolean[1];
         final int[] haltCount = new int[1];
         final String name = applyNumbers();
         final String[] actualName = new String[1];
-        final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
-            @Override
-            protected void on(ExecutionEvent event) {
-                // Also happens when language loads prologue code
-                event.prepareStepInto();
-            }
-        };
-        final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
-            @Override
-            protected void on(SuspendedEvent ev) {
-                if (isPrepared[0]) {
-                    actualName[0] = ev.getNode().getRootNode().getName();
-                    haltCount[0] = haltCount[0] + 1;
-                }
-            }
-        };
-        final Builder builder = PolyglotEngine.newBuilder().onEvent(onExec).onEvent(onHalted);
-        final PolyglotEngine engine = prepareVM(builder);
-        // Code loaded, causing any language prologue code to be also loaded
-        isPrepared[0] = true;
+        final PolyglotEngine engine = prepareVM(PolyglotEngine.newBuilder());
         final PolyglotEngine.Value apply = engine.findGlobalSymbol(name);
         final int value = RANDOM.nextInt(100);
         final TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
-        apply.execute(fn).as(Number.class);
+        try (DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
+            public void onSuspend(SuspendedEvent ev) {
+                actualName[0] = ev.getTopStackFrame().getName();
+                haltCount[0] = haltCount[0] + 1;
+            }
+        })) {
+            session.suspendNextExecution();
+            apply.execute(fn).as(Number.class);
+        }
+
         assertEquals(1, haltCount[0]);
         assertEquals(name, actualName[0]);
     }

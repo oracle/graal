@@ -192,8 +192,8 @@ public final class JavaInterop {
      * <b>Java</b> <em>functional interface</em>.
      *
      * @param <T> requested and returned type
-     * @param functionalType interface with a single defined method - so called
-     *            <em>functional interface</em>
+     * @param functionalType interface with a single defined method - so called <em>functional
+     *            interface</em>
      * @param function <em>Truffle</em> that responds to {@link Message#IS_EXECUTABLE} and can be
      *            invoked
      * @return instance of interface that wraps the provided <code>function</code>
@@ -217,8 +217,8 @@ public final class JavaInterop {
      * </pre>
      *
      * @param <T> requested interface and implementation
-     * @param functionalType interface with a single defined method - so called
-     *            <em>functional interface</em>
+     * @param functionalType interface with a single defined method - so called <em>functional
+     *            interface</em>
      * @param implementation implementation of the interface, or directly a lambda expression
      *            defining the required behavior
      * @return an {@link Message#IS_EXECUTABLE executable} {@link TruffleObject} ready to be used in

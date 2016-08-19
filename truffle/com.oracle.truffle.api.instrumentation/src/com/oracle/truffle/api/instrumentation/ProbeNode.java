@@ -185,6 +185,22 @@ public final class ProbeNode extends Node {
         return nextChain;
     }
 
+    ExecutionEventNode lookupExecutionEventNode(EventBinding<?> binding) {
+        if (binding.isDisposed()) {
+            return null;
+        }
+        EventChainNode chainNode = this.chain;
+        while (chainNode != null) {
+            if (chainNode.binding == binding) {
+                if (chainNode instanceof EventProviderChainNode) {
+                    return ((EventProviderChainNode) chainNode).eventNode;
+                }
+            }
+            chainNode = chainNode.next;
+        }
+        return null;
+    }
+
     ProbeNode.EventChainNode createEventChainCallback(EventBinding<?> binding) {
         ProbeNode.EventChainNode next;
         Object element = binding.getElement();

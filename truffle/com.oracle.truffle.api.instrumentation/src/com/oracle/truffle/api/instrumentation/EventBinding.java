@@ -130,7 +130,7 @@ public final class EventBinding<T> {
     }
 
     boolean isInstrumentedSource(Source source) {
-        return getFilter().isInstrumentedSource(source);
+        return getInstrumenter().isInstrumentableSource(source) && getFilter().isInstrumentedSource(source);
     }
 
     boolean isExecutionEvent() {

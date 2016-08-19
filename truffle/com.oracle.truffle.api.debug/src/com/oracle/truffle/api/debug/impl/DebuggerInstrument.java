@@ -25,35 +25,62 @@
 package com.oracle.truffle.api.debug.impl;
 
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 
-@Registration(id = DebuggerInstrument.ID)
+/**
+ * Instrument for registered for the debugger. Do not use directly.
+ *
+ * @since 0.17
+ */
+@Registration(name = "Debugger", id = DebuggerInstrument.ID)
 public final class DebuggerInstrument extends TruffleInstrument {
-    public static final String ID = "debugger";
 
+    static final String ID = "debugger";
+
+    private Env environment;
     private Debugger debugger;
-    private Instrumenter instrumenter;
+
+    /**
+     * @since 0.17
+     */
+    public DebuggerInstrument() {
+    }
 
     @Override
     protected void onCreate(Env env) {
-        this.instrumenter = env.getInstrumenter();
+        this.environment = env;
         env.registerService(this);
     }
 
-    public Debugger getDebugger(PolyglotEngine engine, Factory factory) {
-        if (debugger == null && factory != null) {
-            debugger = factory.create(engine, instrumenter);
-            if (debugger == null) {
-                throw new NullPointerException();
+    /**
+     * @since 0.17
+     */
+    public static Debugger getDebugger(PolyglotEngine engine, DebuggerFactory factory) {
+        Instrument instrument = engine.getInstruments().get(ID);
+        if (instrument == null) {
+            throw new IllegalStateException("Debugger is not installed.");
+        }
+        instrument.setEnabled(true);
+        DebuggerInstrument instrumentImpl = instrument.lookup(DebuggerInstrument.class);
+        synchronized (instrumentImpl) {
+            if (instrumentImpl.debugger == null) {
+                instrumentImpl.debugger = factory.create(engine, instrumentImpl.environment);
             }
         }
-        return debugger;
+        return instrumentImpl.debugger;
     }
 
-    public interface Factory {
-        Debugger create(PolyglotEngine engine, Instrumenter instrumenter);
+    /**
+     * @since 0.17
+     */
+    public interface DebuggerFactory {
+        /**
+         * @since 0.17
+         */
+        Debugger create(PolyglotEngine engine, Env env);
     }
+
 }
