@@ -557,7 +557,7 @@ public abstract class BasicLocations {
             longLocation.setLongInternal(store, value);
         }
 
-        InternalLongLocation getInternalLocation() {
+        public final InternalLongLocation getInternalLocation() {
             return longLocation;
         }
 
