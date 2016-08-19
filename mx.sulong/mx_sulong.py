@@ -950,12 +950,15 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    formattedContent = subprocess.check_output(['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]).splitlines()
+    formatCommand = ['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
+    formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
     if not formattedContent == originalContent:
+        # modify the file to the right format
+        subprocess.check_output(formatCommand + ['-i'])
         print '\n'.join(formattedContent)
-        print '\nplease fix the formatting in', targetFile, 'to the format given above'
+        print '\nmodified formatting in', targetFile, 'to the format above'
         return False
     return True
 
