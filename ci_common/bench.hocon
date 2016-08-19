@@ -80,7 +80,7 @@ bench-specjvm2008-Single: ${bench-specjvm2008} {
   targets += [bench, post-merge]
   run: [
     ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
-      "--", "-it", "240s", "-wt", "120s"
+      "--", "-ikv", "-it", "240s", "-wt", "120s"
     ]
   ]
 }
