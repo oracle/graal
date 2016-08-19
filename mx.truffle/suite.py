@@ -214,10 +214,11 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.instrumentation.test",
         "com.oracle.truffle.api.dsl.test",
+        "com.oracle.truffle.tck",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
 
@@ -416,7 +417,7 @@ suite = {
         "mx:JMH",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["mx:JMH"],
       "license" : "UPL",
@@ -507,7 +508,7 @@ suite = {
 
     "TRUFFLE_SL_TEST" : {
       "subDir" : "truffle",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl.test"
       ],
@@ -542,7 +543,7 @@ suite = {
 
      "TRUFFLE_TEST" : {
        "subDir" : "truffle",
-       "javaCompliance" : "1.7",
+       "javaCompliance" : "1.8",
        "dependencies" : [
          "com.oracle.truffle.api.test",
          "com.oracle.truffle.api.benchmark",
@@ -559,6 +560,7 @@ suite = {
          "TRUFFLE_API",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_DEBUG",
+         "TRUFFLE_TCK",
       ],
       "maven" : False,
      },

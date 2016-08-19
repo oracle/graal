@@ -25,108 +25,90 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertSame;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedCallback;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class NestedContextTest extends AbstractDebugTest {
 
     @Test
     public void testNestedRun() throws Throwable {
-        final Debugger debugger = getDebugger();
+        testNestedStepping(2);
+        testNestedStepping(5);
+    }
 
-        final Source block8 = TestSource.createBlock8("testNestedRunBlock8");
-        final Breakpoint block8line6 = debugger.setLineBreakpoint(0, block8.createLineLocation(6), false);
-        expectExecutionEvent().resume();
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").run(new Runnable() {
+    private void testNestedStepping(int depth) {
+        if (depth == 0) {
+            return;
+        }
+        Source testSource = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        pushContext();
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
 
-            public void run() {
-                try {
-                    pushContext();
-                    final Source block12 = TestSource.createBlock12("testNestedRunBlock12");
-                    expectExecutionEvent().resume();
-                    getEngine().eval(block12);
-                    assertExecutedOK();
-                    popContext();
-                } catch (Throwable e) {
-                    fail();
-                }
-            }
-        }).checkState(6, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(7, true, "STATEMENT").resume();
-        getEngine().eval(block8);
-        assertExecutedOK();
-        assertEquals(1, block8line6.getHitCount());
+            session.suspendNextExecution();
+            startEval(testSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                assertEquals(0, event.getBreakpoints().size());
+                testNestedStepping(depth - 1);
+                event.prepareStepInto(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint3, event.getBreakpoints().iterator().next());
+                testNestedStepping(depth - 1);
+                event.prepareStepInto(1);
+            });
+
+            expectDone();
+        }
+        popContext();
     }
 
     @Test
-    public void testNestedContinue() throws Throwable {
-        final Debugger debugger = getDebugger();
+    public void testRecursiveEval() throws IOException {
+        final Source testSource = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
 
-        final Source block8 = TestSource.createBlock8("testNestedContinueBlock8");
-        final Breakpoint block8line6 = debugger.setLineBreakpoint(0, block8.createLineLocation(6), false);
-        expectExecutionEvent().resume();
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").run(new Runnable() {
+        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
 
-            public void run() {
+        final AtomicInteger suspensionCount = new AtomicInteger(0);
+        try (DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
+            public void onSuspend(SuspendedEvent event) {
                 try {
-                    pushContext();
-                    final Source block12 = TestSource.createBlock12("testNestedContinueBlock12");
-                    final Breakpoint block12line9 = debugger.setLineBreakpoint(0, block12.createLineLocation(9), false);
-                    expectExecutionEvent().resume();
-                    expectSuspendedEvent().checkState(9, true, "STATEMENT").resume();
-                    getEngine().eval(block12);
-                    assertExecutedOK();
-                    assertEquals(1, block12line9.getHitCount());
-                    popContext();
-                } catch (Throwable e) {
-                    fail();
+                    checkState(event, 3, true, "STATEMENT");
+                    // recursive evaluation should not trigger a suspended event
+                    engine.eval(testSource);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
+                suspensionCount.incrementAndGet();
             }
-        }).checkState(6, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(7, true, "STATEMENT").resume();
-        getEngine().eval(block8);
-        assertExecutedOK();
-        assertEquals(1, block8line6.getHitCount());
-    }
+        })) {
+            session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
+            engine.eval(testSource);
+        }
 
-    @Test
-    public void testNestedKill() throws Throwable {
-        final Debugger debugger = getDebugger();
-
-        final Source block8 = TestSource.createBlock8("testNestedKillBlock8");
-        final Breakpoint block8line6 = debugger.setLineBreakpoint(0, block8.createLineLocation(6), false);
-        expectExecutionEvent().resume();
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").run(new Runnable() {
-
-            public void run() {
-                try {
-                    pushContext();
-                    final Source block12 = TestSource.createBlock12("testNestedKillBlock12");
-                    final Breakpoint block12line9 = debugger.setLineBreakpoint(0, block12.createLineLocation(9), false);
-                    expectExecutionEvent().resume();
-                    expectSuspendedEvent().checkState(9, true, "STATEMENT").run(new Runnable() {
-                        public void run() {
-                            assertEquals(1, block12line9.getHitCount());
-                        }
-                    }).kill();
-                    getEngine().eval(block12);
-                    fail();
-                } catch (ThreadDeath ex) {
-                    popContext();
-                } catch (Throwable e) {
-                    fail();
-                }
-            }
-        }).checkState(6, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(7, true, "STATEMENT").resume();
-        getEngine().eval(block8);
-        assertExecutedOK();
-        assertEquals(1, block8line6.getHitCount());
     }
 
 }

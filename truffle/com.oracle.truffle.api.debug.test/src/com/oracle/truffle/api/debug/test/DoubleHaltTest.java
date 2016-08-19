@@ -25,121 +25,120 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
 
 public class DoubleHaltTest extends AbstractDebugTest {
 
     @Test
-    public void testBlockStepInto() throws Throwable {
-        final Debugger debugger = getDebugger();
-        final Source block = TestSource.createBlock8("testBlockStepInto");
-        final Breakpoint[] shouldBreak = new Breakpoint[block.getLineCount() + 1];
-        shouldBreak[2] = debugger.setLineBreakpoint(0, block.createLineLocation(2), false);
-        shouldBreak[3] = debugger.setLineBreakpoint(0, block.createLineLocation(3), false);
-        shouldBreak[5] = debugger.setLineBreakpoint(0, block.createLineLocation(5), false);
-        shouldBreak[6] = debugger.setLineBreakpoint(0, block.createLineLocation(6), false);
-        expectExecutionEvent().stepInto();
-        expectSuspendedEvent().checkState(2, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(3, true, "STATEMENT").stepInto(2);
-        expectSuspendedEvent().checkState(5, true, "STATEMENT").stepInto(2);
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").resume();
-        getEngine().eval(block);
-        assertExecutedOK();
-        for (Breakpoint breakpoint : shouldBreak) {
-            if (breakpoint != null) {
-                assertEquals(breakpoint.getHitCount(), 1);
-                breakpoint.dispose();
-            }
-        }
-    }
+    public void testBreakpointStepping() throws Throwable {
+        Source testSource = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
 
-    @Test
-    public void testBlockStepOver() throws Throwable {
-        final Debugger debugger = getDebugger();
-        final Source block = TestSource.createBlock8("testBlockStepOver");
-        final Breakpoint[] shouldBreak = new Breakpoint[block.getLineCount() + 1];
-        shouldBreak[2] = debugger.setLineBreakpoint(0, block.createLineLocation(2), false);
-        shouldBreak[3] = debugger.setLineBreakpoint(0, block.createLineLocation(3), false);
-        shouldBreak[5] = debugger.setLineBreakpoint(0, block.createLineLocation(5), false);
-        shouldBreak[6] = debugger.setLineBreakpoint(0, block.createLineLocation(6), false);
-        expectExecutionEvent().stepInto();
-        expectSuspendedEvent().checkState(2, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(3, true, "STATEMENT").stepOver(2);
-        expectSuspendedEvent().checkState(5, true, "STATEMENT").stepOver(2);
-        expectSuspendedEvent().checkState(6, true, "STATEMENT").resume();
-        getEngine().eval(block);
-        assertExecutedOK();
-        for (Breakpoint breakpoint : shouldBreak) {
-            if (breakpoint != null) {
-                assertEquals(breakpoint.getHitCount(), 1);
-                breakpoint.dispose();
-            }
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(testSource).lineIs(2).build());
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(testSource).lineIs(5).build());
+            Breakpoint breakpoint6 = session.install(Breakpoint.newBuilder(testSource).lineIs(6).build());
+
+            session.suspendNextExecution();
+            startEval(testSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint2, event.getBreakpoints().iterator().next());
+                event.prepareStepInto(1);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint3, event.getBreakpoints().iterator().next());
+                event.prepareStepOver(2);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint5, event.getBreakpoints().iterator().next());
+                event.prepareStepInto(2);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 6, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint6, event.getBreakpoints().iterator().next());
+                event.prepareContinue();
+            });
+
+            expectDone();
+
+            assertEquals(1, breakpoint2.getHitCount());
+            assertEquals(1, breakpoint3.getHitCount());
+            assertEquals(1, breakpoint5.getHitCount());
+            assertEquals(1, breakpoint6.getHitCount());
         }
     }
 
     @Test
     public void testCallLoopStepInto() throws Throwable {
-        final Debugger debugger = getDebugger();
-        final Source loop = TestSource.createCallLoop3("testCallLoopStepInto");
-        final Breakpoint[] shouldBreak = new Breakpoint[loop.getLineCount() + 1];
-        shouldBreak[4] = debugger.setLineBreakpoint(0, loop.createLineLocation(4), false);
-        expectExecutionEvent().stepInto();                        // FIXME should stop at "CALL"?
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
-        getEngine().eval(loop);
-        assertExecutedOK();
-        for (Breakpoint breakpoint : shouldBreak) {
-            if (breakpoint != null) {
-                assertEquals(breakpoint.getHitCount(), 3);
-                breakpoint.dispose();
-            }
-        }
-    }
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    LOOP(3,\n" +
+                        "      STATEMENT)\n" +
+                        "  ),\n" +
+                        "  CALL(foo)\n" +
+                        ")\n");
 
-    @Test
-    public void testCallLoopStepOver() throws Throwable {
-        final Debugger debugger = getDebugger();
-        final Source loop = TestSource.createCallLoop3("testCallLoopStepOver");
-        final Breakpoint[] shouldBreak = new Breakpoint[loop.getLineCount() + 1];
-        shouldBreak[4] = debugger.setLineBreakpoint(0, loop.createLineLocation(4), false);
-        expectExecutionEvent().stepInto();                        // FIXME should stop at "CALL"?
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
-        getEngine().eval(loop);
-        assertExecutedOK();
-        for (Breakpoint breakpoint : shouldBreak) {
-            if (breakpoint != null) {
-                assertEquals(breakpoint.getHitCount(), 3);
-                breakpoint.dispose();
-            }
-        }
-    }
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(testSource).lineIs(4).build());
+            session.suspendNextExecution();
+            startEval(testSource);
 
-    @Test
-    public void testCallLoopStepOut() throws Throwable {
-        final Debugger debugger = getDebugger();
-        final Source loop = TestSource.createCallLoop3("testCallLoopStepOut");
-        final Breakpoint[] shouldBreak = new Breakpoint[loop.getLineCount() + 1];
-        shouldBreak[4] = debugger.setLineBreakpoint(0, loop.createLineLocation(4), false);
-        expectExecutionEvent().stepInto();
-        expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOut();
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
-        getEngine().eval(loop);
-        assertExecutedOK();
-        for (Breakpoint breakpoint : shouldBreak) {
-            if (breakpoint != null) {
-                assertEquals(breakpoint.getHitCount(), 3);
-                breakpoint.dispose();
+            for (int i = 0; i < 3; i++) {
+                final int modI = i % 3;
+                expectSuspended((SuspendedEvent event) -> {
+                    SuspendedEvent e = checkState(event, 4, true, "STATEMENT");
+                    assertEquals(1, e.getBreakpoints().size());
+                    assertSame(breakpoint4, e.getBreakpoints().iterator().next());
+                    switch (modI) {
+                        case 0:
+                            /*
+                             * Note Chumer: breakpoints should always hit independent if we are
+                             * currently stepping out or not. thats why step out does not step out
+                             * here.
+                             */
+                            e.prepareStepOut();
+                            break;
+                        case 1:
+                            e.prepareStepInto(1);
+                            break;
+                        case 2:
+                            e.prepareStepOver(1);
+                            break;
+                    }
+                });
             }
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 6, false, "CALL(foo)\n");
+            });
+
+            expectDone();
         }
     }
 
