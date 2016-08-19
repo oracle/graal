@@ -122,6 +122,24 @@ public class SourceBuilderTest {
     }
 
     @Test
+    public void ioExceptionWhenFildDoesntExist() throws IOException {
+        File file = File.createTempFile("Hello", ".java").getCanonicalFile();
+        file.delete();
+        assertFalse("Doesn't exist", file.exists());
+
+        Source.Builder<IOException, RuntimeException, RuntimeException> builder = Source.newBuilder(file);
+
+        Source s1 = null;
+        try {
+            s1 = builder.build();
+        } catch (IOException e) {
+            // OK, file doesn't exist
+            return;
+        }
+        fail("No source should be created: " + s1);
+    }
+
+    @Test
     public void assignMimeTypeAndIdentityForVirtualFile() throws Exception {
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();

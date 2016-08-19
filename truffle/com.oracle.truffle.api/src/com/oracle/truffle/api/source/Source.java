@@ -1252,7 +1252,7 @@ public abstract class Source {
             Content holder;
             try {
                 if (origin instanceof File) {
-                    holder = buildFile();
+                    holder = buildFile(content == null);
                 } else if (origin instanceof Reader) {
                     holder = buildReader();
                 } else if (origin instanceof URL) {
@@ -1277,13 +1277,16 @@ public abstract class Source {
             }
         }
 
-        private Content buildFile() throws IOException {
+        private Content buildFile(boolean read) throws IOException {
             final File file = (File) origin;
             File absoluteFile = file.getCanonicalFile();
             FileSourceImpl fileSource = new FileSourceImpl(
                             absoluteFile,
                             name == null ? file.getName() : name,
                             path == null ? absoluteFile.getPath() : path);
+            if (read) {
+                fileSource.readCode();
+            }
             return fileSource;
         }
 
