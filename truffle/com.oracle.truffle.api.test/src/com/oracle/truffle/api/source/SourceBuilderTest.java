@@ -31,10 +31,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
+import org.junit.Assert;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -134,6 +136,32 @@ public class SourceBuilderTest {
             s1 = builder.build();
         } catch (IOException e) {
             // OK, file doesn't exist
+            return;
+        }
+        fail("No source should be created: " + s1);
+    }
+
+    @Test
+    public void ioExceptionWhenReaderThrowsIt() throws IOException {
+        final IOException ioEx = new IOException();
+        Reader reader = new Reader() {
+            @Override
+            public int read(char[] cbuf, int off, int len) throws IOException {
+                throw ioEx;
+            }
+
+            @Override
+            public void close() throws IOException {
+            }
+        };
+
+        Source.Builder<IOException, RuntimeException, RuntimeException> builder = Source.newBuilder(reader).name("unloadable.txt").mimeType("text/plain");
+
+        Source s1 = null;
+        try {
+            s1 = builder.build();
+        } catch (IOException e) {
+            Assert.assertSame(ioEx, e);
             return;
         }
         fail("No source should be created: " + s1);
