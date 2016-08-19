@@ -60,9 +60,9 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or
-     * <em>stepping out</em> from a method/procedure/closure call should halt. The debugger will
-     * halt at the code location that has just executed the call that returned.</li>
+     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping
+     * out</em> from a method/procedure/closure call should halt. The debugger will halt at the code
+     * location that has just executed the call that returned.</li>
      * </ul>
      *
      * @since 0.12

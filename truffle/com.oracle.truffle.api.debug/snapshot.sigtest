@@ -1,7 +1,7 @@
 #Signature file v4.1
 #Version 
 
-CLSS public abstract com.oracle.truffle.api.debug.Breakpoint
+CLSS public final com.oracle.truffle.api.debug.Breakpoint
 innr public final static !enum State
 meth public abstract boolean isEnabled()
 meth public abstract boolean isOneShot()
