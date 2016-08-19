@@ -965,7 +965,7 @@ def checkNoHttp(args=None):
         line_number = 0
         for line in open(f):
             if "http" + chr(58) + "//" in line:
-                print "http:" + chr(58) + " in line " + str(line_number) + " could be a security issue! please change to https://"
+                print "http:" + chr(58) + " in line " + str(line_number) + " of " + f + " could be a security issue! please change to https://"
                 exit(-1)
             line_number += 1
 
