@@ -38,6 +38,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 /**
  * Bug report validating test.
@@ -57,7 +61,23 @@ public class InitializationTest {
     public void dispose() {
         if (vm != null) {
             vm.dispose();
+            vm = null;
         }
+    }
+
+    @Test
+    public void checkPostInitializationInRunMethod() throws Exception {
+        vm = PolyglotEngine.newBuilder().build();
+
+        Source source = Source.newBuilder("accessProbeForAbstractLanguage text").mimeType("application/x-abstrlang").name("sample.txt").build();
+
+        assertEquals("Properly evaluated", 42, vm.eval(source).get());
+
+        Object global = vm.findGlobalSymbol("MyEnv").get();
+        assertNotNull(global);
+        assertTrue(global instanceof MyEnv);
+        MyEnv env = (MyEnv) global;
+        assertEquals("Post initialization hook called", 1, env.cnt);
     }
 
     private static final class MMRootNode extends RootNode {
@@ -92,7 +112,15 @@ public class InitializationTest {
         }
     }
 
-    private abstract static class AbstractLanguage extends TruffleLanguage<Object> {
+    private static final class MyEnv {
+        int cnt;
+
+        void doInit() {
+            cnt++;
+        }
+    }
+
+    private abstract static class AbstractLanguage extends TruffleLanguage<MyEnv> {
     }
 
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
@@ -100,9 +128,14 @@ public class InitializationTest {
         public static final TestLanguage INSTANCE = new TestLanguage();
 
         @Override
-        protected Object createContext(Env env) {
+        protected MyEnv createContext(Env env) {
             assertNull("Not defined symbol", env.importSymbol("unknown"));
-            return env;
+            return new MyEnv();
+        }
+
+        @Override
+        protected void initializeContext(MyEnv context) throws Exception {
+            context.doInit();
         }
 
         @Override
@@ -111,12 +144,15 @@ public class InitializationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
+        protected Object findExportedSymbol(MyEnv context, String globalName, boolean onlyExplicit) {
+            if ("MyEnv".equals(globalName)) {
+                return context;
+            }
             return null;
         }
 
         @Override
-        protected Object getLanguageGlobal(Object context) {
+        protected Object getLanguageGlobal(MyEnv context) {
             throw new UnsupportedOperationException();
         }
 

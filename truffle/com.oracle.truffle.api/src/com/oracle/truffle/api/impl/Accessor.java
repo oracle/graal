@@ -113,6 +113,8 @@ public abstract class Accessor {
         public abstract String toString(TruffleLanguage<?> language, Env env, Object obj);
 
         public abstract Object findContext(Env env);
+
+        public abstract void postInitEnv(Env env);
     }
 
     public abstract static class InstrumentSupport {

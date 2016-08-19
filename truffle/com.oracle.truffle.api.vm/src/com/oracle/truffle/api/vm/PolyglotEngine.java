@@ -1175,6 +1175,7 @@ public class PolyglotEngine {
             TruffleLanguage.Env tmp = env;
             if (tmp == null && create) {
                 env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, info.getImpl(true), out, err, in, getArgumentsForLanguage());
+                Access.LANGS.postInitEnv(env);
             }
             if (clear) {
                 env = null;
