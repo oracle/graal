@@ -44,6 +44,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -60,18 +61,35 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * A breakpoint represents a location in the guest language application, at which execution should
- * be suspended. New breakpoints can be created using a builder based on a
- * {@link #newBuilder(Source) source}, an{@link #newBuilder(URI) URI} or an exact
- * {@link #newBuilder(SourceSection) source section}. Breakpoints can be restricted to
- * {@link Builder#lineIs(int) line numbers} for {@link Source} or {@link URI} based breakpoints.
+ * A request, implemented using {@linkplain Instrumenter instrumentation}, that guest language
+ * program execution be suspended at specified {@linkplain BreakpointLocation locations} on behalf
+ * of a debugging client {@linkplain DebuggerSession session}.
  * <p>
- * New breakpoints are {@link DebuggerSession#install(Breakpoint)} installed for a single
- * {@link DebuggerSession debugger session} once. Breakpoints will trigger the
- * {@link SuspendedCallback} of the installed session only if they are {@link #setEnabled(boolean)
- * enabled}. Breakpoints are enabled by default. If a breakpoint is {@link #isDisposed() disposed}
- * it will be uninstalled from the underlying session, if it was installed. Methods of disposed
- * breakpoints must not be used.
+ * <h4>Breakpoint lifetime</h4>
+ * <ul>
+ * <li>A client's {@link DebuggerSession} uses a {@link Builder} to create a new breakpoint,
+ * choosing among multiple ways to specify the intended location. Examples include a specified
+ * {@link #newBuilder(Source) source}, a specified {@link #newBuilder(URI) URI}, line ranges, or an
+ * exact {@link #newBuilder(SourceSection) SourceSection}, with more options likely to be added in
+ * the future.</li>
+ *
+ * <li>A breakpoint can have no effect until it is {@linkplain DebuggerSession installed} by a
+ * session, which may be done only once.</li>
+ *
+ * <li>A breakpoint that is both installed and {@linkplain Breakpoint#isEnabled() enabled} (true by
+ * default) will suspend any guest language execution thread that arrives at a matching AST
+ * location. The breakpoint (synchronously) {@linkplain SuspendedCallback calls back} to the
+ * responsible session on the execution thread.</li>
+ *
+ * <li>A breakpoint that is no longer needed may be {@linkplain #dispose() disposed}. A disposed
+ * breakpoint is no longer installed in the responsible session, can have no effect on program
+ * execution, and may not be used again.</li>
+ *
+ * <li>A session being {@linkplain DebuggerSession#close() closed} disposes all installed
+ * breakpoints.</li>
+ *
+ * <li>Methods on disposed breakpoints must not be used.</li>
+ * </ul>
  * <p>
  * Example usage: {@link com.oracle.truffle.api.debug.BreakpointSnippets#example()}
  *

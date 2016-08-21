@@ -62,12 +62,20 @@ public final class SourceSectionFilter {
      * filter finalize the expression using {@link Builder#build()}.
      *
      * @see Builder#sourceIs(Source...)
+     * @see Builder#sourceIs(SourcePredicate...)
      * @see Builder#mimeTypeIs(String...)
      * @see Builder#tagIs(Class...)
      * @see Builder#tagIsNot(Class...)
      * @see Builder#sourceSectionEquals(SourceSection...)
+     * @see Builder#rootSourceSectionEquals(SourceSection...)
+     * @see Builder#indexNotIn(IndexRange...)
+     * @see Builder#indexIn(IndexRange...)
      * @see Builder#indexIn(int, int)
+     * @see Builder#lineIn(IndexRange...)
+     * @see Builder#lineNotIn(IndexRange...)
      * @see Builder#lineIn(int, int)
+     * @see Builder#lineStartsIn(IndexRange...)
+     * @see Builder#lineEndsIn(IndexRange...)
      * @see Builder#lineIs(int)
      * @see Builder#build()
      *
@@ -79,7 +87,7 @@ public final class SourceSectionFilter {
     }
 
     /**
-     * @return the filter expressions in a humand readable form for debugging.
+     * @return the filter expressions in a human readable form for debugging.
      * @since 0.12
      */
     @Override

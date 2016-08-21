@@ -68,10 +68,21 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     /**
-     * Returns <code>true</code> if this stack frame is considered internal. Internal stack frames
-     * are guest language implementation specific and might change any time. It is recommended to
-     * filter all internal stack frames in order to create a guest language user-centric stack
-     * trace.
+     * Returns whether this stack frame should usually not be displayed to a guest language
+     * programmer, for example in a sa stack trace.
+     * <p>
+     * Language implementations sometimes create method calls internally that do not correspond to
+     * anything explicitly written by a programmer, for example when the body of a looping construct
+     * is implemented as callable block. Language implementors mark these methods as
+     * <em>internal</em>.
+     * <p>
+     * Tool implementors should assume that displaying <em>internal</em> frames is unlikely to help
+     * guest language programmers understand stack traces and might possibly create confusion. Tools
+     * are free to display them, however, for example in special modes that support language
+     * implementors.
+     *
+     * The decision to mark a method as <em>internal</em> is language-specific, reflects judgments
+     * about tool usability, and is subject to change.
      *
      * @since 0.17
      */
