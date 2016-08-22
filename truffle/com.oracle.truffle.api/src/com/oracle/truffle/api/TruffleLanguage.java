@@ -396,7 +396,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return language.parse(source, null, argumentNames);
             } catch (Exception ex) {
-                throw raise(RuntimeException.class, ex);
+                throw new RuntimeException(ex);
             }
         }
 
@@ -522,7 +522,10 @@ public abstract class TruffleLanguage<C> {
             try {
                 return truffleLanguage.parse(code, context, argumentNames);
             } catch (Exception ex) {
-                throw raise(RuntimeException.class, ex);
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new RuntimeException(ex);
             }
         }
 
@@ -537,7 +540,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return lang.evalInContext(source, node, frame);
             } catch (Exception ex) {
-                throw raise(RuntimeException.class, ex);
+                throw new RuntimeException(ex);
             }
         }
 
@@ -577,11 +580,6 @@ public abstract class TruffleLanguage<C> {
             return env.vm;
         }
 
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    static <E extends Throwable> E raise(Class<E> castTo, Throwable t) throws E {
-        throw (E) t;
     }
 }
 

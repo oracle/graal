@@ -55,8 +55,8 @@ public class ExceptionDuringParsingTest {
         try {
             vm.eval(src);
             fail("Exception thrown");
-        } catch (Exception ex) {
-            assertEquals(ex.getMessage(), "No, no, no!");
+        } catch (RuntimeException ex) {
+            assertEquals(ex.getCause().getMessage(), "No, no, no!");
         }
 
         assertEquals("No dispose yet", 0, Ctx.disposed.size());

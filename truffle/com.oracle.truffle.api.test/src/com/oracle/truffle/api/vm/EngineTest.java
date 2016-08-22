@@ -88,6 +88,9 @@ public class EngineTest {
             PolyglotEngine.Value value = language1.eval(Source.newBuilder("throwInteropException").name("interopTest").mimeType("content/unknown").build());
             value.as(Object.class);
         } catch (Exception e) {
+            while (e instanceof RuntimeException) {
+                e = (Exception) e.getCause();
+            }
             assertEquals("Expecting UnsupportedTypeException", UnsupportedTypeException.class, e.getClass());
             return;
         }
