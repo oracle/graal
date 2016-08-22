@@ -22,15 +22,16 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -40,27 +41,19 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.LongLocation;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Locations.ConstantLocation;
-import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
-import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
@@ -105,14 +98,22 @@ public abstract class ShapeImpl extends Shape {
     @CompilationFinal protected volatile Assumption leafAssumption;
 
     /**
-     * Shape transition map; lazily initialized.
+     * Shape transition map; lazily initialized. One of:
+     * <ol>
+     * <li>{@code null}: empty map
+     * <li>{@link Map.Entry}: immutable single entry map
+     * <li>{@link Map}: mutable multiple entry map
+     * </ol>
      *
      * @see #getTransitionMapForRead()
-     * @see #getTransitionMapForWrite()
+     * @see #addTransitionInternal(Transition, ShapeImpl)
      */
-    private volatile Map<Transition, ShapeImpl> transitionMap;
+    private volatile Object transitionMap;
 
     private final Transition transitionFromParent;
+
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Object.class, "transitionMap");
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, Assumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Assumption.class, "leafAssumption");
 
     /**
      * Private constructor.
@@ -247,6 +248,10 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.get(key);
     }
 
+    public final PropertyMap getPropertyMap() {
+        return propertyMap;
+    }
+
     public final void addDirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
@@ -257,34 +262,69 @@ public abstract class ShapeImpl extends Shape {
         addTransitionInternal(transition, next);
     }
 
-    private void addTransitionInternal(Transition transition, ShapeImpl next) {
-        getTransitionMapForWrite().put(transition, next);
+    private void addTransitionInternal(Transition transition, ShapeImpl successor) {
+        Object prev;
+        Object next;
+        do {
+            prev = TRANSITION_MAP_UPDATER.get(this);
+            if (prev == null) {
+                invalidateLeafAssumption();
+                next = new AbstractMap.SimpleImmutableEntry<>(transition, successor);
+            } else if (prev instanceof Map.Entry<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) prev;
+                ConcurrentHashMap<Transition, ShapeImpl> map = new ConcurrentHashMap<>();
+                map.put(entry.getKey(), entry.getValue());
+                map.put(transition, successor);
+                next = map;
+            } else {
+                assert prev instanceof Map<?, ?>;
+                @SuppressWarnings("unchecked")
+                Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) prev;
+                map.put(transition, successor);
+                break;
+            }
+        } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
     }
 
     public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
-        return transitionMap != null ? transitionMap : Collections.<Transition, ShapeImpl> emptyMap();
-    }
-
-    private Map<Transition, ShapeImpl> getTransitionMapForWrite() {
-        if (transitionMap != null) {
-            return transitionMap;
+        Object trans = transitionMap;
+        if (trans == null) {
+            return Collections.<Transition, ShapeImpl> emptyMap();
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            return Collections.singletonMap(entry.getKey(), entry.getValue());
         } else {
-            synchronized (getMutex()) {
-                if (transitionMap != null) {
-                    return transitionMap;
-                }
-                invalidateLeafAssumption();
-                return transitionMap = new ConcurrentHashMap<>();
-            }
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map;
         }
     }
 
-    public final PropertyMap getPropertyMap() {
-        return propertyMap;
+    private ShapeImpl queryTransitionImpl(Transition transition) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (trans instanceof Map.Entry<?, ?>) {
+            @SuppressWarnings("unchecked")
+            Map.Entry<Transition, ShapeImpl> entry = (Map.Entry<Transition, ShapeImpl>) trans;
+            if (entry.getKey().equals(transition)) {
+                return entry.getValue();
+            } else {
+                return null;
+            }
+        } else {
+            assert trans instanceof Map<?, ?>;
+            @SuppressWarnings("unchecked")
+            Map<Transition, ShapeImpl> map = (Map<Transition, ShapeImpl>) trans;
+            return map.get(transition);
+        }
     }
 
     public final ShapeImpl queryTransition(Transition transition) {
-        ShapeImpl cachedShape = this.getTransitionMapForRead().get(transition);
+        ShapeImpl cachedShape = queryTransitionImpl(transition);
         if (cachedShape != null) {
             shapeCacheHitCount.inc();
             return cachedShape;
@@ -497,24 +537,30 @@ public abstract class ShapeImpl extends Shape {
 
     @Override
     public final boolean isLeaf() {
-        return leafAssumption == null || leafAssumption.isValid();
+        Assumption assumption = leafAssumption;
+        return assumption == null || assumption.isValid();
     }
 
     @Override
     public final Assumption getLeafAssumption() {
-        if (leafAssumption == null) {
+        Assumption assumption = leafAssumption;
+        if (assumption != null) {
+            return assumption;
+        } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (getMutex()) {
-                if (leafAssumption == null) {
-                    leafAssumption = isLeafHelper() ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
+            Assumption prev;
+            Assumption next;
+            do {
+                prev = LEAF_ASSUMPTION_UPDATER.get(this);
+                if (prev != null) {
+                    return prev;
+                } else {
+                    boolean isLeafShape = transitionMap == null;
+                    next = isLeafShape ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
                 }
-            }
+            } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
+            return next;
         }
-        return leafAssumption;
-    }
-
-    private boolean isLeafHelper() {
-        return getTransitionMapForRead().isEmpty();
     }
 
     private static Assumption createLeafAssumption() {
@@ -522,12 +568,16 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private void invalidateLeafAssumption() {
-        Assumption assumption = leafAssumption;
-        if (assumption != null) {
-            assumption.invalidate();
-        } else {
-            leafAssumption = NeverValidAssumption.INSTANCE;
-        }
+        Assumption prev;
+        do {
+            prev = LEAF_ASSUMPTION_UPDATER.get(this);
+            if (prev == NeverValidAssumption.INSTANCE) {
+                break;
+            }
+            if (prev != null) {
+                prev.invalidate();
+            }
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, NeverValidAssumption.INSTANCE));
     }
 
     @Override
@@ -762,6 +812,7 @@ public abstract class ShapeImpl extends Shape {
 
             @ExplodeLoop
             public DynamicObject newInstance(Object... initialValues) {
+                assert initialValues.length == instanceFields.length;
                 DynamicObject store = ShapeImpl.this.newInstance();
                 CompilerAsserts.partialEvaluationConstant(instanceFields.length);
                 for (int i = 0; i < instanceFields.length; i++) {
@@ -833,6 +884,11 @@ public abstract class ShapeImpl extends Shape {
         }
 
         @Override
+        public Location declaredLocation(Object value) {
+            return new DeclaredLocation(value);
+        }
+
+        @Override
         protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
             if (value instanceof Integer) {
                 return newIntLocation(useFinal);
@@ -865,30 +921,6 @@ public abstract class ShapeImpl extends Shape {
                 return newTypedObjectLocation(useFinal, type, nonNull);
             }
             return newObjectLocation(useFinal, nonNull);
-        }
-
-        protected Location newDualLocation(Class<?> type) {
-            return new DualLocation((InternalLongLocation) newLongLocation(false), (ObjectLocation) newObjectLocation(false, false), layout, type);
-        }
-
-        protected DualLocation newDualLocationForValue(Object value) {
-            Class<?> initialType = null;
-            if (value instanceof Integer) {
-                initialType = int.class;
-            } else if (value instanceof Double) {
-                initialType = double.class;
-            } else if (value instanceof Long) {
-                initialType = long.class;
-            } else if (value instanceof Boolean) {
-                initialType = boolean.class;
-            } else {
-                initialType = Object.class;
-            }
-            return new DualLocation((InternalLongLocation) newLongLocation(false), (ObjectLocation) newObjectLocation(false, false), layout, initialType);
-        }
-
-        protected Location newDeclaredDualLocation(Object value) {
-            return new DeclaredDualLocation((InternalLongLocation) newLongLocation(false), (ObjectLocation) newObjectLocation(false, false), value, layout);
         }
 
         protected <T extends Location> T advance(T location0) {
@@ -943,36 +975,13 @@ public abstract class ShapeImpl extends Shape {
             }
         }
 
-        @SuppressWarnings("deprecation")
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
-            if (oldLocation instanceof IntLocation && value instanceof Integer) {
-                newLocation = oldLocation;
-            } else if (oldLocation instanceof DoubleLocation && (value instanceof Double || this.layout.isAllowedIntToDouble() && value instanceof Integer)) {
-                newLocation = oldLocation;
-            } else if (oldLocation instanceof LongLocation && (value instanceof Long || this.layout.isAllowedIntToLong() && value instanceof Integer)) {
-                newLocation = oldLocation;
-            } else if (oldLocation instanceof DeclaredLocation) {
-                return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
-            } else if (oldLocation instanceof ConstantLocation) {
-                return LocationImpl.valueEquals(oldLocation.get(null, false), value) ? oldLocation : new Locations.ConstantLocation(value);
-            } else if (oldLocation instanceof com.oracle.truffle.object.LocationImpl.TypedObjectLocation &&
-                            !((com.oracle.truffle.object.LocationImpl.TypedObjectLocation<?>) oldLocation).getType().isAssignableFrom(value.getClass())) {
-                newLocation = (((com.oracle.truffle.object.LocationImpl.TypedObjectLocation<?>) oldLocation).toUntypedLocation());
-            } else if (oldLocation instanceof DualLocation) {
-                if (oldLocation.canStore(value)) {
-                    newLocation = oldLocation;
-                } else {
-                    newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
-                }
-            } else if (oldLocation instanceof ObjectLocation) {
+            if (oldLocation.canSet(value)) {
                 newLocation = oldLocation;
             } else {
-                return oldShape.allocator().locationForValue(value, EnumSet.of(LocationModifier.NonNull));
-            }
-            if (newLocation instanceof com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation) {
-                newLocation = ((com.oracle.truffle.object.LocationImpl.EffectivelyFinalLocation<?>) newLocation).toNonFinalLocation();
+                newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
             }
             return newLocation;
         }

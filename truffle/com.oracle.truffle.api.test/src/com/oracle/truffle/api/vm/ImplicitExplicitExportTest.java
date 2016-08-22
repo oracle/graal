@@ -42,10 +42,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -97,7 +99,21 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferred2() {
+    public void implicitExportFoundDirect() throws Exception {
+        // @formatter:off
+        vm.eval(
+            Source.newBuilder("implicit.ahoj=42").
+                name("Fourty two").
+                mimeType(L1).
+                build()
+        );
+        Object ret = vm.findGlobalSymbol("ahoj").get();
+        // @formatter:on
+        assertEquals("42", ret);
+    }
+
+    @Test
+    public void explicitExportPreferred2() throws Exception {
         // @formatter:off
         vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
@@ -111,7 +127,18 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferred1() {
+    public void explicitExportPreferredDirect() throws Exception {
+        // @formatter:off
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build());
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build());
+        Object ret = vm.findGlobalSymbol("ahoj").get();
+        // @formatter:on
+        assertEquals("Explicit import from L2 is used", "43", ret);
+        assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").get());
+    }
+
+    @Test
+    public void explicitExportPreferred1() throws Exception {
         // @formatter:off
         vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L1).build()
         );
@@ -166,12 +193,12 @@ public class ImplicitExplicitExportTest {
             if (code.getCode().startsWith("parse=")) {
                 throw new IOException(code.getCode().substring(6));
             }
-            return new ValueCallTarget(code, this);
+            return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
 
         @Override
         protected Object findExportedSymbol(Ctx context, String globalName, boolean onlyExplicit) {
-            if (context.explicit.containsKey(globalName)) {
+            if (onlyExplicit && context.explicit.containsKey(globalName)) {
                 return context.explicit.get(globalName);
             }
             if (!onlyExplicit && context.implicit.containsKey(globalName)) {
@@ -195,6 +222,7 @@ public class ImplicitExplicitExportTest {
             return null;
         }
 
+        @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
             final Node node = createFindContextNode();
@@ -229,22 +257,18 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    private static final class ValueCallTarget implements RootCallTarget {
+    private static final class ValueRootNode extends RootNode {
         private final Source code;
         private final AbstractExportImportLanguage language;
 
-        private ValueCallTarget(Source code, AbstractExportImportLanguage language) {
+        private ValueRootNode(Source code, AbstractExportImportLanguage language) {
+            super(language.getClass(), null, null);
             this.code = code;
             this.language = language;
         }
 
         @Override
-        public RootNode getRootNode() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Object call(Object... arguments) {
+        public Object execute(VirtualFrame frame) {
             return language.importExport(code);
         }
     }

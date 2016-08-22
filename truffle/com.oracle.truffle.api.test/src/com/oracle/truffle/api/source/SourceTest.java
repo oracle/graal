@@ -31,7 +31,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -217,33 +216,6 @@ public class SourceTest {
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
-    }
-
-    @Test
-    public void relativeURL() throws Exception {
-        URL resource = SourceSnippets.class.getResource("sample.js");
-        assertNotNull("Sample js file found", resource);
-        SourceSnippets.fromURL();
-    }
-
-    @Test
-    public void fileSample() throws Exception {
-        File sample = File.createTempFile("sample", ".java").getCanonicalFile();
-        sample.deleteOnExit();
-        SourceSnippets.fromFile(sample.getParentFile(), sample.getName());
-        sample.delete();
-    }
-
-    @Test
-    public void stringSample() throws Exception {
-        Source source = SourceSnippets.fromAString();
-        assertNotNull("Every source must have URI", source.getURI());
-    }
-
-    @Test
-    public void readerSample() throws Exception {
-        Source source = SourceSnippets.fromReader();
-        assertNotNull("Every source must have URI", source.getURI());
     }
 
     @Test

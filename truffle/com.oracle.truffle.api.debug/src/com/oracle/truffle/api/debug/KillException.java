@@ -27,14 +27,12 @@ package com.oracle.truffle.api.debug;
 /**
  * Controls breaking out of an execution context, such as a shell or eval. This exception now
  * extends {@link ThreadDeath} as that is the error that is supposed to not be ever caught. As its
- * Javadoc puts it: <em>
- * An application should catch instances of this class only if it must clean up
- * after being terminated asynchronously. If {@code ThreadDeath} is caught by a
- * method, it is important that it be re-thrown so that the thread actually dies.
- * </em> The re-throwing is important aspect of <code>KillException</code> and as such it
- * piggy-backs on this aspect of {@link ThreadDeath}. For code that can distinguish between
- * classical {@link ThreadDeath} and {@link KillException}, is still OK to catch the exception and
- * not propagate it any further.
+ * Javadoc puts it: <em> An application should catch instances of this class only if it must clean
+ * up after being terminated asynchronously. If {@code ThreadDeath} is caught by a method, it is
+ * important that it be re-thrown so that the thread actually dies. </em> The re-throwing is
+ * important aspect of <code>KillException</code> and as such it piggy-backs on this aspect of
+ * {@link ThreadDeath}. For code that can distinguish between classical {@link ThreadDeath} and
+ * {@link KillException}, is still OK to catch the exception and not propagate it any further.
  *
  * @since 0.12
  */

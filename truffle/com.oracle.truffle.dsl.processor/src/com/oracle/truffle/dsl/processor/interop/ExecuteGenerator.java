@@ -46,8 +46,9 @@ public final class ExecuteGenerator extends MessageGenerator {
     private final String targetableExecuteNode;
     private final String executeRootNode;
 
-    public ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetableExecuteNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
         this.executeRootNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("RootNode").toString();
         if (Message.createExecute(0).toString().equalsIgnoreCase(messageName)) {
@@ -79,7 +80,7 @@ public final class ExecuteGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private final static class ").append(executeRootNode).append(" extends RootNode {\n");
+        w.append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
         w.append("        protected ").append(executeRootNode).append("(Class<? extends TruffleLanguage<?>> language) {\n");
         w.append("            super(language, null, null);\n");
         w.append("        }\n");

@@ -38,9 +38,7 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -53,7 +51,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
@@ -125,7 +122,7 @@ public final class REPLServer {
         statusPrefix = "";
     }
 
-    private final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent> onHalted = new com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
         @Override
         protected void on(SuspendedEvent ev) {
             if (TRACE) {
@@ -138,9 +135,10 @@ public final class REPLServer {
         }
     };
 
-    private final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent> onExec = new com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent>(
+                    com.oracle.truffle.api.debug.ExecutionEvent.class) {
         @Override
-        protected void on(ExecutionEvent event) {
+        protected void on(com.oracle.truffle.api.debug.ExecutionEvent event) {
             if (TRACE) {
                 trace("BEGIN onExecutionEvent()");
             }
@@ -539,13 +537,6 @@ public final class REPLServer {
         return info;
     }
 
-    @Deprecated
-    BreakpointInfo setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.StandardSyntaxTag tag, boolean oneShot) throws IOException {
-        final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
-        info.activate();
-        return info;
-    }
-
     synchronized BreakpointInfo findBreakpoint(int id) {
         return breakpoints.get(id);
     }
@@ -593,38 +584,13 @@ public final class REPLServer {
 
     }
 
-    final class TagBreakpointInfo extends BreakpointInfo {
-        private final com.oracle.truffle.api.instrument.StandardSyntaxTag tag;
-
-        private TagBreakpointInfo(com.oracle.truffle.api.instrument.StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
-            super(ignoreCount, oneShot);
-            this.tag = tag;
-        }
-
-        @Override
-        protected void activate() throws IOException {
-            breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
-            // TODO (mlvdv) check if resolved
-            breakpoints.put(uid, this);
-
-        }
-
-        @Override
-        String describeLocation() {
-            if (breakpoint == null) {
-                return "Tag: " + tag;
-            }
-            return breakpoint.getLocationDescription();
-        }
-    }
-
     abstract class BreakpointInfo {
 
         protected final int uid;
         protected final boolean oneShot;
         protected final int ignoreCount;
 
-        protected State state = State.ENABLED_UNRESOLVED;
+        protected Breakpoint.State state = Breakpoint.State.ENABLED_UNRESOLVED;
         protected Breakpoint breakpoint;
         protected Source conditionSource;
 
@@ -651,12 +617,12 @@ public final class REPLServer {
                 switch (state) {
                     case ENABLED_UNRESOLVED:
                         if (!enabled) {
-                            state = State.DISABLED_UNRESOLVED;
+                            state = Breakpoint.State.DISABLED_UNRESOLVED;
                         }
                         break;
                     case DISABLED_UNRESOLVED:
                         if (enabled) {
-                            state = State.ENABLED_UNRESOLVED;
+                            state = Breakpoint.State.ENABLED_UNRESOLVED;
                         }
                         break;
                     case DISPOSED:
@@ -670,7 +636,7 @@ public final class REPLServer {
         }
 
         boolean isEnabled() {
-            return breakpoint == null ? (state == State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
+            return breakpoint == null ? (state == Breakpoint.State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
         }
 
         void setCondition(String expr) throws IOException {
@@ -696,14 +662,14 @@ public final class REPLServer {
 
         void dispose() {
             if (breakpoint == null) {
-                if (state == State.DISPOSED) {
+                if (state == Breakpoint.State.DISPOSED) {
                     throw new IllegalStateException("Breakpoint already disposed");
                 }
             } else {
                 breakpoint.dispose();
                 breakpoint = null;
             }
-            state = State.DISPOSED;
+            state = Breakpoint.State.DISPOSED;
             breakpoints.remove(uid);
             conditionSource = null;
         }

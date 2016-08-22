@@ -3,7 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.20
-15-Jul-2016
+23-Aug-2016
 * This release removes many deprecated APIs and is thus slightly incompatible
 * [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
 `eval` method and few similar ones no longer declare `throws IOException`.
@@ -13,6 +13,49 @@ thus it makes little sense to require callers to handle the `IOException`.
 This change is binary compatible, yet it is source *incompatible* change.
 You may need to [adjust your sources](https://github.com/graalvm/fastr/commit/09ab156925d24bd28837907cc2ad336679afc7a2)
 to compile.
+* Deprecate support for the "identifier" associated with each SourceSection
+* Remove deprecated instrumentation API package com.oracle.truffle.api.instrument and all its classes.
+* Remove deprecated API method TruffleLanguage#isInstrumentable(Node), TruffleLanguage#getVisualizer(), TruffleLanguage#createWrapperNode(), TruffleLanguage.Env#instrumenter(), RootNode#applyInstrumentation()
+* Remove deprecated API Debugger#setTagBreakpoint
+* Remove deprecated API RootNode#applyInstrumentation
+* Remove deprecated tagging API in SourceSection and Source.
+* All debugging APIs are now thread-safe and can be used from other threads.
+* Changed the debugging API to a session based model. 
+  * Added Debugger#find(TruffleLanguage.Env) to lookup the debugger when inside a guest language implementation.
+  * Added Debugger#startSession(SuspendedCallback) to start a new debugging session using a SuspendedCallback as replacement for ExecutionEvent#prepareStepInto().
+  * Added class DebuggerSession which represents a debugger session where breakpoints can be installed and the execution can be suspended and resumed.
+  * Added Breakpoint#newBuilder methods to create a new breakpoint using the builder pattern based on Source, URI or SourceSections.
+  * Added Breakpoint#isResolved() to find out whether the source location of a breakpoint is loaded by the guest language.
+  * Added Breakpoint#isDisposed() to find out whether a breakpoint is disposed.
+  * Added SuspendedEvent#getReturnValue() to get return values of calls during debugging.
+  * Added SuspendedEvent#getBreakpoints() to return the breakpoints that hit for a suspended event.
+  * Added SuspendedEvent#getStackFrames() to return all guest language stack frames.
+  * Added SuspendedEvent#getTopStackFrame() to return the topmost stack frame.
+  * Added SuspendedEvent#getSourceSection() to return the current guest lanugage execution location
+  * Added SuspendedEvent#getSourceSections() to return all guest lanugage execution locations of the current method in the AST.
+  * Added class DebugStackFrame which represents a guest language stack frame. Allows to get values from the current stack frame, access stack values and evaluate inline expressions.
+  * Added class DebugValue which represents a value on a stack frame or the result of an evaluated expression.
+  * Added class DebuggerTester which represents a utility for testing guest language debugger support more easily.
+  * Deprecated Breakpoint#getCondition() and replaced it with Breakpoint#getConditionExpression() to return a String instead of a Source object.
+  * Deprecated Breakpoint#setCondition(String) and replaced it with Breakpoint#setConditionExpression(String) to avoid throwing IOException.
+  * Deprecated class ExecutionEvent and replaced it with Debugger#startSession(SuspendedCallback)
+  * Deprecated Debugger methods setLineBreakpoint, getBreakpoints, pause. Replacements are available in the DebuggerSession class
+  * Deprecated Breakpoint#getState() to be replaced with Breakpoint#isResolved(), Breakpoint#isDisposed() and Breakpoint#isEnabled().
+  * Deprecated SuspendedEvent#getNode() and SuspendedEvent#getFrame() without direct replacement.
+  * Deprecated SuspendedEvent#getRecentWarnings() and replaced it with SuspendedEvent#getBreakpointConditionException(Breakpoint)
+  * Deprecated SuspendedEvent#eval and replaced it with DebugStackFrame#eval(String)
+  * Deprecated SuspendedEvent#getStack() and replaced it with SuspendedEvent#getStackFrames()
+  * Deprecated SuspendedEvent#toString(Object, FrameInstance) and replaced it with DebugValue.as(String.class).
+* Added SourceSectionFilter.Builder#sourceIs(SourcePredicate) to filter for source sections with a custom source predicate.
+* Added TruffleInstrument.Env#isEngineRoot(RootNode) to find out where the context of the current evaluation ends when looking up the guest language stack trace with TruffleRuntime#iterateFrames().
+* Added TruffleInstrument.Env#toString(Node, Object) to allow string conversions for objects given a Node to identify the guest language.
+* Added EventContext#lookupExecutionEventNode(EventBinding) to lookup other execution event nodes using the binding at a source location.
+* Deprecated PolyglotEngine.Builder#onEvent(EventConsumer) and class EventConsumer, debugger events are now dispatched using the DebuggerSession.
+
+## Version 0.16
+* [Layout](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/object/dsl/Layout.html)
+  now accepts an alternative way to construct an object with the `build` method instead of `create`.
+* [TruffleTCK](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/tck/TruffleTCK.html) tests simple operation on foreign objects. For example, a simple WRITE accesss, a HAS_SIZE access, or an IS_NULL access. It also tests the message resolution of Truffle language objects, which enables using them in other languages.
 
 ## Version 0.15
 1-Jul-2016

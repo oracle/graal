@@ -105,7 +105,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         for (String matchExpression : match) {
             int index = -1;
             while ((index = code.indexOf(matchExpression, index + 1)) != -1) {
-                sections.add(source.createSection(null, index, matchExpression.length()));
+                sections.add(source.createSection(index, matchExpression.length()));
             }
         }
         return sections.toArray(new SourceSection[0]);

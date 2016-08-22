@@ -61,31 +61,11 @@ class DefaultStrategy extends LayoutStrategy {
 
     @Override
     public BaseAllocator createAllocator(ShapeImpl shape) {
-        return new DefaultAllocatorImpl(shape);
+        return new BasicAllocator(shape);
     }
 
     @Override
     public BaseAllocator createAllocator(LayoutImpl layout) {
-        return new DefaultAllocatorImpl(layout);
-    }
-
-    static class DefaultAllocatorImpl extends BasicAllocator {
-        protected DefaultAllocatorImpl(LayoutImpl layout) {
-            super(layout);
-        }
-
-        protected DefaultAllocatorImpl(ShapeImpl shape) {
-            super(shape);
-        }
-
-        @Override
-        public Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-            return super.newDualLocationForValue(value);
-        }
-
-        @Override
-        public Location declaredLocation(Object value) {
-            return super.newDeclaredDualLocation(value);
-        }
+        return new BasicAllocator(layout);
     }
 }

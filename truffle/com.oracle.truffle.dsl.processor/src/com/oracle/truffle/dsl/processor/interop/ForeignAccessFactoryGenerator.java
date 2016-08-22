@@ -65,11 +65,16 @@ public final class ForeignAccessFactoryGenerator {
         this.languageCheckFactoryInvokation = invocation;
     }
 
+    public String getFullClassName() {
+        return packageName + "." + simpleClassName;
+    }
+
     public void generate() throws IOException {
         JavaFileObject factoryFile = processingEnv.getFiler().createSourceFile(packageName + "." + simpleClassName, element);
         Writer w = factoryFile.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
+        Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         w.append("final class ").append(simpleClassName);
         w.append(" implements Factory10, Factory {\n");
 
@@ -98,7 +103,7 @@ public final class ForeignAccessFactoryGenerator {
         return languageCheckFactoryInvokation != null;
     }
 
-    private static void appendImports(Writer w) throws IOException {
+    private void appendImports(Writer w) throws IOException {
         w.append("import com.oracle.truffle.api.interop.UnsupportedMessageException;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory10;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
@@ -107,7 +112,12 @@ public final class ForeignAccessFactoryGenerator {
         w.append("import com.oracle.truffle.api.interop.TruffleObject;").append("\n");
         w.append("import com.oracle.truffle.api.CallTarget;").append("\n");
         w.append("import com.oracle.truffle.api.Truffle;").append("\n");
-        w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
+        if (!(messageHandlers.containsKey(Message.IS_BOXED) &&
+                        messageHandlers.containsKey(Message.IS_NULL) &&
+                        messageHandlers.containsKey(Message.IS_EXECUTABLE) &&
+                        messageHandlers.containsKey(Message.HAS_SIZE))) {
+            w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
+        }
     }
 
     private void appendSingletonAndGetter(Writer w) throws IOException {
@@ -118,12 +128,12 @@ public final class ForeignAccessFactoryGenerator {
             allocation = "ForeignAccess.create(null, new " + simpleClassName + "());";
         }
         w.append("  public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
-        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append("}\n");
+        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append(" }\n");
         w.append("\n");
     }
 
     private void appendPrivateConstructor(Writer w) throws IOException {
-        w.append("  private ").append(simpleClassName).append("(){}").append("\n");
+        w.append("  private ").append(simpleClassName).append("() { }").append("\n");
         w.append("\n");
     }
 

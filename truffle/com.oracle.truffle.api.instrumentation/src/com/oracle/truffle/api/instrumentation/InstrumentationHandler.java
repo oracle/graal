@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -67,6 +66,7 @@ final class InstrumentationHandler {
     /* Enable trace output to stdout. */
     private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
+    private final Object sourceVM;
     private final Map<Source, Void> sources = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
     /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
     private final Collection<Source> sourcesList = new WeakAsyncList<>(16);
@@ -88,7 +88,8 @@ final class InstrumentationHandler {
     private final InputStream in;
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
-    private InstrumentationHandler(OutputStream out, OutputStream err, InputStream in) {
+    private InstrumentationHandler(Object sourceVM, OutputStream out, OutputStream err, InputStream in) {
+        this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -139,7 +140,7 @@ final class InstrumentationHandler {
     }
 
     void addInstrument(Object key, Class<?> clazz) {
-        addInstrumenter(key, new InstrumentClientInstrumenter(clazz, out, err, in));
+        addInstrumenter(key, new InstrumentClientInstrumenter(sourceVM, clazz, out, err, in));
     }
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
@@ -716,9 +717,14 @@ final class InstrumentationHandler {
         private TruffleInstrument instrument;
         private final Env env;
 
-        InstrumentClientInstrumenter(Class<?> instrumentClass, OutputStream out, OutputStream err, InputStream in) {
+        InstrumentClientInstrumenter(Object vm, Class<?> instrumentClass, OutputStream out, OutputStream err, InputStream in) {
             this.instrumentClass = instrumentClass;
-            this.env = new Env(this, out, err, in);
+            this.env = new Env(vm, this, out, err, in);
+        }
+
+        @Override
+        boolean isInstrumentableSource(Source source) {
+            return true;
         }
 
         @Override
@@ -805,12 +811,21 @@ final class InstrumentationHandler {
      */
     final class LanguageClientInstrumenter<T> extends AbstractInstrumenter {
 
-        @SuppressWarnings("unused") private final TruffleLanguage.Env env;
+        private final TruffleLanguage.Env env;
         private final TruffleLanguage<T> language;
 
         LanguageClientInstrumenter(TruffleLanguage<T> language, TruffleLanguage.Env env) {
             this.language = language;
             this.env = env;
+        }
+
+        @Override
+        boolean isInstrumentableSource(Source source) {
+            String mimeType = source.getMimeType();
+            if (mimeType == null) {
+                return false;
+            }
+            return env.isMimeTypeSupported(mimeType);
         }
 
         @Override
@@ -886,6 +901,8 @@ final class InstrumentationHandler {
         }
 
         abstract boolean isInstrumentableRoot(RootNode rootNode);
+
+        abstract boolean isInstrumentableSource(Source source);
 
         final Set<Class<?>> queryTagsImpl(Node node, Class<?> onlyLanguage) {
             SourceSection sourceSection = node.getSourceSection();
@@ -1172,7 +1189,7 @@ final class InstrumentationHandler {
         }
 
         @SuppressWarnings("rawtypes")
-        protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) {
             final TruffleLanguage<?> truffleLanguage = engineSupport().findLanguageImpl(null, languageClass, code.getMimeType());
             return langAccess().parse(truffleLanguage, code, context, argumentNames);
         }
@@ -1186,7 +1203,7 @@ final class InstrumentationHandler {
 
             @Override
             public Object createInstrumentationHandler(Object vm, OutputStream out, OutputStream err, InputStream in) {
-                return new InstrumentationHandler(out, err, in);
+                return new InstrumentationHandler(vm, out, err, in);
             }
 
             @Override

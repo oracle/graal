@@ -27,6 +27,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheNodeFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrderFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCodeGenerationPosNegGuardFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndDynamicParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCachedParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
@@ -360,6 +362,38 @@ public class CachedTest {
         assertEquals(42, root.call(21));
         assertEquals(42, root.call(22));
         assertEquals(42, root.call(23));
+    }
+
+    @NodeChild
+    static class TestCodeGenerationPosNegGuard extends ValueNode {
+
+        @Specialization(guards = "guard(value)")
+        static int do0(int value) {
+            return value;
+        }
+
+        // @Specialization(guards = {"!guard(value)", "value != cachedValue"})
+        // static int do1(int value, @Cached("get(value)") int cachedValue) {
+        // return cachedValue;
+        // }
+
+        protected static boolean guard(int i) {
+            return i == 0;
+        }
+
+        protected int get(int i) {
+            return i * 2;
+        }
+
+    }
+
+    @Ignore("Code above (uncommented) produces invalid code")
+    @Test
+    public void testCodeGenerationPosNegGuard() {
+        CallTarget root = createCallTarget(TestCodeGenerationPosNegGuardFactory.getInstance());
+        assertEquals(0, root.call(0));
+        assertEquals(2, root.call(1));
+        assertEquals(2, root.call(2));
     }
 
     @NodeChild

@@ -39,11 +39,9 @@ public final class DefaultCallTarget implements RootCallTarget {
     private final RootNode rootNode;
     private volatile boolean initialized;
 
-    @SuppressWarnings("deprecation")
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        this.rootNode.applyInstrumentation();
     }
 
     @Override

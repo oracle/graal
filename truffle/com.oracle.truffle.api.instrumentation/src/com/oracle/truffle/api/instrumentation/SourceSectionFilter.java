@@ -171,6 +171,21 @@ public final class SourceSectionFilter {
         }
 
         /**
+         * Add custom custom to filter based on custom criteria of {@link Source sources}. The given
+         * predicates must always return the same result for a source instance otherwise the
+         * behavior is undefined. The predicate should be able run on multiple threads at the same
+         * time.
+         *
+         * @param predicates the filters to check
+         * @since 0.17
+         */
+        public Builder sourceIs(SourcePredicate... predicates) {
+            verifyNotNull(predicates);
+            expressions.add(new EventFilterExpression.SourceFilterIs(predicates));
+            return this;
+        }
+
+        /**
          * Add a filter for all source sections that declare one of the given mime-types. Mime-types
          * which are compared must match exactly one of the mime-types specified by the target guest
          * language.
@@ -397,6 +412,23 @@ public final class SourceSectionFilter {
     }
 
     /**
+     * Represents a predicate for source objects.
+     *
+     * @since 0.17
+     */
+    public interface SourcePredicate {
+
+        /**
+         * Returns <code>true</code> if the given source should be tested positive and
+         * <code>false</code> if the sources should be filtered.
+         *
+         * @param source the source object to filter
+         * @since 0.17
+         */
+        boolean test(Source source);
+    }
+
+    /**
      * Represents a range between two indices within a {@link SourceSectionFilter source section
      * filter}. Instances are immutable.
      *
@@ -498,6 +530,56 @@ public final class SourceSectionFilter {
             for (IndexRange range : ranges) {
                 builder.append(sep).append(range);
                 sep = " or ";
+            }
+        }
+
+        private static final class SourceFilterIs extends EventFilterExpression {
+
+            private final SourcePredicate[] filters;
+
+            SourceFilterIs(SourcePredicate... source) {
+                this.filters = source;
+            }
+
+            @Override
+            boolean isSourceOnly() {
+                return true;
+            }
+
+            @Override
+            boolean isSourceIncluded(Source src) {
+                if (src == null) {
+                    return false;
+                }
+                for (SourcePredicate filter : filters) {
+                    if (filter.test(src)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+                if (rootSourceSection == null) {
+                    return true;
+                }
+                return isSourceIncluded(rootSourceSection.getSource());
+            }
+
+            @Override
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                return isSourceIncluded(sourceSection.getSource());
+            }
+
+            @Override
+            protected int getOrder() {
+                return 1;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("source is included by custom filter %s", Arrays.toString(filters));
             }
         }
 
@@ -659,21 +741,18 @@ public final class SourceSectionFilter {
 
             private final SourceSection[] sourceSections;
 
-            @SuppressWarnings("deprecation")
             SourceSectionEquals(SourceSection... sourceSection) {
                 this.sourceSections = sourceSection;
                 // clear tags
                 for (int i = 0; i < sourceSection.length; i++) {
-                    sourceSections[i] = sourceSection[i].withTags();
+                    sourceSections[i] = sourceSection[i];
                 }
             }
 
             @Override
-            @SuppressWarnings("deprecation")
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection s) {
-                SourceSection withoutTags = s.withTags();
                 for (SourceSection compareSection : sourceSections) {
-                    if (withoutTags.equals(compareSection)) {
+                    if (s.equals(compareSection)) {
                         return true;
                     }
                 }
@@ -712,12 +791,11 @@ public final class SourceSectionFilter {
 
             private final SourceSection[] sourceSections;
 
-            @SuppressWarnings("deprecation")
             RootSourceSectionEquals(SourceSection... sourceSection) {
                 this.sourceSections = sourceSection;
                 // clear tags
                 for (int i = 0; i < sourceSection.length; i++) {
-                    sourceSections[i] = sourceSection[i].withTags();
+                    sourceSections[i] = sourceSection[i];
                 }
             }
 
@@ -727,15 +805,13 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            @SuppressWarnings("deprecation")
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
                 if (rootSection == null) {
                     return false;
                 }
 
-                SourceSection withoutTags = rootSection.withTags();
                 for (SourceSection compareSection : sourceSections) {
-                    if (withoutTags.equals(compareSection)) {
+                    if (rootSection.equals(compareSection)) {
                         return true;
                     }
                 }

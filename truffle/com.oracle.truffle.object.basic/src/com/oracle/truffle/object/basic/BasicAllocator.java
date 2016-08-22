@@ -22,30 +22,33 @@
  */
 package com.oracle.truffle.object.basic;
 
+import static com.oracle.truffle.object.basic.BasicLocations.LONG_SIZE;
+import static com.oracle.truffle.object.basic.BasicLocations.OBJECT_SIZE;
+
 import com.oracle.truffle.api.object.BooleanLocation;
 import com.oracle.truffle.api.object.DoubleLocation;
 import com.oracle.truffle.api.object.IntLocation;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.ObjectLocation;
+import com.oracle.truffle.api.object.TypedLocation;
 import com.oracle.truffle.object.LayoutImpl;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
-import com.oracle.truffle.object.Locations.DeclaredDualLocation;
-import com.oracle.truffle.object.Locations.DualLocation;
+import com.oracle.truffle.object.Locations.DeclaredLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.ObjectStorageOptions;
 import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.basic.BasicLocations.BooleanLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.DoubleLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.IntLocationDecorator;
-import static com.oracle.truffle.object.basic.BasicLocations.LONG_SIZE;
 import com.oracle.truffle.object.basic.BasicLocations.LongArrayLocation;
 import com.oracle.truffle.object.basic.BasicLocations.LongFieldLocation;
-import static com.oracle.truffle.object.basic.BasicLocations.OBJECT_SIZE;
+import com.oracle.truffle.object.basic.BasicLocations.LongLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.ObjectArrayLocation;
+import com.oracle.truffle.object.basic.BasicLocations.PrimitiveLocationDecorator;
 
-abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
+class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     BasicAllocator(LayoutImpl layout) {
         super(layout);
@@ -62,11 +65,7 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location moveLocation(Location oldLocation) {
-        if (oldLocation instanceof DeclaredDualLocation) {
-            return advance(newDeclaredDualLocation(((DeclaredDualLocation) oldLocation).get(null, false)));
-        } else if (oldLocation instanceof DualLocation) {
-            return advance(newDualLocation(((DualLocation) oldLocation).getType()));
-        } else if (oldLocation instanceof LongLocation) {
+        if (oldLocation instanceof LongLocation) {
             return newLongLocation(oldLocation.isFinal());
         } else if (oldLocation instanceof IntLocation) {
             return newIntLocation(oldLocation.isFinal());
@@ -86,7 +85,7 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
     public Location newObjectLocation(boolean useFinal, boolean nonNull) {
         if (ObjectStorageOptions.InObjectFields) {
             int insertPos = objectFieldSize;
-            while (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
+            if (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
                 return advance((Location) getLayout().getObjectFieldLocation(insertPos));
             }
         }
@@ -155,35 +154,23 @@ abstract class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location locationForValueUpcast(Object value, Location oldLocation) {
-        assert !(value instanceof Class);
-        if (oldLocation instanceof DualLocation) {
-            DualLocation dualLocation = (DualLocation) oldLocation;
-            if (dualLocation.getType() == null) {
-                if (value instanceof Integer) {
-                    return dualLocation.changeType(int.class);
-                } else if (value instanceof Double) {
-                    return dualLocation.changeType(double.class);
-                } else if (value instanceof Long) {
-                    return dualLocation.changeType(long.class);
-                } else if (value instanceof Boolean) {
-                    return dualLocation.changeType(boolean.class);
-                } else {
-                    return dualLocation.changeType(Object.class);
-                }
-            } else if (dualLocation.getType().isPrimitive()) {
-                return dualLocation.changeType(Object.class);
-            } else {
-                throw new UnsupportedOperationException();
-            }
+        assert !oldLocation.canSet(value);
+
+        if (oldLocation instanceof DeclaredLocation) {
+            return locationForValue(value);
         } else if (oldLocation instanceof ConstantLocation) {
             return constantLocation(value);
-        } else {
-            throw new UnsupportedOperationException();
+        } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
+            if (((TypedLocation) oldLocation).getType() == int.class) {
+                InternalLongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLocation();
+                if (layout.isAllowedIntToLong() && value instanceof Long) {
+                    return new LongLocationDecorator(primLocation, true);
+                } else if (layout.isAllowedIntToDouble() && value instanceof Double) {
+                    return new DoubleLocationDecorator(primLocation, true);
+                }
+            }
+            return newObjectLocation(oldLocation.isFinal(), value != null);
         }
-    }
-
-    @Override
-    protected DeclaredDualLocation newDeclaredDualLocation(Object value) {
-        return new DeclaredDualLocation((InternalLongLocation) newLongLocation(false), (ObjectLocation) newObjectLocation(false, false), value, layout);
+        return locationForValue(value);
     }
 }

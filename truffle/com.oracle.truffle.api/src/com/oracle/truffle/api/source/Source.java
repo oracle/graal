@@ -24,23 +24,23 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.spi.FileTypeDetector;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.nodes.Node;
-import java.io.InputStreamReader;
-import java.util.Objects;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -63,8 +63,8 @@ import java.net.URISyntaxException;
  *
  * {@link SourceSnippets#fromURL}
  *
- * Each URL source is represented as a canonical object, indexed by the URL. Contents are
- * <em>read eagerly</em> once the {@link Builder#build()} method is called.
+ * Each URL source is represented as a canonical object, indexed by the URL. Contents are <em>read
+ * eagerly</em> once the {@link Builder#build()} method is called.
  *
  * <h3>Source from a literal text</h3>
  *
@@ -534,21 +534,23 @@ public abstract class Source {
         fileCacheEnabled = enabled;
     }
 
+    static String read(File file) throws IOException {
+        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+    }
+
     static String read(Reader reader) throws IOException {
-        final BufferedReader bufferedReader = new BufferedReader(reader);
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
-
         try {
             while (true) {
-                final int n = bufferedReader.read(buffer);
+                final int n = reader.read(buffer);
                 if (n == -1) {
                     break;
                 }
                 builder.append(buffer, 0, n);
             }
         } finally {
-            bufferedReader.close();
+            reader.close();
         }
         return builder.toString();
     }
@@ -798,25 +800,42 @@ public abstract class Source {
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
      * @since 0.8 or earlier
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int, int, int)}
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
-        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, SourceSection.EMTPY_TAGS);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length);
     }
 
     /**
-     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}. Use
-     *             {@link #createSection(String, int, int, int, int)} instead.
-     * @since 0.12
+     * Creates a representation of a contiguous region of text in the source.
+     * <p>
+     * This method performs no checks on the validity of the arguments.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @since 0.17
      */
-    @Deprecated
-    public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length, String... tags) {
+    public final SourceSection createSection(int startLine, int startColumn, int charIndex, int length) {
         checkRange(charIndex, length);
-        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
+        return createSectionImpl(startLine, startColumn, charIndex, length);
     }
 
-    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length, String[] tags) {
-        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length, tags);
+    @Deprecated
+    private SourceSection createSectionImpl(String identifier, int startLine, int startColumn, int charIndex, int length) {
+        return new SourceSection(this, identifier, startLine, startColumn, charIndex, length);
+    }
+
+    private SourceSection createSectionImpl(int startLine, int startColumn, int charIndex, int length) {
+        return new SourceSection(this, startLine, startColumn, charIndex, length);
     }
 
     /**
@@ -836,14 +855,43 @@ public abstract class Source {
      * @throws IllegalArgumentException if arguments are outside the text of the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int, int)}
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
         if (startColumn > getTextMap().lineLength(startLine)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
-        return createSectionImpl(identifier, startLine, startColumn, startOffset, length, SourceSection.EMTPY_TAGS);
+        return createSectionImpl(identifier, startLine, startColumn, startOffset, length);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if arguments are outside the text of the source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int startLine, int startColumn, int length) {
+        final int lineStartOffset = getTextMap().lineStartOffset(startLine);
+        if (startColumn > getTextMap().lineLength(startLine)) {
+            throw new IllegalArgumentException("column out of range");
+        }
+        final int startOffset = lineStartOffset + startColumn - 1;
+        return createSectionImpl(startLine, startColumn, startOffset, length);
     }
 
     /**
@@ -865,22 +913,41 @@ public abstract class Source {
      *             source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
-     */
-    public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
-        return createSection(identifier, charIndex, length, SourceSection.EMTPY_TAGS);
-    }
-
-    /**
-     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}. Use
-     *             {@link #createSection(String, int, int)} instead.
-     * @since 0.12
+     * @deprecated "identifier" being removed from SourceSection, use
+     *             {@link #createSection(int, int)}
      */
     @Deprecated
-    public final SourceSection createSection(String identifier, int charIndex, int length, String... tags) throws IllegalArgumentException {
+    public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-        return createSectionImpl(identifier, startLine, startColumn, charIndex, length, tags);
+        return createSectionImpl(identifier, startLine, startColumn, charIndex, length);
+    }
+
+    /**
+     * Creates a representation of a contiguous region of text in the source. Computes the
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
+     * <p>
+     * Checks the position arguments for consistency with the source.
+     * <p>
+     * The resulting representation defines hash/equality around equivalent location, presuming that
+     * {@link Source} representations are canonical.
+     *
+     *
+     * @param charIndex 0-based position of the first character in the section
+     * @param length the number of characters in the section
+     * @return newly created object representing the specified region
+     * @throws IllegalArgumentException if either of the arguments are outside the text of the
+     *             source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int charIndex, int length) throws IllegalArgumentException {
+        checkRange(charIndex, length);
+        final int startLine = getLineNumber(charIndex);
+        final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
+        return createSectionImpl(startLine, startColumn, charIndex, length);
     }
 
     void checkRange(int charIndex, int length) {
@@ -899,11 +966,29 @@ public abstract class Source {
      * @throws IllegalArgumentException if the line does not exist the source
      * @throws IllegalStateException if the source is one of the "null" instances
      * @since 0.8 or earlier
+     * @deprecated "identifier" being removed from SourceSection, use {@link #createSection(int)}
      */
+    @Deprecated
     public final SourceSection createSection(String identifier, int lineNumber) {
         final int charIndex = getTextMap().lineStartOffset(lineNumber);
         final int length = getTextMap().lineLength(lineNumber);
         return createSection(identifier, charIndex, length);
+    }
+
+    /**
+     * Creates a representation of a line of text in the source identified only by line number, from
+     * which the character information will be computed.
+     *
+     * @param lineNumber 1-based line number of the first character in the section
+     * @return newly created object representing the specified line
+     * @throws IllegalArgumentException if the line does not exist the source
+     * @throws IllegalStateException if the source is one of the "null" instances
+     * @since 0.17
+     */
+    public final SourceSection createSection(int lineNumber) {
+        final int charIndex = getTextMap().lineStartOffset(lineNumber);
+        final int length = getTextMap().lineLength(lineNumber);
+        return createSection(charIndex, length);
     }
 
     /**
@@ -1108,7 +1193,7 @@ public abstract class Source {
          * provides {@link Source#getURI()} as a persistent identification of its location. A
          * default value for the method is deduced from the location or content, but one can change
          * it by using this method
-         * 
+         *
          * @param ownUri the URL to use instead of default one, cannot be <code>null</code>
          * @return the instance of this builder
          * @since 0.15
@@ -1318,5 +1403,7 @@ class SourceSnippets {
         // END: SourceSnippets#fromAString
         return source;
     }
+
+    public static boolean loaded = true;
 }
 // @formatter:on
