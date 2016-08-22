@@ -112,7 +112,7 @@ public final class LLVMTruffleOnlyIntrinsics {
                 Object strlen;
                 try {
                     strlen = ForeignAccess.sendGetSize(foreignGetSize, frame, object);
-                    long size = (long) toLLVM.convert(frame, strlen, long.class);
+                    long size = toLLVM.convert(frame, strlen, long.class);
                     return size;
                 } catch (UnsupportedMessageException e) {
                     throw new AssertionError(e);
@@ -161,24 +161,24 @@ public final class LLVMTruffleOnlyIntrinsics {
         }
 
         private int execute(VirtualFrame frame, TruffleObject str1, TruffleObject str2) throws UnsupportedMessageException, UnknownIdentifierException {
-            long size1 = (long) toLLVMSize1.convert(frame, ForeignAccess.sendGetSize(getSize1, frame, str1), long.class);
-            long size2 = (long) toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
+            long size1 = toLLVMSize1.convert(frame, ForeignAccess.sendGetSize(getSize1, frame, str1), long.class);
+            long size2 = toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
             int i;
             for (i = 0; i < size1; i++) {
                 Object s1 = ForeignAccess.sendRead(readStr1, frame, str1, i);
-                char c1 = (char) toLLVM1.convert(frame, s1, char.class);
+                char c1 = toLLVM1.convert(frame, s1, char.class);
                 if (i >= size2) {
                     return c1;
                 }
                 Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = (char) toLLVM2.convert(frame, s2, char.class);
+                char c2 = toLLVM2.convert(frame, s2, char.class);
                 if (c1 != c2) {
                     return c1 - c2;
                 }
             }
             if (i < size2) {
                 Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = (char) toLLVM2.convert(frame, s2, char.class);
+                char c2 = toLLVM2.convert(frame, s2, char.class);
                 return -c2;
             } else {
                 return 0;
