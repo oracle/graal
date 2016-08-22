@@ -396,6 +396,9 @@ public abstract class TruffleLanguage<C> {
             try {
                 return language.parse(source, null, argumentNames);
             } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
                 throw new RuntimeException(ex);
             }
         }
