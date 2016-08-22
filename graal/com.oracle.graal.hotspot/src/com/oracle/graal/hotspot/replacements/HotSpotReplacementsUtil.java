@@ -173,20 +173,6 @@ public class HotSpotReplacementsUtil {
         return config.threadExceptionPcOffset;
     }
 
-    public static final LocationIdentity LAST_JAVA_PC_LOCATION = NamedLocationIdentity.mutable("LastJavaPc");
-
-    @Fold
-    public static int threadLastJavaPcOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadLastJavaPcOffset();
-    }
-
-    public static final LocationIdentity LAST_JAVA_FP_LOCATION = NamedLocationIdentity.mutable("LastJavaFp");
-
-    @Fold
-    public static int threadLastJavaFpOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadLastJavaFpOffset();
-    }
-
     public static final LocationIdentity TLAB_TOP_LOCATION = NamedLocationIdentity.mutable("TlabTop");
 
     @Fold
@@ -255,14 +241,6 @@ public class HotSpotReplacementsUtil {
 
     public static void writeExceptionPc(Word thread, Word value) {
         thread.writeWord(threadExceptionPcOffset(INJECTED_VMCONFIG), value, EXCEPTION_PC_LOCATION);
-    }
-
-    public static void writeLastJavaPc(Word thread, Word value) {
-        thread.writeWord(threadLastJavaPcOffset(INJECTED_VMCONFIG), value, LAST_JAVA_PC_LOCATION);
-    }
-
-    public static void writeLastJavaFp(Word thread, Word value) {
-        thread.writeWord(threadLastJavaFpOffset(INJECTED_VMCONFIG), value, LAST_JAVA_FP_LOCATION);
     }
 
     public static Word readTlabTop(Word thread) {
