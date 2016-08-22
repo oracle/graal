@@ -131,8 +131,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * Because all sessions can control engine execution, some interactions are inherently possible. For
  * example:
  * <ul>
- * <li>A session's client can {@linkplain SuspendedEvent#kill() kill} an execution at just about any
- * time.</li>
+ * <li>A session's client can {@linkplain SuspendedEvent#prepareKill() kill} an execution at just
+ * about any time.</li>
  * <li>A session'c client can <em>starve</em> execution by not returning from the synchronous
  * {@linkplain SuspendedCallback callback} on the guest language execution thread.</li>
  * </ul>
