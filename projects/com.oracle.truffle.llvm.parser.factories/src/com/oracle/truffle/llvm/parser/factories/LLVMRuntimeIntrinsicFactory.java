@@ -35,7 +35,6 @@ import java.util.Map;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCIntrinsicsFactory.LLVMStrlenFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpFactory;
@@ -48,6 +47,8 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFacto
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleReadBytesFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleAddressToFunctionFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleHasSizeFactory;
@@ -230,6 +231,7 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
 
         intrinsics.put("@strlen", LLVMStrlenFactory.getInstance());
+        intrinsics.put("@strcmp", LLVMStrCmpFactory.getInstance());
     }
 
     /**
