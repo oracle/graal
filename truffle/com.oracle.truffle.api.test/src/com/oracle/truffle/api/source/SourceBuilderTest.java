@@ -124,7 +124,7 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void ioExceptionWhenFildDoesntExist() throws IOException {
+    public void ioExceptionWhenFileDoesntExist() throws Exception {
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.delete();
         assertFalse("Doesn't exist", file.exists());
@@ -142,7 +142,7 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void ioExceptionWhenReaderThrowsIt() throws IOException {
+    public void ioExceptionWhenReaderThrowsIt() throws Exception {
         final IOException ioEx = new IOException();
         Reader reader = new Reader() {
             @Override
