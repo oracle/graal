@@ -133,7 +133,10 @@ public abstract class TruffleLanguage<C> {
      * findContext(findNode)} to get back your language context.
      * <p>
      * This method shouldn't perform any complex operations. The runtime system is just being
-     * initialized and that is why it is not reasonable to make callbacks into it. Should there be a
+     * initialized and for example making
+     * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
+     * languages} and assuming your language is already initialized and others can see it would be
+     * wrong - until you return from this method, the initialization isn't over. Should there be a
      * need to perform complex initializaton, do it by overriding the
      * {@link #initializeContext(java.lang.Object)} method.
      *
