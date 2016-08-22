@@ -61,24 +61,63 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * Represents a single session in the {@link Debugger} which notifies a callback whenever the
- * stepping is enabled or a breakpoint is hit. A session is created using
- * {@link Debugger#startSession(SuspendedCallback)} with a {@link SuspendedCallback callback}. For
- * each breakpoint or manual suspension the provided callback is notified. A breakpoint can be
- * installed using {@link #install(Breakpoint)} and are local to a session. Manual suspensions can
- * be performed in three different ways:
+ * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}, where client
+ * interactions are as isolated as possible from the actions of clients using other session
+ * instances.
+ *
+ * <h4>Session lifetime</h4>
+ *
  * <ul>
- * <li>{@link #suspendNextExecution()} suspends the next execution on the first thread that is
+ * <li>A debugging client of a {@link PolyglotEngine}
+ * {@linkplain Debugger#startSession(SuspendedCallback) requests} a new {@linkplain DebuggerSession
+ * session} from the {@linkplain Debugger#find(PolyglotEngine) engine's} {@link Debugger}.</li>
+ *
+ * <li>Clients use a session to request suspension of guest language execution threads (for example
+ * by setting breakpoints) independently of other sessions.</li>
+ *
+ * <li>When a session suspends a guest language execution thread, it passes its client a new
+ * {@link SuspendedEvent} via synchronous {@linkplain SuspendedCallback callback} on the execution
+ * thread.</li>
+ *
+ * <li>A suspended guest language execution thread resumes language execution only after after the
+ * client callback returns.</li>
+ *
+ * <li>A client may create multiple sessions.</li>
+ *
+ * <li>A client receives no callbacks when guest language execution threads are suspended by
+ * sessions other than its own.</li>
+ *
+ * <li>Clients {@linkplain #close() close} sessions that are no longer needed; closed sessions have
+ * no affect on engine execution.</li>
+ *
+ * </ul>
+ *
+ * <h4>Debugging requests</h4>
+ * <ul>
+ * <li>{@linkplain #install(Breakpoint)}: Activate a newly created {@link Breakpoint}.</li>
+ *
+ * <li>{@link #suspendNextExecution()}: Suspend the next execution on the first thread that is
  * encountered.</li>
  * </ul>
+ *
+ * <h4>Event merging</h4>
  * <p>
- * Whenever one or multiple breakpoints hit at the same location as a manual suspension then both
- * events are merged into a single one. {@link SuspendedEvent#getBreakpoints()} can be used to find
- * out which breakpoints did hit. Whenever a debugger session is closed no further suspended events
- * will be generated.
+ * A session may suspend a guest language execution thread in response to more than one request from
+ * its client. For example:
+ * <ul>
+ * <li>A stepping action may land where a breakpoint is installed.</li>
+ * <li>Multiple installed breakpoints may apply to a particular location.</li>
+ * </ul>
+ * In such cases the client receives a single <em>merged</em> event.
+ * {@linkplain SuspendedEvent#getBreakpoints()} lists all breakpoints (possibly none) that apply to
+ * the suspended event's location.</li>
+ * </p>
  * <p>
- * Breakpoints and suspensions are local to a particular session and do not affect other sessions.
- * In other words, multiple sessions can be created and be used independent of each other.
+ * Events are <em>not merged</em> across session instances. For example, when a guest language
+ * execution thread hits a location two sessions have installed breakpoints, each session notifies
+ * its client with a new {@link SuspendedEvent} instance. The suspended guest language execution
+ * thread resumes only after after all session callbacks have returned.
+ * </p>
  * <p>
  * Usage example: {@link DebuggerSessionSnippets#example}
  *
