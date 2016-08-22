@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.llvm.test.LLVMPaths;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
@@ -534,6 +535,24 @@ public final class LLVMInteropTest {
             List<Integer> array = JavaInterop.asJavaObject(List.class, result);
             array.size(); // GET_SIZE is not supported
             Assert.fail("IllegalStateException expected");
+        } finally {
+            runner.dispose();
+        }
+    }
+
+    @Test
+    public void testStrlen() throws Exception {
+        Runner runner = new Runner("strlen");
+        try {
+            Value strlenFunction = runner.findGlobalSymbol("func");
+            Value nullString = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}));
+            Value a = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value abcd = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Value abcdWithTerminator = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd', '\0'}));
+            Assert.assertEquals(0, nullString.get());
+            Assert.assertEquals(1, a.get());
+            Assert.assertEquals(4, abcd.get());
+            Assert.assertEquals(5, abcdWithTerminator.get());
         } finally {
             runner.dispose();
         }
