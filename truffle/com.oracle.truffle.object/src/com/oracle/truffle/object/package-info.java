@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,30 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+/*
+ @ApiInfo(
+ group="Internal"
+ )
+ */
+
+/**
+ * Ignore: Internal API. Don't use, rather copy.
+ */
 package com.oracle.truffle.object;
-
-import com.oracle.truffle.api.object.Shape;
-import java.util.Collections;
-import java.util.Map;
-
-/** @since 0.17 or earlier */
-public abstract class DebugShapeVisitor<R> implements ShapeVisitor<R> {
-    /**
-     * @since 0.17 or earlier
-     */
-    protected DebugShapeVisitor() {
-    }
-
-    /** @since 0.17 or earlier */
-    public R visitShape(Shape shape) {
-        return visitShape(shape, Collections.unmodifiableMap(((ShapeImpl) shape).getTransitionMapForRead()));
-    }
-
-    /** @since 0.17 or earlier */
-    public abstract R visitShape(Shape shape, Map<? extends Transition, ? extends Shape> transitions);
-
-    /** @since 0.17 or earlier */
-    public static String getId(Shape shape) {
-        return Integer.toHexString(shape.hashCode());
-    }
-}

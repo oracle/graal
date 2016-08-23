@@ -24,23 +24,38 @@ package com.oracle.truffle.object;
 
 import static com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
 
+/** @since 0.17 or earlier */
 public final class ObjectStorageOptions {
     private ObjectStorageOptions() {
     }
 
     // Shape configuration
-    /** Primitive location switch. */
+    /**
+     * Primitive location switch.
+     * 
+     * @since 0.17 or earlier
+     */
     public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
+    /** @since 0.17 or earlier */
     public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
+    /** @since 0.17 or earlier */
     public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
+    /** @since 0.17 or earlier */
     public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
+    /** @since 0.17 or earlier */
     public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
+    /** @since 0.17 or earlier */
     public static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
 
-    /** Allocation of in-object fields. */
+    /**
+     * Allocation of in-object fields.
+     * 
+     * @since 0.17 or earlier
+     */
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     // Debug options (should be final)
+    /** @since 0.17 or earlier */
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
 
     static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
@@ -52,9 +67,12 @@ public final class ObjectStorageOptions {
     static final boolean DumpShapes = DumpShapesDOT || DumpShapesJSON || DumpShapesIGV;
     static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
+    /** @since 0.17 or earlier */
     public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
+    /** @since 0.17 or earlier */
     public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
 
+    /** @since 0.17 or earlier */
     public static boolean booleanOption(String name, boolean defaultValue) {
         String value = System.getProperty(name);
         return value == null ? defaultValue : value.equalsIgnoreCase("true");

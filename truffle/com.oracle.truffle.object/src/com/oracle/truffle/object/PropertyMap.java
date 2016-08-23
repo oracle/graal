@@ -28,51 +28,73 @@ import java.util.Map;
 
 /**
  * Immutable property map.
+ * 
+ * @since 0.17 or earlier
  */
 public abstract class PropertyMap implements ImmutableMap<Object, Property> {
+    /**
+     * @since 0.17 or earlier
+     */
+    protected PropertyMap() {
+    }
 
+    /** @since 0.17 or earlier */
     public static PropertyMap empty() {
         return ConsListPropertyMap.empty();
     }
 
+    /** @since 0.17 or earlier */
     public abstract Iterator<Object> orderedKeyIterator();
 
+    /** @since 0.17 or earlier */
     public abstract Iterator<Object> reverseOrderedKeyIterator();
 
+    /** @since 0.17 or earlier */
     public abstract Iterator<Property> orderedValueIterator();
 
+    /** @since 0.17 or earlier */
     public abstract Iterator<Property> reverseOrderedValueIterator();
 
+    /** @since 0.17 or earlier */
     public abstract Property getLastProperty();
 
+    /** @since 0.17 or earlier */
     public abstract PropertyMap putCopy(final Property element);
 
+    /** @since 0.17 or earlier */
     public abstract PropertyMap replaceCopy(final Property oldValue, final Property newValue);
 
+    /** @since 0.17 or earlier */
     public abstract PropertyMap removeCopy(final Property value);
 
+    /** @since 0.17 or earlier */
     public abstract PropertyMap getParentMap();
 
+    /** @since 0.17 or earlier */
     @Override
     public Property put(final Object key, final Property value) {
         throw unmodifiableException();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public void putAll(final Map<? extends Object, ? extends Property> m) {
         throw unmodifiableException();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public Property remove(final Object key) {
         throw unmodifiableException();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public void clear() {
         throw unmodifiableException();
     }
 
+    /** @since 0.17 or earlier */
     protected static RuntimeException unmodifiableException() {
         throw new UnsupportedOperationException();
     }
