@@ -788,11 +788,11 @@ def getLLVMVersion(llvmProgram):
     except subprocess.CalledProcessError as e:
         # on my machine, opt returns a non-zero opcode even on success
         versionString = e.output
-    printLLVMVersion = re.search(r'LLVM( version)? (\d\.\d)', versionString)
+    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
         exit("could not find the LLVM version string in " + str(versionString))
     else:
-        return printLLVMVersion.group(2)
+        return printLLVMVersion.group(3)
 
 def findInstalledProgram(llvmProgram, supportedVersions=None):
     """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
