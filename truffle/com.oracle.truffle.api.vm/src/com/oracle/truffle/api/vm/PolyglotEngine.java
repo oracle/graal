@@ -129,7 +129,6 @@ public class PolyglotEngine {
     private final List<Object[]> config;
     private final Object[] debugger = {null};
     private final ContextStore context;
-
     private volatile boolean disposed;
 
     static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -1223,6 +1222,7 @@ public class PolyglotEngine {
                     if (tmp == null && create) {
                         language = info.loadLanguage();
                         env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, language, out, err, in, getArgumentsForLanguage());
+                        Access.LANGS.postInitEnv(env);
                     }
                     if (clear) {
                         language = null;
