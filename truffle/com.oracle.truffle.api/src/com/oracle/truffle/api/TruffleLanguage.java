@@ -426,7 +426,6 @@ public abstract class TruffleLanguage<C> {
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
-         * @throws Exception if the parsing or evaluation fails for some reason
          * @since 0.8 or earlier
          */
         public CallTarget parse(Source source, String... argumentNames) {

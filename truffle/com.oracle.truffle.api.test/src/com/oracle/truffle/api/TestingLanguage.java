@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.IOException;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -55,7 +54,7 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
         return null;
     }
 

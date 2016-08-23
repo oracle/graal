@@ -248,7 +248,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
@@ -865,7 +865,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 

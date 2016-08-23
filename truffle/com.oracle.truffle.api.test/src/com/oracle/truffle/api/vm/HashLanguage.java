@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -44,7 +43,7 @@ public class HashLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source code, Node context, String... argumentNames) {
         return Truffle.getRuntime().createCallTarget(new HashNode(this, code));
     }
 
@@ -64,10 +63,8 @@ public class HashLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-                                                                       // generated methods, choose
-                                                                       // Tools | Templates.
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
+        throw new UnsupportedOperationException();
     }
 
     private static class HashNode extends RootNode {

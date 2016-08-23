@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
@@ -170,7 +169,7 @@ public abstract class Accessor {
             }
 
             @Override
-            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
                 return null;
             }
         };
