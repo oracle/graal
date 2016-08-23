@@ -88,7 +88,7 @@ supportedLLVMVersions = [
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
 clangFormatVersions = [
-	'3.4'
+    '3.4'
 ]
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
@@ -789,7 +789,10 @@ def getLLVMVersion(llvmProgram):
         # on my machine, opt returns a non-zero opcode even on success
         versionString = e.output
     printLLVMVersion = re.search(r'LLVM( version)? (\d\.\d)', versionString)
-    return printLLVMVersion.group(2)
+    if printLLVMVersion is None:
+        exit("could not find the LLVM version string in " + str(versionString))
+    else:
+        return printLLVMVersion.group(2)
 
 def findInstalledProgram(llvmProgram, supportedVersions=None):
     """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
