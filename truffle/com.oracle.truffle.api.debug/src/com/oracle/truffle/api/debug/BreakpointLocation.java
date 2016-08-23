@@ -34,8 +34,8 @@ import com.oracle.truffle.api.source.Source;
  * installed.
  * <p>
  * The location's <em>key</em> identifies a particular unit of source code, for example a
- * {@link Source} or {@link URI}, further specialized to a 1-based line number. It may optionally be
- * specialized to a 1-based column number.
+ * {@link Source} or {@link URI}. It can be optionally specialized to a 1-based line number and if
+ * it is, then it may also be optionally specialized to a 1-based column number.
  * </p>
  * <p>
  * Equality is value-based.
