@@ -70,31 +70,47 @@ import com.oracle.truffle.object.Transition.PropertyTransition;
  * @see DynamicObject
  * @see Property
  * @see Locations
+ * @since 0.17 or earlier
  */
 public abstract class ShapeImpl extends Shape {
     private final int id;
 
+    /** @since 0.17 or earlier */
     protected final LayoutImpl layout;
+    /** @since 0.17 or earlier */
     protected final ObjectType objectType;
+    /** @since 0.17 or earlier */
     protected final ShapeImpl parent;
+    /** @since 0.17 or earlier */
     protected final PropertyMap propertyMap;
 
     private final Object extraData;
     private final Object sharedData;
     private final ShapeImpl root;
 
+    /** @since 0.17 or earlier */
     protected final int objectArraySize;
+    /** @since 0.17 or earlier */
     protected final int objectArrayCapacity;
+    /** @since 0.17 or earlier */
     protected final int objectFieldSize;
+    /** @since 0.17 or earlier */
     protected final int primitiveFieldSize;
+    /** @since 0.17 or earlier */
     protected final int primitiveArraySize;
+    /** @since 0.17 or earlier */
     protected final int primitiveArrayCapacity;
+    /** @since 0.17 or earlier */
     protected final boolean hasPrimitiveArray;
 
+    /** @since 0.17 or earlier */
     protected final int depth;
+    /** @since 0.17 or earlier */
     protected final int propertyCount;
 
+    /** @since 0.17 or earlier */
     protected final Assumption validAssumption;
+    /** @since 0.17 or earlier */
     @CompilationFinal protected volatile Assumption leafAssumption;
 
     /**
@@ -161,14 +177,17 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    /** @since 0.17 or earlier */
     protected ShapeImpl(Layout layout, ShapeImpl parent, ObjectType operations, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
         this(layout, parent, operations, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
                         ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, id);
     }
 
+    /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected abstract ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, ObjectType operations, PropertyMap propertyMap, Transition transition, Allocator allocator, int id);
 
+    /** @since 0.17 or earlier */
     protected ShapeImpl(Layout layout, ObjectType operations, Object sharedData, int id) {
         this(layout, null, operations, sharedData, PropertyMap.empty(), null, layout.createAllocator(), id);
     }
@@ -183,11 +202,13 @@ public abstract class ShapeImpl extends Shape {
         return parent.propertyCount;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Property getLastProperty() {
         return propertyMap.getLastProperty();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final int getId() {
         return this.id;
@@ -208,30 +229,37 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    /** @since 0.17 or earlier */
     public final int getObjectArraySize() {
         return objectArraySize;
     }
 
+    /** @since 0.17 or earlier */
     public final int getObjectFieldSize() {
         return objectFieldSize;
     }
 
+    /** @since 0.17 or earlier */
     public final int getPrimitiveFieldSize() {
         return primitiveFieldSize;
     }
 
+    /** @since 0.17 or earlier */
     public final int getObjectArrayCapacity() {
         return objectArrayCapacity;
     }
 
+    /** @since 0.17 or earlier */
     public final int getPrimitiveArrayCapacity() {
         return primitiveArrayCapacity;
     }
 
+    /** @since 0.17 or earlier */
     public final int getPrimitiveArraySize() {
         return primitiveArraySize;
     }
 
+    /** @since 0.17 or earlier */
     public final boolean hasPrimitiveArray() {
         return hasPrimitiveArray;
     }
@@ -241,6 +269,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param key the name to look up
      * @return a Property object, or null if not found
+     * @since 0.17 or earlier
      */
     @Override
     @TruffleBoundary
@@ -248,15 +277,18 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.get(key);
     }
 
+    /** @since 0.17 or earlier */
     public final PropertyMap getPropertyMap() {
         return propertyMap;
     }
 
+    /** @since 0.17 or earlier */
     public final void addDirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
     }
 
+    /** @since 0.17 or earlier */
     public final void addIndirectTransition(Transition transition, ShapeImpl next) {
         assert next.getParent() != this && !transition.isDirect();
         addTransitionInternal(transition, next);
@@ -287,6 +319,7 @@ public abstract class ShapeImpl extends Shape {
         } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
     }
 
+    /** @since 0.17 or earlier */
     public final Map<Transition, ShapeImpl> getTransitionMapForRead() {
         Object trans = transitionMap;
         if (trans == null) {
@@ -323,6 +356,7 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    /** @since 0.17 or earlier */
     public final ShapeImpl queryTransition(Transition transition) {
         ShapeImpl cachedShape = queryTransitionImpl(transition);
         if (cachedShape != null) {
@@ -339,6 +373,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param property the property to add
      * @return the new Shape
+     * @since 0.17 or earlier
      */
     @TruffleBoundary
     @Override
@@ -349,24 +384,28 @@ public abstract class ShapeImpl extends Shape {
         return layout.getStrategy().addProperty(this, property);
     }
 
+    /** @since 0.17 or earlier */
     protected void onPropertyTransition(Property property) {
         if (sharedData instanceof ShapeListener) {
             ((ShapeListener) sharedData).onPropertyTransition(property.getKey());
         }
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags) {
         return defineProperty(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags, LocationFactory locationFactory) {
         return layout.getStrategy().defineProperty(this, key, value, flags, locationFactory);
     }
 
+    /** @since 0.17 or earlier */
     protected ShapeImpl cloneRoot(ShapeImpl from, Object newSharedData) {
         return createShape(from.layout, newSharedData, null, from.objectType, from.propertyMap, null, from.allocator(), from.id);
     }
@@ -375,6 +414,7 @@ public abstract class ShapeImpl extends Shape {
      * Create a separate clone of a shape.
      *
      * @param newParent the cloned parent shape
+     * @since 0.17 or earlier
      */
     protected final ShapeImpl cloneOnto(ShapeImpl newParent) {
         ShapeImpl from = this;
@@ -386,12 +426,15 @@ public abstract class ShapeImpl extends Shape {
         return newShape;
     }
 
+    /** @since 0.17 or earlier */
     public final Transition getTransitionFromParent() {
         return transitionFromParent;
     }
 
     /**
      * Create a new shape that adds a property to the parent shape.
+     * 
+     * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
         Property addend = addTransition.getProperty();
@@ -407,6 +450,8 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Create a new shape that reserves the primitive extension array field.
+     * 
+     * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
         assert parent.getLayout().hasPrimitiveExtensionArray();
@@ -423,6 +468,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param other Shape to compare to
      * @return true if one shape is an upcast of the other, or the Shapes are equal
+     * @since 0.17 or earlier
      */
     @Override
     public boolean isRelated(Shape other) {
@@ -439,6 +485,7 @@ public abstract class ShapeImpl extends Shape {
      * Get a list of all properties that this Shape stores.
      *
      * @return list of properties
+     * @since 0.17 or earlier
      */
     @TruffleBoundary
     @Override
@@ -464,6 +511,7 @@ public abstract class ShapeImpl extends Shape {
         return props;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final List<Property> getPropertyList() {
         return getPropertyList(ALL);
@@ -473,6 +521,7 @@ public abstract class ShapeImpl extends Shape {
      * Returns all (also hidden) Property objects in this shape.
      *
      * @param ascending desired order
+     * @since 0.17 or earlier
      */
     @TruffleBoundary
     @Override
@@ -493,6 +542,7 @@ public abstract class ShapeImpl extends Shape {
      * Get a list of all (visible) property names in insertion order.
      *
      * @return list of property names
+     * @since 0.17 or earlier
      */
     @TruffleBoundary
     @Override
@@ -507,21 +557,25 @@ public abstract class ShapeImpl extends Shape {
         return keys;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final List<Object> getKeyList() {
         return getKeyList(ALL);
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public Iterable<Object> getKeys() {
         return getKeyList();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final boolean isValid() {
         return getValidAssumption().isValid();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Assumption getValidAssumption() {
         return validAssumption;
@@ -531,16 +585,19 @@ public abstract class ShapeImpl extends Shape {
         return Truffle.getRuntime().createAssumption("valid shape");
     }
 
+    /** @since 0.17 or earlier */
     public final void invalidateValidAssumption() {
         getValidAssumption().invalidate();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final boolean isLeaf() {
         Assumption assumption = leafAssumption;
         return assumption == null || assumption.isValid();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Assumption getLeafAssumption() {
         Assumption assumption = leafAssumption;
@@ -580,11 +637,13 @@ public abstract class ShapeImpl extends Shape {
         } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, NeverValidAssumption.INSTANCE));
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public String toString() {
         return toStringLimit(Integer.MAX_VALUE);
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     public String toStringLimit(int limit) {
         StringBuilder sb = new StringBuilder();
@@ -612,20 +671,24 @@ public abstract class ShapeImpl extends Shape {
         return sb.toString();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final ShapeImpl getParent() {
         return parent;
     }
 
+    /** @since 0.17 or earlier */
     public final int getDepth() {
         return depth;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final boolean hasProperty(Object name) {
         return getProperty(name) != null;
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
@@ -635,12 +698,14 @@ public abstract class ShapeImpl extends Shape {
         return layout.getStrategy().removeProperty(this, prop);
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public final ShapeImpl append(Property oldProperty) {
         return addProperty(oldProperty.relocate(allocator().moveLocation(oldProperty.getLocation())));
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final BaseAllocator allocator() {
         return layout.getStrategy().createAllocator(this);
@@ -648,6 +713,8 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Duplicate shape exchanging existing property with new property.
+     * 
+     * @since 0.17 or earlier
      */
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
@@ -659,7 +726,10 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Find lowest common ancestor of two related shapes.
+     * 
+     * @since 0.17 or earlier
      */
+
     public static ShapeImpl findCommonAncestor(ShapeImpl left, ShapeImpl right) {
         if (!left.isRelated(right)) {
             throw new IllegalArgumentException("shapes must have the same root");
@@ -685,6 +755,7 @@ public abstract class ShapeImpl extends Shape {
         return leftPtr;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final int getPropertyCount() {
         return propertyCount;
@@ -694,6 +765,7 @@ public abstract class ShapeImpl extends Shape {
      * Find difference between two shapes.
      *
      * @see ObjectStorageOptions#TraceReshape
+     * @since 0.17 or earlier
      */
     public static List<Property> diff(Shape oldShape, Shape newShape) {
         List<Property> oldList = oldShape.getPropertyListInternal(false);
@@ -707,36 +779,43 @@ public abstract class ShapeImpl extends Shape {
         return diff;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public ObjectType getObjectType() {
         return objectType;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public ShapeImpl getRoot() {
         return root;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final boolean check(DynamicObject subject) {
         return subject.getShape() == this;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final LayoutImpl getLayout() {
         return layout;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Object getData() {
         return extraData;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Object getSharedData() {
         return sharedData;
     }
 
+    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public final boolean hasTransitionWithKey(Object key) {
@@ -752,6 +831,8 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Clone off a separate shape with new shared data.
+     * 
+     * @since 0.17 or earlier
      */
     @TruffleBoundary
     @Override
@@ -763,6 +844,7 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    /** @since 0.17 or earlier */
     @Override
     @TruffleBoundary
     public final ShapeImpl changeType(ObjectType newOps) {
@@ -777,6 +859,7 @@ public abstract class ShapeImpl extends Shape {
         return newShape;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final ShapeImpl reservePrimitiveExtensionArray() {
         if (layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray()) {
@@ -785,16 +868,19 @@ public abstract class ShapeImpl extends Shape {
         return this;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Iterable<Property> getProperties() {
         return getPropertyList();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final DynamicObject newInstance() {
         return layout.newInstance(this);
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final DynamicObjectFactory createFactory() {
         final List<Property> properties = getPropertyListInternal(true);
@@ -827,33 +913,46 @@ public abstract class ShapeImpl extends Shape {
         };
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public Object getMutex() {
         return getRoot();
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public Shape tryMerge(Shape other) {
         return null;
     }
 
+    /** @since 0.17 or earlier */
     public <R> R accept(ShapeVisitor<R> visitor) {
         return visitor.visitShape(this);
     }
 
+    /** @since 0.17 or earlier */
     public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
+        /** @since 0.17 or earlier */
         protected final LayoutImpl layout;
+        /** @since 0.17 or earlier */
         protected int objectArraySize;
+        /** @since 0.17 or earlier */
         protected int objectFieldSize;
+        /** @since 0.17 or earlier */
         protected int primitiveFieldSize;
+        /** @since 0.17 or earlier */
         protected int primitiveArraySize;
+        /** @since 0.17 or earlier */
         protected boolean hasPrimitiveArray;
+        /** @since 0.17 or earlier */
         protected int depth;
 
+        /** @since 0.17 or earlier */
         protected BaseAllocator(LayoutImpl layout) {
             this.layout = layout;
         }
 
+        /** @since 0.17 or earlier */
         protected BaseAllocator(ShapeImpl shape) {
             this(shape.getLayout());
             this.objectArraySize = shape.objectArraySize;
@@ -864,30 +963,40 @@ public abstract class ShapeImpl extends Shape {
             this.depth = shape.depth;
         }
 
+        /** @since 0.17 or earlier */
         protected abstract Location moveLocation(Location oldLocation);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newObjectLocation(boolean useFinal, boolean nonNull);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newTypedObjectLocation(boolean useFinal, Class<?> type, boolean nonNull);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newIntLocation(boolean useFinal);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newDoubleLocation(boolean useFinal);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newLongLocation(boolean useFinal);
 
+        /** @since 0.17 or earlier */
         protected abstract Location newBooleanLocation(boolean useFinal);
 
+        /** @since 0.17 or earlier */
         @Override
         public final Location constantLocation(Object value) {
             return new ConstantLocation(value);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public Location declaredLocation(Object value) {
             return new DeclaredLocation(value);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
             if (value instanceof Integer) {
@@ -904,8 +1013,10 @@ public abstract class ShapeImpl extends Shape {
             return newObjectLocation(useFinal, nonNull && value != null);
         }
 
+        /** @since 0.17 or earlier */
         protected abstract Location locationForValueUpcast(Object value, Location oldLocation);
 
+        /** @since 0.17 or earlier */
         @Override
         protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
             if (type == int.class) {
@@ -923,6 +1034,7 @@ public abstract class ShapeImpl extends Shape {
             return newObjectLocation(useFinal, nonNull);
         }
 
+        /** @since 0.17 or earlier */
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl) {
                 LocationImpl location = (LocationImpl) location0;
@@ -939,33 +1051,40 @@ public abstract class ShapeImpl extends Shape {
             return location0;
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public BaseAllocator addLocation(Location location) {
             advance(location);
             return this;
         }
 
+        /** @since 0.17 or earlier */
         public void visitObjectField(int index, int count) {
             objectFieldSize = Math.max(objectFieldSize, index + count);
         }
 
+        /** @since 0.17 or earlier */
         public void visitObjectArray(int index, int count) {
             objectArraySize = Math.max(objectArraySize, index + count);
         }
 
+        /** @since 0.17 or earlier */
         public void visitPrimitiveArray(int index, int count) {
             primitiveArraySize = Math.max(primitiveArraySize, index + count);
         }
 
+        /** @since 0.17 or earlier */
         public void visitPrimitiveField(int index, int count) {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public final BaseAllocator copy() {
             return clone();
         }
 
+        /** @since 0.17 or earlier */
         @Override
         protected final BaseAllocator clone() {
             try {
@@ -975,6 +1094,7 @@ public abstract class ShapeImpl extends Shape {
             }
         }
 
+        /** @since 0.17 or earlier */
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
@@ -1001,6 +1121,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
 
+    /** @since 0.17 or earlier */
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
         return getObjectType().getForeignAccessFactory(object);
     }

@@ -39,17 +39,27 @@ import com.oracle.truffle.api.object.Shape;
  * @see Shape
  * @see Property
  * @see DynamicObject
+ * @since 0.17 or earlier
  */
 public abstract class Locations {
+    /**
+     * @since 0.17 or earlier
+     */
+    protected Locations() {
+    }
+
+    /** @since 0.17 or earlier */
     public abstract static class ValueLocation extends LocationImpl {
 
         private final Object value;
 
+        /** @since 0.17 or earlier */
         public ValueLocation(Object value) {
             assert !(value instanceof Location);
             this.value = value;
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public int hashCode() {
             final int prime = 31;
@@ -58,16 +68,19 @@ public abstract class Locations {
             return result;
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public boolean equals(Object obj) {
             return super.equals(obj) && Objects.equals(value, ((ValueLocation) obj).value);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public final Object get(DynamicObject store, boolean condition) {
             return value;
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public final void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
             if (!canStore(value)) {
@@ -75,11 +88,13 @@ public abstract class Locations {
             }
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public boolean canStore(Object val) {
             return valueEquals(this.value, val);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
             if (!canStore(value)) {
@@ -88,30 +103,37 @@ public abstract class Locations {
             }
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public String toString() {
             return "=" + String.valueOf(value);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public final void accept(LocationVisitor locationVisitor) {
         }
     }
 
+    /** @since 0.17 or earlier */
     public static final class ConstantLocation extends ValueLocation {
 
+        /** @since 0.17 or earlier */
         public ConstantLocation(Object value) {
             super(value);
         }
 
+        /** @since 0.17 or earlier */
         @Override
         public boolean isConstant() {
             return true;
         }
     }
 
+    /** @since 0.17 or earlier */
     public static final class DeclaredLocation extends ValueLocation {
 
+        /** @since 0.17 or earlier */
         public DeclaredLocation(Object value) {
             super(value);
         }

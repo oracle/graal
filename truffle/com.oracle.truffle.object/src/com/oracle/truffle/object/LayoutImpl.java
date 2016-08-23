@@ -31,14 +31,18 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
+/** @since 0.17 or earlier */
 public abstract class LayoutImpl extends Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;
     private static final int INT_TO_LONG_FLAG = 2;
 
+    /** @since 0.17 or earlier */
     protected final LayoutStrategy strategy;
+    /** @since 0.17 or earlier */
     protected final Class<? extends DynamicObject> clazz;
     private final int allowedImplicitCasts;
 
+    /** @since 0.17 or earlier */
     protected LayoutImpl(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObjectImpl> clazz, LayoutStrategy strategy) {
         this.strategy = strategy;
         this.clazz = clazz;
@@ -46,49 +50,64 @@ public abstract class LayoutImpl extends Layout {
         this.allowedImplicitCasts = (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public abstract DynamicObject newInstance(Shape shape);
 
+    /** @since 0.17 or earlier */
     @Override
     public Class<? extends DynamicObject> getType() {
         return clazz;
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Shape createShape(ObjectType objectType, Object sharedData) {
         return createShape(objectType, sharedData, 0);
     }
 
+    /** @since 0.17 or earlier */
     @Override
     public final Shape createShape(ObjectType objectType) {
         return createShape(objectType, null);
     }
 
+    /** @since 0.17 or earlier */
     public boolean isAllowedIntToDouble() {
         return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;
     }
 
+    /** @since 0.17 or earlier */
     public boolean isAllowedIntToLong() {
         return (allowedImplicitCasts & INT_TO_LONG_FLAG) != 0;
     }
 
+    /** @since 0.17 or earlier */
     protected abstract boolean hasObjectExtensionArray();
 
+    /** @since 0.17 or earlier */
     protected abstract boolean hasPrimitiveExtensionArray();
 
+    /** @since 0.17 or earlier */
     protected abstract int getObjectFieldCount();
 
+    /** @since 0.17 or earlier */
     protected abstract int getPrimitiveFieldCount();
 
+    /** @since 0.17 or earlier */
     protected abstract Location getObjectArrayLocation();
 
+    /** @since 0.17 or earlier */
     protected abstract Location getPrimitiveArrayLocation();
 
+    /** @since 0.17 or earlier */
     protected abstract int objectFieldIndex(Location location);
 
+    /** @since 0.17 or earlier */
     @Override
     public abstract Allocator createAllocator();
 
+    /** @since 0.17 or earlier */
     public LayoutStrategy getStrategy() {
         return strategy;
     }
