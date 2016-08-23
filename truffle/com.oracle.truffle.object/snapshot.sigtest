@@ -178,7 +178,7 @@ supr java.lang.Object
 hcls DebugCounterImpl,Dummy
 
 CLSS public abstract com.oracle.truffle.object.DebugShapeVisitor<%0 extends java.lang.Object>
-cons public init()
+cons protected init()
 intf com.oracle.truffle.object.ShapeVisitor<{com.oracle.truffle.object.DebugShapeVisitor%0}>
 meth public abstract {com.oracle.truffle.object.DebugShapeVisitor%0} visitShape(com.oracle.truffle.api.object.Shape,java.util.Map<? extends com.oracle.truffle.object.Transition,? extends com.oracle.truffle.api.object.Shape>)
 meth public static java.lang.String getId(com.oracle.truffle.api.object.Shape)
@@ -252,7 +252,7 @@ supr com.oracle.truffle.api.object.Layout
 hfds INT_TO_DOUBLE_FLAG,INT_TO_LONG_FLAG,allowedImplicitCasts
 
 CLSS public abstract com.oracle.truffle.object.LayoutStrategy
-cons public init()
+cons protected init()
 fld protected final static com.oracle.truffle.api.object.LocationFactory DEFAULT_LAYOUT_FACTORY
 meth protected abstract boolean updateShape(com.oracle.truffle.api.object.DynamicObject)
 meth protected abstract com.oracle.truffle.object.ShapeImpl ensureSpace(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Location)
@@ -282,7 +282,7 @@ meth public abstract com.oracle.truffle.object.ShapeImpl$BaseAllocator createAll
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.object.LocationImpl
-cons public init()
+cons protected init()
 innr public abstract interface static InternalLongLocation
 innr public abstract interface static LocationVisitor
 meth protected abstract void setInternal(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.IncompatibleLocationException
@@ -320,7 +320,7 @@ meth public abstract void visitPrimitiveArray(int,int)
 meth public abstract void visitPrimitiveField(int,int)
 
 CLSS public abstract com.oracle.truffle.object.Locations
-cons public init()
+cons protected init()
 innr public abstract static ValueLocation
 innr public final static ConstantLocation
 innr public final static DeclaredLocation
@@ -395,7 +395,7 @@ supr com.oracle.truffle.api.object.Property
 hfds flags,key,location,relocatable,shadow
 
 CLSS public abstract com.oracle.truffle.object.PropertyMap
-cons public init()
+cons protected init()
 intf com.oracle.truffle.object.ImmutableMap<java.lang.Object,com.oracle.truffle.api.object.Property>
 meth protected static java.lang.RuntimeException unmodifiableException()
 meth public abstract com.oracle.truffle.api.object.Property getLastProperty()
@@ -542,7 +542,7 @@ CLSS public abstract interface com.oracle.truffle.object.ShapeVisitor<%0 extends
 meth public abstract {com.oracle.truffle.object.ShapeVisitor%0} visitShape(com.oracle.truffle.api.object.Shape)
 
 CLSS public abstract com.oracle.truffle.object.Transition
-cons public init()
+cons protected init()
 innr public abstract static AbstractReplacePropertyTransition
 innr public abstract static PropertyTransition
 innr public final static AddPropertyTransition
@@ -651,15 +651,4 @@ meth public abstract void putAll(java.util.Map<? extends {java.util.Map%0},? ext
 meth public abstract {java.util.Map%1} get(java.lang.Object)
 meth public abstract {java.util.Map%1} put({java.util.Map%0},{java.util.Map%1})
 meth public abstract {java.util.Map%1} remove(java.lang.Object)
-meth public boolean remove(java.lang.Object,java.lang.Object)
-meth public boolean replace({java.util.Map%0},{java.util.Map%1},{java.util.Map%1})
-meth public void forEach(java.util.function.BiConsumer<? super {java.util.Map%0},? super {java.util.Map%1}>)
-meth public void replaceAll(java.util.function.BiFunction<? super {java.util.Map%0},? super {java.util.Map%1},? extends {java.util.Map%1}>)
-meth public {java.util.Map%1} compute({java.util.Map%0},java.util.function.BiFunction<? super {java.util.Map%0},? super {java.util.Map%1},? extends {java.util.Map%1}>)
-meth public {java.util.Map%1} computeIfAbsent({java.util.Map%0},java.util.function.Function<? super {java.util.Map%0},? extends {java.util.Map%1}>)
-meth public {java.util.Map%1} computeIfPresent({java.util.Map%0},java.util.function.BiFunction<? super {java.util.Map%0},? super {java.util.Map%1},? extends {java.util.Map%1}>)
-meth public {java.util.Map%1} getOrDefault(java.lang.Object,{java.util.Map%1})
-meth public {java.util.Map%1} merge({java.util.Map%0},{java.util.Map%1},java.util.function.BiFunction<? super {java.util.Map%1},? super {java.util.Map%1},? extends {java.util.Map%1}>)
-meth public {java.util.Map%1} putIfAbsent({java.util.Map%0},{java.util.Map%1})
-meth public {java.util.Map%1} replace({java.util.Map%0},{java.util.Map%1})
 
