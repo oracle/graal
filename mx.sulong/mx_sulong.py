@@ -86,6 +86,11 @@ supportedLLVMVersions = [
     '3.2'
 ]
 
+# the clang-format versions that can be used for formatting the test case C and C++ files
+clangFormatVersions = [
+	'3.4'
+]
+
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
     'clang',
@@ -766,11 +771,14 @@ def pullsuite(suiteDir, urls):
     mx.download(localPath, urls)
     return localPath
 
-def isSupportedLLVMVersion(llvmProgram):
+def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     """returns if the LLVM program bases on a supported LLVM version"""
     assert llvmProgram is not None
     llvmVersion = getLLVMVersion(llvmProgram)
-    return llvmVersion in supportedLLVMVersions
+    if supportedVersions is None:
+        return llvmVersion in supportedLLVMVersions
+    else:
+        return llvmVersion in supportedVersions
 
 def getLLVMVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
@@ -778,19 +786,23 @@ def getLLVMVersion(llvmProgram):
     try:
         versionString = subprocess.check_output([llvmProgram, '--version'])
     except subprocess.CalledProcessError as e:
-		# on my machine, opt returns a non-zero opcode even on success
+        # on my machine, opt returns a non-zero opcode even on success
         versionString = e.output
     printLLVMVersion = re.search(r'LLVM( version)? (\d\.\d)', versionString)
     return printLLVMVersion.group(2)
 
-def findInstalledProgram(llvmProgram):
-    """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4)"""
+def findInstalledProgram(llvmProgram, supportedVersions=None):
+    """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
     assert llvmProgram is not None
     programPath = which(llvmProgram)
-    if programPath is not None and isSupportedLLVMVersion(programPath):
+    if programPath is not None and isSupportedLLVMVersion(programPath, supportedVersions):
         return programPath
     else:
-        for version in supportedLLVMVersions:
+        if supportedVersions is None:
+            appends = supportedLLVMVersions
+        else:
+            appends = supportedVersions
+        for version in appends:
             alternativeProgram = llvmProgram + '-' + version
             alternativeProgramPath = which(alternativeProgram)
             if alternativeProgramPath is not None:
@@ -1012,7 +1024,8 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    formatCommand = ['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
+    clangFormat = findInstalledProgram('clang-format', clangFormatVersions)
+    formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
