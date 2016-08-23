@@ -27,6 +27,8 @@
 import argparse
 import re
 from os.path import join, exists
+from tempfile import mkdtemp
+from shutil import rmtree
 
 import mx
 import mx_benchmark
@@ -190,6 +192,15 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def before(self, bmSuiteArgs):
+        self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return self.workdir
+
+    def after(self, bmSuiteArgs):
+        rmtree(self.workdir)
 
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
