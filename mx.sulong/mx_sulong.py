@@ -7,6 +7,7 @@ import sys
 
 import mx
 import mx_findbugs
+import re
 
 from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
@@ -73,9 +74,25 @@ mdlCheckDirectories = [
     _suite.dir
 ]
 
+
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
 	join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
+]
+
+# the LLVM versions supported by the current bitcode parser that bases on the textual format
+# sorted by priority in descending order (highest priority on top)
+supportedLLVMVersions = [
+    '3.2'
+]
+
+# the basic LLVM dependencies for running the test cases and executing the mx commands
+basicLLVMDependencies = [
+    'clang',
+    'clang++',
+    'opt',
+    'llc',
+    'llvm-as'
 ]
 
 def _graal_llvm_gate_runner(args, tasks):
@@ -379,7 +396,7 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
-    os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
+    os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config')
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
 
@@ -749,11 +766,51 @@ def pullsuite(suiteDir, urls):
     mx.download(localPath, urls)
     return localPath
 
+def isSupportedLLVMVersion(llvmProgram):
+    """returns if the LLVM program bases on a supported LLVM version"""
+    assert llvmProgram is not None
+    llvmVersion = getLLVMVersion(llvmProgram)
+    return llvmVersion in supportedLLVMVersions
+
+def getLLVMVersion(llvmProgram):
+    """executes the program with --version and extracts the LLVM version string"""
+    assert llvmProgram is not None
+    try:
+        versionString = subprocess.check_output([llvmProgram, '--version'])
+    except subprocess.CalledProcessError as e:
+		# on my machine, opt returns a non-zero opcode even on success
+        versionString = e.output
+    printLLVMVersion = re.search(r'LLVM( version)? (\d\.\d)', versionString)
+    return printLLVMVersion.group(2)
+
+def findInstalledProgram(llvmProgram):
+    """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4)"""
+    assert llvmProgram is not None
+    programPath = which(llvmProgram)
+    if programPath is not None and isSupportedLLVMVersion(programPath):
+        return programPath
+    else:
+        for version in supportedLLVMVersions:
+            alternativeProgram = llvmProgram + '-' + version
+            alternativeProgramPath = which(alternativeProgram)
+            if alternativeProgramPath is not None:
+                assert isSupportedLLVMVersion(alternativeProgramPath)
+                return alternativeProgramPath
+    return None
+
+def findLLVMProgram(llvmProgram):
+    """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
+    installedProgram = findInstalledProgram(llvmProgram)
+    if installedProgram is None:
+        ensureLLVMBinariesExist()
+        programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
+        return programPath
+    else:
+        return installedProgram
+
 def compileWithClang(args=None):
     """runs Clang"""
-    ensureLLVMBinariesExist()
-    clangPath = _toolDir + 'tools/llvm/bin/clang'
-    return mx.run([clangPath] + args)
+    return mx.run([findLLVMProgram('clang')] + args)
 
 def compileWithGCC(args=None):
     """runs GCC"""
@@ -761,12 +818,9 @@ def compileWithGCC(args=None):
     gccPath = _toolDir + 'tools/llvm/bin/gcc'
     return mx.run([gccPath] + args)
 
-
 def opt(args=None):
     """runs opt"""
-    ensureLLVMBinariesExist()
-    optPath = _toolDir + 'tools/llvm/bin/opt'
-    return mx.run([optPath] + args)
+    return mx.run([findLLVMProgram('opt')] + args)
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
@@ -774,9 +828,7 @@ def link(args=None):
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
-    ensureLLVMBinariesExist()
-    clangPath = _toolDir + 'tools/llvm/bin/clang++'
-    return mx.run([clangPath] + args)
+    return mx.run([findLLVMProgram('clang++')] + args)
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
@@ -813,8 +865,9 @@ def ensureBenchmarkSuiteExists():
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
-    if not os.path.exists(_clangPath):
-        pullLLVMBinaries()
+    for llvmBinary in basicLLVMDependencies:
+        if findLLVMProgram(llvmBinary) is None:
+            raise Exception(llvmBinary + ' not found')
 
 def ensureArgon2Exists():
     """downloads Argon2 if not downloaded yet"""
