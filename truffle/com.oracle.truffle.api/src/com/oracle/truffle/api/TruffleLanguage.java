@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -130,12 +131,38 @@ public abstract class TruffleLanguage<C> {
      * insert it into own AST hierarchy - use {@link #createFindContextNode()} to obtain the
      * {@link Node findNode} and later {@link #findContext(com.oracle.truffle.api.nodes.Node)
      * findContext(findNode)} to get back your language context.
+     * <p>
+     * This method shouldn't perform any complex operations. The runtime system is just being
+     * initialized and for example making
+     * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
+     * languages} and assuming your language is already initialized and others can see it would be
+     * wrong - until you return from this method, the initialization isn't over. Should there be a
+     * need to perform complex initializaton, do it by overriding the
+     * {@link #initializeContext(java.lang.Object)} method.
      *
      * @param env the environment the language is supposed to operate in
      * @return internal data of the language in given environment
      * @since 0.8 or earlier
      */
     protected abstract C createContext(Env env);
+
+    /**
+     * Perform any complex initialization. The
+     * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } factory method shouldn't
+     * do any complex operations. Just create the instance of the context, let the runtime system
+     * register it properly. Should there be a need to perform complex initializaton, override this
+     * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
+     * actions. Example:
+     *
+     * {@link TruffleLanguageSnippets.PostInitLanguage#createContext}
+     *
+     * @param context the context created by
+     *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+     * @throws java.lang.Exception if something goes wrong
+     * @since 0.17
+     */
+    protected void initializeContext(C context) throws Exception {
+    }
 
     /**
      * Disposes the context created by
@@ -315,6 +342,16 @@ public abstract class TruffleLanguage<C> {
             assert lang == language;
             return lang.toString(ctx, obj);
         }
+
+        void postInit() {
+            try {
+                lang.initializeContext(ctx);
+            } catch (RuntimeException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
     }
 
     /**
@@ -483,6 +520,9 @@ public abstract class TruffleLanguage<C> {
             return config;
         }
 
+        void postInit() {
+            langCtx.postInit();
+        }
     }
 
     static final AccessAPI API = new AccessAPI();
@@ -511,6 +551,11 @@ public abstract class TruffleLanguage<C> {
         public Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config) {
             Env env = new Env(vm, language, stdOut, stdErr, stdIn, config);
             return env;
+        }
+
+        @Override
+        public void postInitEnv(Env env) {
+            env.postInit();
         }
 
         @Override
@@ -572,9 +617,17 @@ public abstract class TruffleLanguage<C> {
 class TruffleLanguageSnippets {
     class Context {
         final String[] args;
+        final Env env;
+        CallTarget mul;
 
         Context(String[] args) {
             this.args = args;
+            this.env = null;
+        }
+
+        Context(Env env) {
+            this.env = env;
+            this.args = null;
         }
     }
 
@@ -589,4 +642,27 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.MyLanguage#createContext
+
+    abstract
+    // BEGIN: TruffleLanguageSnippets.PostInitLanguage#createContext
+    class PostInitLanguage extends TruffleLanguage<Context> {
+        @Override
+        protected Context createContext(Env env) {
+            // "quickly" create the context
+            return new Context(env);
+        }
+
+        @Override
+        protected void initializeContext(Context context) throws IOException {
+            // called "later" to finish the initialization
+            // for example call into another language
+            Source source =
+                Source.newBuilder("function mul(x, y) { return x * y }").
+                name("mul.js").
+                mimeType("text/javascript").
+                build();
+            context.mul = context.env.parse(source);
+        }
+    }
+    // END: TruffleLanguageSnippets.PostInitLanguage#createContext
 }

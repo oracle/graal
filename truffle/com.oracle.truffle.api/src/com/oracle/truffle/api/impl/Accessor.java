@@ -106,8 +106,9 @@ public abstract class Accessor {
 
         public abstract Object findContext(Env env);
 
-        public abstract Object getVM(Env env);
+        public abstract void postInitEnv(Env env);
 
+        public abstract Object getVM(Env env);
     }
 
     public abstract static class InstrumentSupport {

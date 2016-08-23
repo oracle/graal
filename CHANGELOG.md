@@ -9,6 +9,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Remove deprecated API Debugger#setTagBreakpoint
 * Remove deprecated API RootNode#applyInstrumentation
 * Remove deprecated tagging API in SourceSection and Source.
+* [TruffleLanguage.createContext](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html#createContext-com.oracle.truffle.api.TruffleLanguage.Env-)
+supports post initialization callback
 * All debugging APIs are now thread-safe and can be used from other threads.
 * Changed the debugging API to a session based model. 
   * Added Debugger#find(TruffleLanguage.Env) to lookup the debugger when inside a guest language implementation.
