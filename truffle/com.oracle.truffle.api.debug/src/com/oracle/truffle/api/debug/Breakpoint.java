@@ -771,7 +771,7 @@ public final class Breakpoint {
             this.conditionUnchanged = breakpoint.getConditionUnchanged();
         }
 
-        boolean shouldBreak(Frame frame) throws IOException {
+        boolean shouldBreak(Frame frame) {
             if (conditionCallNode == null || !conditionUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeConditional();
@@ -791,7 +791,7 @@ public final class Breakpoint {
             return (Boolean) result;
         }
 
-        private void initializeConditional() throws IOException {
+        private void initializeConditional() {
             Node instrumentedNode = context.getInstrumentedNode();
             final RootNode rootNode = instrumentedNode.getRootNode();
             if (rootNode == null) {

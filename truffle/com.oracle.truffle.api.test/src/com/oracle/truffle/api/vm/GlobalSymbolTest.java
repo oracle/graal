@@ -28,7 +28,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.After;
@@ -49,7 +48,7 @@ public class GlobalSymbolTest {
     }
 
     @Test
-    public void globalSymbolFoundByLanguage() throws IOException {
+    public void globalSymbolFoundByLanguage() {
         vm = createEngineBuilder().globalSymbol("ahoj", "42").build();
         // @formatter:off
         Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
@@ -59,7 +58,7 @@ public class GlobalSymbolTest {
     }
 
     @Test
-    public void globalSymbolFoundByVMUser() throws IOException {
+    public void globalSymbolFoundByVMUser() {
         vm = createEngineBuilder().globalSymbol("ahoj", "42").build();
         PolyglotEngine.Value ret = vm.findGlobalSymbol("ahoj");
         assertNotNull("Symbol found", ret);
@@ -71,7 +70,7 @@ public class GlobalSymbolTest {
     }
 
     @Test
-    public void passingArray() throws IOException {
+    public void passingArray() {
         vm = createEngineBuilder().globalSymbol("arguments", new Object[]{"one", "two", "three"}).build();
         PolyglotEngine.Value value = vm.findGlobalSymbol("arguments");
         assertFalse("Not instance of array", value.get() instanceof Object[]);

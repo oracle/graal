@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -40,7 +39,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 public class TimeBoxingTest {
 
     @Test(expected = ThreadDeath.class)
-    public void testTimeBoxing() throws IOException {
+    public void testTimeBoxing() throws Exception {
         final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         Source source = Source.newBuilder("ROOT(LOOP(infinity,STATEMENT))").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("NotEnoughTime").build();
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
@@ -90,7 +89,7 @@ public abstract class Accessor {
     public abstract static class LanguageSupport {
         public abstract Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config);
 
-        public abstract Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame) throws IOException;
+        public abstract Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 
@@ -100,7 +99,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> findLanguage(Env env);
 
-        public abstract CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException;
+        public abstract CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames);
 
         public abstract String toString(TruffleLanguage<?> language, Env env, Object obj);
 
@@ -160,8 +159,8 @@ public abstract class Accessor {
             }
 
             @Override
-            protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-                throw new IOException();
+            protected CallTarget parse(Source code, Node context, String... argumentNames) {
+                throw new IllegalStateException();
             }
 
             @Override
@@ -170,7 +169,7 @@ public abstract class Accessor {
             }
 
             @Override
-            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
                 return null;
             }
         };

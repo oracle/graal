@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -81,7 +79,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
         try {
             return getContext().parse(source);
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             throw new IllegalArgumentException(ex);
         }
     }

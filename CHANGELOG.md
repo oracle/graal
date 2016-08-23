@@ -2,7 +2,17 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## NextVersion:
+## Version 0.17
+1-Sep-2016
+* This release removes many deprecated APIs and is thus slightly incompatible
+* [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
+`eval` method and few similar ones no longer declare `throws IOException`.
+The I/O now only occurs when operating with [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).
+The evaluation of already loaded sources doesn't need to perform any I/O operations and
+thus it makes little sense to require callers to handle the `IOException`.
+This change is binary compatible, yet it is source *incompatible* change.
+You may need to [adjust your sources](https://github.com/graalvm/fastr/commit/09ab156925d24bd28837907cc2ad336679afc7a2)
+to compile.
 * Deprecate support for the "identifier" associated with each SourceSection
 * Remove deprecated instrumentation API package com.oracle.truffle.api.instrument and all its classes.
 * Remove deprecated API method TruffleLanguage#isInstrumentable(Node), TruffleLanguage#getVisualizer(), TruffleLanguage#createWrapperNode(), TruffleLanguage.Env#instrumenter(), RootNode#applyInstrumentation()

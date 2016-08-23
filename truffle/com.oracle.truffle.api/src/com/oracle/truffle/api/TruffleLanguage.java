@@ -195,12 +195,13 @@ public abstract class TruffleLanguage<C> {
      *            {@link CallTarget#call(java.lang.Object...)}
      * @return a call target to invoke which also keeps in memory the {@link Node} tree representing
      *         just parsed <code>code</code>
-     * @throws IOException thrown when I/O or parsing goes wrong. Here-in thrown exception is
-     *             propagate to the user who called one of <code>eval</code> methods of
+     * @throws Exception if parsing goes wrong. Here-in thrown exception is propagated to the user
+     *             who called one of <code>eval</code> methods of
      *             {@link com.oracle.truffle.api.vm.PolyglotEngine}
      * @since 0.8 or earlier
      */
-    protected abstract CallTarget parse(Source code, Node context, String... argumentNames) throws IOException;
+    protected abstract CallTarget parse(Source code, Node context, String... argumentNames)
+                    throws Exception;
 
     /**
      * Called when some other language is seeking for a global symbol. This method is supposed to do
@@ -259,10 +260,10 @@ public abstract class TruffleLanguage<C> {
      * @param node node where execution halted, {@code null} if no execution context
      * @param mFrame frame where execution halted, {@code null} if no execution context
      * @return result of running the code in the context, or at top level if no execution context.
-     * @throws IOException if the evaluation cannot be performed
+     * @throws Exception if the evaluation cannot be performed
      * @since 0.8 or earlier
      */
-    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException;
+    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws Exception;
 
     /**
      * Generates language specific textual representation of a value. Each language may have special
@@ -425,12 +426,18 @@ public abstract class TruffleLanguage<C> {
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
-         * @throws IOException if the parsing or evaluation fails for some reason
          * @since 0.8 or earlier
          */
-        public CallTarget parse(Source source, String... argumentNames) throws IOException {
+        public CallTarget parse(Source source, String... argumentNames) {
             TruffleLanguage<?> language = AccessAPI.engineAccess().findLanguageImpl(vm, null, source.getMimeType());
-            return language.parse(source, null, argumentNames);
+            try {
+                return language.parse(source, null, argumentNames);
+            } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new RuntimeException(ex);
+            }
         }
 
         /**
@@ -554,24 +561,38 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) {
+            try {
+                return truffleLanguage.parse(code, context, argumentNames);
+            } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new RuntimeException(ex);
+            }
+        }
+
+        @Override
         public void postInitEnv(Env env) {
             env.postInit();
         }
 
         @Override
-        public CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) throws IOException {
-            return truffleLanguage.parse(code, context, argumentNames);
-        }
-
-        @Override
         @SuppressWarnings({"rawtypes"})
-        public Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame) throws IOException {
+        public Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame) {
             RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
             final Env env = AccessAPI.engineAccess().findEnv(sourceVM, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
-            return lang.evalInContext(source, node, frame);
+            try {
+                return lang.evalInContext(source, node, frame);
+            } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new RuntimeException(ex);
+            }
         }
 
         @Override
@@ -611,7 +632,6 @@ public abstract class TruffleLanguage<C> {
         }
 
     }
-
 }
 
 class TruffleLanguageSnippets {

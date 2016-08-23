@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.Map;
@@ -88,21 +87,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @Override
-    protected CallTarget parse(Source source, Node node, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source source, Node node, String... argumentNames) {
         Map<String, SLRootNode> functions;
-        try {
-            /*
-             * Parse the provided source. At this point, we do not have a SLContext yet.
-             * Registration of the functions with the SLContext happens lazily in SLEvalRootNode.
-             */
-            functions = Parser.parseSL(source);
-        } catch (Throwable ex) {
-            /*
-             * The specification says that exceptions during parsing have to wrapped with an
-             * IOException.
-             */
-            throw new IOException(ex);
-        }
+        /*
+         * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
+         * the functions with the SLContext happens lazily in SLEvalRootNode.
+         */
+        functions = Parser.parseSL(source);
 
         SLRootNode main = functions.get("main");
         SLRootNode evalMain;
@@ -143,7 +134,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
         throw new IllegalStateException("evalInContext not supported in SL");
     }
 

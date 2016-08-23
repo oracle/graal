@@ -28,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +49,7 @@ class ExecWithTimeOut {
                     ScheduledExecutorService executor, // run us later
                     PolyglotEngine.Value function, // unknown function
                     Object parameter // parameter of the function
-    ) throws IOException {
+    ) {
         executor.schedule(new Runnable() {
             public void run() {
                 Debugger.find(engine).startSession(new SuspendedCallback() {

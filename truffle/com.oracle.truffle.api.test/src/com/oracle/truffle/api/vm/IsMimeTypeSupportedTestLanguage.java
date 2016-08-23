@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -45,7 +43,7 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(final Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(final Source code, Node context, String... argumentNames) {
         final String mimeType = code.getCode();
         return Truffle.getRuntime().createCallTarget(new RootNode(IsMimeTypeSupportedTestLanguage.class, null, null) {
             @Override
@@ -71,7 +69,7 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
         throw new UnsupportedOperationException();
     }
 

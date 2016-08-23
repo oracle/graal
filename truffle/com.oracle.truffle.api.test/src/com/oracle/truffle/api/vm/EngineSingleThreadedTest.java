@@ -67,12 +67,12 @@ public class EngineSingleThreadedTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void evalURI() throws IOException {
+    public void evalURI() throws Exception {
         tvm.eval(Source.newBuilder(new File(".").toURI().toURL()).name("wrong.test").build());
     }
 
     @Test(expected = IllegalStateException.class)
-    public void evalString() throws IOException {
+    public void evalString() {
         tvm.eval(Source.newBuilder("1 + 1").name("wrong.test").mimeType("text/javascript").build());
     }
 
@@ -84,7 +84,7 @@ public class EngineSingleThreadedTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void evalSource() throws IOException {
+    public void evalSource() {
         tvm.eval(Source.newBuilder("").name("Empty").mimeType("text/plain").build());
     }
 

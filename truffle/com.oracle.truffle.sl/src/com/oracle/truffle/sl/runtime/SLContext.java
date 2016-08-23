@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.runtime;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 
@@ -236,7 +235,7 @@ public final class SLContext extends ExecutionContext {
         return ((Number) a).longValue();
     }
 
-    public CallTarget parse(Source source) throws IOException {
+    public CallTarget parse(Source source) throws Exception {
         return env.parse(source);
     }
 

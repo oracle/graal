@@ -766,7 +766,7 @@ public final class DebuggerSession implements Closeable {
 
 class DebuggerSessionSnippets {
 
-    public void example() throws IOException {
+    public void example() {
         // @formatter:off
         // BEGIN: DebuggerSessionSnippets#example
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();

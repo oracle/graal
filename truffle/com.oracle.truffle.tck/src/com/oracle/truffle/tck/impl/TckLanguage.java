@@ -51,7 +51,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source code, Node context, String... argumentNames) {
         final RootNode root;
         final String txt = code.getCode();
         if (txt.startsWith("TCK42:")) {
@@ -103,7 +103,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             try {
                 CallTarget call = env.parse(code, (String) frame.getArguments()[1], (String) frame.getArguments()[2]);
                 return call.call(6, 7);
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 throw new AssertionError("Cannot parse " + code, ex);
             }
         }

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -408,7 +407,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testClosing2() throws IOException {
+    public void testClosing2() throws Exception {
         Source testSource = testSource("ROOT(\n" +
                         "STATEMENT,\n" +
                         "STATEMENT)");

@@ -357,7 +357,7 @@ public final class Debugger {
          * embeddable into the current AST.
          */
         @SuppressWarnings("rawtypes")
-        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
             Class<? extends TruffleLanguage> languageClass = nodes().findLanguage(rootNode);
             if (languageClass == null) {
@@ -387,7 +387,7 @@ public final class Debugger {
          * TODO I initially moved this to TruffleInstrument.Env but decided against as a new API for
          * inline parsing might replace it.
          */
-        protected Object evalInContext(Object sourceVM, Node node, MaterializedFrame frame, String code) throws IOException {
+        protected Object evalInContext(Object sourceVM, Node node, MaterializedFrame frame, String code) {
             return languageSupport().evalInContext(sourceVM, code, node, frame);
         }
 

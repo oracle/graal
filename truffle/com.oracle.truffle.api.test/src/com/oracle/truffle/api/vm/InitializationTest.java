@@ -24,8 +24,6 @@ package com.oracle.truffle.api.vm;
 
 import static org.junit.Assert.assertNull;
 
-import java.io.IOException;
-
 import org.junit.After;
 
 import com.oracle.truffle.api.CallTarget;
@@ -139,7 +137,7 @@ public class InitializationTest {
         }
 
         @Override
-        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(Source code, Node context, String... argumentNames) {
             return Truffle.getRuntime().createCallTarget(new MMRootNode(code.createSection(1)));
         }
 

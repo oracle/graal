@@ -32,7 +32,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -950,7 +949,7 @@ public abstract class TruffleTCK {
     }
 
     /** @since 0.8 or earlier */
-    @Test(expected = IOException.class)
+    @Test(expected = Exception.class)
     public void testInvalidTestMethod() throws Exception {
         String mime = mimeType();
         String code = invalidCode();

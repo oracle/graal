@@ -27,7 +27,6 @@ package com.oracle.truffle.api.debug.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -84,7 +83,7 @@ public class NestedContextTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testRecursiveEval() throws IOException {
+    public void testRecursiveEval() throws Exception {
         final Source testSource = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
                         "  STATEMENT\n" +
@@ -95,13 +94,9 @@ public class NestedContextTest extends AbstractDebugTest {
         final AtomicInteger suspensionCount = new AtomicInteger(0);
         try (DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
-                try {
-                    checkState(event, 3, true, "STATEMENT");
-                    // recursive evaluation should not trigger a suspended event
-                    engine.eval(testSource);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                checkState(event, 3, true, "STATEMENT");
+                // recursive evaluation should not trigger a suspended event
+                engine.eval(testSource);
                 suspensionCount.incrementAndGet();
             }
         })) {

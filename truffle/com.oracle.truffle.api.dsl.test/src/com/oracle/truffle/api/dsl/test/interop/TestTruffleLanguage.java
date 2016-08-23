@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -41,7 +39,7 @@ public final class TestTruffleLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source code, Node context, String... argumentNames) {
         return null;
     }
 
@@ -61,7 +59,7 @@ public final class TestTruffleLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
         return null;
     }
 }
