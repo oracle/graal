@@ -2,8 +2,8 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 0.20
-23-Aug-2016
+## Version 0.17
+1-Sep-2016
 * This release removes many deprecated APIs and is thus slightly incompatible
 * [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)
 `eval` method and few similar ones no longer declare `throws IOException`.
