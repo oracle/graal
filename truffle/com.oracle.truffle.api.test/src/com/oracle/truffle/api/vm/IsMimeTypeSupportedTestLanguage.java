@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;

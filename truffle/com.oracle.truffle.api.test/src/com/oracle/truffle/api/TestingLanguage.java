@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api;
 
-
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;

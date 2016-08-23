@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
