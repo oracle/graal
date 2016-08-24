@@ -35,7 +35,6 @@ import com.oracle.truffle.api.instrumentation.EventContext;
  * Implementation of a strategy for a debugger <em>action</em> that allows execution to continue
  * until it reaches another location e.g "step in" vs. "step over".
  */
-@SuppressWarnings("javadoc")
 abstract class SteppingStrategy {
 
     /*
