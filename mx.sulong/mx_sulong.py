@@ -320,31 +320,6 @@ def which(program):
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
                 return exe_file
-
-    return None
-
-def getDefaultGCC():
-    # Ubuntu
-    if which('gcc-4.6') is not None:
-        return 'gcc-4.6'
-    # Mac
-    if which('gcc46') is not None:
-        return 'gcc46'
-    return None
-
-def getDefaultGFortran():
-    # Ubuntu
-    if which('gfortran-4.6') is not None:
-        return 'gfortran-4.6'
-    # Mac
-    if which('gfortran46') is not None:
-        return 'gfortran46'
-    return None
-
-def getDefaultGPP():
-    # Ubuntu
-    if which('g++-4.6') is not None:
-        return 'g++-4.6'
     return None
 
 def getCommand(envVariable):
@@ -363,31 +338,21 @@ def getGCC():
     specifiedGCC = getCommand('SULONG_GCC')
     if specifiedGCC is not None:
         return specifiedGCC
-    if getDefaultGCC() is not None:
-        return getDefaultGCC()
-    else:
-        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install gcc-4.6 or another compatible version and specify it in the env file')
+    return findGCCProgram('gcc')
 
 def getGFortran():
     """tries to locate a gfortran version suitable to execute Dragonegg"""
     specifiedGFortran = getCommand('SULONG_GFORTRAN')
     if specifiedGFortran is not None:
         return specifiedGFortran
-    if getDefaultGFortran() is not None:
-        return getDefaultGFortran()
-    else:
-        mx.abort('Could not find a compatible GFortran version to execute Dragonegg! Please install gfortran-4.6 or another compatible version and specify it in the env file')
-
+    return findGCCProgram('gfortran')
 
 def getGPP():
     """tries to locate a g++ version suitable to execute Dragonegg"""
     specifiedCPP = getCommand('SULONG_GPP')
     if specifiedCPP is not None:
         return specifiedCPP
-    if getDefaultGPP() is not None:
-        return getDefaultGPP()
-    else:
-        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install g++-4.6 or another compatible version and specify it in the env file')
+    return findGCCProgram('g++')
 
 # platform independent
 def pullInstallDragonEgg(args=None):
@@ -839,6 +804,12 @@ def findInstalledGCCProgram(gccProgram):
 def findInstalledProgram(program, supportedVersions, testSupportedVersion):
     """tries to find a supported version of a program
 
+    The function takes program argument, and checks if it has the supported version.
+    If not, it prepends a supported version to the version string to check if it is an executable program with a supported version.
+    The function checks both for programs by appending "-" and the unmodified version string, as well as by directly adding all the digits of the version string (stripping all other characters).
+
+    For example, for a program gcc with supportedVersions 4.6 the function produces gcc-4.6 and gcc46.
+
     Arguments:
     program -- the program to find, e.g., clang or gcc
     supportedVersions -- the supported versions, e.g., 3.4 or 4.9
@@ -850,11 +821,14 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
         return programPath
     else:
         for version in supportedVersions:
-            alternativeProgram = program + '-' + version
-            alternativeProgramPath = which(alternativeProgram)
-            if alternativeProgramPath is not None:
-                assert testSupportedVersion(alternativeProgramPath)
-                return alternativeProgramPath
+            alternativeProgram1 = program + '-' + version
+            alternativeProgram2 = program + re.sub(r"\D", "", version)
+            alternativePrograms = [alternativeProgram1, alternativeProgram2]
+            for alternativeProgram in alternativePrograms:
+                alternativeProgramPath = which(alternativeProgram)
+                if alternativeProgramPath is not None:
+                    assert testSupportedVersion(alternativeProgramPath)
+                    return alternativeProgramPath
     return None
 
 def findLLVMProgram(llvmProgram):
