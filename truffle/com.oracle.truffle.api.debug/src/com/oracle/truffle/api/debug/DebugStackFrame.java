@@ -69,7 +69,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
 
     /**
      * Returns whether this stack frame should usually not be displayed to a guest language
-     * programmer, for example in a sa stack trace.
+     * programmer, for example in a stack trace.
      * <p>
      * Language implementations sometimes create method calls internally that do not correspond to
      * anything explicitly written by a programmer, for example when the body of a looping construct

@@ -77,8 +77,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * {@link SuspendedEvent} via synchronous {@linkplain SuspendedCallback callback} on the execution
  * thread.</li>
  *
- * <li>A suspended guest language execution thread resumes language execution only after after the
- * client callback returns.</li>
+ * <li>A suspended guest language execution thread resumes language execution only after the client
+ * callback returns.</li>
  *
  * <li>Sessions that are no longer needed should be {@linkplain #close() closed}; a closed session
  * has no further affect on engine execution.</li>
@@ -116,8 +116,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  *
  * <h4>Multiple sessions</h4>
  * <p>
- * An engine's debugger can create multiple sessions, which are are independent of one another in
- * the following ways:
+ * There can be multiple sessions associated with a single engine, which are independent of one
+ * another in the following ways:
  * <ul>
  * <li>Breakpoints created by a session are not visible to clients of other sessions.</li>
  *
@@ -133,7 +133,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * <ul>
  * <li>A session's client can {@linkplain SuspendedEvent#prepareKill() kill} an execution at just
  * about any time.</li>
- * <li>A session'c client can <em>starve</em> execution by not returning from the synchronous
+ * <li>A session's client can <em>starve</em> execution by not returning from the synchronous
  * {@linkplain SuspendedCallback callback} on the guest language execution thread.</li>
  * </ul>
  * </p>

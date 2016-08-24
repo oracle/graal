@@ -67,14 +67,14 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * <h4>Breakpoint lifetime</h4>
  * <p>
  * <ul>
- * <li>A client's {@link DebuggerSession} uses a {@link Builder} to create a new breakpoint,
+ * <li>A client of a {@link DebuggerSession} uses a {@link Builder} to create a new breakpoint,
  * choosing among multiple ways to specify the intended location. Examples include a specified
  * {@link #newBuilder(Source) source}, a specified {@link #newBuilder(URI) URI}, line ranges, or an
- * exact {@link #newBuilder(SourceSection) SourceSection}, with more options likely to be added in
- * the future.</li>
+ * exact {@link #newBuilder(SourceSection) SourceSection}.</li>
  *
- * <li>A breakpoint can have no effect until it is {@linkplain DebuggerSession installed} by a
- * session, which may be done only once.</li>
+ * <li>A new breakpoint cannot affect execution until after it has been
+ * {@linkplain DebuggerSession#install(Breakpoint) installed} by a session, which may be done only
+ * once.</li>
  *
  * <li>A breakpoint that is both installed and {@linkplain Breakpoint#isEnabled() enabled} (true by
  * default) will suspend any guest language execution thread that arrives at a matching AST
