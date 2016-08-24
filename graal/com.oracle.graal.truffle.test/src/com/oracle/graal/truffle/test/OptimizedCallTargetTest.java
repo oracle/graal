@@ -37,6 +37,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.GraalTruffleRuntime;
@@ -107,7 +108,11 @@ public class OptimizedCallTargetTest {
     volatile int testInvalidationCounterInterpreted = 0;
     volatile boolean doInvalidate;
 
+    /*
+     * GR-1328
+     */
     @Test
+    @Ignore("Fails non deterministically")
     public void testCompilationHeuristics() {
         testInvalidationCounterCompiled = 0;
         testInvalidationCounterInterpreted = 0;
