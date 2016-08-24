@@ -60,24 +60,47 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * A breakpoint represents a location in the guest language application, at which execution should
- * be suspended. New breakpoints can be created using a builder based on a
- * {@link #newBuilder(Source) source}, an{@link #newBuilder(URI) URI} or an exact
- * {@link #newBuilder(SourceSection) source section}. Breakpoints can be restricted to
- * {@link Builder#lineIs(int) line numbers} for {@link Source} or {@link URI} based breakpoints.
+ * A request that guest language program execution be suspended at specified locations on behalf of
+ * a debugging client {@linkplain DebuggerSession session}.
  * <p>
- * New breakpoints are {@link DebuggerSession#install(Breakpoint)} installed for a single
- * {@link DebuggerSession debugger session} once. Breakpoints will trigger the
- * {@link SuspendedCallback} of the installed session only if they are {@link #setEnabled(boolean)
- * enabled}. Breakpoints are enabled by default. If a breakpoint is {@link #isDisposed() disposed}
- * it will be uninstalled from the underlying session, if it was installed. Methods of disposed
- * breakpoints must not be used.
+ * <h4>Breakpoint lifetime</h4>
+ * <p>
+ * <ul>
+ * <li>A client of a {@link DebuggerSession} uses a {@link Builder} to create a new breakpoint,
+ * choosing among multiple ways to specify the intended location. Examples include a specified
+ * {@link #newBuilder(Source) source}, a specified {@link #newBuilder(URI) URI}, line ranges, or an
+ * exact {@link #newBuilder(SourceSection) SourceSection}.</li>
+ *
+ * <li>A new breakpoint cannot affect execution until after it has been
+ * {@linkplain DebuggerSession#install(Breakpoint) installed} by a session, which may be done only
+ * once.</li>
+ *
+ * <li>A breakpoint that is both installed and {@linkplain Breakpoint#isEnabled() enabled} (true by
+ * default) will suspend any guest language execution thread that arrives at a matching AST
+ * location. The breakpoint (synchronously) {@linkplain SuspendedCallback calls back} to the
+ * responsible session on the execution thread.</li>
+ *
+ * <li>A breakpoint may be enabled or disabled any number of times.</li>
+ *
+ * <li>A breakpoint that is no longer needed may be {@linkplain #dispose() disposed}. A disposed
+ * breakpoint:
+ * <ul>
+ * <li>is disabled</li>
+ * <li>is not installed in any session</li>
+ * <li>can have no effect on program execution, and</li>
+ * <li>must not be used again.</li>
+ * </ul>
+ * </li>
+ *
+ * <li>A session being {@linkplain DebuggerSession#close() closed} disposes all installed
+ * breakpoints.</li>
+ * </ul>
+ * </p>
  * <p>
  * Example usage: {@link com.oracle.truffle.api.debug.BreakpointSnippets#example()}
  *
  * @since 0.9
  */
-@SuppressWarnings("javadoc")
 public final class Breakpoint {
 
     /**
@@ -181,7 +204,8 @@ public final class Breakpoint {
     }
 
     /**
-     * Returns <code>true</code> if this breakpoint has been disposed.
+     * @return whether this breakpoint is permanently unable to affect execution
+     * @see #dispose()
      *
      * @since 0.17
      */
@@ -190,8 +214,8 @@ public final class Breakpoint {
     }
 
     /**
-     * Returns <code>true</code> if this breakpoint is enabled. A breakpoint will only suspend the
-     * execution if it is enabled. A breakpoint is enabled by default.
+     * @return whether this breakpoint is currently allowed to suspend execution (true by default)
+     * @see #setEnabled(boolean)
      *
      * @since 0.9
      */
@@ -200,10 +224,12 @@ public final class Breakpoint {
     }
 
     /**
-     * Enables/disables this breakpoint; enabled by default.
+     * Controls whether this breakpoint is currently allowed to suspend execution (true by default).
+     * <p>
+     * This can be changed arbitrarily until breakpoint is {@linkplain #dispose() disposed}.
      *
-     * @param enabled <code>true</code> to activate the breakpoint, <code>false</code> to deactivate
-     *            it so that it will not suspend the execution.
+     * @param enabled whether this breakpoint should be allowed to suspend execution
+     *
      * @since 0.9
      */
     public synchronized void setEnabled(boolean enabled) {
@@ -224,8 +250,8 @@ public final class Breakpoint {
     }
 
     /**
-     * Returns <code>true</code> if the breakpoint location has been resolved. A breakpoint location
-     * will be resolved if at least one source that contains the breakpoint location is loaded.
+     * @return whether at least one source has been loaded that contains a match for this
+     *         breakpoint's location.
      *
      * @since 0.17
      */
@@ -234,18 +260,32 @@ public final class Breakpoint {
     }
 
     /**
-     * Sets a boolean condition expression for this breakpoint. Breakpoints are by default
-     * unconditional. If a condition is set then the breakpoint is hit if the condition returned
-     * <code>true</code>. If a breakpoint should be unconditional then set the expression to
-     * <code>null</code>. Please note that if a breakpoint condition fails to execute for any reason
-     * then the condition is considered to return always <code>true</code>. Errors in parsing or
-     * executing the condition expression can be retrieved using
-     * {@link SuspendedEvent#getBreakpointConditionException(Breakpoint)}.
+     * Assigns to this breakpoint a boolean expression whose evaluation will determine whether the
+     * breakpoint suspends execution (i.e. "hits"), {@code null} to remove any condition and always
+     * suspend.
+     * <p>
+     * Breakpoints are by default unconditional.
+     * </p>
+     * <p>
+     * <strong>Evaluation:</strong> expressions are parsed and evaluated in the lexical context of
+     * the breakpoint's location. A conditional breakpoint that applies to multiple code locations
+     * will be parsed and evaluated separately for each location.
+     * </p>
+     * <p>
+     * <strong>Evaluation failure:</strong> when evaluation of a condition fails for any reason,
+     * including the return of a non-boolean value:
+     * <ul>
+     * <li>execution suspends, as if evaluation had returned {@code true}, and</li>
+     * <li>a message is logged that can be
+     * {@linkplain SuspendedEvent#getBreakpointConditionException(Breakpoint) retrieved} while
+     * execution is suspended.</li>
+     * </ul>
      *
-     * @param expression if non{@code -null}, a boolean expression, expressed in the guest language,
-     *            to be evaluated in the lexical context at the breakpoint location.
+     * @param expression if non{@code -null}, a boolean expression, expressed in the guest language
+     *            of the breakpoint's location.
      * @throws IOException never actually thrown
      * @see SuspendedEvent#getBreakpointConditionException(Breakpoint)
+     *
      * @since 0.9
      */
     public synchronized void setCondition(String expression) throws IOException {
@@ -285,8 +325,7 @@ public final class Breakpoint {
     }
 
     /**
-     * Disables this breakpoint and removes any associated instrumentation; it becomes permanently
-     * inert.
+     * Permanently prevents this breakpoint from affecting execution.
      *
      * @since 0.9
      */
@@ -336,7 +375,7 @@ public final class Breakpoint {
     }
 
     /**
-     * Does this breakpoint disable itself after first activation?
+     * @return whether this breakpoint disables itself after suspending execution, i.e. on first hit
      *
      * @since 0.9
      */
@@ -345,7 +384,8 @@ public final class Breakpoint {
     }
 
     /**
-     * Gets the number of hits left to be ignored before the execution is suspended.
+     * @return the number of times breakpoint will be executed but not hit (i.e. suspend execution).
+     * @see #setIgnoreCount(int)
      *
      * @since 0.9
      */
@@ -354,10 +394,17 @@ public final class Breakpoint {
     }
 
     /**
-     * Change the threshold for when this breakpoint should start causing a break. When both an
-     * ignore count and a {@linkplain #setCondition(String) condition} are specified, the condition
-     * is evaluated first: if {@code false} it is not considered to be a hit. In other words, the
-     * ignore count is for successful conditions only.
+     * Changes the number of times the breakpoint must be executed before it hits (i.e. suspends
+     * execution).
+     * <p>
+     * When a breakpoint {@linkplain #setCondition(String) condition} evaluates to {@code false}:
+     * <ul>
+     * <li>execution is <em>not</em> suspended</li>
+     * <li>it does not count as a hit</li>
+     * <li>the remaining {@code ignoreCount} does not change.</li>
+     * </ul>
+     *
+     * @param ignoreCount number of breakpoint activations to ignore before it hits
      *
      * @since 0.9
      */
@@ -366,8 +413,7 @@ public final class Breakpoint {
     }
 
     /**
-     * Number of times this breakpoint has reached, with one exception; if the breakpoint has a
-     * condition that evaluates to {@code false}, it does not count as a hit.
+     * @return the number of times this breakpoint has suspended execution
      *
      * @since 0.9
      */
@@ -376,14 +422,14 @@ public final class Breakpoint {
     }
 
     /**
-     * Gets a human-sensible description of this breakpoint's location.
+     * @return a human-sensible description of this breakpoint's location.
      */
     String getShortDescription() {
         return "Breakpoint@" + locationKey.toString();
     }
 
     /**
-     * Returns a description of the current location this breakpoint is installed at.
+     * @return a description of this breakpoint's specified location
      *
      * @since 0.9
      */
@@ -516,7 +562,8 @@ public final class Breakpoint {
     /**
      * Creates a new breakpoint builder based on a URI location.
      *
-     * @param sourceUri the uri to install the breakpoint at
+     * @param sourceUri a URI to specify breakpoint location
+     *
      * @since 0.17
      */
     public static Builder newBuilder(URI sourceUri) {
@@ -524,9 +571,10 @@ public final class Breakpoint {
     }
 
     /**
-     * Creates a new breakpoint builder based on a source.
+     * Creates a new breakpoint builder based on a {@link Source}.
      *
-     * @param source the source to install the breakpoint at
+     * @param source a {@link Source} to specify breakpoint location
+     *
      * @since 0.17
      */
     public static Builder newBuilder(Source source) {
@@ -534,9 +582,11 @@ public final class Breakpoint {
     }
 
     /**
-     * Creates a new breakpoint builder based on a source section.
+     * Creates a new breakpoint builder based on the textual region of a guest language syntactic
+     * component.
      *
-     * @param sourceSection the source section to install the breakpoint at
+     * @param sourceSection a specification for guest language syntactic component
+     *
      * @since 0.17
      */
     public static Builder newBuilder(SourceSection sourceSection) {
@@ -549,6 +599,7 @@ public final class Breakpoint {
      * @see Breakpoint#newBuilder(Source)
      * @see Breakpoint#newBuilder(URI)
      * @see Breakpoint#newBuilder(SourceSection)
+     *
      * @since 0.17
      */
     public final class Builder {
@@ -572,11 +623,14 @@ public final class Breakpoint {
         }
 
         /**
-         * Configures the line this breakpoint should be installed at. Cannot be used together with
-         * {@link Breakpoint#newBuilder(SourceSection)}. The given line number must be > 0 otherwise
-         * an {@link IllegalArgumentException} is thrown. Can only be invoked once per builder.
+         * Specifies the breakpoint's line number.
          *
-         * @param line the line where the breakpoint should be installed
+         * Can only be invoked once per builder. Cannot be used together with
+         * {@link Breakpoint#newBuilder(SourceSection)}.
+         *
+         * @param line 1-based line number
+         * @throws IllegalStateException if {@code line < 1}
+         *
          * @since 0.17
          */
         public Builder lineIs(@SuppressWarnings("hiding") int line) {
@@ -594,11 +648,11 @@ public final class Breakpoint {
         }
 
         /**
-         * Configures the number of times a breakpoint is ignored until it is hit. The ignore count
-         * can also be reconfigured after the breakpoint was created with
-         * {@link Breakpoint#setIgnoreCount(int)}.
+         * Specifies the number of times a breakpoint is ignored until it hits (i.e. suspends
+         * execution}.
          *
          * @see Breakpoint#setIgnoreCount(int)
+         *
          * @since 0.17
          */
         public Builder ignoreCount(@SuppressWarnings("hiding") int ignoreCount) {
@@ -610,9 +664,11 @@ public final class Breakpoint {
         }
 
         /**
-         * Installing a one shot will disable the breakpoint after hitting it once. If the
-         * breakpoint is enabled again {@link Breakpoint#setEnabled(boolean) enabled} after hitting
-         * it once it is again hit once and disabled again.
+         * Specifies that the breakpoint will {@linkplain Breakpoint#setEnabled(boolean) disable}
+         * itself after suspending execution, i.e. on first hit.
+         * <p>
+         * Disabled one-shot breakpoints can be {@linkplain Breakpoint#setEnabled(boolean)
+         * re-enabled}.
          *
          * @since 0.17
          */
@@ -622,7 +678,7 @@ public final class Breakpoint {
         }
 
         /**
-         * Returns a new breakpoint instance given the current builder configuration.
+         * @return a new breakpoint instance
          *
          * @since 0.17
          */

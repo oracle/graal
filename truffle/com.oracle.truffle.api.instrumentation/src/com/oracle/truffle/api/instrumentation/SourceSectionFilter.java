@@ -79,7 +79,7 @@ public final class SourceSectionFilter {
     }
 
     /**
-     * @return the filter expressions in a humand readable form for debugging.
+     * @return the filter expressions in a human readable form for debugging.
      * @since 0.12
      */
     @Override

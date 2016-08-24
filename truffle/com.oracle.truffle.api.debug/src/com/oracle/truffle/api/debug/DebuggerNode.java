@@ -74,7 +74,7 @@ abstract class DebuggerNode extends ExecutionEventNode {
                     return;
                 }
             }
-            // fallthrough to slowpath
+            // fall through to slowpath
         }
         getDuplicateThreadLocal().set(Boolean.FALSE);
     }

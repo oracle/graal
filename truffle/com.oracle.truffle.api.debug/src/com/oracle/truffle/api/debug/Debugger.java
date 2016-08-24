@@ -121,7 +121,7 @@ public final class Debugger {
      * Starts a new {@link DebuggerSession session} provided with a callback that gets notified
      * whenever the execution is suspended.
      *
-     * @param callback the callback to notifiy
+     * @param callback the callback to notify
      * @see DebuggerSession
      * @see SuspendedEvent
      * @since 0.17
