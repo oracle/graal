@@ -143,14 +143,10 @@ class JavaObjectMessageResolution {
     @Resolve(message = "READ")
     abstract static class ReadFieldNode extends Node {
 
-        public Object access(JavaObject object, int index) {
-            Object obj = object.obj;
-            Object val = Array.get(obj, index);
+        @Child private ArrayReadNode read = ArrayReadNodeGen.create();
 
-            if (ToJavaNode.isPrimitive(val)) {
-                return val;
-            }
-            return JavaInterop.asTruffleObject(val);
+        public Object access(VirtualFrame frame, JavaObject object, Number index) {
+            return read.executeWithTarget(frame, object, index);
         }
 
         public Object access(JavaObject object, String name) {
@@ -209,10 +205,10 @@ class JavaObjectMessageResolution {
             }
         }
 
-        public Object access(JavaObject receiver, int index, Object value) {
-            Object obj = receiver.obj;
-            Array.set(obj, index, value);
-            return JavaObject.NULL;
+        @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
+
+        public Object access(VirtualFrame frame, JavaObject receiver, Number index, Object value) {
+            return write.executeWithTarget(frame, receiver, index, value);
         }
 
     }
