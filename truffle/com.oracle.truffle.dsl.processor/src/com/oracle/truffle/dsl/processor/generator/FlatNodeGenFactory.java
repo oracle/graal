@@ -2645,6 +2645,7 @@ public class FlatNodeGenFactory {
             builder.tree(createReference(frameState)).string(" & ").string(formatMask(mask));
             builder.end();
             builder.string(" == 0");
+            builder.string(" /* only-active ", toString(selectedElements, " && "), " */");
             return builder.build();
         }
 
@@ -2675,6 +2676,8 @@ public class FlatNodeGenFactory {
             // use the calculation of power of two
             // (state & (state - 1L)) == 0L
             builder.startParantheses().tree(masked).string(" & ").startParantheses().tree(masked).string(" - 1").end().end().string(" == 0");
+
+            builder.string(" /* ", label("is-single"), " */");
             return builder.build();
         }
 
@@ -2684,7 +2687,30 @@ public class FlatNodeGenFactory {
             builder.tree(createReference(frameState)).string(" & ").string(formatMask(createMask(elements)));
             builder.end();
             builder.string(" != 0");
+            builder.string(" /* ", label("is"), toString(elements, " || "), " */");
             return builder.build();
+        }
+
+        private String toString(Object[] elements, String elementSep) {
+            StringBuilder b = new StringBuilder();
+            String sep = "";
+            for (int i = 0; i < elements.length; i++) {
+                b.append(sep).append(toString(elements[i]));
+                sep = elementSep;
+            }
+            return b.toString();
+        }
+
+        protected String toString(Object element) {
+            if (element instanceof SpecializationData) {
+                return ElementUtils.createReferenceName(((SpecializationData) element).getMethod());
+            } else if (element instanceof TypeGuard) {
+                int index = ((TypeGuard) element).getSignatureIndex();
+                String simpleName = ElementUtils.getSimpleName(((TypeGuard) element).getType());
+                return index + ":" + simpleName;
+            }
+            return element.toString();
+
         }
 
         private CodeTree createReference(FrameState frameState) {
@@ -2702,7 +2728,20 @@ public class FlatNodeGenFactory {
             builder.tree(createReference(frameState)).string(" & ").string(formatMask(createMask(elements)));
             builder.end();
             builder.string(" == 0");
+            builder.string(" /* ", label("is-not"), toString(elements, " && "), " */");
             return builder.build();
+        }
+
+        private String label(String message) {
+            return message + "-" + getName() + " ";
+        }
+
+        protected String getName() {
+            if (this instanceof ExcludeBitSet) {
+                return "excluded";
+            } else {
+                return "active";
+            }
         }
 
         public CodeTree createExtractInteger(FrameState frameState, Object element) {
@@ -2719,6 +2758,7 @@ public class FlatNodeGenFactory {
             if (capacity > 32) {
                 builder.string(")");
             }
+            builder.string(" /* ", label("extract-implicit"), toString(element), " */");
             return builder.build();
         }
 
@@ -2734,9 +2774,11 @@ public class FlatNodeGenFactory {
             if (value) {
                 builder.string(" | ");
                 builder.string(formatMask(createMask(elements)));
+                builder.string(" /* ", label("add"), toString(elements, ", "), " */");
             } else {
                 builder.string(" & ");
                 builder.string(formatMask(~createMask(elements)));
+                builder.string(" /* ", label("remove"), toString(elements, ", "), " */");
             }
             builder.end();
             return builder.build();
@@ -2754,6 +2796,7 @@ public class FlatNodeGenFactory {
                 builder.string("(long) ");
             }
             builder.tree(value).string(" << ", Integer.toString(offset), ")");
+            builder.string(" /* ", label("set-implicit"), toString(element), " */");
             builder.end();
             builder.end();
             return builder.build();
