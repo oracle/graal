@@ -171,17 +171,18 @@ public final class SourceSectionFilter {
         }
 
         /**
-         * Add custom custom to filter based on custom criteria of {@link Source sources}. The given
-         * predicates must always return the same result for a source instance otherwise the
-         * behavior is undefined. The predicate should be able run on multiple threads at the same
-         * time.
+         * Adds custom predicate to filter inclusion of {@link Source sources}. The predicate must
+         * always return the same result for a source instance otherwise the behavior is undefined.
+         * The predicate should be able run on multiple threads at the same time.
          *
-         * @param predicates the filters to check
+         * @param predicate a test for inclusion
          * @since 0.17
          */
-        public Builder sourceIs(SourcePredicate... predicates) {
-            verifyNotNull(predicates);
-            expressions.add(new EventFilterExpression.SourceFilterIs(predicates));
+        public Builder sourceIs(SourcePredicate predicate) {
+            if (predicate == null) {
+                throw new IllegalArgumentException("SourcePredicate must not be null.");
+            }
+            expressions.add(new EventFilterExpression.SourceFilterIs(predicate));
             return this;
         }
 
@@ -535,10 +536,10 @@ public final class SourceSectionFilter {
 
         private static final class SourceFilterIs extends EventFilterExpression {
 
-            private final SourcePredicate[] filters;
+            private final SourcePredicate predicate;
 
-            SourceFilterIs(SourcePredicate... source) {
-                this.filters = source;
+            SourceFilterIs(SourcePredicate predicate) {
+                this.predicate = predicate;
             }
 
             @Override
@@ -551,12 +552,7 @@ public final class SourceSectionFilter {
                 if (src == null) {
                     return false;
                 }
-                for (SourcePredicate filter : filters) {
-                    if (filter.test(src)) {
-                        return true;
-                    }
-                }
-                return false;
+                return predicate.test(src);
             }
 
             @Override
@@ -579,7 +575,7 @@ public final class SourceSectionFilter {
 
             @Override
             public String toString() {
-                return String.format("source is included by custom filter %s", Arrays.toString(filters));
+                return String.format("source is included by custom filter %s", predicate.toString());
             }
         }
 
