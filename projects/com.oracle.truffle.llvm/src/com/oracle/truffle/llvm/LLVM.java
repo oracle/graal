@@ -33,7 +33,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -63,6 +66,8 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacadeProvider;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
+import com.oracle.truffle.llvm.parser.impl.LLVMGlobalVariableVisitor;
+import com.oracle.truffle.llvm.parser.impl.LLVMGlobalVariableVisitor.LLVMGlobalVariableResult;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
@@ -109,11 +114,20 @@ public class LLVM {
 
             @Override
             public CallTarget parse(Source code, Node contextNode, String... argumentNames) throws IOException {
+                try {
+                    return parse(code);
+                } catch (Throwable t) {
+                    throw new IOException("Error while trying to parse " + code.getPath(), t);
+                }
+            }
+
+            private CallTarget parse(Source code) throws IOException {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
-                parseDynamicBitcodeLibraries(context);
                 final CallTarget[] mainFunction = new CallTarget[]{null};
                 if (code.getMimeType().equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
+                    List<String> resolvedVariables = getAllResolvedGlobalVariables(code);
+                    context.setResolvedVariableNames(resolvedVariables);
                     String path = code.getPath();
                     LLVMParserResult parserResult;
                     try {
@@ -128,15 +142,26 @@ public class LLVM {
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE)) {
+                    // TODO we need to set the global variables for .bc files
                     LLVMParserResult parserResult = parseBitcodeFile(code, context);
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
-
+                    List<String> resolvedVariables = new ArrayList<>();
+                    List<Source> sourceFiles = new ArrayList<>();
                     library.readContents(dependentLibrary -> {
                         context.addLibraryToNativeLookup(dependentLibrary);
                     }, source -> {
+                        sourceFiles.add(source);
+                        try {
+                            addResolvedGlobalVariables(resolvedVariables, source);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    context.setResolvedVariableNames(resolvedVariables);
+                    for (Source source : sourceFiles) {
                         LLVMParserResult parserResult;
                         try {
                             parserResult = parseString(source, context);
@@ -147,14 +172,14 @@ public class LLVM {
                         if (parserResult.getMainFunction() != null) {
                             mainFunction[0] = parserResult.getMainFunction();
                         }
-                    });
-
+                    }
                     if (mainFunction[0] == null) {
                         mainFunction[0] = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null));
                     }
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
+                parseDynamicBitcodeLibraries(context);
                 if (context.isParseOnly()) {
                     return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(mainFunction));
                 } else {
@@ -162,20 +187,46 @@ public class LLVM {
                 }
             }
 
-            private void parseDynamicBitcodeLibraries(LLVMContext context) {
+            private void visitBitcodeLibraries(Consumer<Source> sharedLibraryConsumer) throws IOException {
                 String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
                         Source source;
-                        try {
-                            source = Source.newBuilder(new File(s)).build();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        LLVMParserResult result = parseFile(source, context);
-                        handleParserResult(context, result);
+                        source = Source.newBuilder(new File(s)).build();
+                        sharedLibraryConsumer.accept(source);
                     }
                 }
+            }
+
+            private List<String> getAllResolvedGlobalVariables(Source code) throws IOException {
+                List<String> resolvedGlobalVariables = new ArrayList<>();
+                visitBitcodeLibraries(source -> {
+                    try {
+                        addResolvedGlobalVariables(resolvedGlobalVariables, source);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                addResolvedGlobalVariables(resolvedGlobalVariables, code);
+                return resolvedGlobalVariables;
+            }
+
+            private void addResolvedGlobalVariables(List<String> resolvedGlobalVariables, Source source) throws IOException {
+                Model model;
+                if (source.getPath() == null) {
+                    model = getModelFromString(source);
+                } else {
+                    model = getModelFromSource(source);
+                }
+                LLVMGlobalVariableResult result = new LLVMGlobalVariableVisitor().getMain(model);
+                resolvedGlobalVariables.addAll(result.getResolvedVariables());
+            }
+
+            private void parseDynamicBitcodeLibraries(LLVMContext context) throws IOException {
+                visitBitcodeLibraries(source -> {
+                    LLVMParserResult result = parseFile(source, context);
+                    handleParserResult(context, result);
+                });
             }
 
             private void handleParserResult(LLVMContext context, LLVMParserResult result) {
@@ -204,7 +255,8 @@ public class LLVM {
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacade facade = getNodeFactoryFacade();
                 LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
-                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile());
+                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile(),
+                                context.getResolvedVariableNames());
                 facade.setUpFacade(runtime);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
@@ -241,6 +293,19 @@ public class LLVM {
         };
     }
 
+    private static Model getModelFromSource(Source source) {
+        XtextResourceSet resourceSet = createResourceSet();
+        String path = source.getPath();
+        URI uri = URI.createURI(path);
+        Resource resource = resourceSet.getResource(uri, true);
+        EList<EObject> contents = resource.getContents();
+        if (contents.size() == 0) {
+            throw new IllegalStateException("empty file?");
+        }
+        Model model = (Model) contents.get(0);
+        return model;
+    }
+
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             throw new IllegalArgumentException("please provide a file to execute!");
@@ -253,6 +318,13 @@ public class LLVM {
     }
 
     public static LLVMParserResult parseString(Source source, LLVMContext context) throws IOException {
+        Model model = getModelFromString(source);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile(), context.getResolvedVariableNames());
+        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
+        return parserResult;
+    }
+
+    private static Model getModelFromString(Source source) throws IOException {
         XtextResourceSet resourceSet = createResourceSet();
         Resource resource = resourceSet.createResource(URI.createURI("dummy:/sulong.ll"));
         try (InputStream in = new StringInputStream(source.getCode())) {
@@ -263,10 +335,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
-        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
-        resource.unload();
-        return parserResult;
+        return model;
     }
 
     public static LLVMParserResult parseFile(Source source, LLVMContext context) {
@@ -276,8 +345,8 @@ public class LLVM {
         if (contents.size() == 0) {
             throw new IllegalStateException("empty file?");
         }
-        Model model = (Model) contents.get(0);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
+        Model model = getModelFromSource(source);
+        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile(), context.getResolvedVariableNames());
         LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
         resource.unload();
         return parserResult;

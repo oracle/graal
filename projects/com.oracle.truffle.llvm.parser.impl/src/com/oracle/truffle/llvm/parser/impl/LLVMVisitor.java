@@ -196,11 +196,12 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private Source sourceFile;
     private Source mainSourceFile;
 
-    public LLVMVisitor(LLVMOptimizationConfiguration optimizationConfiguration, Object[] mainArgs, Source sourceFile, Source mainSourceFile) {
+    public LLVMVisitor(LLVMOptimizationConfiguration optimizationConfiguration, Object[] mainArgs, Source sourceFile, Source mainSourceFile, List<String> resolvedVariableNames) {
         this.optimizationConfiguration = optimizationConfiguration;
         this.mainArgs = mainArgs;
         this.sourceFile = sourceFile;
         this.mainSourceFile = mainSourceFile;
+        this.resolvedVariableNames = resolvedVariableNames;
         LLVMTypeHelper.setParserRuntime(this);
     }
 
@@ -297,6 +298,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
 
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
         this.factoryFacade = facade;
+        this.nativeLookup = new NativeLookup(facade);
         List<EObject> objects = model.eContents();
         List<LLVMFunctionDescriptor> functions = new ArrayList<>();
         globalNodes = new ArrayList<>();
@@ -305,7 +307,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         setTargetInfo(objects);
         allocateGlobals(objects);
         allocateAliases(objects);
-        this.nativeLookup = new NativeLookup(facade);
         for (EObject object : objects) {
             if (object instanceof FunctionDef) {
                 phiRefs = LLVMPhiVisitor.visit((FunctionDef) object);
@@ -492,17 +493,15 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
+    private List<String> resolvedVariableNames = new ArrayList<>();
+
     private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
         if (globalVars.containsKey(globalVariable)) {
             return globalVars.get(globalVariable);
         } else {
-            try {
-                Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
-                globalVars.put(globalVariable, allocation);
-                return allocation;
-            } catch (Throwable t) {
-                throw new AssertionError(globalVariable.getName());
-            }
+            Object allocation = factoryFacade.allocateGlobalVariable(globalVariable);
+            globalVars.put(globalVariable, allocation);
+            return allocation;
         }
     }
 
@@ -1098,29 +1097,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 return factoryFacade.createLiteral(function, LLVMBaseType.FUNCTION_ADDRESS);
             } else if (constant.getRef() instanceof GlobalVariable) {
                 GlobalVariable globalVariable = (GlobalVariable) constant.getRef();
-                String globalVarName = globalVariable.getName();
-                String linkage = globalVariable.getLinkage();
-
-                /*
-                 * Global variables in C can be 'extern', but still managed because they're defined
-                 * in another managed file. We should be able to detect that by looking for existing
-                 * global variables with the same name, so I would think that we should just need to
-                 * add
-                 *
-                 * && !globalVars.containsKey(globalVariable)
-                 *
-                 * to the condition below, but if I do that things go pretty badly wrong and we end
-                 * up crashing.
-                 */
-                if ("external".equals(linkage)) {
-                    long getNativeSymbol = nativeLookup.getNativeHandle(globalVarName);
-                    LLVMAddress nativeSymbolAddress = LLVMAddress.fromLong(getNativeSymbol);
-                    return factoryFacade.createLiteral(nativeSymbolAddress, LLVMBaseType.ADDRESS);
-                } else {
-                    Object findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
-                    assert findOrAllocateGlobal != null;
-                    return factoryFacade.createLiteral(findOrAllocateGlobal, LLVMBaseType.ADDRESS);
-                }
+                Object findOrAllocateGlobal = findOrAllocateGlobal(globalVariable);
+                assert findOrAllocateGlobal != null;
+                return factoryFacade.createLiteral(findOrAllocateGlobal, LLVMBaseType.ADDRESS);
             } else if (constant instanceof ZeroInitializer) {
                 return visitZeroInitializer(type);
             } else if (constant instanceof ConstantExpression_convert) {
@@ -1605,5 +1584,15 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     @Override
     public void addDestructor(LLVMNode destructorNode) {
         globalDeallocations.add(destructorNode);
+    }
+
+    @Override
+    public boolean isGlobalVariableDefined(String globalVarName) {
+        return resolvedVariableNames.contains(globalVarName);
+    }
+
+    @Override
+    public long getNativeHandle(String name) {
+        return nativeLookup.getNativeHandle(name);
     }
 }
