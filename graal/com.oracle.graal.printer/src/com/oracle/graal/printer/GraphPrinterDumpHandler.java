@@ -71,7 +71,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     /**
      * Creates a new {@link GraphPrinterDumpHandler}.
-     * 
+     *
      * @param printerSupplier Supplier used to create the GraphPrinter. Should supply an optional or
      *            null in case of failure.
      */
@@ -221,7 +221,14 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private static void addMethodContext(List<String> result, Object o, Object lastMethodOrGraph) {
         JavaMethod method = asJavaMethod(o);
         if (method != null) {
-            if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
+            /*
+             * Include the current method in the context if there was no previous JavaMethod or
+             * JavaMethodContext or if the method is different or if the method is the same but it
+             * comes from two different graphs. This ensures that recursive call patterns are
+             * handled properly.
+             */
+            if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method) ||
+                            (lastMethodOrGraph != o && lastMethodOrGraph instanceof Graph && o instanceof Graph)) {
                 result.add(method.format("%H::%n(%p)"));
             } else {
                 /*
