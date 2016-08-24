@@ -55,6 +55,13 @@ sulongDistributions = [
     'SULONG_TEST'
 ]
 
+# the supported GCC versions (see dragonegg.llvm.org)
+supportedGCCVersions = [
+    '4.6',
+    '4.5',
+    '4.7'
+]
+
 # the files that should be checked to not contain http links (but https ones)
 httpCheckFiles = [
     __file__,
@@ -780,42 +787,79 @@ def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     else:
         return llvmVersion in supportedVersions
 
+def isSupportedGCCVersion(gccProgram, supportedVersions=None):
+    """returns if the LLVM program bases on a supported LLVM version"""
+    assert gccProgram is not None
+    gccVersion = getGCCVersion(gccProgram)
+    if supportedVersions is None:
+        return gccVersion in supportedGCCVersions
+    else:
+        return gccVersion in supportedVersions
+
+def getVersion(program):
+    """executes --version on the supplied program and returns the version string"""
+    assert program is not None
+    try:
+        versionString = subprocess.check_output([program, '--version'])
+    except subprocess.CalledProcessError as e:
+        # on my machine, e.g., opt returns a non-zero opcode even on success
+        versionString = e.output
+    return versionString
+
 def getLLVMVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
-    assert llvmProgram is not None
-    try:
-        versionString = subprocess.check_output([llvmProgram, '--version'])
-    except subprocess.CalledProcessError as e:
-        # on my machine, opt returns a non-zero opcode even on success
-        versionString = e.output
+    versionString = getVersion(llvmProgram)
     printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
         exit("could not find the LLVM version string in " + str(versionString))
     else:
         return printLLVMVersion.group(3)
 
-def findInstalledProgram(llvmProgram, supportedVersions=None):
+def getGCCVersion(gccProgram):
+    """executes the program with --version and extracts the GCC version string"""
+    versionString = getVersion(gccProgram)
+    gccVersion = re.search(r'((\d\.\d).\d)', versionString, re.IGNORECASE)
+    if gccVersion is None:
+        exit("could not find the GCC version string in " + str(versionString))
+    else:
+        return gccVersion.group(2)
+
+def findInstalledLLVMProgram(llvmProgram, supportedVersions=None):
     """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
-    assert llvmProgram is not None
-    programPath = which(llvmProgram)
-    if programPath is not None and isSupportedLLVMVersion(programPath, supportedVersions):
+    if supportedVersions is None:
+        appends = supportedLLVMVersions
+    else:
+        appends = supportedVersions
+    return findInstalledProgram(llvmProgram, appends, isSupportedLLVMVersion)
+
+def findInstalledGCCProgram(gccProgram):
+    """tries to find a supported version of a GCC program by checking for the argument string (e.g., gfortran) and appending version numbers (e.g., gfortran-4.9)"""
+    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion)
+
+def findInstalledProgram(program, supportedVersions, testSupportedVersion):
+    """tries to find a supported version of a program
+
+    Arguments:
+    program -- the program to find, e.g., clang or gcc
+    supportedVersions -- the supported versions, e.g., 3.4 or 4.9
+    testSupportedVersion(path, supportedVersions) -- the test function to be called to ensure that the found program is supported
+    """
+    assert program is not None
+    programPath = which(program)
+    if programPath is not None and testSupportedVersion(programPath, supportedVersions):
         return programPath
     else:
-        if supportedVersions is None:
-            appends = supportedLLVMVersions
-        else:
-            appends = supportedVersions
-        for version in appends:
-            alternativeProgram = llvmProgram + '-' + version
+        for version in supportedVersions:
+            alternativeProgram = program + '-' + version
             alternativeProgramPath = which(alternativeProgram)
             if alternativeProgramPath is not None:
-                assert isSupportedLLVMVersion(alternativeProgramPath)
+                assert testSupportedVersion(alternativeProgramPath)
                 return alternativeProgramPath
     return None
 
 def findLLVMProgram(llvmProgram):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
-    installedProgram = findInstalledProgram(llvmProgram)
+    installedProgram = findInstalledLLVMProgram(llvmProgram)
     if installedProgram is None:
         ensureLLVMBinariesExist()
         programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
@@ -824,6 +868,21 @@ def findLLVMProgram(llvmProgram):
         return programPath
     else:
         return installedProgram
+
+def findGCCProgram(gccProgram):
+    """tries to find a supported version of an installed GCC program"""
+    installedProgram = findInstalledGCCProgram(gccProgram)
+    if installedProgram is None:
+        exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
+    else:
+        return installedProgram
+
+def getGCCProgramPath(args=None):
+    """gets a path with a supported version of the specified GCC program (e.g. gfortran)"""
+    if args is None or len(args) != 1:
+        exit("please supply one GCC program to be located!")
+    else:
+        print findGCCProgram(args[0])
 
 def getLLVMProgramPath(args=None):
     """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
@@ -1036,7 +1095,7 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = findInstalledProgram('clang-format', clangFormatVersions)
+    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
     formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
@@ -1110,5 +1169,6 @@ mx.update_commands(_suite, {
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
     'su-httpcheck' : [checkNoHttp, ''],
-    'su-get-llvm-program' : [getLLVMProgramPath, '']
+    'su-get-llvm-program' : [getLLVMProgramPath, ''],
+    'su-get-gcc-program' : [getGCCProgramPath, '']
 })
