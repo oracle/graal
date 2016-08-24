@@ -68,19 +68,21 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     /**
-     * Returns whether this stack frame should usually not be displayed to a guest language
-     * programmer, for example in a stack trace.
+     * Returns whether this stack frame is a language implementation artifact that should be hidden
+     * during normal guest language debugging, for example in stack traces.
      * <p>
      * Language implementations sometimes create method calls internally that do not correspond to
      * anything explicitly written by a programmer, for example when the body of a looping construct
      * is implemented as callable block. Language implementors mark these methods as
      * <em>internal</em>.
+     * </p>
      * <p>
-     * Tool implementors should assume that displaying <em>internal</em> frames is unlikely to help
-     * guest language programmers understand stack traces and might possibly create confusion. Tools
-     * are free to display them, however, for example in special modes that support language
-     * implementors.
-     *
+     * Clients of the debugging API should assume that displaying <em>internal</em> frames is
+     * unlikely to help programmers debug guest language programs and might possibly create
+     * confusion. However, clients may choose to display all frames, for example in a special mode
+     * to support development of programming language implementations.
+     * </p>
+     * <p>
      * The decision to mark a method as <em>internal</em> is language-specific, reflects judgments
      * about tool usability, and is subject to change.
      *

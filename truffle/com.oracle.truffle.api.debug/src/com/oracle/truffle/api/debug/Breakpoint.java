@@ -60,9 +60,8 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * A request that guest language program execution be suspended at specified
- * {@linkplain BreakpointLocation locations} on behalf of a debugging client
- * {@linkplain DebuggerSession session}.
+ * A request that guest language program execution be suspended at specified locations on behalf of
+ * a debugging client {@linkplain DebuggerSession session}.
  * <p>
  * <h4>Breakpoint lifetime</h4>
  * <p>
@@ -89,7 +88,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * <li>is disabled</li>
  * <li>is not installed in any session</li>
  * <li>can have no effect on program execution, and</li>
- * <li>may not be used again.</li>
+ * <li>must not be used again.</li>
  * </ul>
  * </li>
  *
