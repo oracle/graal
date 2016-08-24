@@ -373,7 +373,9 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
-    os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config')
+    pullLLVMBinaries()
+    os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
+    print os.environ['LLVM_CONFIG']
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
 
