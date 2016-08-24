@@ -307,10 +307,12 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Returns the error that occurred when a breakpoint condition failed to execute. Please note
-     * that if a breakpoint condition fails to execute for any reason the breakpoint is always hit.
+     * Returns the cause of failure, if any, during evaluation of a breakpoint's
+     * {@linkplain Breakpoint#setCondition(String) condition}.
      *
-     * @param breakpoint the breakpoint to return the error for.
+     * @param breakpoint a breakpoint associated with this event
+     * @return the cause of condition failure
+     *
      * @since 0.17
      */
     public Throwable getBreakpointConditionException(Breakpoint breakpoint) {
@@ -322,9 +324,10 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Returns a unmodifiable list of {@link Breakpoint breakpoints} which were hit at the suspended
-     * guest language location. It is possible that multiple breakpoints are returned at the same
-     * location if they are installed for the same location.
+     * Returns the {@link Breakpoint breakpoints} that individually would cause the "hit" where
+     * execution is suspended.
+     *
+     * @return an unmodifiable list of breakpoints
      *
      * @since 0.17
      */
