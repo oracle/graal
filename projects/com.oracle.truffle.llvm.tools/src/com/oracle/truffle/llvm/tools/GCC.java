@@ -40,7 +40,7 @@ public final class GCC extends CompilerBase {
     }
 
     public static void compileObjectToMachineCode(File objectFile, File executable) {
-        String linkCommand = "gcc-4.6 " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
+        String linkCommand = Mx.executeGetGCCProgramPath("gcc") + " " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
         ProcessUtil.executeNativeCommandZeroReturn(linkCommand);
         executable.setExecutable(true);
     }
@@ -48,11 +48,11 @@ public final class GCC extends CompilerBase {
     public static void compileToLLVMIR(File toBeCompiled, File destinationFile) {
         String tool;
         if (ProgrammingLanguage.C.isFile(toBeCompiled)) {
-            tool = "gcc-4.6 -std=gnu99";
+            tool = Mx.executeGetGCCProgramPath("gcc") + " -std=gnu99";
         } else if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiled)) {
-            tool = "gfortran-4.6";
+            tool = Mx.executeGetGCCProgramPath("gfortran").toString();
         } else if (ProgrammingLanguage.C_PLUS_PLUS.isFile(toBeCompiled)) {
-            tool = "g++-4.6";
+            tool = Mx.executeGetGCCProgramPath("g++").toString();
         } else {
             throw new AssertionError(toBeCompiled);
         }

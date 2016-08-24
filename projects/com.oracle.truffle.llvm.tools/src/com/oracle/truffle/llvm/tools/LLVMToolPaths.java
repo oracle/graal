@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
 public class LLVMToolPaths {
 
@@ -48,13 +47,7 @@ public class LLVMToolPaths {
     public static final File LLVM_DRAGONEGG = new File(TOOLS_ROOT, "/dragonegg/dragonegg-3.2.src/dragonegg.so");
 
     public static File getLLVMProgram(String program) {
-        ProcessResult result = Mx.execute("su-get-llvm " + program);
-        String output = result.getStdInput();
-        File llvmPath = new File(output);
-        if (!llvmPath.canExecute()) {
-            throw new AssertionError(output + " is not an executable program!");
-        }
-        return llvmPath;
+        return Mx.executeGetLLVMProgramPath(program);
     }
 
 }
