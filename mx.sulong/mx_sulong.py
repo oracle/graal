@@ -819,9 +819,18 @@ def findLLVMProgram(llvmProgram):
     if installedProgram is None:
         ensureLLVMBinariesExist()
         programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
+        if not os.path.exists(programPath):
+            exit(llvmProgram + ' is not a supported LLVM program!')
         return programPath
     else:
         return installedProgram
+
+def getLLVMProgramPath(args=None):
+    """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
+    if args is None or len(args) != 1:
+        exit("please supply one LLVM program to be located!")
+    else:
+        print findLLVMProgram(args[0])
 
 def compileWithClang(args=None):
     """runs Clang"""
@@ -1100,5 +1109,6 @@ mx.update_commands(_suite, {
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
-    'su-httpcheck' : [checkNoHttp, '']
+    'su-httpcheck' : [checkNoHttp, ''],
+    'su-get-llvm-program' : [getLLVMProgramPath, '']
 })
