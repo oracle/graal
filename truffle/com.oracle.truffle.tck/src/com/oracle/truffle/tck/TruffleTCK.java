@@ -2017,7 +2017,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
         TestObject obj = new TestObject(0);
-        apply.execute(obj);
+        apply.execute(JavaInterop.asTruffleObject(obj));
         Assert.assertEquals(obj.arg1, 41.0, 0.1);
         Assert.assertEquals(obj.arg2, 42.0, 0.1);
     }
