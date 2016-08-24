@@ -45,6 +45,15 @@ TODO
 
 `object()` sends `EXECUTE`
 
+## intrinsic functions
+
+### `string.h`
+
+Strings are assumed to be non-null terminated.
+* `strlen`: Sends a `HAS_SIZE` followed by a `GET_SIZE`.
+* `strcmp`: Sends `READ`s for each character, casts them to `char` and
+compares them.
+
 ## Currently unsupported operations
 
 It is not possible to access members of objects from foreign languages or share

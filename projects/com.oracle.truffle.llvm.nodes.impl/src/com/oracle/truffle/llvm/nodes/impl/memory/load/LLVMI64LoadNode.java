@@ -51,13 +51,12 @@ public abstract class LLVMI64LoadNode extends LLVMI64Node {
 
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
-    protected static final Class<?> type = long.class;
 
     protected long doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
             int index = (int) addr.getOffset() / LLVMI64Node.BYTE_SIZE;
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (long) toLLVM.convert(frame, value, type);
+            return toLLVM.convert(frame, value, long.class);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }

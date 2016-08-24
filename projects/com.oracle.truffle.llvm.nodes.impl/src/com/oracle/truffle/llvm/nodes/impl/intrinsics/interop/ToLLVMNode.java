@@ -45,7 +45,7 @@ public final class ToLLVMNode extends Node {
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unboxed = Message.UNBOX.createNode();
 
-    public Object convert(VirtualFrame frame, Object value, Class<?> type) {
+    public <T> T convert(VirtualFrame frame, Object value, Class<T> type) {
         Object convertedValue;
         if (value == null) {
             return null;
@@ -56,7 +56,9 @@ public final class ToLLVMNode extends Node {
             assert TruffleObject.class.isAssignableFrom(type);
             convertedValue = value;
         }
-        return convertedValue;
+        @SuppressWarnings("unchecked")
+        T convertedValue2 = (T) convertedValue;
+        return convertedValue2;
     }
 
     public Object convert(VirtualFrame frame, Object value, LLVMRuntimeType type) {

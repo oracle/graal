@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.llvm.test.LLVMPaths;
 import com.oracle.truffle.llvm.tools.Clang;
 import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
@@ -534,6 +535,52 @@ public final class LLVMInteropTest {
             List<Integer> array = JavaInterop.asJavaObject(List.class, result);
             array.size(); // GET_SIZE is not supported
             Assert.fail("IllegalStateException expected");
+        } finally {
+            runner.dispose();
+        }
+    }
+
+    @Test
+    public void testStrlen() throws Exception {
+        Runner runner = new Runner("strlen");
+        try {
+            Value strlenFunction = runner.findGlobalSymbol("func");
+            Value nullString = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}));
+            Value a = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value abcd = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Value abcdWithTerminator = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd', '\0'}));
+            Assert.assertEquals(0, nullString.get());
+            Assert.assertEquals(1, a.get());
+            Assert.assertEquals(4, abcd.get());
+            Assert.assertEquals(5, abcdWithTerminator.get());
+        } finally {
+            runner.dispose();
+        }
+    }
+
+    @Test
+    public void testStrcmp() throws Exception {
+        Runner runner = new Runner("strcmp");
+        try {
+            Value strlenFunction = runner.findGlobalSymbol("func");
+            Value test1 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{}));
+            Value test2 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{}));
+            Value test3 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value test4 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{'d'}));
+            Value test5 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value test6 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'d'}));
+            Value test7 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Value test8 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}));
+            Value test9 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'A', 'B', 'C', 'D'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Assert.assertEquals(0, test1.get());
+            Assert.assertEquals(97, test2.get());
+            Assert.assertEquals(-97, test3.get());
+            Assert.assertEquals(-3, test4.get());
+            Assert.assertEquals(3, test5.get());
+            Assert.assertEquals(0, test6.get());
+            Assert.assertEquals(-100, test7.get());
+            Assert.assertEquals(100, test8.get());
+            Assert.assertEquals(-32, test9.get());
         } finally {
             runner.dispose();
         }

@@ -67,7 +67,7 @@ public class NativeLookup {
 
     private final NodeFactoryFacade facade;
 
-    private static NativeFunctionInterface getNFI() {
+    public static NativeFunctionInterface getNFI() {
         CompilerAsserts.neverPartOfCompilation();
         if (nfi == null) {
             nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();

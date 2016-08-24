@@ -50,13 +50,12 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 public abstract class LLVMI8LoadNode extends LLVMI8Node {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
-    protected static final Class<?> type = byte.class;
 
     protected byte doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
             int index = (int) addr.getOffset();
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (byte) toLLVM.convert(frame, value, type);
+            return toLLVM.convert(frame, value, byte.class);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
