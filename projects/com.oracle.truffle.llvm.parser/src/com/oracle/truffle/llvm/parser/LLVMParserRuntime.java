@@ -81,4 +81,17 @@ public interface LLVMParserRuntime {
      * @param destructorNode
      */
     void addDestructor(LLVMNode destructorNode);
+
+    /**
+     * Returns whether a global variable is defined (as a non <code>extern</code>) in one of the
+     * bitcode files.
+     *
+     * @param globalVarName the global variable name
+     * @return <code>true</code> whether the global variable is defined, <code>false </code>
+     *         otherwise
+     */
+    boolean isGlobalVariableDefined(String globalVarName);
+
+    long getNativeHandle(String name);
+
 }

@@ -145,4 +145,8 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.NODE_CONFIGURATION);
     }
 
+    public static boolean enableCorrectExternalVariableLinking() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.CORRECT_EXTERNAL_VAR_LINKING);
+    }
+
 }

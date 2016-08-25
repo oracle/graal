@@ -63,6 +63,7 @@ public class LLVMContext extends ExecutionContext {
     private Source mainSourceFile;
 
     private boolean parseOnly;
+    private List<String> resolvedVariables;
 
     public LLVMContext(NodeFactoryFacade facade, LLVMOptimizationConfiguration optimizationConfig) {
         nativeLookup = new NativeLookup(facade);
@@ -172,6 +173,14 @@ public class LLVMContext extends ExecutionContext {
 
     public NativeLookup getNativeLookup() {
         return nativeLookup;
+    }
+
+    public List<String> getResolvedVariableNames() {
+        return resolvedVariables;
+    }
+
+    public void setResolvedVariableNames(List<String> resolvedVariables) {
+        this.resolvedVariables = resolvedVariables;
     }
 
 }
