@@ -837,7 +837,8 @@ def findLLVMProgram(llvmProgram):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
     installedProgram = findInstalledLLVMProgram(llvmProgram)
     if installedProgram is None:
-        ensureLLVMBinariesExist()
+        if not os.path.exists(_clangPath):
+            pullLLVMBinaries()
         programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
         if not os.path.exists(programPath):
             exit(llvmProgram + ' is not a supported LLVM program!')
