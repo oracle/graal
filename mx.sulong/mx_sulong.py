@@ -73,6 +73,11 @@ mdlCheckDirectories = [
     _suite.dir
 ]
 
+# the file paths for which we do not want to apply the mdl Markdown file checker
+mdlCheckExcludeDirectories = [
+	join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
+]
+
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
     executeGate()
@@ -910,7 +915,7 @@ def mdlCheck(args=None):
     for mdlCheckPath in mdlCheckDirectories:
         for path, _, files in os.walk(mdlCheckPath):
             for f in files:
-                if f.endswith('.md'):
+                if f.endswith('.md') and not any(path.startswith(exclude) for exclude in mdlCheckExcludeDirectories):
                     absPath = path + '/' + f
                     mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
                     try:
