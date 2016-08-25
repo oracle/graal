@@ -32,8 +32,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitutionRegistry;
@@ -506,7 +508,7 @@ public class InvocationPlugins {
         private volatile Map<ResolvedJavaMethodKey, InvocationPlugin> entries;
 
         void initializeMap() {
-            if (isClosed()) {
+            if (!isClosed()) {
                 if (registrations.isEmpty()) {
                     entries = Collections.emptyMap();
                 } else {
@@ -533,14 +535,14 @@ public class InvocationPlugins {
         }
 
         public InvocationPlugin get(ResolvedJavaMethod method) {
-            if (isClosed()) {
+            if (!isClosed()) {
                 initializeMap();
             }
             return entries.get(new ResolvedJavaMethodKey(method));
         }
 
         public void register(MethodKey methodKey, boolean allowOverwrite) {
-            assert isClosed() : "registration is closed: " + methodKey + " " + Arrays.toString(entries.keySet().toArray());
+            assert !isClosed() : "registration is closed: " + methodKey + " " + Arrays.toString(entries.keySet().toArray());
             if (allowOverwrite) {
                 int index = registrations.indexOf(methodKey);
                 if (index >= 0) {
@@ -554,7 +556,7 @@ public class InvocationPlugins {
         }
 
         public boolean isClosed() {
-            return entries == null;
+            return entries != null;
         }
     }
 
@@ -737,6 +739,24 @@ public class InvocationPlugins {
             }
         }
         return get(method);
+    }
+
+    /**
+     * Gets the set of methods for which invocation plugins have been registered. Once this method
+     * is called, no further registrations can be made.
+     */
+    public Set<ResolvedJavaMethod> getMethods() {
+        Set<ResolvedJavaMethod> res = new HashSet<>();
+        if (parent != null) {
+            res.addAll(parent.getMethods());
+        }
+        flushDeferrables();
+        for (ClassPlugins cp : registrations.values()) {
+            for (ResolvedJavaMethodKey key : cp.entries.keySet()) {
+                res.add(key.method);
+            }
+        }
+        return res;
     }
 
     /**
