@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
-import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.ValueProxy;
@@ -151,10 +150,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 UnsafeLoadNode unsafeLoadNode = (UnsafeLoadNode) o;
                 unsafeLoadNode.setStamp(unsafeLoadNode.stamp().improveWith(this.piStamp));
                 return unsafeLoadNode;
-            } else if (o instanceof LoadIndexedNode) {
-                LoadIndexedNode loadIndexedNode = (LoadIndexedNode) o;
-                loadIndexedNode.setStamp(loadIndexedNode.stamp().improveWith(this.piStamp));
-                return loadIndexedNode;
             }
         } else {
             for (Node n : g.asNode().usages()) {
