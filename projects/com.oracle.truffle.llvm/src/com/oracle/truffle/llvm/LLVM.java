@@ -199,16 +199,20 @@ public class LLVM {
             }
 
             private List<String> getAllResolvedGlobalVariables(Source code) throws IOException {
-                List<String> resolvedGlobalVariables = new ArrayList<>();
-                visitBitcodeLibraries(source -> {
-                    try {
-                        addResolvedGlobalVariables(resolvedGlobalVariables, source);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-                addResolvedGlobalVariables(resolvedGlobalVariables, code);
-                return resolvedGlobalVariables;
+                if (LLVMBaseOptionFacade.enableCorrectExternalVariableLinking()) {
+                    List<String> resolvedGlobalVariables = new ArrayList<>();
+                    visitBitcodeLibraries(source -> {
+                        try {
+                            addResolvedGlobalVariables(resolvedGlobalVariables, source);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    addResolvedGlobalVariables(resolvedGlobalVariables, code);
+                    return resolvedGlobalVariables;
+                } else {
+                    return new ArrayList<>();
+                }
             }
 
             private void addResolvedGlobalVariables(List<String> resolvedGlobalVariables, Source source) throws IOException {

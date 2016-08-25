@@ -387,9 +387,15 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     private void allocateGlobals(List<EObject> objects) {
+        boolean correctLinking = LLVMBaseOptionFacade.enableCorrectExternalVariableLinking();
         for (EObject object : objects) {
             if (object instanceof GlobalVariable) {
-                findOrAllocateGlobal((GlobalVariable) object);
+                GlobalVariable globalVar = (GlobalVariable) object;
+                boolean hasExternalLinkage = "external".equals(globalVar.getLinkage());
+                if (!correctLinking && !hasExternalLinkage) {
+                    resolvedVariableNames.add(globalVar.getName());
+                }
+                findOrAllocateGlobal(globalVar);
             }
         }
     }
