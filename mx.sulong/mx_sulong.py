@@ -906,6 +906,7 @@ def standardLinkerCommands(args=None):
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
+    error = False
     for mdlCheckPath in mdlCheckDirectories:
         for path, _, files in os.walk(mdlCheckPath):
             for f in files:
@@ -917,6 +918,9 @@ def mdlCheck(args=None):
                     except subprocess.CalledProcessError as e:
                         print e # prints command and return value
                         print e.output # prints process output
+                        error = True
+    if error:
+        exit(-1)
 
 def getBitcodeLibrariesOption():
     libraries = []
