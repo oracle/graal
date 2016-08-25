@@ -24,7 +24,6 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y libxml2-dev
   - sudo apt-get install -y libssl-dev
-  - if ["$CLANG" == "3.3"]; then sudo apt-get install llvm-3.3 -y; fi
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
@@ -47,21 +46,21 @@ branches:
   only:
     - master
 env:  
-  - TEST_COMMAND='mx su-clangformatcheck' CLANG='3.3'
-  - TEST_COMMAND='mx eclipseformat --primary' CLANG='3.3'
-  - TEST_COMMAND='mx su-mdlcheck' CLANG='3.3'
-  - TEST_COMMAND='mx su-gitlogcheck' CLANG='3.3'
-  - TEST_COMMAND='mx pylint' CLANG='3.3'
-  - TEST_COMMAND='mx checkstyle' CLANG='3.3'
-  - TEST_COMMAND='mx checkoverlap' CLANG='3.3'
-  - TEST_COMMAND='mx canonicalizeprojects' CLANG='3.3'
-  - TEST_COMMAND='mx su-httpcheck' CLANG='3.3'
-  - TEST_COMMAND='mx su-travis1' CLANG='3.3'
-  - TEST_COMMAND='mx su-travis2' CLANG='3.3'
-  - TEST_COMMAND='mx su-travis3' CLANG='3.3'
-  - TEST_COMMAND='mx su-travis-sulong' CLANG='3.3'
-  - TEST_COMMAND='mx su-travis-sulong' CLANG='download'
-  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu CLANG='3.3'
-  - TEST_COMMAND='mx su-travis-argon2' CLANG='3.3'
+  - TEST_COMMAND='mx su-clangformatcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx eclipseformat --primary' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-mdlcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-gitlogcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx pylint' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx checkstyle' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx checkoverlap' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx canonicalizeprojects' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-httpcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis1' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis3' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-sulong' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-sulong' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat

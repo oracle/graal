@@ -90,7 +90,7 @@ mdlCheckExcludeDirectories = [
 # the LLVM versions supported by the current bitcode parser that bases on the textual format
 # sorted by priority in descending order (highest priority on top)
 supportedLLVMVersions = [
-    '3.2'
+    '3.2',
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
