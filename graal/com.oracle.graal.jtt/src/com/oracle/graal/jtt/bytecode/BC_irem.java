@@ -51,6 +51,16 @@ public class BC_irem extends JTTTest {
         return ra << 32 | rb;
     }
 
+    // Test if sign extension works on architectures with 64 bit registers only
+    public static int test5(int a, int b) {
+        return (a + 0xFF) % (b + 0xFF);
+    }
+
+    // Test if sign extension works on architectures with 64 bit registers only
+    public static int test6(int a, int b) {
+        return (a - 0xFF) % (b - 0xFF);
+    }
+
     @Test
     public void run0() throws Throwable {
         runTest("test", 1, 2);
@@ -114,5 +124,15 @@ public class BC_irem extends JTTTest {
     @Test
     public void run43() throws Throwable {
         runTest("test4", -1000000, -30);
+    }
+
+    @Test
+    public void run51() {
+        runTest("test5", Integer.MAX_VALUE, Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void run61() {
+        runTest("test6", Integer.MIN_VALUE, Integer.MIN_VALUE);
     }
 }
