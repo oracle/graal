@@ -8,6 +8,7 @@ import sys
 import mx
 import mx_findbugs
 import re
+import argparse
 
 from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
@@ -483,8 +484,14 @@ def runLLVM(args=None, out=None):
     return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
-    """runs all the test cases"""
-    for testSuiteName in testCases.keys():
+    """runs all the test cases or selected ones (see -h or --help)"""
+    parser = argparse.ArgumentParser(description="Executes all or selected test cases of Sulong's test suites.")
+    parser.add_argument('suite', nargs='*', help=' '.join(testCases.keys()), default=testCases.keys())
+    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the test suite names before execution')
+    parsedArgs = parser.parse_args(args)
+    for testSuiteName in parsedArgs.suite:
+        if parsedArgs.verbose:
+            print 'executing', testSuiteName, 'test suite'
         command = testCases[testSuiteName]
         command()
 
