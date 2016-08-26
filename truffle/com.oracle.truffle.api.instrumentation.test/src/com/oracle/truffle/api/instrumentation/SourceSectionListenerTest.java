@@ -145,8 +145,8 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().build(), new SourceSectionListener(allEvents), true);
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().build(),
+            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new SourceSectionListener(allEvents), true);
+            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY,
                             new SourceSectionListener(onlyNewEvents), false);
             env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
                             new SourceSectionListener(onlyStatements), true);
@@ -189,7 +189,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().build(), new LoadSourceSectionListener() {
+            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
                 public void onLoad(LoadSourceSectionEvent event) {
                     throw new TestLoadSourceSectionExceptionClass();
                 }

@@ -597,7 +597,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     onStatement++;
                 }
@@ -631,7 +631,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     onStatement++;
                 }
@@ -686,7 +686,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     if (exceptionOnEnter != null) {
                         throw exceptionOnEnter;

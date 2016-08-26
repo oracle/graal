@@ -49,6 +49,13 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class SourceSectionFilter {
 
+    /**
+     * A filter that matches everything.
+     *
+     * @since 0.17
+     */
+    public static final SourceSectionFilter ANY = newBuilder().build();
+
     private final EventFilterExpression[] expressions;
 
     private SourceSectionFilter(EventFilterExpression[] expressions) {
