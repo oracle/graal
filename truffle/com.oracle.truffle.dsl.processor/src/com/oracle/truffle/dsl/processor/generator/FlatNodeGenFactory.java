@@ -121,6 +121,7 @@ public class FlatNodeGenFactory {
     private Map<String, TypeMirror> isValidSignatures = new HashMap<>();
 
     private final boolean boxingEliminationEnabled;
+    private int boxingSplitIndex = 0;
 
     private final BitSet state;
     private final BitSet exclude;
@@ -339,29 +340,23 @@ public class FlatNodeGenFactory {
             for (CacheExpression cache : specialization.getCaches()) {
                 Parameter parameter = cache.getParameter();
                 String fieldName = createFieldName(specialization, parameter);
-                Class<?> anotationType;
-                boolean isChild;
+                Class<?> anotationType = null;
                 TypeMirror type = parameter.getType();
+                Modifier[] modifiers = new Modifier[0];
+                Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 if (ElementUtils.isAssignable(type, context.getType(Node.class))) {
                     anotationType = Child.class;
-                    isChild = true;
                 } else if (ElementUtils.isAssignable(type, context.getType(Node[].class))) {
                     anotationType = Children.class;
-                    isChild = true;
+                    modifiers = new Modifier[]{Modifier.FINAL};
                 } else {
-                    isChild = false;
-                    anotationType = CompilationFinal.class;
-                }
-
-                if (useSpecializationClass) {
-                    if (isChild) {
-                        fields.add(createNodeField(null, type, fieldName, anotationType));
+                    if (useSpecializationClass) {
+                        modifiers = new Modifier[]{Modifier.FINAL};
                     } else {
-                        fields.add(createNodeField(null, type, fieldName, null, Modifier.FINAL));
+                        anotationType = CompilationFinal.class;
                     }
-                } else {
-                    fields.add(createNodeField(PRIVATE, type, fieldName, anotationType));
                 }
+                fields.add(createNodeField(visibility, type, fieldName, anotationType, modifiers));
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
@@ -839,34 +834,10 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private static class BoxingSplit {
-
-        private final SpecializationGroup group;
-        private final TypeMirror[] primitiveSignatures;
-
-        public BoxingSplit(SpecializationGroup group, TypeMirror[] primitiveSignatures) {
-            this.group = group;
-            this.primitiveSignatures = primitiveSignatures;
-        }
-
-        public String getName() {
-            StringBuilder b = new StringBuilder();
-            String sep = "";
-            for (TypeMirror typeMirror : primitiveSignatures) {
-                b.append(sep).append(ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(typeMirror)));
-                sep = "_";
-            }
-            return b.toString();
-        }
-
-    }
-
-    private int executeMethodIndex = 0;
-
     private CodeTree wrapInAMethod(CodeTreeBuilder parent, FrameState frameState, String suffix, CodeTree codeTree) {
         CodeExecutableElement parentMethod = (CodeExecutableElement) parent.findMethod();
         CodeTypeElement parentClass = (CodeTypeElement) parentMethod.getEnclosingElement();
-        String name = parentMethod.getSimpleName().toString() + "_" + suffix + (executeMethodIndex++);
+        String name = parentMethod.getSimpleName().toString() + "_" + suffix + (boxingSplitIndex++);
         CodeExecutableElement method = parentClass.add(
                         frameState.createMethod(modifiers(Modifier.PRIVATE), parentMethod.getReturnType(), name, FRAME_VALUE,
                                         STATE_VALUE));
@@ -970,7 +941,7 @@ public class FlatNodeGenFactory {
 
         Collections.sort(groups, new Comparator<BoxingSplit>() {
             public int compare(BoxingSplit o1, BoxingSplit o2) {
-                return Integer.compare(o2.primitiveSignatures.length, o1.primitiveSignatures.length);
+                return Integer.compare(o2.primitiveSignature.length, o1.primitiveSignature.length);
             }
         });
 
@@ -3421,6 +3392,28 @@ public class FlatNodeGenFactory {
         @Override
         public String toString() {
             return "Local[type = " + getTypeMirror() + ", name = " + name + ", accessWith = " + accessorTree + "]";
+        }
+
+    }
+
+    private static class BoxingSplit {
+
+        private final SpecializationGroup group;
+        private final TypeMirror[] primitiveSignature;
+
+        BoxingSplit(SpecializationGroup group, TypeMirror[] primitiveSignature) {
+            this.group = group;
+            this.primitiveSignature = primitiveSignature;
+        }
+
+        public String getName() {
+            StringBuilder b = new StringBuilder();
+            String sep = "";
+            for (TypeMirror typeMirror : primitiveSignature) {
+                b.append(sep).append(ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(typeMirror)));
+                sep = "_";
+            }
+            return b.toString();
         }
 
     }
