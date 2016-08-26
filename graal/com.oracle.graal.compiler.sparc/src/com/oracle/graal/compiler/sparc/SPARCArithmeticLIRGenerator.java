@@ -349,14 +349,15 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         Value aLoaded;
         Variable q1; // Intermediate values
         Variable q2;
-        Variable q3;
         SPARCKind aKind = (SPARCKind) a.getPlatformKind();
         switch (aKind) {
             case WORD:
-                q1 = emitBinary(result.getValueKind(), Sra, a, g0.asValue(LIRKind.value(WORD)));
-                q2 = emitBinary(q1.getValueKind(), Sdivx, q1, b, state);
-                q3 = emitBinary(q2.getValueKind(), Op3s.Mulx, q2, b);
-                result = emitSub(q1, q3, false);
+                // Sign extend a and b
+                Variable as = emitBinary(result.getValueKind(), Sra, a, g0.asValue(LIRKind.value(WORD)));
+                Variable bs = emitBinary(result.getValueKind(), Sra, b, g0.asValue(LIRKind.value(WORD)));
+                q1 = emitBinary(as.getValueKind(), Sdivx, as, bs, state);
+                q2 = emitBinary(q1.getValueKind(), Mulx, q1, bs);
+                result = emitSub(as, q2, false);
                 break;
             case XWORD:
                 aLoaded = getLIRGen().load(a); // Reuse the loaded value
