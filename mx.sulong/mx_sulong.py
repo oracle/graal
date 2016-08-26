@@ -7,6 +7,7 @@ import sys
 
 import mx
 import mx_findbugs
+import re
 
 from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
@@ -54,6 +55,13 @@ sulongDistributions = [
     'SULONG_TEST'
 ]
 
+# the supported GCC versions (see dragonegg.llvm.org)
+supportedGCCVersions = [
+    '4.6',
+    '4.5',
+    '4.7'
+]
+
 # the files that should be checked to not contain http links (but https ones)
 httpCheckFiles = [
     __file__,
@@ -73,9 +81,30 @@ mdlCheckDirectories = [
     _suite.dir
 ]
 
+
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
 	join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
+]
+
+# the LLVM versions supported by the current bitcode parser that bases on the textual format
+# sorted by priority in descending order (highest priority on top)
+supportedLLVMVersions = [
+    '3.2',
+]
+
+# the clang-format versions that can be used for formatting the test case C and C++ files
+clangFormatVersions = [
+    '3.4'
+]
+
+# the basic LLVM dependencies for running the test cases and executing the mx commands
+basicLLVMDependencies = [
+    'clang',
+    'clang++',
+    'opt',
+    'llc',
+    'llvm-as'
 ]
 
 def _graal_llvm_gate_runner(args, tasks):
@@ -291,31 +320,6 @@ def which(program):
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
                 return exe_file
-
-    return None
-
-def getDefaultGCC():
-    # Ubuntu
-    if which('gcc-4.6') is not None:
-        return 'gcc-4.6'
-    # Mac
-    if which('gcc46') is not None:
-        return 'gcc46'
-    return None
-
-def getDefaultGFortran():
-    # Ubuntu
-    if which('gfortran-4.6') is not None:
-        return 'gfortran-4.6'
-    # Mac
-    if which('gfortran46') is not None:
-        return 'gfortran46'
-    return None
-
-def getDefaultGPP():
-    # Ubuntu
-    if which('g++-4.6') is not None:
-        return 'g++-4.6'
     return None
 
 def getCommand(envVariable):
@@ -334,31 +338,21 @@ def getGCC():
     specifiedGCC = getCommand('SULONG_GCC')
     if specifiedGCC is not None:
         return specifiedGCC
-    if getDefaultGCC() is not None:
-        return getDefaultGCC()
-    else:
-        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install gcc-4.6 or another compatible version and specify it in the env file')
+    return findGCCProgram('gcc')
 
 def getGFortran():
     """tries to locate a gfortran version suitable to execute Dragonegg"""
     specifiedGFortran = getCommand('SULONG_GFORTRAN')
     if specifiedGFortran is not None:
         return specifiedGFortran
-    if getDefaultGFortran() is not None:
-        return getDefaultGFortran()
-    else:
-        mx.abort('Could not find a compatible GFortran version to execute Dragonegg! Please install gfortran-4.6 or another compatible version and specify it in the env file')
-
+    return findGCCProgram('gfortran')
 
 def getGPP():
     """tries to locate a g++ version suitable to execute Dragonegg"""
     specifiedCPP = getCommand('SULONG_GPP')
     if specifiedCPP is not None:
         return specifiedCPP
-    if getDefaultGPP() is not None:
-        return getDefaultGPP()
-    else:
-        mx.abort('Could not find a compatible GCC version to execute Dragonegg! Please install g++-4.6 or another compatible version and specify it in the env file')
+    return findGCCProgram('g++')
 
 # platform independent
 def pullInstallDragonEgg(args=None):
@@ -379,7 +373,9 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
+    pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = _toolDir + 'tools/llvm/bin/llvm-config'
+    print os.environ['LLVM_CONFIG']
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
 
@@ -749,11 +745,132 @@ def pullsuite(suiteDir, urls):
     mx.download(localPath, urls)
     return localPath
 
+def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
+    """returns if the LLVM program bases on a supported LLVM version"""
+    assert llvmProgram is not None
+    llvmVersion = getLLVMVersion(llvmProgram)
+    if supportedVersions is None:
+        return llvmVersion in supportedLLVMVersions
+    else:
+        return llvmVersion in supportedVersions
+
+def isSupportedGCCVersion(gccProgram, supportedVersions=None):
+    """returns if the LLVM program bases on a supported LLVM version"""
+    assert gccProgram is not None
+    gccVersion = getGCCVersion(gccProgram)
+    if supportedVersions is None:
+        return gccVersion in supportedGCCVersions
+    else:
+        return gccVersion in supportedVersions
+
+def getVersion(program):
+    """executes --version on the supplied program and returns the version string"""
+    assert program is not None
+    try:
+        versionString = subprocess.check_output([program, '--version'])
+    except subprocess.CalledProcessError as e:
+        # on my machine, e.g., opt returns a non-zero opcode even on success
+        versionString = e.output
+    return versionString
+
+def getLLVMVersion(llvmProgram):
+    """executes the program with --version and extracts the LLVM version string"""
+    versionString = getVersion(llvmProgram)
+    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
+    if printLLVMVersion is None:
+        exit("could not find the LLVM version string in " + str(versionString))
+    else:
+        return printLLVMVersion.group(3)
+
+def getGCCVersion(gccProgram):
+    """executes the program with --version and extracts the GCC version string"""
+    versionString = getVersion(gccProgram)
+    gccVersion = re.search(r'((\d\.\d).\d)', versionString, re.IGNORECASE)
+    if gccVersion is None:
+        exit("could not find the GCC version string in " + str(versionString))
+    else:
+        return gccVersion.group(2)
+
+def findInstalledLLVMProgram(llvmProgram, supportedVersions=None):
+    """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
+    if supportedVersions is None:
+        appends = supportedLLVMVersions
+    else:
+        appends = supportedVersions
+    return findInstalledProgram(llvmProgram, appends, isSupportedLLVMVersion)
+
+def findInstalledGCCProgram(gccProgram):
+    """tries to find a supported version of a GCC program by checking for the argument string (e.g., gfortran) and appending version numbers (e.g., gfortran-4.9)"""
+    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion)
+
+def findInstalledProgram(program, supportedVersions, testSupportedVersion):
+    """tries to find a supported version of a program
+
+    The function takes program argument, and checks if it has the supported version.
+    If not, it prepends a supported version to the version string to check if it is an executable program with a supported version.
+    The function checks both for programs by appending "-" and the unmodified version string, as well as by directly adding all the digits of the version string (stripping all other characters).
+
+    For example, for a program gcc with supportedVersions 4.6 the function produces gcc-4.6 and gcc46.
+
+    Arguments:
+    program -- the program to find, e.g., clang or gcc
+    supportedVersions -- the supported versions, e.g., 3.4 or 4.9
+    testSupportedVersion(path, supportedVersions) -- the test function to be called to ensure that the found program is supported
+    """
+    assert program is not None
+    programPath = which(program)
+    if programPath is not None and testSupportedVersion(programPath, supportedVersions):
+        return programPath
+    else:
+        for version in supportedVersions:
+            alternativeProgram1 = program + '-' + version
+            alternativeProgram2 = program + re.sub(r"\D", "", version)
+            alternativePrograms = [alternativeProgram1, alternativeProgram2]
+            for alternativeProgram in alternativePrograms:
+                alternativeProgramPath = which(alternativeProgram)
+                if alternativeProgramPath is not None:
+                    assert testSupportedVersion(alternativeProgramPath)
+                    return alternativeProgramPath
+    return None
+
+def findLLVMProgram(llvmProgram):
+    """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
+    installedProgram = findInstalledLLVMProgram(llvmProgram)
+    if installedProgram is None:
+        if not os.path.exists(_clangPath):
+            pullLLVMBinaries()
+        programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
+        if not os.path.exists(programPath):
+            exit(llvmProgram + ' is not a supported LLVM program!')
+        return programPath
+    else:
+        return installedProgram
+
+def findGCCProgram(gccProgram):
+    """tries to find a supported version of an installed GCC program"""
+    installedProgram = findInstalledGCCProgram(gccProgram)
+    if installedProgram is None:
+        exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
+    else:
+        return installedProgram
+
+def getGCCProgramPath(args=None):
+    """gets a path with a supported version of the specified GCC program (e.g. gfortran)"""
+    if args is None or len(args) != 1:
+        exit("please supply one GCC program to be located!")
+    else:
+        print findGCCProgram(args[0])
+
+def getLLVMProgramPath(args=None):
+    """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
+    if args is None or len(args) != 1:
+        exit("please supply one LLVM program to be located!")
+    else:
+        print findLLVMProgram(args[0])
+
 def compileWithClang(args=None):
     """runs Clang"""
-    ensureLLVMBinariesExist()
-    clangPath = _toolDir + 'tools/llvm/bin/clang'
-    return mx.run([clangPath] + args)
+    return mx.run([findLLVMProgram('clang')] + args)
 
 def compileWithGCC(args=None):
     """runs GCC"""
@@ -761,12 +878,9 @@ def compileWithGCC(args=None):
     gccPath = _toolDir + 'tools/llvm/bin/gcc'
     return mx.run([gccPath] + args)
 
-
 def opt(args=None):
     """runs opt"""
-    ensureLLVMBinariesExist()
-    optPath = _toolDir + 'tools/llvm/bin/opt'
-    return mx.run([optPath] + args)
+    return mx.run([findLLVMProgram('opt')] + args)
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
@@ -774,9 +888,7 @@ def link(args=None):
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
-    ensureLLVMBinariesExist()
-    clangPath = _toolDir + 'tools/llvm/bin/clang++'
-    return mx.run([clangPath] + args)
+    return mx.run([findLLVMProgram('clang++')] + args)
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
@@ -813,8 +925,9 @@ def ensureBenchmarkSuiteExists():
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
-    if not os.path.exists(_clangPath):
-        pullLLVMBinaries()
+    for llvmBinary in basicLLVMDependencies:
+        if findLLVMProgram(llvmBinary) is None:
+            raise Exception(llvmBinary + ' not found')
 
 def ensureArgon2Exists():
     """downloads Argon2 if not downloaded yet"""
@@ -959,7 +1072,8 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    formatCommand = ['clang-format-3.4', '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
+    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
@@ -1031,5 +1145,7 @@ mx.update_commands(_suite, {
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
-    'su-httpcheck' : [checkNoHttp, '']
+    'su-httpcheck' : [checkNoHttp, ''],
+    'su-get-llvm-program' : [getLLVMProgramPath, ''],
+    'su-get-gcc-program' : [getGCCProgramPath, '']
 })

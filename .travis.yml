@@ -17,7 +17,6 @@ addons:
     - g++-4.6
     - gfortran-4.6
     - libgmp3-dev
-    - llvm-3.3
     - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
@@ -46,22 +45,22 @@ script:
 branches:
   only:
     - master
-env:
-  - TEST_COMMAND='mx su-clangformatcheck'
-  - TEST_COMMAND='mx eclipseformat --primary'
-  - TEST_COMMAND='mx su-mdlcheck'
-  - TEST_COMMAND='mx su-gitlogcheck'
-  - TEST_COMMAND='mx pylint'
-  - TEST_COMMAND='mx checkstyle'
-  - TEST_COMMAND='mx checkoverlap'
-  - TEST_COMMAND='mx canonicalizeprojects'
-  - TEST_COMMAND='mx su-httpcheck'
-  - TEST_COMMAND='mx su-travis1'
-  - TEST_COMMAND='mx su-travis2'
-  - TEST_COMMAND='mx su-travis3'
-  - TEST_COMMAND='mx su-travis-sulong'
-  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu
-  - TEST_COMMAND='mx su-travis-argon2'
-
+env:  
+  - TEST_COMMAND='mx su-clangformatcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx eclipseformat --primary' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-mdlcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-gitlogcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx pylint' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx checkstyle' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx checkoverlap' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx canonicalizeprojects' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-httpcheck' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis1' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis3' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-sulong' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-sulong' CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu CLANG='suite version (3.2)'
+  - TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat

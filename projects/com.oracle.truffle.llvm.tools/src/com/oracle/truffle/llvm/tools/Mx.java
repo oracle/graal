@@ -31,23 +31,38 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
-public class LLVMToolPaths {
+public final class Mx {
 
-    static final File PROJECT_ROOT = new File(LLVMBaseOptionFacade.getProjectRoot() + File.separator + LLVMToolPaths.class.getPackage().getName());
-    public static final File TOOLS_ROOT = new File(PROJECT_ROOT, "tools");
-    public static final File LLVM_ROOT = new File(TOOLS_ROOT, "llvm/bin");
+    private Mx() {
+    }
 
-    public static final File LLVM_ASSEMBLER = getLLVMProgram("llvm-as");
-    public static final File LLVM_COMPILER = getLLVMProgram("llc");
-    public static final File LLVM_CLANG = getLLVMProgram("clang");
-    public static final File LLVM_CLANGPlusPlus = getLLVMProgram("clang++");
-    public static final File LLVM_OPT = getLLVMProgram("opt");
-    public static final File LLVM_DRAGONEGG = new File(TOOLS_ROOT, "/dragonegg/dragonegg-3.2.src/dragonegg.so");
+    public static ProcessResult execute(String string) {
+        String command = "mx " + string;
+        return ProcessUtil.executeNativeCommandZeroReturn(command);
+    }
 
-    public static File getLLVMProgram(String program) {
-        return Mx.executeGetLLVMProgramPath(program);
+    public static File executeGetLLVMProgramPath(String program) {
+        ProcessResult result = Mx.execute("su-get-llvm " + program);
+        File llvmPath = getProgramPathFromStdout(result);
+        return llvmPath;
+    }
+
+    public static File executeGetGCCProgramPath(String program) {
+        ProcessResult result = Mx.execute("su-get-gcc " + program);
+        File llvmPath = getProgramPathFromStdout(result);
+        return llvmPath;
+    }
+
+    private static File getProgramPathFromStdout(ProcessResult result) {
+        String output = result.getStdInput();
+        File llvmPath = new File(output);
+        if (!llvmPath.canExecute()) {
+            throw new AssertionError(output + " is not an executable program!");
+        }
+        return llvmPath;
     }
 
 }
