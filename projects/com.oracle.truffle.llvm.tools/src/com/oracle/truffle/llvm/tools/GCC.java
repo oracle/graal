@@ -36,11 +36,15 @@ import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class GCC extends CompilerBase {
 
+    private static final File GPP_PATH = Mx.executeGetGCCProgramPath("g++");
+    private static final File GFORTRAN_PATH = Mx.executeGetGCCProgramPath("gfortran");
+    private static final File GCC_PATH = Mx.executeGetGCCProgramPath("gcc");
+
     private GCC() {
     }
 
     public static void compileObjectToMachineCode(File objectFile, File executable) {
-        String linkCommand = Mx.executeGetGCCProgramPath("gcc") + " " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
+        String linkCommand = GCC_PATH + " " + objectFile.getAbsolutePath() + " -o " + executable.getAbsolutePath() + " -lm -lgfortran -lgmp";
         ProcessUtil.executeNativeCommandZeroReturn(linkCommand);
         executable.setExecutable(true);
     }
@@ -48,11 +52,11 @@ public final class GCC extends CompilerBase {
     public static void compileToLLVMIR(File toBeCompiled, File destinationFile) {
         String tool;
         if (ProgrammingLanguage.C.isFile(toBeCompiled)) {
-            tool = Mx.executeGetGCCProgramPath("gcc") + " -std=gnu99";
+            tool = GCC_PATH + " -std=gnu99";
         } else if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiled)) {
-            tool = Mx.executeGetGCCProgramPath("gfortran").toString();
+            tool = GFORTRAN_PATH.toString();
         } else if (ProgrammingLanguage.C_PLUS_PLUS.isFile(toBeCompiled)) {
-            tool = Mx.executeGetGCCProgramPath("g++").toString();
+            tool = GPP_PATH.toString();
         } else {
             throw new AssertionError(toBeCompiled);
         }
