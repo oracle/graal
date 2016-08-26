@@ -433,11 +433,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /** @since 0.8 or earlier */
     public final void atomic(Runnable closure) {
-        RootNode rootNode = getRootNode();
-        // Major Assumption: parent is never null after a node got adopted
-        // it is never reset to null, and thus, rootNode is always reachable.
-        // GIL: used for nodes that are replace in ASTs that are not yet adopted
-        synchronized (rootNode != null ? rootNode : GIL) {
+        synchronized (getAtomicLock()) {
             assert enterAtomic();
             try {
                 closure.run();
@@ -450,11 +446,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final <T> T atomic(Callable<T> closure) {
         try {
-            RootNode rootNode = getRootNode();
-            // Major Assumption: parent is never null after a node got adopted
-            // it is never reset to null, and thus, rootNode is always reachable.
-            // GIL: used for nodes that are replace in ASTs that are not yet adopted
-            synchronized (rootNode != null ? rootNode : GIL) {
+            synchronized (getAtomicLock()) {
                 assert enterAtomic();
                 try {
                     return closure.call();
@@ -467,6 +459,21 @@ public abstract class Node implements NodeInterface, Cloneable {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
+     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
+     * manually.
+     *
+     * @since 0.17
+     */
+    protected final Object getAtomicLock() {
+        // Major Assumption: parent is never null after a node got adopted
+        // it is never reset to null, and thus, rootNode is always reachable.
+        // GIL: used for nodes that are replace in ASTs that are not yet adopted
+        RootNode root = getRootNode();
+        return root == null ? GIL : root;
     }
 
     /**
