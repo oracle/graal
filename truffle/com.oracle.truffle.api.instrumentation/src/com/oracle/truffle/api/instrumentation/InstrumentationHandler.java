@@ -958,6 +958,18 @@ final class InstrumentationHandler {
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
         }
 
+        @Override
+        public List<SourceSection> querySourceSections(SourceSectionFilter filter) {
+            final List<SourceSection> sourceSectionList = new ArrayList<>();
+            EventBinding<?> binding = attachLoadSourceSectionListener(filter == null ? SourceSectionFilter.ANY : filter, new LoadSourceSectionListener() {
+                public void onLoad(LoadSourceSectionEvent event) {
+                    sourceSectionList.add(event.getSourceSection());
+                }
+            }, true);
+            binding.dispose();
+            return Collections.unmodifiableList(sourceSectionList);
+        }
+
         private void verifySourceOnly(SourceSectionFilter filter) {
             if (!filter.isSourceOnly()) {
                 throw new IllegalArgumentException(String.format("The attached filter %s uses filters that require source sections to verifiy. " +

@@ -57,7 +57,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     private void testLoadSourceImpl(int runTimes) throws IOException {
         Instrument instrument = engine.getInstruments().get("testLoadSource1");
         Source source1 = lines("STATEMENT(EXPRESSION, EXPRESSION)");
-        // running the same source multipel times should not have any effect on the test result.
+        // running the same source multiple times should not have any effect on the test result.
         for (int i = 0; i < runTimes; i++) {
             run(source1);
         }

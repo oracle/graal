@@ -56,6 +56,10 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     private void testLoadSourceSectionImpl(int runTimes) throws IOException {
         Instrument instrument = engine.getInstruments().get("testLoadSourceSection1");
         SourceSection[] sourceSections1 = sections("STATEMENT(EXPRESSION, EXPRESSION)", "STATEMENT(EXPRESSION, EXPRESSION)", "EXPRESSION");
+
+        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build();
+        final SourceSectionFilter exprFilter = SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build();
+
         Source source1 = sourceSections1[0].getSource();
         for (int i = 0; i < runTimes; i++) {
             run(source1);
@@ -63,6 +67,10 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
         instrument.setEnabled(true);
         TestLoadSourceSection1 impl = instrument.lookup(TestLoadSourceSection1.class);
+
+        assertSections(impl.query(null), sourceSections1);
+        assertSections(impl.query(statementFilter), sourceSections1[0]);
+        assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2]);
 
         SourceSection[] sourceSections2 = sections("STATEMENT(EXPRESSION)", "STATEMENT(EXPRESSION)", "EXPRESSION");
         Source source2 = sourceSections2[0].getSource();
@@ -74,6 +82,10 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyNewEvents, sourceSections2);
         assertEvents(impl.onlyStatements, sourceSections1[0], sourceSections2[0]);
         assertEvents(impl.onlyExpressions, sourceSections1[1], sourceSections1[2], sourceSections2[1]);
+
+        assertSections(impl.query(null), merge(sourceSections1, sourceSections2));
+        assertSections(impl.query(statementFilter), sourceSections1[0], sourceSections2[0]);
+        assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2], sourceSections2[1]);
 
         instrument.setEnabled(false);
 
@@ -87,6 +99,10 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyNewEvents, sourceSections2);
         assertEvents(impl.onlyStatements, sourceSections1[0], sourceSections2[0]);
         assertEvents(impl.onlyExpressions, sourceSections1[1], sourceSections1[2], sourceSections2[1]);
+
+        assertSections(impl.query(null), merge(sourceSections1, sourceSections2, sourceSections3));
+        assertSections(impl.query(statementFilter), sourceSections1[0], sourceSections2[0], sourceSections3[0]);
+        assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2], sourceSections2[1], sourceSections3[1], sourceSections3[2], sourceSections3[3]);
 
         instrument.setEnabled(true);
         // new instrument needs update
@@ -136,21 +152,30 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         }
     }
 
+    private static void assertSections(List<SourceSection> actualSections, SourceSection... expectedSections) {
+        Assert.assertEquals(expectedSections.length, actualSections.size());
+        for (int i = 0; i < expectedSections.length; i++) {
+            Assert.assertEquals("index " + i, expectedSections[i], actualSections.get(i));
+        }
+    }
+
     @Registration(id = "testLoadSourceSection1")
     public static class TestLoadSourceSection1 extends TruffleInstrument {
         List<LoadSourceSectionEvent> onlyNewEvents = new ArrayList<>();
         List<LoadSourceSectionEvent> allEvents = new ArrayList<>();
         List<LoadSourceSectionEvent> onlyStatements = new ArrayList<>();
         List<LoadSourceSectionEvent> onlyExpressions = new ArrayList<>();
+        Instrumenter instrumenter = null;
 
         @Override
         protected void onCreate(Env env) {
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new SourceSectionListener(allEvents), true);
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY,
+            instrumenter = env.getInstrumenter();
+            instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.ANY, new SourceSectionListener(allEvents), true);
+            instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.ANY,
                             new SourceSectionListener(onlyNewEvents), false);
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
+            instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
                             new SourceSectionListener(onlyStatements), true);
-            env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(),
+            instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(),
                             new SourceSectionListener(onlyExpressions), true);
 
             env.registerService(this);
@@ -167,6 +192,10 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
             public void onLoad(LoadSourceSectionEvent event) {
                 events.add(event);
             }
+        }
+
+        private List<SourceSection> query(SourceSectionFilter filter) {
+            return instrumenter.querySourceSections(filter);
         }
 
     }
