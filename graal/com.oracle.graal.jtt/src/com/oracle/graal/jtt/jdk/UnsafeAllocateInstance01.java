@@ -30,6 +30,8 @@ import org.junit.Test;
 
 import com.oracle.graal.jtt.JTTTest;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /*
  */
 public class UnsafeAllocateInstance01 extends JTTTest {
@@ -43,6 +45,21 @@ public class UnsafeAllocateInstance01 extends JTTTest {
 
     public static void testClassForException(Class<?> clazz) throws SecurityException, InstantiationException {
         UNSAFE.allocateInstance(clazz);
+    }
+
+    @Override
+    protected Result executeExpected(ResolvedJavaMethod method, Object receiver, Object... args) {
+        if (args.length == 1) {
+            /*
+             * HotSpot will crash if the C2 intrinsic for this is used with array classes, so just
+             * handle it explicitly so that we can still exercise Graal.
+             */
+            Class<?> cl = (Class<?>) args[0];
+            if (cl.isArray()) {
+                return new Result(null, new InstantiationException(cl.getName()));
+            }
+        }
+        return super.executeExpected(method, receiver, args);
     }
 
     @Test
@@ -75,13 +92,13 @@ public class UnsafeAllocateInstance01 extends JTTTest {
         runTest("testClassForException", Class.class);
     }
 
-    @Ignore("Currently crashes hotspot")
+    @Ignore("Currently crashes hotspot because primitive classes aren't handled")
     @Test
     public void run5() throws Throwable {
         runTest("testClassForException", void.class);
     }
 
-    @Ignore("Currently crashes hotspot")
+    @Ignore("Currently crashes hotspot because primitive classes aren't handled")
     @Test
     public void run6() throws Throwable {
         runTest("testClassForException", int.class);
