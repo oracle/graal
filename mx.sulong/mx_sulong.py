@@ -8,6 +8,7 @@ import sys
 import mx
 import mx_findbugs
 import re
+import argparse
 
 from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
@@ -84,7 +85,8 @@ mdlCheckDirectories = [
 
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
-	join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
+    join(_suite.dir, 'projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2'),
+    join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
 ]
 
 # the LLVM versions supported by the current bitcode parser that bases on the textual format
@@ -119,34 +121,10 @@ def executeGate():
     with Task('Findbugs', tasks) as t:
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
-    with Task('TestBenchmarks', tasks) as t:
-        if t: runBenchmarkTestCases()
-    with Task('TestTypes', tasks) as t:
-        if t: runTypeTestCases()
-    with Task('TestPolglot', tasks) as t:
-        if t: runPolyglotTestCases()
-    with Task('TestInterop', tasks) as t:
-        if t: runInteropTestCases()
-    with Task('TestTck', tasks) as t:
-        if t: runTckTestCases()
-    with Task('TestAsm', tasks) as t:
-        if t: runAsmTestCases()
-    with Task('TestSulong', tasks) as t:
-        if t: runTruffleTestCases()
-    with Task('TestGCC', tasks) as t:
-        if t: runGCCTestCases()
-    with Task('TestLLVM', tasks) as t:
-        if t: runLLVMTestCases()
-    with Task('TestNWCC', tasks) as t:
-        if t: runNWCCTestCases()
-    with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: runCompileTestCases()
-    with Task('TestJRuby', tasks) as t:
-        if t: runTestJRuby()
-    with Task('TestArgon2', tasks) as t:
-        if t: runTestArgon2(optimize=False)
-    with Task('TestMainArgs', tasks) as t:
-        if t: runMainArgTestCases()
+    for testSuiteName in testCases.keys():
+        command = testCases[testSuiteName]
+        with Task(testSuiteName, tasks) as t:
+            if t: command()
 
 def travis1(args=None):
     """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
@@ -507,18 +485,16 @@ def runLLVM(args=None, out=None):
     return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
-    """runs all the test cases"""
-    runGCCTestCases()
-    runNWCCTestCases()
-    runLLVMTestCases()
-    runTruffleTestCases()
-    runTypeTestCases()
-    runPolyglotTestCases()
-    runInteropTestCases()
-    runTckTestCases()
-    runAsmTestCases()
-    runBenchmarkTestCases()
-    runMainArgTestCases()
+    """runs all the test cases or selected ones (see -h or --help)"""
+    parser = argparse.ArgumentParser(description="Executes all or selected test cases of Sulong's test suites.")
+    parser.add_argument('suite', nargs='*', help=' '.join(testCases.keys()), default=testCases.keys())
+    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the test suite names before execution')
+    parsedArgs = parser.parse_args(args)
+    for testSuiteName in parsedArgs.suite:
+        if parsedArgs.verbose:
+            print 'executing', testSuiteName, 'test suite'
+        command = testCases[testSuiteName]
+        command()
 
 def runBenchmarkTestCases(args=None):
     """runs the test cases from the language benchmark game"""
@@ -1095,6 +1071,24 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
+testCases = {
+    'bench' : runBenchmarkTestCases,
+    'gcc' : runGCCTestCases,
+    'llvm' : runLLVMTestCases,
+    'sulong' : runTruffleTestCases,
+    'nwcc' : runNWCCTestCases,
+    'types' : runTypeTestCases,
+    'polyglot' : runPolyglotTestCases,
+    'interop' : runInteropTestCases,
+    'tck' : runTckTestCases,
+    'asm' : runAsmTestCases,
+    'compile' : runCompileTestCases,
+    'jruby' : runTestJRuby,
+    'argon2' : runTestArgon2,
+    'lifetime' : runLifetimeTestCases,
+    'main-arg' : runMainArgTestCases,
+}
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -1111,21 +1105,6 @@ mx.update_commands(_suite, {
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
     'su-tests' : [runTests, ''],
-    'su-tests-bench' : [runBenchmarkTestCases, ''],
-    'su-tests-gcc' : [runGCCTestCases, ''],
-    'su-tests-llvm' : [runLLVMTestCases, ''],
-    'su-tests-sulong' : [runTruffleTestCases, ''],
-    'su-tests-nwcc' : [runNWCCTestCases, ''],
-    'su-tests-types' : [runTypeTestCases, ''],
-    'su-tests-polyglot' : [runPolyglotTestCases, ''],
-    'su-tests-interop' : [runInteropTestCases, ''],
-    'su-tests-tck' : [runTckTestCases, ''],
-    'su-tests-asm' : [runAsmTestCases, ''],
-    'su-tests-compile' : [runCompileTestCases, ''],
-    'su-tests-jruby' : [runTestJRuby, ''],
-    'su-tests-argon2' : [runTestArgon2, ''],
-    'su-tests-lifetime' : [runLifetimeTestCases, ''],
-    'su-tests-main-arg' : [runMainArgTestCases, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
