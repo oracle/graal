@@ -85,6 +85,7 @@ mdlCheckDirectories = [
 
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
+    join(_suite.dir, 'projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2'),
     join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
 ]
 
