@@ -84,7 +84,7 @@ mdlCheckDirectories = [
 
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
-	join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
+    join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
 ]
 
 # the LLVM versions supported by the current bitcode parser that bases on the textual format
@@ -119,34 +119,10 @@ def executeGate():
     with Task('Findbugs', tasks) as t:
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
-    with Task('TestBenchmarks', tasks) as t:
-        if t: runBenchmarkTestCases()
-    with Task('TestTypes', tasks) as t:
-        if t: runTypeTestCases()
-    with Task('TestPolglot', tasks) as t:
-        if t: runPolyglotTestCases()
-    with Task('TestInterop', tasks) as t:
-        if t: runInteropTestCases()
-    with Task('TestTck', tasks) as t:
-        if t: runTckTestCases()
-    with Task('TestAsm', tasks) as t:
-        if t: runAsmTestCases()
-    with Task('TestSulong', tasks) as t:
-        if t: runTruffleTestCases()
-    with Task('TestGCC', tasks) as t:
-        if t: runGCCTestCases()
-    with Task('TestLLVM', tasks) as t:
-        if t: runLLVMTestCases()
-    with Task('TestNWCC', tasks) as t:
-        if t: runNWCCTestCases()
-    with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: runCompileTestCases()
-    with Task('TestJRuby', tasks) as t:
-        if t: runTestJRuby()
-    with Task('TestArgon2', tasks) as t:
-        if t: runTestArgon2(optimize=False)
-    with Task('TestMainArgs', tasks) as t:
-        if t: runMainArgTestCases()
+    for testSuiteName in testCases.keys():
+        command = testCases[testSuiteName]
+        with Task(testSuiteName, tasks) as t:
+            if t: command()
 
 def travis1(args=None):
     """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
@@ -508,17 +484,9 @@ def runLLVM(args=None, out=None):
 
 def runTests(args=None):
     """runs all the test cases"""
-    runGCCTestCases()
-    runNWCCTestCases()
-    runLLVMTestCases()
-    runTruffleTestCases()
-    runTypeTestCases()
-    runPolyglotTestCases()
-    runInteropTestCases()
-    runTckTestCases()
-    runAsmTestCases()
-    runBenchmarkTestCases()
-    runMainArgTestCases()
+    for testSuiteName in testCases.keys():
+        command = testCases[testSuiteName]
+        command()
 
 def runBenchmarkTestCases(args=None):
     """runs the test cases from the language benchmark game"""
@@ -1094,6 +1062,24 @@ def checkNoHttp(args=None):
                 print "http:" + chr(58) + " in line " + str(line_number) + " of " + f + " could be a security issue! please change to https://"
                 exit(-1)
             line_number += 1
+
+testCases = {
+    'bench' : runBenchmarkTestCases,
+    'gcc' : runGCCTestCases,
+    'llvm' : runLLVMTestCases,
+    'sulong' : runTruffleTestCases,
+    'nwcc' : runNWCCTestCases,
+    'types' : runTypeTestCases,
+    'polyglot' : runPolyglotTestCases,
+    'interop' : runInteropTestCases,
+    'tck' : runTckTestCases,
+    'asm' : runAsmTestCases,
+    'compile' : runCompileTestCases,
+    'jruby' : runTestJRuby,
+    'argon2' : runTestArgon2,
+    'lifetime' : runLifetimeTestCases,
+    'main-arg' : runMainArgTestCases,
+}
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
