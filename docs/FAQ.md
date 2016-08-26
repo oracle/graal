@@ -41,12 +41,11 @@ Java or native projects you can use `mx clean` with the options
 
 ### How can I execute the Sulong test cases?
 
-Use `mx su-tests` to run all the test cases. You can also selectively
-run a test suite with `mx su-tests-<test suite name>`. You can get a list
-of the available mx commands by invoking `mx` in the Sulong directory
-without additional parameters. The most important test cases are
-`mx su-tests-sulong` (mostly C files to test Sulong), `mx su-tests-gcc`
-(selected GCC test cases), and `mx su-tests-llvm` (selected LLVM test cases).
+Use `mx su-tests` to run all the test cases. You can selectively
+run one or several test suites with `mx su-tests <test suite names>`.
+The most important test cases are `mx su-tests sulong` (Sulong's own
+test suite which mostly consists of C files), `mx su-tests gcc`
+(selected GCC test cases), and `mx su-tests llvm` (selected LLVM test cases).
 
 ### Why does mx download DragonEgg?
 
