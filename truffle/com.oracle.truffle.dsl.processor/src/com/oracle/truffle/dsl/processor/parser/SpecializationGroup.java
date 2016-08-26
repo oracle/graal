@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.GuardExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -360,7 +361,7 @@ public final class SpecializationGroup {
             TypeGuard other = (TypeGuard) obj;
             if (signatureIndex != other.signatureIndex) {
                 return false;
-            } else if (!type.equals(other.type)) {
+            } else if (!ElementUtils.typeEquals(type, other.type)) {
                 return false;
             }
             return true;
@@ -386,6 +387,49 @@ public final class SpecializationGroup {
             return null;
         }
         return parentChildren.get(index - 1);
+    }
+
+    public List<SpecializationData> getAllSpecializations() {
+        SpecializationGroup p = this;
+        while (p.getParent() != null) {
+            p = p.getParent();
+        }
+        return p.collectSpecializations();
+    }
+
+    public boolean isLast() {
+        SpecializationGroup p = getParent();
+        if (p == null) {
+            return true;
+        }
+        if (p.getChildren().indexOf(this) == p.getChildren().size() - 1) {
+            return p.isLast();
+        }
+        return false;
+    }
+
+    public SpecializationGroup getLast() {
+        if (children.isEmpty()) {
+            return null;
+        }
+        return children.get(children.size() - 1);
+    }
+
+    private boolean hasFallthrough;
+
+    public void setFallthrough(boolean hasFallthrough) {
+        this.hasFallthrough = hasFallthrough;
+    }
+
+    public boolean hasFallthrough() {
+        if (hasFallthrough) {
+            return true;
+        }
+        SpecializationGroup lastChild = getLast();
+        if (lastChild != null) {
+            return lastChild.hasFallthrough();
+        }
+        return false;
     }
 
 }

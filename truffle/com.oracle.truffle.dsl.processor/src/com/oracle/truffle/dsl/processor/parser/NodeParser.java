@@ -674,9 +674,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 child = children.get(childIndex);
                 shortCircuit = shortCircuits.contains(NodeExecutionData.createIndexedName(child, varArgsIndex));
             }
-            if (child != null) {
-                executions.add(new NodeExecutionData(child, i, varArgsIndex, shortCircuit));
-            }
+            executions.add(new NodeExecutionData(child, i, varArgsIndex, shortCircuit));
         }
         return executions;
     }
