@@ -192,8 +192,8 @@ public final class LLVMMemoryReadWriteFactory {
         }
     }
 
-    public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type).getType(), LLVMTypeHelper.getByteSize(type));
+    public static LLVMNode createStore(LLVMParserRuntime runtime, LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
+        return createStore(pointerNode, valueNode, LLVMTypeHelper.getLLVMType(type).getType(), runtime.getTypeHelper().getByteSize(type));
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {

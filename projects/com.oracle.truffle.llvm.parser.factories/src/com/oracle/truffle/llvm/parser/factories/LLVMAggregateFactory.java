@@ -117,24 +117,24 @@ public final class LLVMAggregateFactory {
         int[] offsets = new int[types.length];
         LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[types.length];
         int currentOffset = 0;
-        int structSize = LLVMTypeHelper.getByteSize(structType);
-        int structAlignment = LLVMTypeHelper.getAlignmentByte(structType);
+        int structSize = runtime.getTypeHelper().getByteSize(structType);
+        int structAlignment = runtime.getTypeHelper().getAlignmentByte(structType);
         LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(structType, structSize, structAlignment);
         for (int i = 0; i < types.length; i++) {
             ResolvedType resolvedType = types[i];
             if (!packed) {
-                currentOffset += LLVMTypeHelper.computePaddingByte(currentOffset, resolvedType);
+                currentOffset += runtime.getTypeHelper().computePaddingByte(currentOffset, resolvedType);
             }
             offsets[i] = currentOffset;
-            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
-            nodes[i] = createStructWriteNode(constants[i], resolvedType);
+            int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
+            nodes[i] = createStructWriteNode(runtime, constants[i], resolvedType);
             currentOffset += byteSize;
         }
         return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
     }
 
-    private static LLVMStructWriteNode createStructWriteNode(LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
-        int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+    private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
+        int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
         LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType).getType();
         switch (llvmType) {
             case I1:

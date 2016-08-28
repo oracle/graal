@@ -93,7 +93,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -109,7 +108,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     protected LLVMParserRuntime runtime;
 
     public NodeFactoryFacadeImpl(LLVMParserRuntime runtime) {
-        this.runtime = runtime;
+        setUpFacade(runtime);
     }
 
     @Override
@@ -139,7 +138,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return LLVMMemoryReadWriteFactory.createStore((LLVMAddressNode) pointerNode, valueNode, type);
+        return LLVMMemoryReadWriteFactory.createStore(runtime, (LLVMAddressNode) pointerNode, valueNode, type);
     }
 
     @Override
@@ -413,7 +412,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public Object allocateGlobalVariable(GlobalVariable globalVariable) {
         if (runtime.isGlobalVariableDefined(globalVariable.getName())) {
             ResolvedType resolvedType = runtime.resolve(globalVariable.getType());
-            int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+            int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
             LLVMAddress allocation = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(allocation, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));

@@ -187,4 +187,5 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public LLVMOptimizationConfiguration getOptimizationConfiguration() {
         return module.getOptimizationConfiguration();
     }
+
 }
