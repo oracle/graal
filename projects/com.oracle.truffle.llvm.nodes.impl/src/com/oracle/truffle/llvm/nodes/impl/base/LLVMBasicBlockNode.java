@@ -93,7 +93,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
                 if (exceptionSourceSection == null) {
                     throw e;
                 } else {
-                    String message = String.format("LLVM error in %s in %s", exceptionSourceSection.getIdentifier(), exceptionSourceSection.getSource().getName());
+                    String message = String.format("LLVM error in %s in %s - %s", exceptionSourceSection.getIdentifier(), exceptionSourceSection.getSource().getName(), e.getMessage());
                     throw new RuntimeException(message, e);
                 }
             }

@@ -134,12 +134,16 @@ public abstract class LLVMCallNode {
             throw new AssertionError("foreign function interface does not support 80 bit floats yet");
         } else if (originalArg instanceof LLVMFunctionNode) {
             LLVMFunctionDescriptor function = ((LLVMFunctionLiteralNode) originalArg).executeFunction();
-            String functionName = function.getName();
-            long getNativeSymbol = context.getNativeHandle(functionName);
-            if (getNativeSymbol != 0) {
-                return new LLVMI64LiteralNode(getNativeSymbol);
+            if (function.isNullFunction()) {
+                return new LLVMI64LiteralNode(0);
             } else {
-                throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+                String functionName = function.getName();
+                long getNativeSymbol = context.getNativeHandle(functionName);
+                if (getNativeSymbol != 0) {
+                    return new LLVMI64LiteralNode(getNativeSymbol);
+                } else {
+                    throw new LLVMUnsupportedException(UnsupportedReason.FUNCTION_POINTER_ESCAPES_TO_NATIVE);
+                }
             }
         } else {
             return originalArg;
