@@ -805,7 +805,7 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
             for alternativeProgram in alternativePrograms:
                 alternativeProgramPath = which(alternativeProgram)
                 if alternativeProgramPath is not None:
-                    assert testSupportedVersion(alternativeProgramPath)
+                    assert testSupportedVersion(alternativeProgramPath, supportedVersions)
                     return alternativeProgramPath
     return None
 
