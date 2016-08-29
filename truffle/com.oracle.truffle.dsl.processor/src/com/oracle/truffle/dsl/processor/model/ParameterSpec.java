@@ -58,7 +58,7 @@ public class ParameterSpec {
         this.anyType = anyTypeTemp;
     }
 
-    public boolean isAnnotated() {
+    public boolean isCached() {
         return false;
     }
 
@@ -122,6 +122,11 @@ public class ParameterSpec {
 
     public boolean matches(VariableElement variable) {
         if (anyType) {
+            if (!allowSubclasses) {
+                if (allowedTypes.size() > 0 && !ElementUtils.typeEquals(allowedTypes.iterator().next(), variable.asType())) {
+                    return false;
+                }
+            }
             return true;
         } else {
             for (TypeMirror type : allowedTypes) {

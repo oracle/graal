@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import org.junit.Ignore;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -39,10 +40,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheOverflowFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.CacheNodeWithReplaceFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheNodeFieldFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrder2Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrderFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCodeGenerationPosNegGuardFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndDynamicParameterFactory;
@@ -50,6 +53,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCached
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -183,6 +187,35 @@ public class CachedTest {
     }
 
     @Test
+    public void testCacheNodeWithReplace() {
+        CallTarget root = createCallTarget(CacheNodeWithReplaceFactory.getInstance());
+        assertEquals(42, root.call(41));
+        assertEquals(42, root.call(40));
+        assertEquals(42, root.call(39));
+    }
+
+    @NodeChild
+    static class CacheNodeWithReplace extends ValueNode {
+
+        @Specialization
+        static int do1(int value, @Cached("new()") NodeSubClass cachedNode) {
+            return cachedNode.execute(value);
+        }
+
+    }
+
+    public static class NodeSubClass extends Node {
+
+        private int increment = 1;
+
+        public int execute(int value) {
+            replace(new NodeSubClass()).increment = increment + 1;
+            return value + increment;
+        }
+
+    }
+
+    @Test
     public void testCacheMethod() {
         TestCacheMethod.invocations = 0;
         CallTarget root = createCallTarget(TestCacheMethodFactory.getInstance());
@@ -216,8 +249,11 @@ public class CachedTest {
         assertEquals(42, root.call(42));
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
-        // guards with just cached parameters are just invoked on the slow path
-        assertEquals(assertionsEnabled() ? 4 : 1, TestGuardWithJustCachedParameter.invocations);
+        if (assertionsEnabled()) {
+            Assert.assertTrue(TestGuardWithJustCachedParameter.invocations >= 3);
+        } else {
+            assertEquals(1, TestGuardWithJustCachedParameter.invocations);
+        }
     }
 
     @NodeChild
@@ -246,8 +282,12 @@ public class CachedTest {
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
         // guards with just cached parameters are just invoked on the slow path
-        assertEquals(assertionsEnabled() ? 4 : 1, TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations);
-        assertEquals(4, TestGuardWithCachedAndDynamicParameter.dynamicMethodInvocations);
+        if (assertionsEnabled()) {
+            Assert.assertTrue(TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations >= 3);
+        } else {
+            assertEquals(1, TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations);
+        }
+        Assert.assertTrue(TestGuardWithCachedAndDynamicParameter.dynamicMethodInvocations >= 3);
     }
 
     @NodeChild
@@ -362,6 +402,36 @@ public class CachedTest {
         assertEquals(42, root.call(21));
         assertEquals(42, root.call(22));
         assertEquals(42, root.call(23));
+    }
+
+    @NodeChild
+    static class TestCachesOrder2 extends ValueNode {
+
+        @Specialization(guards = "cachedValue == value")
+        static int do1(int value, //
+                        @Cached("value") int cachedValue,
+                        @Cached("get(cachedValue)") int intermediateValue, //
+                        @Cached("transform(intermediateValue)") int boundByGuard, //
+                        @Cached("new()") Object notBoundByGuards) {
+            return intermediateValue;
+        }
+
+        protected int get(int i) {
+            return i * 2;
+        }
+
+        protected int transform(int i) {
+            return i * 3;
+        }
+
+    }
+
+    @Test
+    public void testCachesOrder2() {
+        CallTarget root = createCallTarget(TestCachesOrder2Factory.getInstance());
+        assertEquals(42, root.call(21));
+        assertEquals(44, root.call(22));
+        assertEquals(46, root.call(23));
     }
 
     @NodeChild

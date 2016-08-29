@@ -116,7 +116,7 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
-public class NodeGenFactory {
+public class DefaultNodeGenFactory {
 
     private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
     private static final String NAME_SUFFIX = "_";
@@ -137,7 +137,7 @@ public class NodeGenFactory {
     private List<ExecutableTypeData> usedTypes;
     private List<SpecializationData> reachableSpecializations;
 
-    public NodeGenFactory(ProcessorContext context, NodeData node) {
+    public DefaultNodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
         this.node = node;
         this.typeSystem = node.getTypeSystem();
@@ -232,10 +232,7 @@ public class NodeGenFactory {
         }
     }
 
-    public CodeTypeElement create() {
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(FINAL), nodeTypeName(node), node.getTemplateType().asType());
-        ElementUtils.setVisibility(clazz.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
-
+    public CodeTypeElement create(CodeTypeElement clazz) {
         for (NodeChildData child : node.getChildren()) {
             clazz.addOptional(createAccessChildMethod(child));
         }
@@ -1240,7 +1237,7 @@ public class NodeGenFactory {
     }
 
     private SpecializationGroup createSpecializationGroups() {
-        return SpecializationGroup.create(reachableSpecializations);
+        return SpecializationGroup.createDefault(reachableSpecializations);
     }
 
     private CodeTree createSlowPathExecute(SpecializationData specialization, LocalContext currentValues) {
@@ -2765,10 +2762,10 @@ public class NodeGenFactory {
 
     public static final class LocalContext {
 
-        private final NodeGenFactory factory;
+        private final DefaultNodeGenFactory factory;
         private final Map<String, LocalVariable> values = new HashMap<>();
 
-        private LocalContext(NodeGenFactory factory) {
+        private LocalContext(DefaultNodeGenFactory factory) {
             this.factory = factory;
         }
 
@@ -2792,7 +2789,7 @@ public class NodeGenFactory {
             return method;
         }
 
-        public static LocalContext load(NodeGenFactory factory, ExecutableTypeData type, int varargsThreshold) {
+        public static LocalContext load(DefaultNodeGenFactory factory, ExecutableTypeData type, int varargsThreshold) {
             LocalContext context = new LocalContext(factory);
             context.loadEvaluatedValues(type, varargsThreshold);
             return context;
@@ -2837,7 +2834,7 @@ public class NodeGenFactory {
             }
         }
 
-        public static LocalContext load(NodeGenFactory factory) {
+        public static LocalContext load(DefaultNodeGenFactory factory) {
             return load(factory, factory.createSpecializationNodeSignature(factory.node.getSignatureSize()), factory.varArgsThreshold);
         }
 

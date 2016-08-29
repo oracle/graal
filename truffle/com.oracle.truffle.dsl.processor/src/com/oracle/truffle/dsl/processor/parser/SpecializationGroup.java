@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.GuardExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -69,6 +70,10 @@ public final class SpecializationGroup {
         updateChildren(children);
     }
 
+    public boolean isEmpty() {
+        return typeGuards.isEmpty() && guards.isEmpty();
+    }
+
     public List<TypeGuard> getAllGuards() {
         List<TypeGuard> collectedGuards = new ArrayList<>();
         collectedGuards.addAll(typeGuards);
@@ -76,6 +81,17 @@ public final class SpecializationGroup {
             collectedGuards.addAll(parent.getAllGuards());
         }
         return collectedGuards;
+    }
+
+    public List<SpecializationData> collectSpecializations() {
+        List<SpecializationData> specializations = new ArrayList<>();
+        if (specialization != null) {
+            specializations.add(specialization);
+        }
+        for (SpecializationGroup group : children) {
+            specializations.addAll(group.collectSpecializations());
+        }
+        return specializations;
     }
 
     public List<GuardExpression> findElseConnectableGuards() {
@@ -210,12 +226,24 @@ public final class SpecializationGroup {
         return new SpecializationGroup(specialization);
     }
 
-    public static SpecializationGroup create(List<SpecializationData> specializations) {
+    public static SpecializationGroup createDefault(List<SpecializationData> specializations) {
         List<SpecializationGroup> groups = new ArrayList<>();
         for (SpecializationData specialization : specializations) {
             groups.add(new SpecializationGroup(specialization));
         }
-        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+        SpecializationGroup group = new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+
+        return group;
+    }
+
+    public static SpecializationGroup createFlat(List<SpecializationData> specializations) {
+        SpecializationGroup group = createDefault(specializations);
+
+        // trim groups
+        while (group.isEmpty() && group.getChildren().size() == 1) {
+            group = group.getChildren().iterator().next();
+        }
+        return group;
     }
 
     @Override
@@ -333,7 +361,7 @@ public final class SpecializationGroup {
             TypeGuard other = (TypeGuard) obj;
             if (signatureIndex != other.signatureIndex) {
                 return false;
-            } else if (!type.equals(other.type)) {
+            } else if (!ElementUtils.typeEquals(type, other.type)) {
                 return false;
             }
             return true;
@@ -360,4 +388,48 @@ public final class SpecializationGroup {
         }
         return parentChildren.get(index - 1);
     }
+
+    public List<SpecializationData> getAllSpecializations() {
+        SpecializationGroup p = this;
+        while (p.getParent() != null) {
+            p = p.getParent();
+        }
+        return p.collectSpecializations();
+    }
+
+    public boolean isLast() {
+        SpecializationGroup p = getParent();
+        if (p == null) {
+            return true;
+        }
+        if (p.getChildren().indexOf(this) == p.getChildren().size() - 1) {
+            return p.isLast();
+        }
+        return false;
+    }
+
+    public SpecializationGroup getLast() {
+        if (children.isEmpty()) {
+            return null;
+        }
+        return children.get(children.size() - 1);
+    }
+
+    private boolean hasFallthrough;
+
+    public void setFallthrough(boolean hasFallthrough) {
+        this.hasFallthrough = hasFallthrough;
+    }
+
+    public boolean hasFallthrough() {
+        if (hasFallthrough) {
+            return true;
+        }
+        SpecializationGroup lastChild = getLast();
+        if (lastChild != null) {
+            return lastChild.hasFallthrough();
+        }
+        return false;
+    }
+
 }

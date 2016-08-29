@@ -53,6 +53,7 @@ supports post initialization callback
 * Added TruffleInstrument.Env#toString(Node, Object) to allow string conversions for objects given a Node to identify the guest language.
 * Added EventContext#lookupExecutionEventNode(EventBinding) to lookup other execution event nodes using the binding at a source location.
 * Deprecated PolyglotEngine.Builder#onEvent(EventConsumer) and class EventConsumer, debugger events are now dispatched using the DebuggerSession.
+* Added [Node#getAtomicLock()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/Node.html#getAtomicLock--) to allow atomic updates that avoid creating a closure.
 
 ## Version 0.16
 * [Layout](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/object/dsl/Layout.html)
