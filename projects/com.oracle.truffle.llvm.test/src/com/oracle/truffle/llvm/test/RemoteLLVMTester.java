@@ -88,7 +88,7 @@ public class RemoteLLVMTester {
                     } catch (Exception e) {
                         printError(e);
                     }
-                    System.out.println("exit " + exitCode);
+                    System.out.println("\nexit " + exitCode);
                 }
             } catch (Throwable e) {
                 printError(e);

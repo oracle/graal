@@ -89,6 +89,10 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
                     throw new IllegalStateException();
                 }
                 if (RETURN_VALUE_PATTERN.matcher(line).matches()) {
+                    int lineBeforeExit = lines.size() - 2;
+                    if (outputPrintedNewline(lines, lineBeforeExit)) {
+                        lines.remove(lineBeforeExit);
+                    }
                     break;
                 } else if (line.matches("<error>")) {
                     readErrorAndFail(tuple.getBitCodeFile());
@@ -100,6 +104,10 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
             }
             return lines;
         }
+    }
+
+    private static boolean outputPrintedNewline(List<String> lines, int lineBeforeExit) {
+        return lines.get(lineBeforeExit).equals("");
     }
 
     protected static int parseAndRemoveReturnValue(List<String> expectedLines) {
