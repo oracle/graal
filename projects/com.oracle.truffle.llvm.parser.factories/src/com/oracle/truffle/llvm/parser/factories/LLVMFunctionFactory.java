@@ -154,7 +154,7 @@ public final class LLVMFunctionFactory {
                     return LLVMFunctionRetNodeGen.create((LLVMFunctionNode) retValue, retSlot);
                 case STRUCT:
                     ResolvedStructType structType = (ResolvedStructType) resolvedType;
-                    int size = LLVMTypeHelper.getByteSize(structType);
+                    int size = runtime.getTypeHelper().getByteSize(structType);
                     return LLVMStructRetNodeGen.create((LLVMAddressNode) retValue, retSlot, size);
                 default:
                     throw new AssertionError(type);

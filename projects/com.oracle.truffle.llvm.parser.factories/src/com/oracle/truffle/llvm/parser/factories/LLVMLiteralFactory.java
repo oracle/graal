@@ -122,7 +122,7 @@ public final class LLVMLiteralFactory {
         }
         switch (type) {
             case I_VAR_BITWIDTH:
-                int byteSize = LLVMTypeHelper.getByteSize(resolvedType);
+                int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
                 byte[] loadedBytes = new byte[byteSize];
                 Arrays.fill(loadedBytes, (byte) -1);
                 return new LLVMIVarBitLiteralNode(LLVMIVarBit.create(byteSize * Byte.SIZE, loadedBytes));
@@ -377,10 +377,10 @@ public final class LLVMLiteralFactory {
         int nrElements = arrayValues.size();
         ResolvedType elementType = arrayType.getContainedType(-1);
         LLVMBaseType llvmElementType = LLVMTypeHelper.getLLVMType(elementType).getType();
-        int baseTypeSize = LLVMTypeHelper.getByteSize(elementType);
+        int baseTypeSize = runtime.getTypeHelper().getByteSize(elementType);
         int size = nrElements * baseTypeSize;
-        LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(arrayType, size, LLVMTypeHelper.getAlignmentByte(arrayType));
-        int byteLength = LLVMTypeHelper.getByteSize(elementType);
+        LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(arrayType, size, runtime.getTypeHelper().getAlignmentByte(arrayType));
+        int byteLength = runtime.getTypeHelper().getByteSize(elementType);
         if (size == 0) {
             throw new AssertionError(llvmElementType + " has size of 0!");
         }

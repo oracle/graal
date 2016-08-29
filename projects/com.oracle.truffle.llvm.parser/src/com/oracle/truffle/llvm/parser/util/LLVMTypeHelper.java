@@ -54,9 +54,13 @@ import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class LLVMTypeHelper {
 
-    private static LLVMParserRuntime runtime;
+    private final LLVMParserRuntime runtime;
 
-    public static int getByteSize(ResolvedType type) {
+    public LLVMTypeHelper(LLVMParserRuntime runtime) {
+        this.runtime = runtime;
+    }
+
+    public int getByteSize(ResolvedType type) {
         int bits = type.getBits().intValue();
         if (type instanceof ResolvedIntegerType || type instanceof ResolvedFloatingType) {
             return Math.max(1, bits / Byte.SIZE);
@@ -87,7 +91,7 @@ public class LLVMTypeHelper {
         }
     }
 
-    public static int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver) {
+    public int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver) {
         int sumByte = 0;
         int largestAlignment = 0;
         for (TypedConstant constant : structure.getList().getTypedConstants()) {
@@ -107,7 +111,7 @@ public class LLVMTypeHelper {
         return totalSizeByte;
     }
 
-    private static int getStructSizeByte(ResolvedStructType type) {
+    private int getStructSizeByte(ResolvedStructType type) {
         int sumByte = 0;
         for (ResolvedType field : type.getFieldTypes()) {
             if (!type.isPacked()) {
@@ -133,7 +137,7 @@ public class LLVMTypeHelper {
         return padding;
     }
 
-    private static int largestAlignmentByte(ResolvedStructType structType) {
+    private int largestAlignmentByte(ResolvedStructType structType) {
         int largestAlignment = 0;
         for (ResolvedType field : structType.getFieldTypes()) {
             int alignment = getAlignmentByte(field);
@@ -217,7 +221,7 @@ public class LLVMTypeHelper {
         }
     }// Checkstyle: resume magic number name check
 
-    public static int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
+    public int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
         if (currentType == null) {
             return 0; // TODO: better throw an exception
         } else if (currentType instanceof ResolvedPointerType) {
@@ -235,7 +239,7 @@ public class LLVMTypeHelper {
                     sum += computePaddingByte(sum, containedType);
                 }
             }
-            if (!isPackedStructType(currentType) && LLVMTypeHelper.getStructSizeByte((ResolvedStructType) currentType) > sum) {
+            if (!isPackedStructType(currentType) && getStructSizeByte((ResolvedStructType) currentType) > sum) {
                 sum += computePaddingByte(sum, currentType.getContainedType(index));
             }
             return sum;
@@ -260,7 +264,7 @@ public class LLVMTypeHelper {
         return ((ResolvedStructType) currentType).isPacked();
     }
 
-    public static int computePaddingByte(int currentOffset, ResolvedType type) {
+    public int computePaddingByte(int currentOffset, ResolvedType type) {
         int alignmentByte = getAlignmentByte(type);
         if (alignmentByte == 0) {
             return 0;
@@ -273,11 +277,7 @@ public class LLVMTypeHelper {
         int getBitAlignment(LLVMBaseType type);
     }
 
-    public static void setParserRuntime(LLVMParserRuntime runtime) {
-        LLVMTypeHelper.runtime = runtime;
-    }
-
-    public static int getAlignmentByte(ResolvedType field) {
+    public int getAlignmentByte(ResolvedType field) {
         if (field instanceof ResolvedNamedType) {
             return getAlignmentByte(((ResolvedNamedType) field).getReferredType());
         } else if (field instanceof ResolvedStructType) {
