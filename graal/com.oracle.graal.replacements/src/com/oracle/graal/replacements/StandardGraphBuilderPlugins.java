@@ -197,7 +197,13 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Unsafe.class);
+        Registration r;
+        if (Java8OrEarlier) {
+            r = new Registration(plugins, Unsafe.class);
+        } else {
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe");
+        }
+
         for (JavaKind kind : JavaKind.values()) {
             if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                 Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
@@ -211,8 +217,12 @@ public class StandardGraphBuilderPlugins {
                 r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, true));
                 r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, true));
                 // Ordered object-based accesses
-                if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
-                    r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, true));
+                if (Java8OrEarlier) {
+                    if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
+                        r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, true));
+                    }
+                } else {
+                    r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, true));
                 }
                 if (kind != JavaKind.Boolean && kind != JavaKind.Object) {
                     // Raw accesses to memory addresses

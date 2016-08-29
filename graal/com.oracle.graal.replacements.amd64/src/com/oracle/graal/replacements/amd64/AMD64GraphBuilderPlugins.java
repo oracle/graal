@@ -28,6 +28,7 @@ import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOp
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -176,8 +177,12 @@ public class AMD64GraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Unsafe.class);
-
+        Registration r;
+        if (Java8OrEarlier) {
+            r = new Registration(plugins, Unsafe.class);
+        } else {
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe");
+        }
         for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 
