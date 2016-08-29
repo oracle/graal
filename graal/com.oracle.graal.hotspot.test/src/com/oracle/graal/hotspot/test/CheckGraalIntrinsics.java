@@ -348,6 +348,18 @@ public class CheckGraalIntrinsics extends GraalTest {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         GraalHotSpotVMConfig config = rt.getVMConfig();
 
+        /*
+         * These are known to be implemented but the platform dependent conditions for when they are
+         * enabled are complex so just ignore them all the time.
+         */
+        add(IGNORE,
+                        "java/lang/Integer.bitCount(I)I",
+                        "java/lang/Integer.numberOfLeadingZeros(I)I",
+                        "java/lang/Integer.numberOfTrailingZeros(I)I",
+                        "java/lang/Long.bitCount(J)I",
+                        "java/lang/Long.numberOfLeadingZeros(J)I",
+                        "java/lang/Long.numberOfTrailingZeros(J)I");
+
         if (!config.useCRC32Intrinsics) {
             // Registration of the CRC32 plugins is guarded by UseCRC32Intrinsics
             add(IGNORE, "java/util/zip/CRC32.update(II)I");
