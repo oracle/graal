@@ -20,10 +20,8 @@ addons:
     - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libxml2-dev
-  - sudo apt-get install -y libssl-dev
+    - libxml2-dev
+    - libssl-dev
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
