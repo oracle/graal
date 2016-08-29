@@ -25,24 +25,20 @@
 package com.oracle.truffle.api.source;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 
 final class FileSourceImpl extends Content implements Content.CreateURI {
-
     private final File file;
     private final String name; // Name used originally to describe the source
     private final String path; // Normalized path description of an actual file
 
-    FileSourceImpl(File file, String name, String path) {
+    FileSourceImpl(String content, File file, String name, String path) {
+        this.code = content;
         this.file = file.getAbsoluteFile();
         this.name = name;
         this.path = path;
@@ -63,27 +59,9 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
         return path;
     }
 
-    String readCode() throws IOException {
-        if (code == null) {
-            code = Source.read(file);
-        }
-        return code;
-    }
-
     @Override
-    public String getCode() {
-        if (Source.fileCacheEnabled) {
-            try {
-                return readCode();
-            } catch (IOException e) {
-                throw Source.raise(RuntimeException.class, e);
-            }
-        }
-        try {
-            return Source.read(file);
-        } catch (IOException e) {
-            throw Source.raise(RuntimeException.class, e);
-        }
+    String getCode() {
+        return code;
     }
 
     @Override
@@ -108,16 +86,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public Reader getReader() {
-        if (code != null) {
-            return new StringReader(code);
-        }
-        try {
-            return new InputStreamReader(new FileInputStream(file), "UTF-8");
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException("Can't find file " + path, e);
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("Unsupported encoding in file " + path, e);
-        }
+        return new StringReader(code);
     }
 
     @Override
