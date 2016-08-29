@@ -609,13 +609,6 @@ public class FlatNodeGenFactory {
         } else {
             SpecializationGroup group = SpecializationGroup.createFlat(implementedSpecializations);
             builder.tree(createFastPath(builder, implementedSpecializations, group, type, frameState));
-
-            for (SpecializationData implemented : implementedSpecializations) {
-                if (implemented.getMaximumNumberOfInstances() > 1) {
-                    method.getAnnotationMirrors().add(createExplodeLoop());
-                    break;
-                }
-            }
         }
         return method;
     }
@@ -813,6 +806,7 @@ public class FlatNodeGenFactory {
 
         if (boxingSplits.isEmpty()) {
             builder.tree(executeFastPathGroup(builder, frameState, currentType, originalGroup, sharedExecutes, null));
+            addExplodeLoop(builder, originalGroup);
         } else {
             FrameState originalFrameState = frameState.copy();
             boolean elseIf = false;
@@ -822,27 +816,40 @@ public class FlatNodeGenFactory {
                 CodeTree containsOnly = state.createContainsOnly(frameState, 0, -1, specializations.toArray(), allSpecializations.toArray());
                 builder.tree(containsOnly).string(" && ").tree(state.createIsNonZero(frameState));
                 builder.end().startBlock();
-                builder.tree(wrapInAMethod(builder, originalFrameState, split.getName(), executeFastPathGroup(builder, frameState.copy(), currentType, split.group, sharedExecutes, specializations)));
+                builder.tree(wrapInAMethod(builder, split.group, originalFrameState, split.getName(),
+                                executeFastPathGroup(builder, frameState.copy(), currentType, split.group, sharedExecutes, specializations)));
                 builder.end();
             }
 
             builder.startElseBlock();
-            builder.tree(wrapInAMethod(builder, originalFrameState, "generic", executeFastPathGroup(builder, frameState, currentType, originalGroup, sharedExecutes, null)));
+            builder.tree(wrapInAMethod(builder, originalGroup, originalFrameState, "generic", executeFastPathGroup(builder, frameState, currentType, originalGroup, sharedExecutes, null)));
             builder.end();
         }
 
         return builder.build();
     }
 
-    private CodeTree wrapInAMethod(CodeTreeBuilder parent, FrameState frameState, String suffix, CodeTree codeTree) {
+    private void addExplodeLoop(final CodeTreeBuilder builder, SpecializationGroup originalGroup) {
+        for (SpecializationData implemented : originalGroup.collectSpecializations()) {
+            if (implemented.getMaximumNumberOfInstances() > 1) {
+                ((CodeExecutableElement) builder.findMethod()).getAnnotationMirrors().add(createExplodeLoop());
+                break;
+            }
+        }
+    }
+
+    private CodeTree wrapInAMethod(CodeTreeBuilder parent, SpecializationGroup group, FrameState frameState, String suffix, CodeTree codeTree) {
         CodeExecutableElement parentMethod = (CodeExecutableElement) parent.findMethod();
         CodeTypeElement parentClass = (CodeTypeElement) parentMethod.getEnclosingElement();
         String name = parentMethod.getSimpleName().toString() + "_" + suffix + (boxingSplitIndex++);
         CodeExecutableElement method = parentClass.add(
                         frameState.createMethod(modifiers(Modifier.PRIVATE), parentMethod.getReturnType(), name, FRAME_VALUE,
                                         STATE_VALUE));
-        method.createBuilder().tree(codeTree);
+        CodeTreeBuilder builder = method.createBuilder();
+        builder.tree(codeTree);
         method.getThrownTypes().addAll(parentMethod.getThrownTypes());
+        addExplodeLoop(builder, group);
+
         CodeTreeBuilder parentBuilder = parent.create();
         parentBuilder.startReturn();
         parentBuilder.startCall(method.getSimpleName().toString());
@@ -1692,7 +1699,8 @@ public class FlatNodeGenFactory {
         boolean useSpecializationClass = specialization != null && useSpecializationClass(specialization);
 
         if (execution.isFastPath()) {
-            final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && group.getAllSpecializations().size() == allowedSpecializations.size();
+            final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
+                            group.getAllSpecializations().size() == allowedSpecializations.size();
             if ((!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = null;
                 if (!stateGuaranteed) {
@@ -2713,6 +2721,7 @@ public class FlatNodeGenFactory {
             elseIf = builder.startIf(elseIf);
             throwsUnexpected |= executableType.hasUnexpectedValue(context);
             builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
+            builder.string(" && ").tree(state.createIsNonZero(frameState));
             builder.end();
             builder.startBlock();
             builder.startStatement().string(target.getName()).string(" = ");
