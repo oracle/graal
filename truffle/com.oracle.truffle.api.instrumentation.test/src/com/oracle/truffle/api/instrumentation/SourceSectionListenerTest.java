@@ -68,7 +68,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         instrument.setEnabled(true);
         TestLoadSourceSection1 impl = instrument.lookup(TestLoadSourceSection1.class);
 
-        assertSections(impl.query(null), sourceSections1);
+        assertSections(impl.query(SourceSectionFilter.ANY), sourceSections1);
         assertSections(impl.query(statementFilter), sourceSections1[0]);
         assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2]);
 
@@ -83,7 +83,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyStatements, sourceSections1[0], sourceSections2[0]);
         assertEvents(impl.onlyExpressions, sourceSections1[1], sourceSections1[2], sourceSections2[1]);
 
-        assertSections(impl.query(null), merge(sourceSections1, sourceSections2));
+        assertSections(impl.query(SourceSectionFilter.ANY), merge(sourceSections1, sourceSections2));
         assertSections(impl.query(statementFilter), sourceSections1[0], sourceSections2[0]);
         assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2], sourceSections2[1]);
 
@@ -100,7 +100,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyStatements, sourceSections1[0], sourceSections2[0]);
         assertEvents(impl.onlyExpressions, sourceSections1[1], sourceSections1[2], sourceSections2[1]);
 
-        assertSections(impl.query(null), merge(sourceSections1, sourceSections2, sourceSections3));
+        assertSections(impl.query(SourceSectionFilter.ANY), merge(sourceSections1, sourceSections2, sourceSections3));
         assertSections(impl.query(statementFilter), sourceSections1[0], sourceSections2[0], sourceSections3[0]);
         assertSections(impl.query(exprFilter), sourceSections1[1], sourceSections1[2], sourceSections2[1], sourceSections3[1], sourceSections3[2], sourceSections3[3]);
 
