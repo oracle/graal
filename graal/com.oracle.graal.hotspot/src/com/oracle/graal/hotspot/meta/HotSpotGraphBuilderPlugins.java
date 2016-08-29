@@ -433,10 +433,6 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
         if (config.useCRC32Intrinsics) {
-            assert config.aescryptEncryptBlockStub != 0L;
-            assert config.aescryptDecryptBlockStub != 0L;
-            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
-            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
             Registration r = new Registration(plugins, CRC32.class);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
             if (Java8OrEarlier) {
