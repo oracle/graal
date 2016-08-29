@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,13 +128,39 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     static {
+        add(IGNORE,
+                        // dead
+                        "java/lang/Math.atan2(DD)D",
+                        // Used during stack walking
+                        "java/lang/Throwable.fillInStackTrace()Ljava/lang/Throwable;",
+                        // Marker intrinsic id
+                        "java/lang/invoke/MethodHandle.<compiledLambdaForm>*",
+                        // Marker intrinsic id
+                        "java/lang/invoke/MethodHandle.invoke*",
+                        // Implemented through lowering
+                        "java/lang/ref/Reference.get()Ljava/lang/Object;",
+                        // Used during stack walk
+                        "java/lang/reflect/Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+                        // Only used by C1
+                        "java/nio/Buffer.checkIndex(I)I",
+                        // dead
+                        "sun/misc/Unsafe.park(ZJ)V",
+                        // dead
+                        "sun/misc/Unsafe.prefetchRead(Ljava/lang/Object;J)V",
+                        // dead
+                        "sun/misc/Unsafe.prefetchReadStatic(Ljava/lang/Object;J)V",
+                        // dead
+                        "sun/misc/Unsafe.prefetchWrite(Ljava/lang/Object;J)V",
+                        // dead
+                        "sun/misc/Unsafe.prefetchWriteStatic(Ljava/lang/Object;J)V",
+                        // dead
+                        "sun/misc/Unsafe.unpark(Ljava/lang/Object;)V");
 
         add(TO_BE_INVESTIGATED,
                         // JDK 8
                         "java/lang/Double.doubleToLongBits(D)J",
                         "java/lang/Float.floatToIntBits(F)I",
                         "java/lang/Integer.toString(I)Ljava/lang/String;",
-                        "java/lang/Math.atan2(DD)D",
                         "java/lang/Math.decrementExact(I)I",
                         "java/lang/Math.decrementExact(J)J",
                         "java/lang/Math.incrementExact(I)I",
@@ -159,26 +186,14 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
                         "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
                         "java/lang/StringBuilder.toString()Ljava/lang/String;",
-                        "java/lang/Throwable.fillInStackTrace()Ljava/lang/Throwable;",
-                        "java/lang/invoke/MethodHandle.<compiledLambdaForm>*",
-                        "java/lang/invoke/MethodHandle.invoke*",
-                        "java/lang/ref/Reference.get()Ljava/lang/Object;",
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
-                        "java/lang/reflect/Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
                         "java/math/BigInteger.multiplyToLen([II[II[I)[I",
-                        "java/nio/Buffer.checkIndex(I)I",
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;",
                         "oracle/jrockit/jfr/Timing.counterTime()J",
                         "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
                         "oracle/jrockit/jfr/VMJFR.threadID()I",
                         "sun/misc/Unsafe.copyMemory(Ljava/lang/Object;JLjava/lang/Object;JJ)V",
-                        "sun/misc/Unsafe.park(ZJ)V",
-                        "sun/misc/Unsafe.prefetchRead(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchReadStatic(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchWrite(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchWriteStatic(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.unpark(Ljava/lang/Object;)V",
                         "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
                         "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I",
                         "sun/security/provider/SHA.implCompress([BI)V",
@@ -225,7 +240,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
                         "java/util/zip/Adler32.updateByteBuffer(IJII)I",
                         "java/util/zip/Adler32.updateBytes(I[BII)I",
-                        "jdk/internal/misc/Unsafe.allocateInstance(Ljava/lang/Class;)Ljava/lang/Object;",
                         "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
                         "jdk/internal/misc/Unsafe.compareAndExchangeByteAcquire(Ljava/lang/Object;JBB)B",
                         "jdk/internal/misc/Unsafe.compareAndExchangeByteRelease(Ljava/lang/Object;JBB)B",
@@ -243,104 +257,40 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "jdk/internal/misc/Unsafe.compareAndExchangeShortRelease(Ljava/lang/Object;JSS)S",
                         "jdk/internal/misc/Unsafe.compareAndExchangeShortVolatile(Ljava/lang/Object;JSS)S",
                         "jdk/internal/misc/Unsafe.compareAndSwapByte(Ljava/lang/Object;JBB)Z",
-                        "jdk/internal/misc/Unsafe.compareAndSwapInt(Ljava/lang/Object;JII)Z",
-                        "jdk/internal/misc/Unsafe.compareAndSwapLong(Ljava/lang/Object;JJJ)Z",
-                        "jdk/internal/misc/Unsafe.compareAndSwapObject(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
                         "jdk/internal/misc/Unsafe.compareAndSwapShort(Ljava/lang/Object;JSS)Z",
                         "jdk/internal/misc/Unsafe.copyMemory0(Ljava/lang/Object;JLjava/lang/Object;JJ)V",
-                        "jdk/internal/misc/Unsafe.fullFence()V",
                         "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
-                        "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
-                        "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                         "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
                         "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
-                        "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
-                        "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
-                        "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
                         "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
-                        "jdk/internal/misc/Unsafe.getBoolean(Ljava/lang/Object;J)Z",
                         "jdk/internal/misc/Unsafe.getBooleanAcquire(Ljava/lang/Object;J)Z",
                         "jdk/internal/misc/Unsafe.getBooleanOpaque(Ljava/lang/Object;J)Z",
-                        "jdk/internal/misc/Unsafe.getBooleanVolatile(Ljava/lang/Object;J)Z",
-                        "jdk/internal/misc/Unsafe.getByte(Ljava/lang/Object;J)B",
                         "jdk/internal/misc/Unsafe.getByteAcquire(Ljava/lang/Object;J)B",
                         "jdk/internal/misc/Unsafe.getByteOpaque(Ljava/lang/Object;J)B",
-                        "jdk/internal/misc/Unsafe.getByteVolatile(Ljava/lang/Object;J)B",
-                        "jdk/internal/misc/Unsafe.getChar(Ljava/lang/Object;J)C",
                         "jdk/internal/misc/Unsafe.getCharAcquire(Ljava/lang/Object;J)C",
                         "jdk/internal/misc/Unsafe.getCharOpaque(Ljava/lang/Object;J)C",
-                        "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
-                        "jdk/internal/misc/Unsafe.getCharVolatile(Ljava/lang/Object;J)C",
-                        "jdk/internal/misc/Unsafe.getDouble(Ljava/lang/Object;J)D",
                         "jdk/internal/misc/Unsafe.getDoubleAcquire(Ljava/lang/Object;J)D",
                         "jdk/internal/misc/Unsafe.getDoubleOpaque(Ljava/lang/Object;J)D",
-                        "jdk/internal/misc/Unsafe.getDoubleVolatile(Ljava/lang/Object;J)D",
-                        "jdk/internal/misc/Unsafe.getFloat(Ljava/lang/Object;J)F",
                         "jdk/internal/misc/Unsafe.getFloatAcquire(Ljava/lang/Object;J)F",
                         "jdk/internal/misc/Unsafe.getFloatOpaque(Ljava/lang/Object;J)F",
-                        "jdk/internal/misc/Unsafe.getFloatVolatile(Ljava/lang/Object;J)F",
-                        "jdk/internal/misc/Unsafe.getInt(Ljava/lang/Object;J)I",
                         "jdk/internal/misc/Unsafe.getIntAcquire(Ljava/lang/Object;J)I",
                         "jdk/internal/misc/Unsafe.getIntOpaque(Ljava/lang/Object;J)I",
-                        "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
-                        "jdk/internal/misc/Unsafe.getIntVolatile(Ljava/lang/Object;J)I",
-                        "jdk/internal/misc/Unsafe.getLong(Ljava/lang/Object;J)J",
                         "jdk/internal/misc/Unsafe.getLongAcquire(Ljava/lang/Object;J)J",
                         "jdk/internal/misc/Unsafe.getLongOpaque(Ljava/lang/Object;J)J",
-                        "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
-                        "jdk/internal/misc/Unsafe.getLongVolatile(Ljava/lang/Object;J)J",
-                        "jdk/internal/misc/Unsafe.getObject(Ljava/lang/Object;J)Ljava/lang/Object;",
                         "jdk/internal/misc/Unsafe.getObjectAcquire(Ljava/lang/Object;J)Ljava/lang/Object;",
                         "jdk/internal/misc/Unsafe.getObjectOpaque(Ljava/lang/Object;J)Ljava/lang/Object;",
-                        "jdk/internal/misc/Unsafe.getObjectVolatile(Ljava/lang/Object;J)Ljava/lang/Object;",
-                        "jdk/internal/misc/Unsafe.getShort(Ljava/lang/Object;J)S",
                         "jdk/internal/misc/Unsafe.getShortAcquire(Ljava/lang/Object;J)S",
                         "jdk/internal/misc/Unsafe.getShortOpaque(Ljava/lang/Object;J)S",
-                        "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
-                        "jdk/internal/misc/Unsafe.getShortVolatile(Ljava/lang/Object;J)S",
-                        "jdk/internal/misc/Unsafe.loadFence()V",
                         "jdk/internal/misc/Unsafe.park(ZJ)V",
-                        "jdk/internal/misc/Unsafe.putBoolean(Ljava/lang/Object;JZ)V",
                         "jdk/internal/misc/Unsafe.putBooleanOpaque(Ljava/lang/Object;JZ)V",
-                        "jdk/internal/misc/Unsafe.putBooleanRelease(Ljava/lang/Object;JZ)V",
-                        "jdk/internal/misc/Unsafe.putBooleanVolatile(Ljava/lang/Object;JZ)V",
-                        "jdk/internal/misc/Unsafe.putByte(Ljava/lang/Object;JB)V",
                         "jdk/internal/misc/Unsafe.putByteOpaque(Ljava/lang/Object;JB)V",
-                        "jdk/internal/misc/Unsafe.putByteRelease(Ljava/lang/Object;JB)V",
-                        "jdk/internal/misc/Unsafe.putByteVolatile(Ljava/lang/Object;JB)V",
-                        "jdk/internal/misc/Unsafe.putChar(Ljava/lang/Object;JC)V",
                         "jdk/internal/misc/Unsafe.putCharOpaque(Ljava/lang/Object;JC)V",
-                        "jdk/internal/misc/Unsafe.putCharRelease(Ljava/lang/Object;JC)V",
-                        "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
-                        "jdk/internal/misc/Unsafe.putCharVolatile(Ljava/lang/Object;JC)V",
-                        "jdk/internal/misc/Unsafe.putDouble(Ljava/lang/Object;JD)V",
                         "jdk/internal/misc/Unsafe.putDoubleOpaque(Ljava/lang/Object;JD)V",
-                        "jdk/internal/misc/Unsafe.putDoubleRelease(Ljava/lang/Object;JD)V",
-                        "jdk/internal/misc/Unsafe.putDoubleVolatile(Ljava/lang/Object;JD)V",
-                        "jdk/internal/misc/Unsafe.putFloat(Ljava/lang/Object;JF)V",
                         "jdk/internal/misc/Unsafe.putFloatOpaque(Ljava/lang/Object;JF)V",
-                        "jdk/internal/misc/Unsafe.putFloatRelease(Ljava/lang/Object;JF)V",
-                        "jdk/internal/misc/Unsafe.putFloatVolatile(Ljava/lang/Object;JF)V",
-                        "jdk/internal/misc/Unsafe.putInt(Ljava/lang/Object;JI)V",
                         "jdk/internal/misc/Unsafe.putIntOpaque(Ljava/lang/Object;JI)V",
-                        "jdk/internal/misc/Unsafe.putIntRelease(Ljava/lang/Object;JI)V",
-                        "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
-                        "jdk/internal/misc/Unsafe.putIntVolatile(Ljava/lang/Object;JI)V",
-                        "jdk/internal/misc/Unsafe.putLong(Ljava/lang/Object;JJ)V",
                         "jdk/internal/misc/Unsafe.putLongOpaque(Ljava/lang/Object;JJ)V",
-                        "jdk/internal/misc/Unsafe.putLongRelease(Ljava/lang/Object;JJ)V",
-                        "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
-                        "jdk/internal/misc/Unsafe.putLongVolatile(Ljava/lang/Object;JJ)V",
-                        "jdk/internal/misc/Unsafe.putObject(Ljava/lang/Object;JLjava/lang/Object;)V",
                         "jdk/internal/misc/Unsafe.putObjectOpaque(Ljava/lang/Object;JLjava/lang/Object;)V",
-                        "jdk/internal/misc/Unsafe.putObjectRelease(Ljava/lang/Object;JLjava/lang/Object;)V",
-                        "jdk/internal/misc/Unsafe.putObjectVolatile(Ljava/lang/Object;JLjava/lang/Object;)V",
-                        "jdk/internal/misc/Unsafe.putShort(Ljava/lang/Object;JS)V",
                         "jdk/internal/misc/Unsafe.putShortOpaque(Ljava/lang/Object;JS)V",
-                        "jdk/internal/misc/Unsafe.putShortRelease(Ljava/lang/Object;JS)V",
-                        "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V",
-                        "jdk/internal/misc/Unsafe.putShortVolatile(Ljava/lang/Object;JS)V",
-                        "jdk/internal/misc/Unsafe.storeFence()V",
                         "jdk/internal/misc/Unsafe.unpark(Ljava/lang/Object;)V",
                         "jdk/internal/misc/Unsafe.weakCompareAndSwapByte(Ljava/lang/Object;JBB)Z",
                         "jdk/internal/misc/Unsafe.weakCompareAndSwapByteAcquire(Ljava/lang/Object;JBB)Z",
@@ -378,6 +328,21 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
                             "sun/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
                             "sun/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+            // JDK 9
+            add(TO_BE_INVESTIGATED,
+                            "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
+                            "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
+                            "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
+                            "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
+                            "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
+                            "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
+                            "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
+                            "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
+                            "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
+                            "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
+                            "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
+                            "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
+                            "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
         }
 
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
@@ -472,6 +437,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (!missing.isEmpty()) {
+            Collections.sort(missing);
             String missingString = missing.stream().collect(Collectors.joining(String.format("%n    ")));
             fail("missing Graal intrinsics for:%n    %s", missingString);
         }
