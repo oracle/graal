@@ -333,7 +333,7 @@ final class InstrumentationHandler {
         instrumenter.initialize();
     }
 
-    private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, AbstractInstrumenter instrumenter) {
+    private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, Instrumenter instrumenter) {
         if (bindings.isEmpty()) {
             return Collections.emptyList();
         }
@@ -956,18 +956,6 @@ final class InstrumentationHandler {
         public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
-        }
-
-        @Override
-        public List<SourceSection> querySourceSections(SourceSectionFilter filter) {
-            final List<SourceSection> sourceSectionList = new ArrayList<>();
-            EventBinding<?> binding = attachLoadSourceSectionListener(filter == null ? SourceSectionFilter.ANY : filter, new LoadSourceSectionListener() {
-                public void onLoad(LoadSourceSectionEvent event) {
-                    sourceSectionList.add(event.getSourceSection());
-                }
-            }, true);
-            binding.dispose();
-            return Collections.unmodifiableList(sourceSectionList);
         }
 
         private void verifySourceOnly(SourceSectionFilter filter) {
