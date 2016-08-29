@@ -230,7 +230,8 @@ public class MergeSpecializationsTest {
     private static void assertState(Node node, int[] expectedOrder, int checkedIndices) throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException {
         Field stateField = node.getClass().getDeclaredField("state_");
         stateField.setAccessible(true);
-        int state = (((Number) stateField.get(node))).intValue();
+        int state = ((((Number) stateField.get(node))).intValue() & ~0x1) >> 1; // exclude
+                                                                                // uninitialized
         Arrays.sort(expectedOrder, 0, checkedIndices);
         int mask = 0;
         for (int i = 0; i < checkedIndices; i++) {

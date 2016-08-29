@@ -138,6 +138,7 @@ public class FlatNodeGenFactory {
         this.reachableSpecializations = calculateReachableSpecializations();
 
         List<Object> objects = new ArrayList<>();
+        objects.add(node.getUninitializedSpecialization());
         Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
         for (SpecializationData specialization : reachableSpecializations) {
             objects.add(specialization);
@@ -329,7 +330,9 @@ public class FlatNodeGenFactory {
     }
 
     private void createFields(CodeTypeElement clazz) {
-        state.declareFields(clazz);
+        CodeVariableElement var = state.declareFields(clazz);
+        var.createInitBuilder().string("1");
+
         if (requiresExclude()) {
             exclude.declareFields(clazz);
         }
@@ -487,7 +490,7 @@ public class FlatNodeGenFactory {
         }
 
         final CodeTreeBuilder builder = method.createBuilder();
-        builder.tree(state.createLoad(frameState));
+        builder.tree(state.createLoad(frameState, null));
 
         builder.tree(visitSpecializationGroup(builder, group, executableType, frameState, null, NodeExecutionMode.FALLBACK_GUARD));
         builder.returnTrue();
@@ -653,9 +656,12 @@ public class FlatNodeGenFactory {
                     List<SpecializationData> delegateSpecializations = filterImplementedSpecializations(delegateType, filterCompatibleSpecializations(delegateType, reachableSpecializations));
                     coversAllSpecializations = delegateSpecializations.size() == reachableSpecializations.size();
                     if (!coversAllSpecializations) {
-                        builder.tree(state.createLoad(frameState));
+                        builder.tree(state.createLoad(frameState, null));
                         elseIf = delegateBuilder.startIf(elseIf);
-                        delegateBuilder.tree(state.createContainsOnly(frameState, 0, -1, delegateSpecializations.toArray(), reachableSpecializations.toArray())).end();
+                        List<SpecializationData> allSpecializations = new ArrayList<>();
+                        allSpecializations.add(node.getUninitializedSpecialization());
+                        allSpecializations.addAll(reachableSpecializations);
+                        delegateBuilder.tree(state.createContainsOnly(frameState, 0, -1, delegateSpecializations.toArray(), allSpecializations.toArray())).end();
                         delegateBuilder.startBlock();
                     }
                     delegatedDelegateTypes.add(delegateType);
@@ -674,7 +680,7 @@ public class FlatNodeGenFactory {
             ExecutableTypeData delegateType = compatibleDelegateTypes.get(0);
             coversAllSpecializations = notImplemented.size() == reachableSpecializations.size();
             if (!coversAllSpecializations) {
-                builder.tree(state.createLoad(frameState));
+                builder.tree(state.createLoad(frameState, null));
                 elseIf = delegateBuilder.startIf(elseIf);
                 delegateBuilder.tree(state.createContains(frameState, notImplemented.toArray())).end();
                 delegateBuilder.startBlock();
@@ -731,9 +737,9 @@ public class FlatNodeGenFactory {
 
         builder.startSynchronized("getAtomicLock()");
 
-        builder.tree(state.createLoad(frameState));
+        builder.tree(state.createLoad(frameState, node.getUninitializedSpecialization()));
         if (requiresExclude()) {
-            builder.tree(exclude.createLoad(frameState));
+            builder.tree(exclude.createLoad(frameState, null));
         }
 
         FrameState originalFrameState = frameState.copy();
@@ -783,7 +789,7 @@ public class FlatNodeGenFactory {
                     FrameState frameState) {
         final CodeTreeBuilder builder = parent.create();
 
-        builder.tree(state.createLoad(frameState));
+        builder.tree(state.createLoad(frameState, null));
 
         int sharedExecutes = 0;
         for (NodeExecutionData execution : node.getChildExecutions()) {
@@ -813,8 +819,12 @@ public class FlatNodeGenFactory {
             for (BoxingSplit split : boxingSplits) {
                 elseIf = builder.startIf(elseIf);
                 List<SpecializationData> specializations = split.group.collectSpecializations();
-                CodeTree containsOnly = state.createContainsOnly(frameState, 0, -1, specializations.toArray(), allSpecializations.toArray());
-                builder.tree(containsOnly).string(" && ").tree(state.createIsNonZero(frameState));
+
+                List<SpecializationData> containsOnlySpecializations = new ArrayList<>();
+                containsOnlySpecializations.add(node.getUninitializedSpecialization());
+                containsOnlySpecializations.addAll(allSpecializations);
+                CodeTree containsOnly = state.createContainsOnly(frameState, 0, -1, specializations.toArray(), containsOnlySpecializations.toArray());
+                builder.tree(containsOnly);
                 builder.end().startBlock();
                 builder.tree(wrapInAMethod(builder, split.group, originalFrameState, split.getName(),
                                 executeFastPathGroup(builder, frameState.copy(), currentType, split.group, sharedExecutes, specializations)));
@@ -911,10 +921,10 @@ public class FlatNodeGenFactory {
             if (!guards.isEmpty()) {
                 boolean directFound = false;
                 for (int i = 0; i < signatures.size(); i++) {
-                    if (!directFound && guards.equals(signatures.get(i))) {
-                        directFound = true;
-                    }
                     if (guards.containsAll(signatures.get(i))) {
+                        if (signatures.get(i).containsAll(guards)) {
+                            directFound = true;
+                        }
                         signatureSpecializations.get(i).add(specialization);
                     }
                 }
@@ -1191,7 +1201,7 @@ public class FlatNodeGenFactory {
         executable.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         CodeTreeBuilder builder = executable.createBuilder();
         FrameState frameState = FrameState.load(this);
-        builder.tree(state.createLoad(frameState));
+        builder.tree(state.createLoad(frameState, node.getUninitializedSpecialization()));
 
         if (node.needsRewrites(context)) {
             builder.startIf().tree(state.createIs(frameState, new Object[]{})).end();
@@ -2721,7 +2731,6 @@ public class FlatNodeGenFactory {
             elseIf = builder.startIf(elseIf);
             throwsUnexpected |= executableType.hasUnexpectedValue(context);
             builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
-            builder.string(" && ").tree(state.createIsNonZero(frameState));
             builder.end();
             builder.startBlock();
             builder.startStatement().string(target.getName()).string(" = ");
@@ -2816,11 +2825,12 @@ public class FlatNodeGenFactory {
             return bitIndex - 1;
         }
 
-        public void declareFields(CodeTypeElement clazz) {
-            clazz.add(createNodeField(PRIVATE, bitSetType, name + "_", CompilationFinal.class));
+        public CodeVariableElement declareFields(CodeTypeElement clazz) {
+            return clazz.add(createNodeField(PRIVATE, bitSetType, name + "_", CompilationFinal.class));
+
         }
 
-        public CodeTree createLoad(FrameState frameState) {
+        public CodeTree createLoad(FrameState frameState, Object maskObject) {
             if (frameState.get(name) != null) {
                 // already loaded
                 return CodeTreeBuilder.singleString("");
@@ -2828,7 +2838,15 @@ public class FlatNodeGenFactory {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             String fieldName = name + "_";
             LocalVariable var = new LocalVariable(bitSetType, name, null);
-            builder.tree(var.createDeclaration(CodeTreeBuilder.singleString(fieldName)));
+            CodeTreeBuilder init = builder.create();
+            init.tree(CodeTreeBuilder.singleString(fieldName));
+            if (maskObject != null) {
+                long mask = ~createMask(0, -1, new Object[]{maskObject});
+                init.string(" & ").string(formatMask(mask));
+                init.string("/* mask-active ", toString(maskObject), "*/");
+            }
+
+            builder.tree(var.createDeclaration(init.build()));
             frameState.set(name, var);
             return builder.build();
         }
@@ -2878,13 +2896,6 @@ public class FlatNodeGenFactory {
             return builder.build();
         }
 
-        public CodeTree createIsNonZero(FrameState frameState) {
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-            builder.tree(createReference(frameState)).string(" != 0");
-            builder.string(" /* ", label("is-any"), " */");
-            return builder.build();
-        }
-
         public CodeTree createContains(FrameState frameState, Object[] elements) {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             builder.startParantheses();
@@ -2907,7 +2918,11 @@ public class FlatNodeGenFactory {
 
         protected String toString(Object element) {
             if (element instanceof SpecializationData) {
-                return ElementUtils.createReferenceName(((SpecializationData) element).getMethod());
+                SpecializationData specialization = (SpecializationData) element;
+                if (specialization.isUninitialized()) {
+                    return "uninitialized";
+                }
+                return ElementUtils.createReferenceName(specialization.getMethod());
             } else if (element instanceof TypeGuard) {
                 int index = ((TypeGuard) element).getSignatureIndex();
                 String simpleName = ElementUtils.getSimpleName(((TypeGuard) element).getType());
