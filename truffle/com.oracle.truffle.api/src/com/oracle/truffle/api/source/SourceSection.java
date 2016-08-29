@@ -168,6 +168,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getEndLine() {
+        if (source.getLength() == 0) {
+            return 1;
+        }
         return source.getLineNumber(charIndex + charLength - 1);
     }
 
