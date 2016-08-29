@@ -37,10 +37,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.internal.SpecializationNode;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestCachedNodeFactory;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestNodeFactory;
+import com.oracle.truffle.api.dsl.test.TypeBoxingTest.TypeBoxingTypeSystem;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -51,6 +53,7 @@ public class MergeSpecializationsTest {
 
     @NodeChild
     @SuppressWarnings("unused")
+    @TypeSystemReference(TypeBoxingTypeSystem.class)
     abstract static class TestNode extends ValueNode {
 
         @Specialization
@@ -71,6 +74,7 @@ public class MergeSpecializationsTest {
 
     @NodeChild
     @SuppressWarnings("unused")
+    @TypeSystemReference(TypeBoxingTypeSystem.class)
     abstract static class TestCachedNode extends ValueNode {
 
         @Specialization(guards = "a == cachedA", limit = "3")

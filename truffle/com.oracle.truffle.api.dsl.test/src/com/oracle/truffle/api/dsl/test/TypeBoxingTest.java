@@ -29,6 +29,10 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest3NodeGen;
@@ -71,7 +75,7 @@ public class TypeBoxingTest {
     }
 
     @NodeChild
-    static abstract class TypeBoxingTest1 extends TestNode {
+    abstract static class TypeBoxingTest1 extends TestNode {
 
         @Specialization
         protected int doInt(int value) {
@@ -119,7 +123,7 @@ public class TypeBoxingTest {
     }
 
     @NodeChild
-    static abstract class TypeBoxingTest2 extends TestNode {
+    abstract static class TypeBoxingTest2 extends TestNode {
 
         @Specialization
         protected int doInt(int value) {
@@ -198,7 +202,7 @@ public class TypeBoxingTest {
     }
 
     @NodeChildren({@NodeChild, @NodeChild})
-    static abstract class TypeBoxingTest3 extends TestNode {
+    abstract static class TypeBoxingTest3 extends TestNode {
 
         @Specialization(guards = "value1 < 0")
         protected Object doInt(int value1, Object value2) {
@@ -217,7 +221,8 @@ public class TypeBoxingTest {
 
     }
 
-    static abstract class TestNode extends Node {
+    @TypeSystemReference(TypeBoxingTypeSystem.class)
+    abstract static class TestNode extends Node {
 
         public abstract Object execute();
 
@@ -243,6 +248,12 @@ public class TypeBoxingTest {
             executeIntInvoked++;
             return value;
         }
+
+    }
+
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class TypeBoxingTypeSystem {
 
     }
 
