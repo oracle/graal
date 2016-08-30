@@ -29,31 +29,22 @@
  */
 package uk.ac.man.cs.llvm.ir.model.constants;
 
-import java.util.Arrays;
 import uk.ac.man.cs.llvm.ir.types.Type;
 import uk.ac.man.cs.llvm.ir.types.VectorType;
 
-public final class VectorConstant extends AbstractConstant {
-
-    private final Constant[] elements;
+public final class VectorConstant extends AggregateConstant {
 
     public VectorConstant(VectorType type, Constant[] elements) {
-        super(type);
-        this.elements = elements;
+        super(type, elements);
+    }
+
+    public VectorConstant(VectorType type, int elemCount) {
+        this(type, new Constant[elemCount]);
     }
 
     public VectorConstant(VectorType type, Constant element) {
-        super(type);
-        elements = new Constant[type.getElementCount()];
-        Arrays.fill(elements, element);
-    }
-
-    public Constant getElement(int index) {
-        return elements[index];
-    }
-
-    public Constant[] getElements() {
-        return Arrays.copyOf(elements, elements.length);
+        super(type, new Constant[type.getElementCount()]);
+        fill(element);
     }
 
     public Type getElementType() {
@@ -61,7 +52,7 @@ public final class VectorConstant extends AbstractConstant {
     }
 
     public int getLength() {
-        return elements.length;
+        return getElementCount();
     }
 
     @Override

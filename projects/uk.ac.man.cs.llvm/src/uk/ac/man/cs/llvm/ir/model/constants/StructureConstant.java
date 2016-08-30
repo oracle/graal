@@ -32,25 +32,18 @@ package uk.ac.man.cs.llvm.ir.model.constants;
 import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public final class StructureConstant extends AbstractConstant {
-
-    private final Constant[] values;
+public final class StructureConstant extends AggregateConstant {
 
     public StructureConstant(StructureType type, Constant[] values) {
-        super(type);
-        this.values = values;
+        super(type, values);
     }
 
-    public Constant getElement(int index) {
-        return values[index];
-    }
-
-    public int getElementCount() {
-        return values.length;
+    public StructureConstant(StructureType type, int valueCount) {
+        this(type, new Constant[valueCount]);
     }
 
     public Type getElementType(int index) {
-        return values[index].getType();
+        return getElement(index).getType();
     }
 
     public boolean isPacked() {
@@ -61,11 +54,11 @@ public final class StructureConstant extends AbstractConstant {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("{ ");
-        for (int i = 0; i < values.length; i++) {
+        for (int i = 0; i < getElementCount(); i++) {
             if (i > 0) {
                 sb.append(", ");
             }
-            Constant value = values[i];
+            Constant value = getElement(i);
             sb.append(value.getType()).append(" ").append(value);
         }
         return sb.append("}").toString();

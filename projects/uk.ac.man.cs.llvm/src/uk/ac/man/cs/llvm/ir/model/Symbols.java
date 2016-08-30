@@ -31,11 +31,20 @@ package uk.ac.man.cs.llvm.ir.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import uk.ac.man.cs.llvm.ir.model.constants.AggregateConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.ArrayConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.Constant;
+import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
 import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.ArrayType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public final class Symbols {
 
@@ -76,6 +85,40 @@ public final class Symbols {
         }
 
         return consts;
+    }
+
+    public AggregateConstant createAggregate(Type type, int[] valueIndices) {
+        final AggregateConstant aggregateConstant;
+        if (type instanceof ArrayType) {
+            aggregateConstant = new ArrayConstant((ArrayType) type, valueIndices.length);
+        } else if (type instanceof StructureType) {
+            aggregateConstant = new StructureConstant((StructureType) type, valueIndices.length);
+        } else if (type instanceof VectorType) {
+            aggregateConstant = new VectorConstant((VectorType) type, valueIndices.length);
+        } else {
+            throw new RuntimeException("No value constant implementation for " + type);
+        }
+
+        for (int i = 0; i < valueIndices.length; i++) {
+            int index = valueIndices[i];
+            final Constant value;
+            if (index < size) {
+                value = (Constant) symbols[index];
+            } else {
+                ensureCapacity(index + 1);
+                if (symbols[index] == null) {
+                    symbols[index] = new ForwardReference();
+                }
+
+                final ForwardReference ref = (ForwardReference) symbols[index];
+                ref.addDependent(aggregateConstant, i);
+                value = ref;
+            }
+
+            aggregateConstant.replaceElement(i, value);
+        }
+
+        return aggregateConstant;
     }
 
     public int getSize() {
@@ -129,9 +172,10 @@ public final class Symbols {
         }
     }
 
-    private static class ForwardReference implements Symbol {
+    private static class ForwardReference implements Constant {
 
         private final List<Symbol> dependents = new ArrayList<>();
+        private final Map<AggregateConstant, Integer> aggregateDependents = new HashMap<>();
 
         ForwardReference() {
         }
@@ -140,10 +184,13 @@ public final class Symbols {
             dependents.add(dependent);
         }
 
-        public void replace(Symbol symbol) {
-            for (Symbol dependent : dependents) {
-                dependent.replace(this, symbol);
-            }
+        public void addDependent(AggregateConstant dependent, int index) {
+            aggregateDependents.put(dependent, index);
+        }
+
+        public void replace(Symbol replacement) {
+            aggregateDependents.forEach((key, val) -> key.replaceElement(val, replacement));
+            dependents.forEach(dependent -> dependent.replace(this, replacement));
         }
 
         @Override

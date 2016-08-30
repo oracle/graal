@@ -152,7 +152,7 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public void createFromValues(Type type, int[] values) {
-        symbols.addSymbol(Constant.createFromValues(type, symbols.getConstants(values)));
+        symbols.addSymbol(Constant.createFromValues(type, symbols, values));
     }
 
     @Override
