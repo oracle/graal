@@ -93,6 +93,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
                 if (exceptionSourceSection == null) {
                     throw e;
                 } else {
+                    @SuppressWarnings("deprecation")
                     String message = String.format("LLVM error in %s in %s - %s", exceptionSourceSection.getIdentifier(), exceptionSourceSection.getSource().getName(), e.getMessage());
                     throw new RuntimeException(message, e);
                 }
@@ -151,6 +152,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
