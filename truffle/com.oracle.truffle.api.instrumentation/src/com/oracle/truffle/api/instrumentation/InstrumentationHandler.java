@@ -333,7 +333,7 @@ final class InstrumentationHandler {
         instrumenter.initialize();
     }
 
-    private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, Instrumenter instrumenter) {
+    private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, AbstractInstrumenter instrumenter) {
         if (bindings.isEmpty()) {
             return Collections.emptyList();
         }
