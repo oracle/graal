@@ -64,6 +64,7 @@ public abstract class LLVMWriteNode extends LLVMNode {
 
     protected abstract FrameSlot getSlot();
 
+    @SuppressWarnings("deprecation")
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
