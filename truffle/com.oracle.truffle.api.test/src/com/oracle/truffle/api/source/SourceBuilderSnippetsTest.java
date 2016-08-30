@@ -41,7 +41,7 @@ public class SourceBuilderSnippetsTest {
         }
     }
 
-    @SuppressWarnings(value = "deprecation")
+    @SuppressWarnings({"deprecation", "sourcebuilder"})
     @Test
     public void relativeFile() throws Exception {
         if (!loadedOK) {

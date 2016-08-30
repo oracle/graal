@@ -1,3 +1,5 @@
+<!suppress-warnings="sourcebuilder">
+
 'Deprecated fromFileName method':
 com.oracle.truffle.api.source.Source.fromFileName($filename, $ignore$)
 =>
