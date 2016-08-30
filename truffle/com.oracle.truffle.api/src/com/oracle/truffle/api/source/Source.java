@@ -224,6 +224,7 @@ public abstract class Source {
      * @since 0.8 or earlier
      * @deprecated Use {@link #newBuilder(java.io.File)}
      */
+    @SuppressWarnings("sourcebuilder")
     @Deprecated
     public static Source fromFileName(String fileName) throws IOException {
         return fromFileName(fileName, false);
@@ -404,6 +405,7 @@ public abstract class Source {
      * @deprecated use {@link #subSource(int, int) base.subSource(baseCharIndex, base.getLength() -
      *             baseCharIndex)}
      */
+    @SuppressWarnings("sourcebuilder")
     @Deprecated
     public static Source subSource(Source base, int baseCharIndex) {
         CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
