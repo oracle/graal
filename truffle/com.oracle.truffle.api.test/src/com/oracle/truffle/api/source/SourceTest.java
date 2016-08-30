@@ -39,7 +39,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "sourcebuilder"})
 @RunWith(SeparateClassloaderTestRunner.class)
 public class SourceTest {
     @Test
