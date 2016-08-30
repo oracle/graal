@@ -7,6 +7,9 @@ $s instanceof com.oracle.truffle.api.source.Source &&
 $identifier instanceof String &&
 $charIndex instanceof int &&
 $length instanceof int
+=>
+'Use without identifier':
+$s.createSection($charIndex, $length)
 ;;
 'Identifier is being deprecated':
 $s.createSection(null, $charIndex, $length)
@@ -29,6 +32,9 @@ $identifier instanceof String &&
 $a instanceof int &&
 $charIndex instanceof int &&
 $length instanceof int
+=>
+'Use without identifier':
+$s.createSection($charIndex, $a, $length)
 ;;
 'Identifier is being deprecated':
 $s.createSection(null, $a, $charIndex, $length)
@@ -53,6 +59,9 @@ $a instanceof int &&
 $b instanceof int &&
 $charIndex instanceof int &&
 $length instanceof int
+=>
+'Use without identifier':
+$s.createSection($charIndex, $a, $b, $length)
 ;;
 'Identifier is being deprecated':
 $s.createSection(null, $a, $b, $charIndex, $length)
@@ -64,5 +73,5 @@ $charIndex instanceof int &&
 $length instanceof int
 =>
 'Use without identifier':
-$s.createSection($charIndex, $a, $length)
+$s.createSection($charIndex, $a, $b, $length)
 ;;

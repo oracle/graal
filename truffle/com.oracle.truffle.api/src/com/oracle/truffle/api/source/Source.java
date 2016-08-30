@@ -970,6 +970,7 @@ public abstract class Source {
      * @since 0.8 or earlier
      * @deprecated "identifier" being removed from SourceSection, use {@link #createSection(int)}
      */
+    @SuppressWarnings("sourcesection")
     @Deprecated
     public final SourceSection createSection(String identifier, int lineNumber) {
         final int charIndex = getTextMap().lineStartOffset(lineNumber);
