@@ -13,46 +13,46 @@ thus it makes little sense to require callers to handle the `IOException`.
 This change is binary compatible, yet it is source *incompatible* change.
 You may need to [adjust your sources](https://github.com/graalvm/fastr/commit/09ab156925d24bd28837907cc2ad336679afc7a2)
 to compile.
-* Deprecate support for the "identifier" associated with each SourceSection
-* Remove deprecated instrumentation API package com.oracle.truffle.api.instrument and all its classes.
-* Remove deprecated API method TruffleLanguage#isInstrumentable(Node), TruffleLanguage#getVisualizer(), TruffleLanguage#createWrapperNode(), TruffleLanguage.Env#instrumenter(), RootNode#applyInstrumentation()
-* Remove deprecated API Debugger#setTagBreakpoint
-* Remove deprecated API RootNode#applyInstrumentation
-* Remove deprecated tagging API in SourceSection and Source.
+* Deprecate support for the "identifier" associated with each [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html)
+* Remove deprecated instrumentation API package `com.oracle.truffle.api.instrument` and all its classes.
+* Remove deprecated API method [TruffleLanguage](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html)`.isInstrumentable(Node)`, `TruffleLanguage,getVisualizer()`, `TruffleLanguage,createWrapperNode()`, `TruffleLanguage.Env.instrumenter()`, `RootNode.applyInstrumentation()`
+* Remove deprecated API [Debugger](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html)`.setTagBreakpoint`
+* Remove deprecated API [RootNode](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/RootNode.html)`.applyInstrumentation`
+* Remove deprecated tagging API in [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html) and [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).
 * [TruffleLanguage.createContext](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html#createContext-com.oracle.truffle.api.TruffleLanguage.Env-)
 supports post initialization callback
 * All debugging APIs are now thread-safe and can be used from other threads.
 * Changed the debugging API to a session based model. 
-  * Added Debugger#find(TruffleLanguage.Env) to lookup the debugger when inside a guest language implementation.
-  * Added Debugger#startSession(SuspendedCallback) to start a new debugging session using a SuspendedCallback as replacement for ExecutionEvent#prepareStepInto().
-  * Added class DebuggerSession which represents a debugger session where breakpoints can be installed and the execution can be suspended and resumed.
-  * Added Breakpoint#newBuilder methods to create a new breakpoint using the builder pattern based on Source, URI or SourceSections.
-  * Added Breakpoint#isResolved() to find out whether the source location of a breakpoint is loaded by the guest language.
-  * Added Breakpoint#isDisposed() to find out whether a breakpoint is disposed.
-  * Added SuspendedEvent#getReturnValue() to get return values of calls during debugging.
-  * Added SuspendedEvent#getBreakpoints() to return the breakpoints that hit for a suspended event.
-  * Added SuspendedEvent#getStackFrames() to return all guest language stack frames.
-  * Added SuspendedEvent#getTopStackFrame() to return the topmost stack frame.
-  * Added SuspendedEvent#getSourceSection() to return the current guest lanugage execution location
-  * Added SuspendedEvent#getSourceSections() to return all guest lanugage execution locations of the current method in the AST.
-  * Added class DebugStackFrame which represents a guest language stack frame. Allows to get values from the current stack frame, access stack values and evaluate inline expressions.
-  * Added class DebugValue which represents a value on a stack frame or the result of an evaluated expression.
-  * Added class DebuggerTester which represents a utility for testing guest language debugger support more easily.
-  * Deprecated Breakpoint#getCondition() and replaced it with Breakpoint#getConditionExpression() to return a String instead of a Source object.
-  * Deprecated Breakpoint#setCondition(String) and replaced it with Breakpoint#setConditionExpression(String) to avoid throwing IOException.
-  * Deprecated class ExecutionEvent and replaced it with Debugger#startSession(SuspendedCallback)
-  * Deprecated Debugger methods setLineBreakpoint, getBreakpoints, pause. Replacements are available in the DebuggerSession class
-  * Deprecated Breakpoint#getState() to be replaced with Breakpoint#isResolved(), Breakpoint#isDisposed() and Breakpoint#isEnabled().
-  * Deprecated SuspendedEvent#getNode() and SuspendedEvent#getFrame() without direct replacement.
-  * Deprecated SuspendedEvent#getRecentWarnings() and replaced it with SuspendedEvent#getBreakpointConditionException(Breakpoint)
-  * Deprecated SuspendedEvent#eval and replaced it with DebugStackFrame#eval(String)
-  * Deprecated SuspendedEvent#getStack() and replaced it with SuspendedEvent#getStackFrames()
-  * Deprecated SuspendedEvent#toString(Object, FrameInstance) and replaced it with DebugValue.as(String.class).
-* Added SourceSectionFilter.Builder#sourceIs(SourcePredicate) to filter for source sections with a custom source predicate.
-* Added TruffleInstrument.Env#isEngineRoot(RootNode) to find out where the context of the current evaluation ends when looking up the guest language stack trace with TruffleRuntime#iterateFrames().
-* Added TruffleInstrument.Env#toString(Node, Object) to allow string conversions for objects given a Node to identify the guest language.
-* Added EventContext#lookupExecutionEventNode(EventBinding) to lookup other execution event nodes using the binding at a source location.
-* Deprecated PolyglotEngine.Builder#onEvent(EventConsumer) and class EventConsumer, debugger events are now dispatched using the DebuggerSession.
+  * Added [Debugger](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html)`.find(TruffleLanguage.Env)` to lookup the debugger when inside a guest language implementation.
+  * Added [Debugger](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html)`.startSession(SuspendedCallback)` to start a new debugging session using a SuspendedCallback as replacement for ExecutionEvent#prepareStepInto().
+  * Added class [DebuggerSession](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebuggerSession.html) which represents a debugger session where breakpoints can be installed and the execution can be suspended and resumed.
+  * Added [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.newBuilder` methods to create a new breakpoint using the builder pattern based on Source, URI or SourceSections.
+  * Added [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.isResolved()` to find out whether the source location of a breakpoint is loaded by the guest language.
+  * Added [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.isDisposed()` to find out whether a breakpoint is disposed.
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getReturnValue()` to get return values of calls during debugging.
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getBreakpoints()` to return the breakpoints that hit for a suspended event.
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getStackFrames()` to return all guest language stack frames.
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getTopStackFrame()` to return the topmost stack frame.
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getSourceSection()` to return the current guest lanugage execution location
+  * Added [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getSourceSections()` to return all guest lanugage execution locations of the current method in the AST.
+  * Added class [DebugStackFrame](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebugStackFrame.html) which represents a guest language stack frame. Allows to get values from the current stack frame, access stack values and evaluate inline expressions.
+  * Added class [DebugValue](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebugValue.html) which represents a value on a stack frame or the result of an evaluated expression.
+  * Added class [DebuggerTester](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebuggerTester.html) which represents a utility for testing guest language debugger support more easily.
+  * Deprecated [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.getCondition()` and replaced it with [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.getConditionExpression()` to return a String instead of a Source object.
+  * Deprecated [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.setCondition(String)` and replaced it with [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.setConditionExpression(String)` to avoid throwing IOException.
+  * Deprecated class `ExecutionEvent` and replaced it with [Debugger](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html)`.startSession(SuspendedCallback)`
+  * Deprecated [Debugger](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Debugger.html) methods setLineBreakpoint, getBreakpoints, pause. Replacements are available in the DebuggerSession class
+  * Deprecated [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.getState()` to be replaced with [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)isResolved(), [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)isDisposed() and [Breakpoint](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/Breakpoint.html)`.isEnabled()`.
+  * Deprecated [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getNode()` and [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html).getFrame() without direct replacement.
+  * Deprecated [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getRecentWarnings()` and replaced it with [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html).getBreakpointConditionException(Breakpoint)
+  * Deprecated [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.eval` and replaced it with `DebugStackFrame#eval(String)`
+  * Deprecated [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.getStack()` and replaced it with [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html).getStackFrames()
+  * Deprecated [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html)`.toString(Object, FrameInstance)` and replaced it with `DebugValue.as(String.class)`.
+* Added [SourceSectionFilter.Builder](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builderhtml).`sourceIs(SourcePredicate)` to filter for source sections with a custom source predicate.
+* Added [TruffleInstrument.Env](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html).`isEngineRoot(RootNode)` to find out where the context of the current evaluation ends when looking up the guest language stack trace with `TruffleRuntime#iterateFrames()`.
+* Added [TruffleInstrument.Env](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html).`toString(Node, Object)` to allow string conversions for objects given a Node to identify the guest language.
+* Added [EventContext](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/EventContext.html).`lookupExecutionEventNode(EventBinding)` to lookup other execution event nodes using the binding at a source location.
+* Deprecated `PolyglotEngine.Builder.onEvent(EventConsumer)` and class `EventConsumer`, debugger events are now dispatched using the `DebuggerSession`.
 * Added [Node#getAtomicLock()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/Node.html#getAtomicLock--) to allow atomic updates that avoid creating a closure.
 
 ## Version 0.16
