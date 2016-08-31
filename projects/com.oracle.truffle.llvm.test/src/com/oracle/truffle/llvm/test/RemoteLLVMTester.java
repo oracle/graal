@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.test;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,8 +48,88 @@ public class RemoteLLVMTester {
     private static final int TIMEOUT_SECONDS = 8;
     private static final int NR_TRIES = 300;
     private static int result;
+    private static File file;
+    private static Object[] programArgs;
+
+    private static final String PROGRAM_ARGS_DELIMITER = " ";
+    private static final String PROGRAM_COMMAND_DELIMITER = ";";
+
+    public static class RemoteProgramArgsBuilder {
+
+        private File file;
+        private Object[] args;
+
+        public RemoteProgramArgsBuilder(File file) {
+            this.file = file;
+        }
+
+        public RemoteProgramArgsBuilder args(Object... commandArgs) {
+            this.args = commandArgs;
+            return this;
+        }
+
+        public String getCommand() {
+            StringBuilder sb = new StringBuilder();
+            if (file == null) {
+                throw new AssertionError();
+            }
+            sb.append(file.getAbsolutePath());
+            if (args != null && args.length != 0) {
+                sb.append(PROGRAM_COMMAND_DELIMITER);
+            }
+            for (int i = 0; i < args.length; i++) {
+                if (i != 0) {
+                    sb.append(PROGRAM_ARGS_DELIMITER);
+                }
+                sb.append(args[i].toString());
+            }
+            sb.append("\n");
+            return sb.toString();
+        }
+
+    }
+
+    public static class ProgramArgsBuilder {
+
+        private File file;
+        private Object[] args;
+
+        public ProgramArgsBuilder(String file) {
+            this.file = new File(file);
+        }
+
+        public ProgramArgsBuilder args(Object... commandArgs) {
+            this.args = commandArgs;
+            return this;
+        }
+
+        public String getCommand() {
+            StringBuilder sb = new StringBuilder();
+            if (file == null) {
+                throw new AssertionError();
+            }
+            sb.append(file.getAbsolutePath());
+            if (args != null && args.length != 0) {
+                sb.append(PROGRAM_COMMAND_DELIMITER);
+            }
+            for (int i = 0; i < args.length; i++) {
+                if (i != 0) {
+                    sb.append(PROGRAM_ARGS_DELIMITER);
+                }
+                sb.append(args[i].toString());
+            }
+            return sb.toString();
+        }
+
+    }
 
     // does not work since System.out prints immediately and printf is not
+    /**
+     * Expects one of the following commands: <code>exit</code>: Exits the remote tester
+     * <code><file></code>: The LLVM IR file to be executed
+     * <code><file>;<arg1> <arg2> ... <arg n></code>: The LLVM IR file with arguments that should be
+     * passed
+     */
     public static void main(String[] args) {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         while (true) {
@@ -63,16 +144,32 @@ public class RemoteLLVMTester {
                     System.exit(1);
                 }
                 String command = br.readLine();
+                programArgs = null;
+                file = null;
                 if (command.equals("exit")) {
                     System.exit(0);
+                } else if (command.contains(";")) {
+                    String[] tokens = command.split(";");
+                    file = new File(tokens[0]);
+                    if (tokens.length != 2) {
+                        throw new IllegalStateException("expected two tokens (file and args) but got " + Arrays.toString(tokens));
+                    }
+                    String argsString = tokens[1];
+                    programArgs = argsString.split(" ");
+                } else {
+                    file = new File(command);
+                    programArgs = null;
                 }
-                File file = new File(command);
                 Runnable executeTruffleTask = new Runnable() {
 
                     @Override
                     public void run() {
                         try {
-                            result = LLVM.executeMain(file);
+                            if (programArgs == null) {
+                                result = LLVM.executeMain(file);
+                            } else {
+                                result = LLVM.executeMain(file, programArgs);
+                            }
                         } catch (Throwable e) {
                             result = -1;
                             printError(e);
