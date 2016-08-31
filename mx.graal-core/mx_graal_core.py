@@ -599,30 +599,10 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if jacocoArgs:
         argsPrefix.extend(jacocoArgs)
 
-    # Check for -G: options
-    def checkGOption(arg):
-        if arg.startswith('-G:+'):
-            if '=' in arg:
-                mx.abort('Mixing + and = in -G: option specification: ' + arg)
-            translation = '-Dgraal.' + arg[len('-G:+'):] + '=true'
-        elif arg.startswith('-G:-'):
-            if '=' in arg:
-                mx.abort('Mixing - and = in -G: option specification: ' + arg)
-            translation = '-Dgraal.' + arg[len('-G:+'):] + '=false'
-        elif arg.startswith('-G:'):
-            if '=' not in arg:
-                mx.abort('Missing "=" in non-boolean -G: option specification: ' + arg)
-            translation = '-Dgraal.' + arg[len('-G:'):]
-        else:
-            return arg
-        mx.warn('Support for -G options is deprecated and will soon be removed. Replace "' + arg + '" with "' + translation + '"')
-        return translation
-
     # add default graal.options.file
     options_file = join(mx.primary_suite().dir, 'graal.options')
     if exists(options_file):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
-    args = [checkGOption(a) for a in args]
 
     if '-Dgraal.PrintFlags=true' in args and '-Xcomp' not in args:
         mx.warn('Using -Dgraal.PrintFlags=true may have no effect without -Xcomp as Graal initialization is lazy')
