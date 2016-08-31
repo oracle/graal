@@ -240,7 +240,7 @@ public final class Debugger {
     }
 
     private Breakpoint setLineBreakpointImpl(int ignoreCount, Object key, int line, boolean oneShot) throws IOException {
-        Breakpoint breakpoint = breakpointPerLocation.get(new BreakpointLocation(key, line, -1));
+        Breakpoint breakpoint = breakpointPerLocation.get(new BreakpointLocation(key, line));
         if (breakpoint != null) {
             if (ignoreCount == breakpoint.getIgnoreCount()) {
                 throw new IOException("Breakpoint already set for " + key + " line: " + line);

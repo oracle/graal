@@ -30,30 +30,58 @@ import java.util.Objects;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * Description of a location in guest language source code where a {@link Breakpoint} can be
+ * Description of a textual location in guest language source code where a {@link Breakpoint} can be
  * installed.
  * <p>
- * The location's <em>key</em> may identify a particular unit of source code, for example a
- * {@link Source} or {@link URI}, further specialized to a particular <code>(line, column)</code> in
- * the source text.
+ * The location's <em>key</em> identifies a particular unit of source code, for example a
+ * {@link Source} or {@link URI}. It can be optionally specialized to a 1-based line number and if
+ * it is, then it may also be optionally specialized to a 1-based column number.
+ * </p>
  * <p>
- * A <code>null</code> key represents <em>any</em> unit of source code.
+ * Equality is value-based.
+ *
  */
 final class BreakpointLocation implements Comparable<BreakpointLocation> {
+
+    /**
+     * A location with {@code key == null} that always matches.
+     */
+    public static final BreakpointLocation ANY = new BreakpointLocation();
 
     private final Object key;
     private final int line;
     private final int column;
 
-    BreakpointLocation(Object key, int line, int column) {
-        assert key == null || key instanceof Source || key instanceof URI;
+    /**
+     * @param key non-null source identifier
+     * @param line 1-based line number, -1 for unspecified
+     */
+    BreakpointLocation(Object key, int line) {
+        assert key instanceof Source || key instanceof URI;
+        assert line > 0 || line == -1;
         this.key = key;
         this.line = line;
-        if (column < 0) {
-            this.column = -1;
-        } else {
-            this.column = column;
-        }
+        this.column = -1;
+    }
+
+    /**
+     * @param key non-null source identifier
+     * @param line 1-based line number
+     * @param column 1-based column number
+     */
+    BreakpointLocation(Object key, int line, int column) {
+        assert key instanceof Source || key instanceof URI;
+        assert line > 0;
+        assert column > 0;
+        this.key = key;
+        this.line = line;
+        this.column = column;
+    }
+
+    private BreakpointLocation() {
+        this.key = null;
+        this.line = -1;
+        this.column = -1;
     }
 
     Object getKey() {

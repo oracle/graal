@@ -188,7 +188,7 @@ public final class DebuggerSession implements Closeable {
         this.debugger = debugger;
         this.callback = callback;
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
-        this.alwaysHaltBreakpoint = new Breakpoint(new BreakpointLocation(null, -1, -1), filter, false);
+        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, filter, false);
         this.alwaysHaltBreakpoint.setEnabled(true);
         this.alwaysHaltBreakpoint.install(this);
         this.legacy = legacy;

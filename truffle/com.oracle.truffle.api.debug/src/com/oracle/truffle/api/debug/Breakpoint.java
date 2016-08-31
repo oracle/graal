@@ -684,7 +684,7 @@ public final class Breakpoint {
          */
         public Breakpoint build() {
             SourceSectionFilter f = buildFilter();
-            BreakpointLocation location = new BreakpointLocation(key, line, -1);
+            BreakpointLocation location = new BreakpointLocation(key, line);
             Breakpoint breakpoint = new Breakpoint(location, f, oneShot);
             breakpoint.setIgnoreCount(ignoreCount);
             return breakpoint;
