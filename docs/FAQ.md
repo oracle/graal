@@ -39,14 +39,6 @@ You can clean your workspace with `mx clean`. If you only want to clean
 Java or native projects you can use `mx clean` with the options
 `--no-native` or `--no-java`.
 
-### How can I execute the Sulong test cases?
-
-Use `mx su-tests` to run all the test cases. You can selectively
-run one or several test suites with `mx su-tests <test suite names>`.
-The most important test cases are `mx su-tests sulong` (Sulong's own
-test suite which mostly consists of C files), `mx su-tests gcc`
-(selected GCC test cases), and `mx su-tests llvm` (selected LLVM test cases).
-
 ### Why does mx download DragonEgg?
 
 [DragonEgg](http://dragonegg.llvm.org/) is a GCC plugin with which we
