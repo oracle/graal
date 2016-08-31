@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.constants;
 
 import uk.ac.man.cs.llvm.bc.records.Records;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
@@ -99,5 +100,9 @@ public interface Constant extends Symbol {
         }
 
         throw new RuntimeException("No value constant implementation for " + type);
+    }
+
+    static Constant createFromValues(Type type, Symbols symbols, int[] valueIndices) {
+        return symbols.createAggregate(type, valueIndices);
     }
 }

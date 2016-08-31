@@ -31,7 +31,7 @@ package uk.ac.man.cs.llvm.ir.types;
 
 import java.util.Objects;
 
-public class VectorType implements Type {
+public class VectorType implements AggregateType {
 
     public final Type type;
 
@@ -55,8 +55,14 @@ public class VectorType implements Type {
         return type;
     }
 
+    @Override
     public int getElementCount() {
         return length;
+    }
+
+    @Override
+    public Type getElementType(int index) {
+        return type;
     }
 
     @Override

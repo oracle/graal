@@ -29,40 +29,40 @@
  */
 package uk.ac.man.cs.llvm.ir.model.constants;
 
-import uk.ac.man.cs.llvm.ir.types.ArrayType;
+import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public final class ArrayConstant extends AggregateConstant {
+import java.util.Arrays;
 
-    public ArrayConstant(Constant value, int size) {
-        super(new ArrayType(value.getType(), size), new Constant[size]);
-        fill(value);
+public abstract class AggregateConstant extends AbstractConstant {
+
+    private final Constant[] elements;
+
+    public AggregateConstant(Type type, Constant[] elements) {
+        super(type);
+        this.elements = elements;
     }
 
-    public ArrayConstant(ArrayType type, Constant[] values) {
-        super(type, values);
+    public Constant getElement(int idx) {
+        return elements[idx];
     }
 
-    public ArrayConstant(ArrayType type, int valueCount) {
-        this(type, new Constant[valueCount]);
+    public int getElementCount() {
+        return elements.length;
     }
 
-    @Override
-    public ArrayType getType() {
-        return (ArrayType) super.getType();
+    public void fill(Constant element) {
+        Arrays.fill(elements, element);
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        Type type = getType().getElementType();
-        for (int i = 0; i < getElementCount(); i++) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            sb.append(type).append(" ").append(getElement(i));
+    public Constant[] getElements() {
+        return Arrays.copyOf(elements, elements.length);
+    }
+
+    public void replaceElement(int index, Symbol replacement) {
+        if (!(replacement instanceof Constant)) {
+            throw new IllegalStateException("Constants can only be replaced by Constants!");
         }
-        return sb.append("]").toString();
+        elements[index] = (Constant) replacement;
     }
 }
