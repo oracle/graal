@@ -30,6 +30,7 @@
 package uk.ac.man.cs.llvm.ir.model.constants;
 
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -74,5 +75,12 @@ public class CompareConstant extends AbstractConstant {
 
     public void setRHS(Symbol rhs) {
         this.rhs = rhs;
+    }
+
+    public static CompareConstant fromSymbols(Symbols symbols, Type type, CompareOperator operator, int lhs, int rhs) {
+        final CompareConstant constant = new CompareConstant(type, operator);
+        constant.setLHS(symbols.getSymbol(lhs, constant));
+        constant.setRHS(symbols.getSymbol(rhs, constant));
+        return constant;
     }
 }
