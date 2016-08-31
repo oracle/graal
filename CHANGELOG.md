@@ -1,6 +1,14 @@
 # Truffle Changelog
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
+## Version 0.18
+* Deprecated [LineLocation](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/LineLocation.html), [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).getLineLocation(), [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).createLineLocation(int) without replacement.
+* Deprecated [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).getShortDescription(); users can replace uses with their own formatting code.
+* Deprecated [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).createUnavailable(String, String) and replaced it with.
+* Added [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).createUnavailableSection() and [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).isUnavailable() to find out whether a source section is unavailable.
+* [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).createSourceSection(int,int) now supports indices that are out of bounds with the source.
+* Deprecated [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).createSection(int, int, int, int) 
+
 
 ## Version 0.18
 

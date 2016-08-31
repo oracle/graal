@@ -25,7 +25,12 @@ package com.oracle.truffle.api.source;
 import java.io.File;
 import java.io.FileWriter;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
@@ -55,6 +60,10 @@ public class SourceSectionTest {
         assertEquals(section.getCharLength(), 0);
         assertEquals(section.getStartLine(), 1);
         assertEquals(section.getStartColumn(), 1);
+
+        SourceSection other = emptyLineSource.createSection(0, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
     }
 
     @Test
@@ -68,6 +77,43 @@ public class SourceSectionTest {
         assertEquals(section.getStartColumn(), 1);
         assertEquals(section.getEndLine(), 1);
         assertEquals(section.getEndColumn(), 1);
+
+        SourceSection other = emptyLineSource.createSection(0, 1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void emptySourceTest1() {
+        SourceSection section = emptySource.createSection(0, 0);
+        assertNotNull(section);
+        assertEquals(section.getCharIndex(), 0);
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 1);
+        assertEquals(section.getEndLine(), 1);
+        assertEquals(section.getStartColumn(), 1);
+        assertEquals(section.getEndColumn(), 1);
+        assertEquals("", section.getCode());
+
+        SourceSection other = emptySource.createSection(0, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void emptySourceSectionOnLongSource() {
+        SourceSection section = longSource.createSection(longSource.getCode().length() - 1, 0);
+        assertNotNull(section);
+        assertEquals(longSource.getCode().length() - 1, section.getCharIndex());
+        assertEquals(0, section.getCharLength(), 0);
+        assertEquals(3, section.getStartLine());
+        assertEquals(3, section.getEndLine());
+        assertEquals(2, section.getStartColumn());
+        assertEquals(2, section.getEndColumn());
+
+        SourceSection other = longSource.createSection(longSource.getCode().length() - 1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
     }
 
     @Test
@@ -91,6 +137,7 @@ public class SourceSectionTest {
         assertEquals("9", longSource.createSection(9, 1).getCode());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testGetShortDescription() {
         assertEquals("long:1", longSource.createSection(0, 5).getShortDescription());
@@ -98,9 +145,9 @@ public class SourceSectionTest {
         assertEquals("long:3", longSource.createSection(9, 1).getShortDescription());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testOutOfRange1() {
-        longSource.createSection(9, 5);
+        assertNotNull(longSource.createSection(9, 5));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -113,19 +160,139 @@ public class SourceSectionTest {
         longSource.createSection(1, -1);
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange4() {
         longSource.createSection(3, 1, 9, 5);
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange5() {
         longSource.createSection(1, 1, -1, 1);
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange6() {
         longSource.createSection(1, 1, 1, -1);
+    }
+
+    @Test
+    public void testOutOfRange7() {
+        // out of range with length
+        SourceSection section = longSource.createSection(longSource.getCode().length() - 4, 5);
+        assertEquals(12, section.getCharEndIndex());
+        assertEquals(7, section.getCharIndex());
+        assertEquals(5, section.getCharLength());
+
+        assertEquals(-1, section.getStartColumn());
+        assertEquals(-1, section.getEndColumn());
+        assertEquals(-1, section.getStartLine());
+        assertEquals(-1, section.getEndLine());
+
+        assertFalse(section.isUnavailable());
+        assertNull(section.getCode());
+        assertNotNull(section.toString());
+
+        SourceSection other = longSource.createSection(longSource.getCode().length() - 4, 5);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testOutOfRange8() {
+        // out of range with charIndex
+        SourceSection section = longSource.createSection(longSource.getCode().length(), 1);
+        assertEquals(12, section.getCharEndIndex());
+        assertEquals(11, section.getCharIndex());
+        assertEquals(1, section.getCharLength());
+
+        assertEquals(-1, section.getStartColumn());
+        assertEquals(-1, section.getEndColumn());
+        assertEquals(-1, section.getStartLine());
+        assertEquals(-1, section.getEndLine());
+
+        assertFalse(section.isUnavailable());
+        assertNull(section.getCode());
+        assertNotNull(section.toString());
+
+        SourceSection other = longSource.createSection(longSource.getCode().length(), 1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testOutOfRange9() {
+        // out of range with charIndex
+        SourceSection section = longSource.createSection(longSource.getCode().length() + 1, 0);
+        assertEquals(12, section.getCharEndIndex());
+        assertEquals(12, section.getCharIndex());
+        assertEquals(0, section.getCharLength());
+
+        assertEquals(-1, section.getStartColumn());
+        assertEquals(-1, section.getEndColumn());
+        assertEquals(-1, section.getStartLine());
+        assertEquals(-1, section.getEndLine());
+
+        assertFalse(section.isUnavailable());
+        assertNull(section.getCode());
+        assertNotNull(section.toString());
+
+        SourceSection other = longSource.createSection(longSource.getCode().length() + 1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange10() {
+        longSource.createSection(4, 1, 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange11() {
+        longSource.createSection(-1, 1, 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange12() {
+        longSource.createSection(1, 6, 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange13() {
+        longSource.createSection(4);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange14() {
+        longSource.createSection(-1);
+    }
+
+    @Test
+    public void testUnavailable() {
+        SourceSection section = longSource.createUnavailableSection();
+        assertEquals(-1, section.getCharEndIndex());
+        assertEquals(-1, section.getCharIndex());
+        assertEquals(-1, section.getCharLength());
+
+        assertEquals(-1, section.getStartColumn());
+        assertEquals(-1, section.getEndColumn());
+        assertEquals(-1, section.getStartLine());
+        assertEquals(-1, section.getEndLine());
+        assertSame(longSource, section.getSource());
+        assertTrue(section.isUnavailable());
+
+        assertNull(section.getCode());
+        assertNotNull(section.toString());
+
+        SourceSection other = longSource.createUnavailableSection();
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        SourceSection other2 = shortSource.createUnavailableSection();
+        assertFalse(section.equals(other2));
+        assertNotEquals(other2.hashCode(), section.hashCode());
     }
 
     @Test
