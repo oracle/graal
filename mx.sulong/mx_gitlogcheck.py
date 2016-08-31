@@ -1,4 +1,5 @@
 import re
+import os
 import subprocess
 
 gitLogOneLine = re.compile(r'^(?P<message>.*)$')
@@ -42,7 +43,12 @@ def checkCommitMessage(quotedCommitMessage):
 
 def logCheck(args=None):
     """checks the syntax of git log messages"""
-    output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
+    fnull = open(os.devnull, 'w')
+    masterExistsReturnCode = subprocess.call(['git', 'rev-parse', '--verify', 'master'], stdout=fnull, stderr=fnull)
+    if masterExistsReturnCode == 0:
+        output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"', 'master@{u}..'])
+    else: # check all messages in current branch
+        output = subprocess.check_output(['git', 'log', '--pretty=format:"%s"'])
     foundErrors = []
     for s in output.splitlines():
         match = gitLogOneLine.match(s)
