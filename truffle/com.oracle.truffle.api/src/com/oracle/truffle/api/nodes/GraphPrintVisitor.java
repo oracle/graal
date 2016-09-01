@@ -458,7 +458,8 @@ public class GraphPrintVisitor implements Closeable {
             int nodeId = !exists ? oldOrNextId(node) : nextId();
             nodeMap.put(node, new NodeElement(nodeId));
 
-            setNodeProperty(node, "name", node.getClass().getSimpleName().replaceFirst("Node$", ""));
+            String className = NodeUtil.className(node.getClass());
+            setNodeProperty(node, "name", dropNodeSuffix(className));
             NodeInfo nodeInfo = node.getClass().getAnnotation(NodeInfo.class);
             if (nodeInfo != null) {
                 setNodeProperty(node, "cost", nodeInfo.cost());
@@ -466,12 +467,16 @@ public class GraphPrintVisitor implements Closeable {
                     setNodeProperty(node, "shortName", nodeInfo.shortName());
                 }
             }
-            setNodeProperty(node, "class", node.getClass().getSimpleName());
+            setNodeProperty(node, "class", className);
             if (node instanceof Node) {
                 readNodeProperties((Node) node);
                 copyDebugProperties((Node) node);
             }
         }
+    }
+
+    private static String dropNodeSuffix(String className) {
+        return className.replaceFirst("Node$", "");
     }
 
     final void setNodeProperty(Object node, String propertyName, Object value) {

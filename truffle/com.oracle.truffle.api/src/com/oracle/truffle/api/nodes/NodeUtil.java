@@ -790,7 +790,12 @@ public final class NodeUtil {
     }
 
     private static String nodeName(Node node) {
-        return node.getClass().getSimpleName();
+        return className(node.getClass());
+    }
+
+    static String className(Class<?> clazz) {
+        String name = clazz.getName();
+        return name.substring(name.lastIndexOf('.') + 1);
     }
 
     private static String displaySourceAttribution(Node node) {
@@ -875,7 +880,7 @@ public final class NodeUtil {
                 cost = "?";
                 break;
         }
-        return cost + " " + node.getClass().getSimpleName();
+        return cost + " " + nodeName(node);
     }
 
     private static boolean filterByKind(Node node, NodeCost cost) {
