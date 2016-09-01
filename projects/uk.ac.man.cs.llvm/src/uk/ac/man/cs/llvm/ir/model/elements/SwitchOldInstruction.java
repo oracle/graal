@@ -29,13 +29,14 @@
  */
 package uk.ac.man.cs.llvm.ir.model.elements;
 
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 
 public final class SwitchOldInstruction implements VoidInstruction {
 
-    private final Symbol condition;
+    private Symbol condition;
 
     private final InstructionBlock defaultBlock;
 
@@ -43,8 +44,7 @@ public final class SwitchOldInstruction implements VoidInstruction {
 
     private final InstructionBlock[] blocks;
 
-    public SwitchOldInstruction(Symbol condition, InstructionBlock defaultBlock, long[] cases, InstructionBlock[] blocks) {
-        this.condition = condition;
+    private SwitchOldInstruction(InstructionBlock defaultBlock, long[] cases, InstructionBlock[] blocks) {
         this.defaultBlock = defaultBlock;
         this.cases = cases;
         this.blocks = blocks;
@@ -73,5 +73,23 @@ public final class SwitchOldInstruction implements VoidInstruction {
 
     public InstructionBlock getDefaultBlock() {
         return defaultBlock;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (condition == original) {
+            condition = replacement;
+        }
+    }
+
+    public static SwitchOldInstruction generate(FunctionDefinition function, int condition, int defaultBlock, long[] cases, int[] targetBlocks) {
+        final InstructionBlock[] blocks = new InstructionBlock[targetBlocks.length];
+        for (int i = 0; i < blocks.length; i++) {
+            blocks[i] = function.getBlock(targetBlocks[i]);
+        }
+
+        final SwitchOldInstruction inst = new SwitchOldInstruction(function.getBlock(defaultBlock), cases, blocks);
+        inst.condition = function.getSymbols().getSymbol(condition, inst);
+        return inst;
     }
 }

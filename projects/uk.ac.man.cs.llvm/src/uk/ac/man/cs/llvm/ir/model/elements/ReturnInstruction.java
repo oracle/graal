@@ -31,12 +31,13 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 
 public final class ReturnInstruction implements VoidInstruction {
 
     private Symbol value;
 
-    public ReturnInstruction() {
+    private ReturnInstruction() {
     }
 
     @Override
@@ -55,7 +56,13 @@ public final class ReturnInstruction implements VoidInstruction {
         }
     }
 
-    public void setValue(Symbol value) {
-        this.value = value;
+    public static ReturnInstruction generate(Symbols symbols, int value) {
+        final ReturnInstruction inst = new ReturnInstruction();
+        inst.value = symbols.getSymbol(value, inst);
+        return inst;
+    }
+
+    public static ReturnInstruction generate() {
+        return new ReturnInstruction();
     }
 }

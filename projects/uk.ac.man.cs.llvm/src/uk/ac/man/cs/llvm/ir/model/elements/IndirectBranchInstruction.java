@@ -29,18 +29,18 @@
  */
 package uk.ac.man.cs.llvm.ir.model.elements;
 
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 
 public final class IndirectBranchInstruction implements VoidInstruction {
 
-    private final Symbol address;
+    private Symbol address;
 
     private final InstructionBlock[] successors;
 
-    public IndirectBranchInstruction(Symbol address, InstructionBlock[] successors) {
-        this.address = address;
+    private IndirectBranchInstruction(InstructionBlock[] successors) {
         this.successors = successors;
     }
 
@@ -59,5 +59,22 @@ public final class IndirectBranchInstruction implements VoidInstruction {
 
     public InstructionBlock getSuccessor(int index) {
         return successors[index];
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (address == original) {
+            address = replacement;
+        }
+    }
+
+    public static IndirectBranchInstruction generate(FunctionDefinition function, int address, int[] successors) {
+        final InstructionBlock[] blocks = new InstructionBlock[successors.length];
+        for (int i = 0; i < successors.length; i++) {
+            blocks[i] = function.getBlock(successors[i]);
+        }
+        final IndirectBranchInstruction inst = new IndirectBranchInstruction(blocks);
+        inst.address = function.getSymbols().getSymbol(address, inst);
+        return inst;
     }
 }

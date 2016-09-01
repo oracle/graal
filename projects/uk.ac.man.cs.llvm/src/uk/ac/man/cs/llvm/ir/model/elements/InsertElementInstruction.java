@@ -31,21 +31,19 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class InsertElementInstruction extends ValueInstruction {
 
-    private final Symbol vector;
+    private Symbol vector;
 
-    private final Symbol index;
+    private Symbol index;
 
-    private final Symbol value;
+    private Symbol value;
 
-    public InsertElementInstruction(Type type, Symbol vector, Symbol index, Symbol value) {
+    private InsertElementInstruction(Type type) {
         super(type);
-        this.vector = vector;
-        this.index = index;
-        this.value = value;
     }
 
     @Override
@@ -63,5 +61,26 @@ public final class InsertElementInstruction extends ValueInstruction {
 
     public Symbol getVector() {
         return vector;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (vector == original) {
+            vector = replacement;
+        }
+        if (index == original) {
+            index = replacement;
+        }
+        if (value == original) {
+            value = replacement;
+        }
+    }
+
+    public static InsertElementInstruction fromSymbols(Symbols symbols, Type type, int vector, int index, int value) {
+        final InsertElementInstruction inst = new InsertElementInstruction(type);
+        inst.vector = symbols.getSymbol(vector, inst);
+        inst.index = symbols.getSymbol(index, inst);
+        inst.value = symbols.getSymbol(value, inst);
+        return inst;
     }
 }

@@ -35,7 +35,6 @@ import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
-import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 import uk.ac.man.cs.llvm.ir.types.VectorType;
 
@@ -84,22 +83,6 @@ public interface Constant extends Symbol {
         }
 
         throw new RuntimeException("No data constant implementation for " + type);
-    }
-
-    static Constant createFromValues(Type type, Constant[] values) {
-        if (type instanceof ArrayType) {
-            return new ArrayConstant((ArrayType) type, values);
-        }
-
-        if (type instanceof StructureType) {
-            return new StructureConstant((StructureType) type, values);
-        }
-
-        if (type instanceof VectorType) {
-            return new VectorConstant((VectorType) type, values);
-        }
-
-        throw new RuntimeException("No value constant implementation for " + type);
     }
 
     static Constant createFromValues(Type type, Symbols symbols, int[] valueIndices) {

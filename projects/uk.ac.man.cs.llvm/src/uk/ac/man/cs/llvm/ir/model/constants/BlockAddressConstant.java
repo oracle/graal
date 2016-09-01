@@ -29,26 +29,49 @@
  */
 package uk.ac.man.cs.llvm.ir.model.constants;
 
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class BlockAddressConstant extends AbstractConstant {
+public final class BlockAddressConstant extends AbstractConstant {
 
-    private final Symbol function;
+    private FunctionDefinition function;
 
-    private final Symbol block;
+    private final int block;
 
-    public BlockAddressConstant(Type type, Symbol function, Symbol block) {
+    private BlockAddressConstant(Type type, int block) {
         super(type);
-        this.function = function;
         this.block = block;
     }
 
-    public Symbol getBlock() {
+    public int getBlock() {
         return block;
     }
 
-    public Symbol getFunction() {
+    public FunctionDefinition getFunction() {
         return function;
+    }
+
+    public InstructionBlock getInstructionBlock() {
+        return function.getBlock(block);
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (function == original) {
+            if (replacement instanceof FunctionDefinition) {
+                function = (FunctionDefinition) replacement;
+            } else {
+                throw new IllegalStateException("Expected FunctionDefinition!");
+            }
+        }
+    }
+
+    public static BlockAddressConstant fromSymbols(Symbols symbols, Type type, int function, int block) {
+        final BlockAddressConstant constant = new BlockAddressConstant(type, block);
+        constant.function = (FunctionDefinition) symbols.getSymbol(function, constant);
+        return constant;
     }
 }

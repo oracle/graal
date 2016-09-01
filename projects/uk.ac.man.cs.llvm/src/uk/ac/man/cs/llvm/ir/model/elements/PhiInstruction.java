@@ -32,9 +32,11 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 import java.util.ArrayList;
 import java.util.List;
 
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class PhiInstruction extends ValueInstruction {
@@ -43,18 +45,13 @@ public final class PhiInstruction extends ValueInstruction {
 
     private final List<InstructionBlock> blocks = new ArrayList<>();
 
-    public PhiInstruction(Type type) {
+    private PhiInstruction(Type type) {
         super(type);
     }
 
     @Override
     public void accept(InstructionVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public void addCase(Symbol value, InstructionBlock block) {
-        values.add(value);
-        blocks.add(block);
     }
 
     public InstructionBlock getBlock(int index) {
@@ -76,5 +73,15 @@ public final class PhiInstruction extends ValueInstruction {
                 values.set(i, replacment);
             }
         }
+    }
+
+    public static PhiInstruction generate(FunctionDefinition function, Type type, int[] values, int[] blocks) {
+        final PhiInstruction phi = new PhiInstruction(type);
+        final Symbols symbols = function.getSymbols();
+        for (int i = 0; i < values.length; i++) {
+            phi.values.add(symbols.getSymbol(values[i], phi));
+            phi.blocks.add(function.getBlock(blocks[i]));
+        }
+        return phi;
     }
 }

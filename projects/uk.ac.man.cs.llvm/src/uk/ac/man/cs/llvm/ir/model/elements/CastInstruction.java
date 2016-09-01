@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.enums.CastOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -41,7 +42,7 @@ public final class CastInstruction extends ValueInstruction {
 
     private Symbol value;
 
-    public CastInstruction(Type type, CastOperator operator) {
+    private CastInstruction(Type type, CastOperator operator) {
         super(type);
         this.operator = operator;
     }
@@ -71,7 +72,9 @@ public final class CastInstruction extends ValueInstruction {
         }
     }
 
-    public void setValue(Symbol value) {
-        this.value = value;
+    public static CastInstruction fromSymbols(Symbols symbols, Type type, int opcode, int value) {
+        final CastInstruction inst = new CastInstruction(type, CastOperator.decode(opcode));
+        inst.value = symbols.getSymbol(value, inst);
+        return inst;
     }
 }

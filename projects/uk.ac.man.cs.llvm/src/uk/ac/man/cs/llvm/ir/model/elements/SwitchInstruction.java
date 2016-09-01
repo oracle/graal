@@ -29,13 +29,15 @@
  */
 package uk.ac.man.cs.llvm.ir.model.elements;
 
+import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 
 public final class SwitchInstruction implements VoidInstruction {
 
-    private final Symbol condition;
+    private Symbol condition;
 
     private final InstructionBlock defaultBlock;
 
@@ -43,11 +45,10 @@ public final class SwitchInstruction implements VoidInstruction {
 
     private final InstructionBlock[] blocks;
 
-    public SwitchInstruction(Symbol condition, InstructionBlock defaultBlock, Symbol[] values, InstructionBlock[] blocks) {
-        this.condition = condition;
+    private SwitchInstruction(InstructionBlock defaultBlock, int numCases) {
         this.defaultBlock = defaultBlock;
-        this.values = values;
-        this.blocks = blocks;
+        this.values = new Symbol[numCases];
+        this.blocks = new InstructionBlock[numCases];
     }
 
     @Override
@@ -73,5 +74,30 @@ public final class SwitchInstruction implements VoidInstruction {
 
     public InstructionBlock getDefaultBlock() {
         return defaultBlock;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (condition == original) {
+            condition = replacement;
+        }
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == original) {
+                values[i] = replacement;
+            }
+        }
+    }
+
+    public static SwitchInstruction generate(FunctionDefinition function, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
+        final SwitchInstruction inst = new SwitchInstruction(function.getBlock(defaultBlock), caseBlocks.length);
+
+        final Symbols symbols = function.getSymbols();
+        inst.condition = symbols.getSymbol(condition, inst);
+        for (int i = 0; i < caseBlocks.length; i++) {
+            inst.values[i] = symbols.getSymbol(caseValues[i], inst);
+            inst.blocks[i] = function.getBlock(caseBlocks[i]);
+        }
+
+        return inst;
     }
 }

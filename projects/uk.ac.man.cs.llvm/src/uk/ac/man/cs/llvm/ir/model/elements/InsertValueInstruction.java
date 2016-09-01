@@ -31,20 +31,19 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class InsertValueInstruction extends ValueInstruction {
+public final class InsertValueInstruction extends ValueInstruction {
 
-    private final Symbol aggregate;
+    private Symbol aggregate;
 
-    private final Symbol value;
+    private Symbol value;
 
     private final int index;
 
-    public InsertValueInstruction(Type type, Symbol aggregate, int index, Symbol value) {
+    private InsertValueInstruction(Type type, int index) {
         super(type);
-        this.aggregate = aggregate;
-        this.value = value;
         this.index = index;
     }
 
@@ -63,5 +62,22 @@ public class InsertValueInstruction extends ValueInstruction {
 
     public Symbol getValue() {
         return value;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (aggregate == original) {
+            aggregate = replacement;
+        }
+        if (value == original) {
+            value = replacement;
+        }
+    }
+
+    public static InsertValueInstruction fromSymbols(Symbols symbols, Type type, int aggregate, int index, int value) {
+        final InsertValueInstruction inst = new InsertValueInstruction(type, index);
+        inst.aggregate = symbols.getSymbol(aggregate, inst);
+        inst.value = symbols.getSymbol(value, inst);
+        return inst;
     }
 }

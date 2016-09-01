@@ -31,17 +31,17 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class ExtractValueInstruction extends ValueInstruction {
+public final class ExtractValueInstruction extends ValueInstruction {
 
-    private final Symbol aggregate;
+    private Symbol aggregate;
 
     private final int index;
 
-    public ExtractValueInstruction(Type type, Symbol aggregate, int index) {
+    private ExtractValueInstruction(Type type, int index) {
         super(type);
-        this.aggregate = aggregate;
         this.index = index;
     }
 
@@ -56,5 +56,18 @@ public class ExtractValueInstruction extends ValueInstruction {
 
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (aggregate == original) {
+            this.aggregate = replacement;
+        }
+    }
+
+    public static ExtractValueInstruction fromSymbols(Symbols symbols, Type type, int aggregate, int index) {
+        final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
+        inst.aggregate = symbols.getSymbol(aggregate, inst);
+        return inst;
     }
 }

@@ -32,7 +32,9 @@ package uk.ac.man.cs.llvm.ir.model.constants;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public class BinaryOperationConstant extends AbstractConstant {
 
@@ -71,18 +73,12 @@ public class BinaryOperationConstant extends AbstractConstant {
         }
     }
 
-    public void setLHS(Symbol lhs) {
-        this.lhs = lhs;
-    }
-
-    public void setRHS(Symbol rhs) {
-        this.rhs = rhs;
-    }
-
-    public static BinaryOperationConstant fromSymbols(Symbols symbols, Type type, BinaryOperator operator, int lhs, int rhs) {
+    public static BinaryOperationConstant fromSymbols(Symbols symbols, Type type, int opcode, int lhs, int rhs) {
+        final boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
+        final BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
         final BinaryOperationConstant constant = new BinaryOperationConstant(type, operator);
-        constant.setLHS(symbols.getSymbol(lhs, constant));
-        constant.setRHS(symbols.getSymbol(rhs, constant));
+        constant.lhs = symbols.getSymbol(lhs, constant);
+        constant.rhs = symbols.getSymbol(rhs, constant);
         return constant;
     }
 }

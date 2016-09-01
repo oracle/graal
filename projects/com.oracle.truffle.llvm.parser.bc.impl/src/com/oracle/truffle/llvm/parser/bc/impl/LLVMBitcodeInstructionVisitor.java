@@ -97,9 +97,9 @@ import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
@@ -190,14 +190,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
             if (symbol instanceof BlockAddressConstant) {
                 BlockAddressConstant blockaddr = (BlockAddressConstant) symbol;
-                // resolve(blockaddr.getMethod());
-                //
-                // if (isGlobalScope) {
-                // Map<String, Integer> functionBlocks = functionToLabelMapping.get(function);
-                // val = functionBlocks.get(basicBlock.getName());
-                // } else {
-
-                int val = method.labels().get(((ValueSymbol) blockaddr.getBlock()).getName());
+                int val = method.labels().get(blockaddr.getInstructionBlock().getName());
                 return new LLVMAddressLiteralNode(LLVMAddress.fromLong(val));
             }
             if (symbol instanceof CastConstant) {

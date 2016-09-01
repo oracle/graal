@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 
 public final class StoreInstruction implements VoidInstruction {
 
@@ -42,7 +43,7 @@ public final class StoreInstruction implements VoidInstruction {
 
     private Symbol source;
 
-    public StoreInstruction(int align, boolean isVolatile) {
+    private StoreInstruction(int align, boolean isVolatile) {
         this.align = align;
         this.isVolatile = isVolatile;
     }
@@ -78,11 +79,10 @@ public final class StoreInstruction implements VoidInstruction {
         }
     }
 
-    public void setDestination(Symbol destination) {
-        this.destination = destination;
-    }
-
-    public void setSource(Symbol source) {
-        this.source = source;
+    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile) {
+        final StoreInstruction inst = new StoreInstruction(align, isVolatile);
+        inst.destination = symbols.getSymbol(destination, inst);
+        inst.source = symbols.getSymbol(source, inst);
+        return inst;
     }
 }
