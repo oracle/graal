@@ -486,15 +486,16 @@ def runLLVM(args=None, out=None):
 
 def runTests(args=None):
     """runs all the test cases or selected ones (see -h or --help)"""
+    vmArgs, otherArgs = truffle_extract_VM_args(args)
     parser = argparse.ArgumentParser(description="Executes all or selected test cases of Sulong's test suites.")
     parser.add_argument('suite', nargs='*', help=' '.join(testCases.keys()), default=testCases.keys())
     parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the test suite names before execution')
-    parsedArgs = parser.parse_args(args)
+    parsedArgs = parser.parse_args(otherArgs)
     for testSuiteName in parsedArgs.suite:
         if parsedArgs.verbose:
             print 'executing', testSuiteName, 'test suite'
         command = testCases[testSuiteName]
-        command()
+        command(vmArgs)
 
 def runBenchmarkTestCases(args=None):
     """runs the test cases from the language benchmark game"""
