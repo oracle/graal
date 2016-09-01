@@ -30,6 +30,7 @@
 package uk.ac.man.cs.llvm.ir.model.constants;
 
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -37,15 +38,15 @@ public class BinaryOperationConstant extends AbstractConstant {
 
     private final BinaryOperator operator;
 
-    private final Symbol lhs;
+    private Symbol lhs;
 
-    private final Symbol rhs;
+    private Symbol rhs;
 
-    public BinaryOperationConstant(Type type, BinaryOperator operator, Symbol lhs, Symbol rhs) {
+    public BinaryOperationConstant(Type type, BinaryOperator operator) {
         super(type);
         this.operator = operator;
-        this.lhs = lhs;
-        this.rhs = rhs;
+        this.lhs = null;
+        this.rhs = null;
     }
 
     public Symbol getLHS() {
@@ -58,5 +59,30 @@ public class BinaryOperationConstant extends AbstractConstant {
 
     public Symbol getRHS() {
         return rhs;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (lhs == original) {
+            lhs = replacement;
+        }
+        if (rhs == original) {
+            rhs = replacement;
+        }
+    }
+
+    public void setLHS(Symbol lhs) {
+        this.lhs = lhs;
+    }
+
+    public void setRHS(Symbol rhs) {
+        this.rhs = rhs;
+    }
+
+    public static BinaryOperationConstant fromSymbols(Symbols symbols, Type type, BinaryOperator operator, int lhs, int rhs) {
+        final BinaryOperationConstant constant = new BinaryOperationConstant(type, operator);
+        constant.setLHS(symbols.getSymbol(lhs, constant));
+        constant.setRHS(symbols.getSymbol(rhs, constant));
+        return constant;
     }
 }

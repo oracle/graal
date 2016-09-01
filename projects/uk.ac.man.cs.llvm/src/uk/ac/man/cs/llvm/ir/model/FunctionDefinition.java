@@ -178,12 +178,8 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     @Override
     public void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs) {
         boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
-
-        symbols.addSymbol(new BinaryOperationConstant(
-                        type,
-                        BinaryOperator.decode(opcode, isFloatingPoint),
-                        symbols.getSymbol(lhs),
-                        symbols.getSymbol(rhs)));
+        BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
+        symbols.addSymbol(BinaryOperationConstant.fromSymbols(symbols, type, operator, lhs, rhs));
     }
 
     @Override
@@ -205,12 +201,7 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     @Override
     public void createCompareExpression(Type type, int opcode, int lhs, int rhs) {
-        CompareConstant compare = new CompareConstant(type, CompareOperator.decode(opcode));
-
-        compare.setLHS(symbols.getSymbol(lhs, compare));
-        compare.setRHS(symbols.getSymbol(rhs, compare));
-
-        symbols.addSymbol(compare);
+        symbols.addSymbol(CompareConstant.fromSymbols(symbols, type, CompareOperator.decode(opcode), lhs, rhs));
     }
 
     @Override
