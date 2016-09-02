@@ -52,7 +52,7 @@ public final class SourceSectionFilter {
     /**
      * A filter that matches everything.
      *
-     * @since 0.17
+     * @since 0.18
      */
     public static final SourceSectionFilter ANY = newBuilder().build();
 

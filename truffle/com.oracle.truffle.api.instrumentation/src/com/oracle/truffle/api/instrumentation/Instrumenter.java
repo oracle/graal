@@ -112,7 +112,7 @@ public abstract class Instrumenter {
      * @param filter criterion for inclusion
      * @return unmodifiable list of instances that pass the filter
      *
-     * @since 0.17
+     * @since 0.18
      */
     public final List<SourceSection> querySourceSections(SourceSectionFilter filter) {
         final List<SourceSection> sourceSectionList = new ArrayList<>();
