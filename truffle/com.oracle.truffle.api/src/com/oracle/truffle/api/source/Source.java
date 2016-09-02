@@ -41,7 +41,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.sun.org.apache.bcel.internal.classfile.LineNumber;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
