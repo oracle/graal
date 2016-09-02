@@ -807,7 +807,7 @@ public abstract class Source {
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
-     * @throws IllegalArgumentException if the given {@link LineNumber} does not exist the source
+     * @throws IllegalArgumentException if the given lineNumber does not exist the source
      * @since 0.17
      */
     public final SourceSection createSection(int lineNumber) {
