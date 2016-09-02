@@ -139,7 +139,7 @@ public final class Debugger {
      */
     public List<Source> getLoadedSources() {
         final List<Source> sources = new ArrayList<>();
-        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().build(), new LoadSourceListener() {
+        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
             public void onLoad(LoadSourceEvent event) {
                 sources.add(event.getSource());
             }

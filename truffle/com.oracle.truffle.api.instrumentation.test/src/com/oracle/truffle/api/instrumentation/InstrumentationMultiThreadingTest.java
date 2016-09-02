@@ -145,7 +145,7 @@ public class InstrumentationMultiThreadingTest {
         };
         instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
         instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
-        instrumenter.attachLoadSourceListener(SourceSectionFilter.newBuilder().build(), new LoadSourceListener() {
+        instrumenter.attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
 
             public void onLoad(LoadSourceEvent event) {
 

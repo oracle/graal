@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -102,6 +105,25 @@ public abstract class Instrumenter {
      * @since 0.15
      */
     public abstract <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
+
+    /**
+     * Returns a filtered list of loaded {@link SourceSection} instances.
+     *
+     * @param filter criterion for inclusion
+     * @return unmodifiable list of instances that pass the filter
+     *
+     * @since 0.18
+     */
+    public final List<SourceSection> querySourceSections(SourceSectionFilter filter) {
+        final List<SourceSection> sourceSectionList = new ArrayList<>();
+        EventBinding<?> binding = attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
+            public void onLoad(LoadSourceSectionEvent event) {
+                sourceSectionList.add(event.getSourceSection());
+            }
+        }, true);
+        binding.dispose();
+        return Collections.unmodifiableList(sourceSectionList);
+    }
 
     /**
      * Returns an unmodifiable {@link Set} of tag classes which where associated with this node. If
