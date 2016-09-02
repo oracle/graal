@@ -110,7 +110,8 @@ public enum LLVMBaseOption implements LLVMOption {
                     LLVMOptions::parseBoolean,
                     PropertyCategory.PERFORMANCE),
     NATIVE_CALL_STATS("PrintNativeCallStats", "Outputs stats about native call site frequencies", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    LIFE_TIME_ANALYSIS_STATS("PrintLifetimeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
+    LIFE_TIME_ANALYSIS_STATS("PrintLifetimeAnalysisStats", "Outputs the results of the lifetime analysis (if enabled)", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    TRACE_EXECUTION("TraceExecution", "Trace execution, printing each SSA assignment", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG);
 
     LLVMBaseOption(String key, String description, Object defaultValue, OptionParser parser, PropertyCategory category) {
         this.key = LLVMOptions.getOptionPrefix() + key;

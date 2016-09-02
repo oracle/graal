@@ -41,6 +41,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -53,6 +55,8 @@ public class LLVMBasicBlockNode extends LLVMNode {
 
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
+
+    private static final boolean TRACE = LLVMBaseOptionFacade.traceExecutionEnabled();
 
     @Children private final LLVMNode[] statements;
     @Child private LLVMTerminatorNode termInstruction;
@@ -79,10 +83,16 @@ public class LLVMBasicBlockNode extends LLVMNode {
         successorCount = new long[termInstruction.getSuccessors().length];
     }
 
+    @SuppressWarnings("deprecation")
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
         for (LLVMNode statement : statements) {
             try {
+                if (TRACE) {
+                    SourceSection traceSourceSection = statement.getEncapsulatingSourceSection();
+                    LLVMLogger.info(String.format("[sulong] %s in %s", traceSourceSection.getIdentifier(), traceSourceSection.getSource().getName()));
+                }
+
                 statement.executeVoid(frame);
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
@@ -93,7 +103,6 @@ public class LLVMBasicBlockNode extends LLVMNode {
                 if (exceptionSourceSection == null) {
                     throw e;
                 } else {
-                    @SuppressWarnings("deprecation")
                     String message = String.format("LLVM error in %s in %s - %s", exceptionSourceSection.getIdentifier(), exceptionSourceSection.getSource().getName(), e.getMessage());
                     throw new RuntimeException(message, e);
                 }
