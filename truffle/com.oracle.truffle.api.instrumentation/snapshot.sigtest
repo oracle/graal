@@ -11,6 +11,7 @@ hfds disposed,element,filter,instrumenter,isExecutionEvent
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
 meth public !varargs com.oracle.truffle.api.CallTarget parseInContext(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public com.oracle.truffle.api.instrumentation.ExecutionEventNode lookupExecutionEventNode(com.oracle.truffle.api.instrumentation.EventBinding<? extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory>)
 meth public com.oracle.truffle.api.nodes.Node getInstrumentedNode()
 meth public com.oracle.truffle.api.source.SourceSection getInstrumentedSourceSection()
 meth public java.lang.String toString()
@@ -89,6 +90,7 @@ intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
 
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter
+innr public abstract interface static SourcePredicate
 innr public final Builder
 innr public final static IndexRange
 meth public java.lang.String toString()
@@ -115,6 +117,7 @@ meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter build()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder indexIn(int,int)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder lineIn(int,int)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder lineIs(int)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceIs(com.oracle.truffle.api.instrumentation.SourceSectionFilter$SourcePredicate)
 supr java.lang.Object
 hfds expressions
 
@@ -125,6 +128,10 @@ meth public static com.oracle.truffle.api.instrumentation.SourceSectionFilter$In
 meth public static com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange byLength(int,int)
 supr java.lang.Object
 hfds endIndex,startIndex
+
+CLSS public abstract interface static com.oracle.truffle.api.instrumentation.SourceSectionFilter$SourcePredicate
+ outer com.oracle.truffle.api.instrumentation.SourceSectionFilter
+meth public abstract boolean test(com.oracle.truffle.api.source.Source)
 
 CLSS public final com.oracle.truffle.api.instrumentation.StandardTags
 innr public final CallTag
@@ -155,13 +162,15 @@ supr java.lang.Object
 CLSS public final static com.oracle.truffle.api.instrumentation.TruffleInstrument$Env
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
 meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void registerService(java.lang.Object)
 supr java.lang.Object
-hfds err,in,instrumenter,out,services
+hfds err,in,instrumenter,out,services,vm
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
@@ -206,6 +215,7 @@ hfds ACCESSOR,GIL,IN_ATOMIC_BLOCK,nodeClass,parent
 hcls AccessorNodes
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
+ anno 0 java.lang.annotation.Inherited()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
@@ -239,6 +249,12 @@ meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> 
 meth public abstract java.lang.String toString()
 
 CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])

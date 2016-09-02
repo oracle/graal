@@ -114,9 +114,9 @@ CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang
 cons protected init()
 innr public abstract interface static !annotation Registration
 innr public final static Env
-meth protected abstract !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.io.IOException
+meth protected abstract !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.lang.Exception
 meth protected abstract boolean isObjectOfLanguage(java.lang.Object)
-meth protected abstract java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.io.IOException
+meth protected abstract java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.lang.Exception
 meth protected abstract java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
 meth protected abstract java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected abstract {com.oracle.truffle.api.TruffleLanguage%0} createContext(com.oracle.truffle.api.TruffleLanguage$Env)
@@ -124,13 +124,14 @@ meth protected final com.oracle.truffle.api.nodes.Node createFindContextNode()
 meth protected final {com.oracle.truffle.api.TruffleLanguage%0} findContext(com.oracle.truffle.api.nodes.Node)
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
 supr java.lang.Object
 hfds API
 hcls AccessAPI,LangCtx,LanguageImpl
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
-meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[])
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
 meth public boolean isMimeTypeSupported(java.lang.String)
 meth public java.io.InputStream in()
@@ -139,7 +140,7 @@ meth public java.io.OutputStream out()
 meth public java.lang.Object importSymbol(java.lang.String)
 meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 supr java.lang.Object
-hfds config,err,in,instrumenter,lang,langCtx,out,services,vm
+hfds config,err,in,lang,langCtx,out,services,vm
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -564,6 +565,7 @@ meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind[
 supr java.lang.Enum<com.oracle.truffle.api.nodes.NodeFieldAccessor$NodeFieldKind>
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
+ anno 0 java.lang.annotation.Inherited()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
@@ -684,10 +686,18 @@ meth public com.oracle.truffle.api.source.Source subSource(int,int)
 meth public final com.oracle.truffle.api.source.LineLocation createLineLocation(int)
 meth public final com.oracle.truffle.api.source.Source withMimeType(java.lang.String)
  anno 0 java.lang.Deprecated()
+meth public final com.oracle.truffle.api.source.SourceSection createSection(int)
+meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int)
+meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int)
+meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int,int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int)
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int)
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int,int)
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int,int,int)
+ anno 0 java.lang.Deprecated()
 meth public final int getColumnNumber(int)
 meth public final int getLength()
 meth public final int getLineCount()
@@ -770,11 +780,12 @@ meth public int getStartLine()
 meth public int hashCode()
 meth public java.lang.String getCode()
 meth public java.lang.String getIdentifier()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String getShortDescription()
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.source.SourceSection createUnavailable(java.lang.String,java.lang.String)
 supr java.lang.Object
-hfds EMTPY_TAGS,charIndex,charLength,identifier,kind,source,startColumn,startLine,tags
+hfds UNKNOWN,charIndex,charLength,identifier,kind,source,startColumn,startLine
 
 CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
 fld public final static com.oracle.truffle.api.utilities.AlwaysValidAssumption INSTANCE
@@ -1035,6 +1046,12 @@ meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> 
 meth public abstract java.lang.String toString()
 
 CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
