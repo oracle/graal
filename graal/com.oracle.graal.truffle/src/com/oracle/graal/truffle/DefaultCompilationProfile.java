@@ -145,8 +145,8 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
         // This usually happens only if the call target was compiled using compile without ever
         // calling it.
-        if (cachedClass != Object.class && (CompilerDirectives.inInterpreter() || cachedClass != null)) {
-            if (cachedClass == ex.getClass()) {
+        if (cachedClass != Object.class) {
+            if (cachedClass != null && cachedClass == ex.getClass()) {
                 return (E) cachedClass.cast(ex);
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
