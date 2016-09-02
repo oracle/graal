@@ -1351,7 +1351,7 @@ public class PolyglotEngine {
                     language = vm.findLanguage(mimeType);
                 }
                 if (language == null) {
-                    throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType" + mimeType + " among " + vm.langs);
+                    throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType " + mimeType + " among " + vm.langs);
                 }
                 return language;
             }
