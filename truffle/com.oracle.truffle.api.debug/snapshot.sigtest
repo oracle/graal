@@ -2,22 +2,43 @@
 #Version 
 
 CLSS public final com.oracle.truffle.api.debug.Breakpoint
+innr public final Builder
 innr public final static !enum State
-meth public abstract boolean isEnabled()
-meth public abstract boolean isOneShot()
-meth public abstract com.oracle.truffle.api.debug.Breakpoint$State getState()
-meth public abstract com.oracle.truffle.api.source.Source getCondition()
-meth public abstract int getHitCount()
-meth public abstract int getIgnoreCount()
-meth public abstract java.lang.String getLocationDescription()
-meth public abstract void dispose()
-meth public abstract void setCondition(java.lang.String) throws java.io.IOException
-meth public abstract void setEnabled(boolean)
-meth public abstract void setIgnoreCount(int)
+meth public boolean isDisposed()
+meth public boolean isEnabled()
+meth public boolean isOneShot()
+meth public boolean isResolved()
+meth public com.oracle.truffle.api.debug.Breakpoint$State getState()
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.source.Source getCondition()
+ anno 0 java.lang.Deprecated()
+meth public int getHitCount()
+meth public int getIgnoreCount()
+meth public java.lang.String getLocationDescription()
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(com.oracle.truffle.api.source.Source)
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(com.oracle.truffle.api.source.SourceSection)
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(java.net.URI)
+meth public void dispose()
+meth public void setCondition(java.lang.String) throws java.io.IOException
+meth public void setEnabled(boolean)
+meth public void setIgnoreCount(int)
 supr java.lang.Object
+hfds BUILDER_INSTANCE,COMPARATOR,breakpointBinding,condition,conditionUnchanged,disposed,enabled,filter,hitCount,ignoreCount,locationKey,oneShot,resolved,resolvedSourceSection,session,sourceBinding
+hcls BreakpointConditionFailure,BreakpointNode,BreakpointNodeFactory,ConditionalBreakNode
+
+CLSS public final com.oracle.truffle.api.debug.Breakpoint$Builder
+ outer com.oracle.truffle.api.debug.Breakpoint
+meth public com.oracle.truffle.api.debug.Breakpoint build()
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder ignoreCount(int)
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder lineIs(int)
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder oneShot()
+supr java.lang.Object
+hfds ignoreCount,key,line,oneShot,sourceSection
 
 CLSS public final static !enum com.oracle.truffle.api.debug.Breakpoint$State
  outer com.oracle.truffle.api.debug.Breakpoint
+ anno 0 java.lang.Deprecated()
 fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED
 fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED_UNRESOLVED
 fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISPOSED
@@ -30,19 +51,60 @@ meth public static com.oracle.truffle.api.debug.Breakpoint$State[] values()
 supr java.lang.Enum<com.oracle.truffle.api.debug.Breakpoint$State>
 hfds name
 
+CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
+intf java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue>
+meth public boolean isInternal()
+meth public com.oracle.truffle.api.debug.DebugValue eval(java.lang.String)
+meth public com.oracle.truffle.api.debug.DebugValue getValue(java.lang.String)
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public java.lang.String getName()
+meth public java.util.Iterator<com.oracle.truffle.api.debug.DebugValue> iterator()
+supr java.lang.Object
+hfds currentFrame,event
+
+CLSS public abstract com.oracle.truffle.api.debug.DebugValue
+meth public abstract <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>)
+meth public abstract boolean isReadable()
+meth public abstract boolean isWriteable()
+meth public abstract java.lang.String getName()
+meth public abstract void set(com.oracle.truffle.api.debug.DebugValue)
+meth public java.lang.String toString()
+supr java.lang.Object
+hcls HeapValue,StackValue
+
 CLSS public final com.oracle.truffle.api.debug.Debugger
 fld public final static java.lang.String CALL_TAG = "debug-CALL"
  anno 0 java.lang.Deprecated()
 fld public final static java.lang.String HALT_TAG = "debug-HALT"
  anno 0 java.lang.Deprecated()
 meth public boolean pause()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,com.oracle.truffle.api.source.LineLocation,boolean) throws java.io.IOException
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,java.net.URI,int,boolean) throws java.io.IOException
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+ anno 0 java.lang.Deprecated()
+meth public java.util.List<com.oracle.truffle.api.source.Source> getLoadedSources()
+meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.TruffleLanguage$Env)
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
 supr java.lang.Object
-hfds ACCESSOR,CALL_FILTER,EXISTING_DEBUGGERS,FACTORY,HALT_FILTER,NO_DEBUGGER,OUT,TRACE,TRACE_PREFIX,breakpointCallback,breakpoints,currentDebugContext,engine,instrumenter,lastSource,nextActionID,warningLog
-hcls AccessorDebug,BreakpointCallback,Continue,DebugExecutionContext,HaltPosition,PauseHandler,StepInto,StepOut,StepOver,StepOverNested,StepStrategy,WarningLog
+hfds ACCESSOR,TRACE,breakpointPerLocation,env,legacySession,sourceVM
+hcls AccessorDebug
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerSession
+intf java.io.Closeable
+meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
+meth public java.lang.String toString()
+meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+meth public void close()
+meth public void resumeAll()
+meth public void suspendNextExecution()
+supr java.lang.Object
+hfds SESSIONS,alwaysHaltBreakpoint,breakpoints,callBinding,callback,closed,currentSuspendedEventMap,debugger,legacy,sessionId,statementBinding,stepping,strategyMap,suspendAll,suspendNext
+hcls CallSteppingNode,StableBoolean,StatementSteppingNode,SteppingLocation
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerTags
 innr public final AlwaysHalt
@@ -53,33 +115,66 @@ CLSS public final com.oracle.truffle.api.debug.DebuggerTags$AlwaysHalt
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.debug.ExecutionEvent
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public void prepareContinue()
 meth public void prepareStepInto()
 supr java.lang.Object
-hfds currentDepth,debugger,engine,source
+hfds engine
+
+CLSS public abstract interface com.oracle.truffle.api.debug.SuspendedCallback
+meth public abstract void onSuspend(com.oracle.truffle.api.debug.SuspendedEvent)
 
 CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
 meth public boolean isHaltedBefore()
+meth public com.oracle.truffle.api.debug.DebugStackFrame getTopStackFrame()
+meth public com.oracle.truffle.api.debug.DebugValue getReturnValue()
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.debug.DebuggerSession getSession()
 meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.Node getNode()
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugStackFrame> getStackFrames()
 meth public java.lang.Object eval(java.lang.String,com.oracle.truffle.api.frame.FrameInstance) throws java.io.IOException
+ anno 0 java.lang.Deprecated()
+meth public java.lang.String toString()
 meth public java.lang.String toString(java.lang.Object,com.oracle.truffle.api.frame.FrameInstance)
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Throwable getBreakpointConditionException(com.oracle.truffle.api.debug.Breakpoint)
+meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public java.util.List<com.oracle.truffle.api.frame.FrameInstance> getStack()
+ anno 0 java.lang.Deprecated()
 meth public java.util.List<java.lang.String> getRecentWarnings()
+ anno 0 java.lang.Deprecated()
 meth public void prepareContinue()
 meth public void prepareKill()
 meth public void prepareStepInto(int)
 meth public void prepareStepOut()
 meth public void prepareStepOver(int)
 supr java.lang.Object
-hfds OUT,TRACE,TRACE_PREFIX,debugger,haltedFrame,haltedNode,haltedPosition,kill,stack,warnings
+hfds breakpoints,cachedFrames,conditionFailures,context,disposed,location,materializedFrame,nextStrategy,returnValue,session,sourceSection,thread
+hcls DebugStackFrameIterable
+
+CLSS public abstract interface java.io.Closeable
+intf java.lang.AutoCloseable
+meth public abstract void close() throws java.io.IOException
 
 CLSS public abstract interface java.io.Serializable
 
+CLSS public abstract interface java.lang.AutoCloseable
+meth public abstract void close() throws java.lang.Exception
+
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
@@ -98,6 +193,9 @@ meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Cl
 supr java.lang.Object
 hfds name,ordinal
 
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -111,4 +209,30 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
 
