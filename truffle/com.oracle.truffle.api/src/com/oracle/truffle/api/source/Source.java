@@ -790,7 +790,11 @@ public abstract class Source {
 
     /**
      * Returns an unavailable source section indicating that the source location is not available.
+     * Unavailable source sections return <code>-1</code> for all indices and lengths. They also
+     * return <code>null</code> for the {@link #getCode() code}. Multiple unavailable source
+     * sections for a source are equal but not necessarily identical with each other.
      *
+     * @see SourceSection#isUnavailable()
      * @since 0.18
      */
     public final SourceSection createUnavailableSection() {
