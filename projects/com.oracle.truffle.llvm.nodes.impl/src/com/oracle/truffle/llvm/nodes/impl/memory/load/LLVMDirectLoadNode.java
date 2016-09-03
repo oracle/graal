@@ -40,10 +40,10 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableStorageGuards;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -93,44 +93,32 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @ImportStatic(LLVMGlobalVariableStorageGuards.class)
+    @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
     public abstract static class LLVMGlobalVariableDirectLoadNode extends LLVMAddressNode {
 
-        protected final LLVMGlobalVariableStorage globalVariableStorage;
+        protected final LLVMGlobalVariableDescriptor descriptor;
 
-        public LLVMGlobalVariableDirectLoadNode(LLVMGlobalVariableStorage globalVariableStorage) {
-            this.globalVariableStorage = globalVariableStorage;
+        public LLVMGlobalVariableDirectLoadNode(LLVMGlobalVariableDescriptor descriptor) {
+            this.descriptor = descriptor;
         }
 
-        @Specialization(guards = "isUninitialized(frame, globalVariableStorage)")
-        public LLVMAddress executeUninitialized(VirtualFrame frame) {
+        @Specialization(guards = "needsTransition(frame, descriptor)")
+        public LLVMAddress executeTransition(VirtualFrame frame) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initialize();
-            globalVariableStorage.initializeNative();
-            return executeNative(frame);
-        }
-
-        @Specialization(guards = "isInitializedNative(frame, globalVariableStorage)")
-        public LLVMAddress executeInitialized(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initializeNative();
+            descriptor.transition(false, false);
             return executeNative(frame);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isNative(frame, globalVariableStorage)")
+        @Specialization(guards = "isNative(frame, descriptor)")
         public LLVMAddress executeNative(VirtualFrame frame) {
-            return LLVMMemory.getAddress(globalVariableStorage.getNativeStorage());
+            return LLVMMemory.getAddress(descriptor.getNativeStorage());
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isManaged(frame, globalVariableStorage)")
+        @Specialization(guards = "isManaged(frame, descriptor)")
         public Object executeManaged(VirtualFrame frame) {
-            return globalVariableStorage.getManagedStorage();
-        }
-
-        public LLVMGlobalVariableStorage getGlobalVariableStorage() {
-            return globalVariableStorage;
+            return descriptor.getManagedStorage();
         }
 
     }

@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
@@ -97,7 +98,8 @@ import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor.NativeResolver;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
@@ -409,19 +411,42 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public Object allocateGlobalVariable(GlobalVariable globalVariable) {
-        if (runtime.isGlobalVariableDefined(globalVariable.getName())) {
+    public LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable) {
+        String linkage = globalVariable.getLinkage();
+        boolean isStatic = "internal".equals(linkage) || "private".equals(linkage);
+        boolean isExtern = "external".equals(linkage);
+
+        String name = globalVariable.getName();
+
+        NativeResolver nativeResolver = new NativeResolver() {
+
+            @Override
+            public LLVMAddress resolve() {
+                return LLVMAddress.fromLong(runtime.getNativeHandle(name));
+            }
+
+        };
+
+        LLVMGlobalVariableDescriptor descriptor;
+
+        if (isStatic) {
+            descriptor = new LLVMGlobalVariableDescriptor(name, nativeResolver);
+        } else {
+            LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+            descriptor = context.getGlobalVaraibleRegistry().lookupOrAdd(name, nativeResolver);
+        }
+
+        if (!isExtern) {
             ResolvedType resolvedType = runtime.resolve(globalVariable.getType());
             int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
-            LLVMAddress allocation = LLVMHeap.allocateMemory(byteSize);
-            LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(allocation, LLVMBaseType.ADDRESS);
+            LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
+            LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
-            return new LLVMGlobalVariableStorage(globalVariable.getName(), allocation);
-        } else {
-            long getNativeSymbol = runtime.getNativeHandle(globalVariable.getName());
-            LLVMAddress nativeSymbolAddress = LLVMAddress.fromLong(getNativeSymbol);
-            return new LLVMGlobalVariableStorage(globalVariable.getName(), nativeSymbolAddress);
+            descriptor.declare(nativeStorage);
+            return descriptor;
         }
+
+        return descriptor;
     }
 
     @Override

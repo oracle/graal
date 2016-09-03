@@ -56,10 +56,10 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableStorageGuards;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -224,68 +224,53 @@ public abstract class LLVMStoreNode extends LLVMNode {
     }
 
     @NodeChild(type = LLVMAddressNode.class, value = "valueNode")
-    @ImportStatic(LLVMGlobalVariableStorageGuards.class)
+    @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
     public abstract static class LLVMGlobalVariableStoreNode extends LLVMNode {
 
-        protected final LLVMGlobalVariableStorage globalVariableStorage;
+        protected final LLVMGlobalVariableDescriptor descriptor;
 
-        public LLVMGlobalVariableStoreNode(LLVMGlobalVariableStorage globalVariableStorage) {
-            this.globalVariableStorage = globalVariableStorage;
+        public LLVMGlobalVariableStoreNode(LLVMGlobalVariableDescriptor descriptor) {
+            this.descriptor = descriptor;
         }
 
-        @Specialization(guards = "isUninitialized(frame, globalVariableStorage)")
-        public void executeUninitializedNative(VirtualFrame frame, LLVMAddress value) {
+        @Specialization(guards = "needsTransition(frame, descriptor)")
+        public void executeTransitionNative(VirtualFrame frame, LLVMAddress value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initialize();
+            descriptor.transition(true, false);
             executeNative(frame, value);
         }
 
-        @Specialization(guards = {"isUninitialized(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
-        public void executeUninitializedManaged(VirtualFrame frame, Object value) {
+        @Specialization(guards = {"needsTransition(frame, descriptor)", "!isLLVMAddress(value)"})
+        public void executeTransitionManaged(VirtualFrame frame, Object value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initialize();
-            globalVariableStorage.initializeManaged();
-            executeManaged(frame, value);
-        }
-
-        @Specialization(guards = "isInitializedNative(frame, globalVariableStorage)")
-        public void executeInitializedNative(VirtualFrame frame, LLVMAddress value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initializeNative();
-            executeNative(frame, value);
-        }
-
-        @Specialization(guards = {"isInitializedNative(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
-        public void executeInitializedManaged(VirtualFrame frame, Object value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            globalVariableStorage.initializeManaged();
+            descriptor.transition(true, true);
             executeManaged(frame, value);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isNative(frame, globalVariableStorage)")
+        @Specialization(guards = "isNative(frame, descriptor)")
         public void executeNative(VirtualFrame frame, LLVMAddress value) {
-            LLVMMemory.putAddress(globalVariableStorage.getNativeStorage(), value);
+            LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isNative(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        @Specialization(guards = {"isNative(frame, descriptor)", "!isLLVMAddress(value)"})
         public void executeManagedUnsupported(VirtualFrame frame, Object value) {
             CompilerDirectives.bailout("unsupported operation");
-            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a global variable " + globalVariableStorage.getName() + " that previously stored a native address");
+            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a global variable " + descriptor.getName() + " that previously stored a native address");
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isManaged(frame, globalVariableStorage)", "!isLLVMAddress(value)"})
+        @Specialization(guards = {"isManaged(frame, descriptor)", "!isLLVMAddress(value)"})
         public void executeManaged(VirtualFrame frame, Object value) {
-            globalVariableStorage.setManagedStorage(value);
+            descriptor.setManagedStorage(value);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isManaged(frame, globalVariableStorage)")
+        @Specialization(guards = "isManaged(frame, descriptor)")
         public void executeManagedUnsupported(VirtualFrame frame, LLVMAddress value) {
             CompilerDirectives.bailout("unsupported operation");
-            throw new UnsupportedOperationException("Sulong can't store a native address in a global variable " + globalVariableStorage.getName() + " that previously stored a Truffle object");
+            throw new UnsupportedOperationException("Sulong can't store a native address in a global variable " + descriptor.getName() + " that previously stored a Truffle object");
         }
 
     }
