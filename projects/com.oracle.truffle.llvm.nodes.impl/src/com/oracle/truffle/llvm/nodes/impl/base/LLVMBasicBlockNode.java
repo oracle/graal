@@ -90,7 +90,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
             try {
                 if (TRACE) {
                     SourceSection traceSourceSection = statement.getEncapsulatingSourceSection();
-                    LLVMLogger.info(String.format("[sulong] %s in %s", traceSourceSection.getIdentifier(), traceSourceSection.getSource().getName()));
+                    LLVMLogger.unconditionalInfo(String.format("[sulong] %s in %s", traceSourceSection.getIdentifier(), traceSourceSection.getSource().getName()));
                 }
 
                 statement.executeVoid(frame);
