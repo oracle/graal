@@ -132,6 +132,11 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
     public abstract static class LLVMAddressToI8Node extends LLVMToI8Node {
 
         @Specialization
+        public byte executeI8(boolean from) {
+            return (byte) (from ? 1 : 0);
+        }
+
+        @Specialization
         public byte executeI8(LLVMAddress from) {
             return (byte) from.getVal();
         }

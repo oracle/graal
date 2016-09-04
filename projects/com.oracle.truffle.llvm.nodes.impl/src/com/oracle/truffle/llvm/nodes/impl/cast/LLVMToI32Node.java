@@ -107,6 +107,11 @@ public abstract class LLVMToI32Node extends LLVMI32Node {
     public abstract static class LLVMAddressToI32Node extends LLVMToI32Node {
 
         @Specialization
+        public int executeI32(boolean from) {
+            return from ? 1 : 0;
+        }
+
+        @Specialization
         public int executeI32(LLVMAddress from) {
             return (int) from.getVal();
         }

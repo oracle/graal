@@ -181,6 +181,11 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
     public abstract static class LLVMAddressToI64Node extends LLVMToI64Node {
 
         @Specialization
+        public long executeI64(boolean from) {
+            return from ? 1 : 0;
+        }
+
+        @Specialization
         public long executeI64(LLVMAddress from) {
             return from.getVal();
         }
