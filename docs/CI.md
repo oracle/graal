@@ -19,12 +19,12 @@ test gate. The gate checks are defined in the
 The gate performs the following tasks:
 
 1. a check for the warning-free compilation of all Java sources with
-   `javac` and `ECJ`: To check the error-free compilation locally, use
+   `javac` and `ECJ`: To check the warning-free compilation locally, use
    `mx build` with the `JDT` environment variable set to an `ECJ` jar
    file to compile with `ECJ` and otherwise with `javac`.
 2. the execution of all [test suites](docs/TESTS.md): Use `mx su-tests` to
    execute the test cases.
-3. confirming that no Java files are formatted by `eclipseformat`
+3. confirming that Java files are correctly formatted using `eclipseformat`
    (which is normally executed when saving a Java file in Eclipse):
    Use `mx eclipseformat --primary` with the `ECLIPSE_EXE` environment
    variable set to eclipse.
@@ -34,7 +34,7 @@ The gate performs the following tasks:
    execute the check locally.
 5. confirming that there are no Python format or style violations using
    `pylint`. Use `mx pylint` to execute the check locally.
-6. confirming that no C or C++ files are formatted by using `clang-format`:
+6. confirming that C and C++ files are correctly formatted using `clang-format`:
    Use `mx su-clangformatcheck` to execute the check locally.
 7. checking that the mx configurations and project names are in the expected way
    using mx's `checkoverlap` and `canonicalizeprojects`: Use `mx checkoverlap`
