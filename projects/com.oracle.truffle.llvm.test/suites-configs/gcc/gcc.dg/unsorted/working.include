@@ -560,5 +560,5 @@ gcc.dg/torture/stackalign/pr16660-3.c
 gcc.dg/torture/stackalign/pr16660-2.c
 gcc.dg/torture/stackalign/global-1.c
 gcc.dg/torture/stackalign/alloca-1.c
-gcc.dg/autopar/pr39500-2.c
+gcc.dg/autopar/pr39500-2.c UNDEFINED_RETURN_CODE
 gcc.dg/ipa/inlinehint-3.c
