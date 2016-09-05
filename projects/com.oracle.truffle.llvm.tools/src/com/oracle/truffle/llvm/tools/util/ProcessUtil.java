@@ -67,7 +67,12 @@ public class ProcessUtil {
 
         @Override
         public String toString() {
-            return originalCommand + ": " + returnValue;
+            StringBuilder sb = new StringBuilder();
+            sb.append("command : " + originalCommand + "\n");
+            sb.append("stderr: " + stdErr + "\n");
+            sb.append("stdout: " + stdOutput + "\n");
+            sb.append("return value: " + returnValue + "\n");
+            return sb.toString();
         }
 
     }
