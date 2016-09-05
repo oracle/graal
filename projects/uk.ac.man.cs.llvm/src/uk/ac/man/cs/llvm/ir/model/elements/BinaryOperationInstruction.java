@@ -31,9 +31,12 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.Flag;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public final class BinaryOperationInstruction extends ValueInstruction {
 
@@ -45,7 +48,7 @@ public final class BinaryOperationInstruction extends ValueInstruction {
 
     private Symbol rhs;
 
-    public BinaryOperationInstruction(Type type, BinaryOperator operator, Flag[] flags) {
+    private BinaryOperationInstruction(Type type, BinaryOperator operator, Flag[] flags) {
         super(type);
         this.operator = operator;
         this.flags = flags;
@@ -82,11 +85,12 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         }
     }
 
-    public void setLHS(Symbol lhs) {
-        this.lhs = lhs;
-    }
-
-    public void setRHS(Symbol rhs) {
-        this.rhs = rhs;
+    public static BinaryOperationInstruction fromSymbols(Symbols symbols, Type type, int opcode, int flags, int lhs, int rhs) {
+        final boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
+        final BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
+        final BinaryOperationInstruction inst = new BinaryOperationInstruction(type, operator, Flag.decode(operator, flags));
+        inst.lhs = symbols.getSymbol(lhs, inst);
+        inst.rhs = symbols.getSymbol(rhs, inst);
+        return inst;
     }
 }

@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class SelectInstruction extends ValueInstruction {
@@ -41,7 +42,7 @@ public final class SelectInstruction extends ValueInstruction {
 
     private Symbol falseValue;
 
-    public SelectInstruction(Type type) {
+    private SelectInstruction(Type type) {
         super(type);
     }
 
@@ -75,15 +76,11 @@ public final class SelectInstruction extends ValueInstruction {
         }
     }
 
-    public void setCondition(Symbol condition) {
-        this.condition = condition;
-    }
-
-    public void setFalseValue(Symbol falseValue) {
-        this.falseValue = falseValue;
-    }
-
-    public void setTrueValue(Symbol trueValue) {
-        this.trueValue = trueValue;
+    public static SelectInstruction fromSymbols(Symbols symbols, Type type, int condition, int trueValue, int falseValue) {
+        final SelectInstruction inst = new SelectInstruction(type);
+        inst.condition = symbols.getSymbol(condition, inst);
+        inst.trueValue = symbols.getSymbol(trueValue, inst);
+        inst.falseValue = symbols.getSymbol(falseValue, inst);
+        return inst;
     }
 }

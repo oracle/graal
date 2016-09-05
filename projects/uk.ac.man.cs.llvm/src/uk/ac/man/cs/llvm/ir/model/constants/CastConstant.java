@@ -30,16 +30,17 @@
 package uk.ac.man.cs.llvm.ir.model.constants;
 
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.CastOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class CastConstant extends AbstractConstant {
+public final class CastConstant extends AbstractConstant {
 
     private final CastOperator operator;
 
     private Symbol value;
 
-    public CastConstant(Type type, CastOperator operator) {
+    private CastConstant(Type type, CastOperator operator) {
         super(type);
         this.operator = operator;
     }
@@ -59,7 +60,9 @@ public class CastConstant extends AbstractConstant {
         }
     }
 
-    public void setValue(Symbol value) {
-        this.value = value;
+    public static CastConstant fromSymbols(Symbols symbols, Type type, int opcode, int value) {
+        final CastConstant constant = new CastConstant(type, CastOperator.decode(opcode));
+        constant.value = symbols.getSymbol(value, constant);
+        return constant;
     }
 }

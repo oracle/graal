@@ -52,18 +52,17 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class ExtractElementInstruction extends ValueInstruction {
 
-    private final Symbol vector;
+    private Symbol vector;
 
-    private final Symbol index;
+    private Symbol index;
 
-    public ExtractElementInstruction(Type type, Symbol vector, Symbol index) {
+    private ExtractElementInstruction(Type type) {
         super(type);
-        this.vector = vector;
-        this.index = index;
     }
 
     @Override
@@ -77,5 +76,22 @@ public final class ExtractElementInstruction extends ValueInstruction {
 
     public Symbol getVector() {
         return vector;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (vector == original) {
+            vector = replacement;
+        }
+        if (index == original) {
+            index = replacement;
+        }
+    }
+
+    public static ExtractElementInstruction fromSymbols(Symbols symbols, Type type, int vector, int index) {
+        final ExtractElementInstruction inst = new ExtractElementInstruction(type);
+        inst.vector = symbols.getSymbol(vector, inst);
+        inst.index = symbols.getSymbol(index, inst);
+        return inst;
     }
 }

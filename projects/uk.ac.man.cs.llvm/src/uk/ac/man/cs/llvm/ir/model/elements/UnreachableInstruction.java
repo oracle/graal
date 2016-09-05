@@ -33,11 +33,15 @@ import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 
 public final class UnreachableInstruction implements VoidInstruction {
 
-    public UnreachableInstruction() {
+    private UnreachableInstruction() {
     }
 
     @Override
     public void accept(InstructionVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static UnreachableInstruction generate() {
+        return new UnreachableInstruction();
     }
 }

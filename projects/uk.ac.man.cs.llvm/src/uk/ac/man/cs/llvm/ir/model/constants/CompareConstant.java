@@ -34,7 +34,7 @@ import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class CompareConstant extends AbstractConstant {
+public final class CompareConstant extends AbstractConstant {
 
     private final CompareOperator operator;
 
@@ -42,7 +42,7 @@ public class CompareConstant extends AbstractConstant {
 
     private Symbol rhs;
 
-    public CompareConstant(Type type, CompareOperator operator) {
+    private CompareConstant(Type type, CompareOperator operator) {
         super(type);
         this.operator = operator;
     }
@@ -69,18 +69,10 @@ public class CompareConstant extends AbstractConstant {
         }
     }
 
-    public void setLHS(Symbol lhs) {
-        this.lhs = lhs;
-    }
-
-    public void setRHS(Symbol rhs) {
-        this.rhs = rhs;
-    }
-
-    public static CompareConstant fromSymbols(Symbols symbols, Type type, CompareOperator operator, int lhs, int rhs) {
-        final CompareConstant constant = new CompareConstant(type, operator);
-        constant.setLHS(symbols.getSymbol(lhs, constant));
-        constant.setRHS(symbols.getSymbol(rhs, constant));
+    public static CompareConstant fromSymbols(Symbols symbols, Type type, int opcode, int lhs, int rhs) {
+        final CompareConstant constant = new CompareConstant(type, CompareOperator.decode(opcode));
+        constant.lhs = symbols.getSymbol(lhs, constant);
+        constant.rhs = symbols.getSymbol(rhs, constant);
         return constant;
     }
 }

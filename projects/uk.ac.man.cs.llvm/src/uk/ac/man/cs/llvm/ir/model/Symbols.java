@@ -54,6 +54,8 @@ public final class Symbols {
 
     private int size;
 
+    private final Map<ForwardReference, String> forwardReferenceNames = new HashMap<>();
+
     public Symbols() {
         symbols = new Symbol[INITIAL_CAPACITY];
     }
@@ -62,6 +64,14 @@ public final class Symbols {
         ensureCapacity(size + 1);
 
         if (symbols[size] != null) {
+            final ForwardReference ref = (ForwardReference) symbols[size];
+            ref.replace(symbol);
+            if (forwardReferenceNames.containsKey(ref)) {
+                if (symbol instanceof ValueSymbol) {
+                    ((ValueSymbol) symbol).setName(forwardReferenceNames.get(ref));
+                }
+                forwardReferenceNames.remove(ref);
+            }
             ((ForwardReference) symbols[size]).replace(symbol);
         }
         symbols[size++] = symbol;
@@ -161,7 +171,9 @@ public final class Symbols {
 
     public void setSymbolName(int index, String name) {
         Symbol symbol = getSymbol(index);
-        if (symbol instanceof ValueSymbol) {
+        if (symbol instanceof ForwardReference) {
+            forwardReferenceNames.put((ForwardReference) symbol, name);
+        } else if (symbol instanceof ValueSymbol) {
             ((ValueSymbol) symbol).setName(name);
         }
     }
@@ -180,11 +192,11 @@ public final class Symbols {
         ForwardReference() {
         }
 
-        public void addDependent(Symbol dependent) {
+        void addDependent(Symbol dependent) {
             dependents.add(dependent);
         }
 
-        public void addDependent(AggregateConstant dependent, int index) {
+        void addDependent(AggregateConstant dependent, int index) {
             aggregateDependents.put(dependent, index);
         }
 

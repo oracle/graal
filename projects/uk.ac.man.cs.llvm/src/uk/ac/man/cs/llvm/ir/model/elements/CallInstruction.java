@@ -34,27 +34,22 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class CallInstruction extends ValueInstruction implements Call {
 
-    private final Symbol target;
+    private Symbol target;
 
     private final List<Symbol> arguments = new ArrayList<>();
 
-    public CallInstruction(Type type, Symbol target) {
+    private CallInstruction(Type type) {
         super(type);
-        this.target = target;
     }
 
     @Override
     public void accept(InstructionVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public void addArgument(Symbol argument) {
-        arguments.add(argument);
     }
 
     @Override
@@ -74,10 +69,22 @@ public final class CallInstruction extends ValueInstruction implements Call {
 
     @Override
     public void replace(Symbol original, Symbol replacement) {
+        if (target == original) {
+            target = replacement;
+        }
         for (int i = 0; i < arguments.size(); i++) {
             if (arguments.get(i) == original) {
                 arguments.set(i, replacement);
             }
         }
+    }
+
+    public static CallInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments) {
+        final CallInstruction inst = new CallInstruction(type);
+        inst.target = symbols.getSymbol(targetIndex, inst);
+        for (int argument : arguments) {
+            inst.arguments.add(symbols.getSymbol(argument, inst));
+        }
+        return inst;
     }
 }

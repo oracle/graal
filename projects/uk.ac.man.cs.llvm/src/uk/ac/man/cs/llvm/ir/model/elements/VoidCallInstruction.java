@@ -33,25 +33,21 @@ import java.util.ArrayList;
 import java.util.List;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 
 public final class VoidCallInstruction implements Call, VoidInstruction {
 
-    private final Symbol target;
+    private Symbol target;
 
-    private final List<Symbol> arguments = new ArrayList<>();
+    private final List<Symbol> arguments;
 
-    public VoidCallInstruction(Symbol target) {
-        this.target = target;
+    private VoidCallInstruction() {
+        arguments = new ArrayList<>();
     }
 
     @Override
     public void accept(InstructionVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public void addArgument(Symbol argument) {
-        arguments.add(argument);
     }
 
     @Override
@@ -71,10 +67,22 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
 
     @Override
     public void replace(Symbol original, Symbol replacement) {
+        if (target == original) {
+            target = replacement;
+        }
         for (int i = 0; i < arguments.size(); i++) {
             if (arguments.get(i) == original) {
                 arguments.set(i, replacement);
             }
         }
+    }
+
+    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments) {
+        final VoidCallInstruction inst = new VoidCallInstruction();
+        inst.target = symbols.getSymbol(targetIndex, inst);
+        for (int argument : arguments) {
+            inst.arguments.add(symbols.getSymbol(argument, inst));
+        }
+        return inst;
     }
 }

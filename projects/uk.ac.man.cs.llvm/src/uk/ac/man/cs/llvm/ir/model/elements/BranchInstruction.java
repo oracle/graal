@@ -36,7 +36,7 @@ public final class BranchInstruction implements VoidInstruction {
 
     private final InstructionBlock successor;
 
-    public BranchInstruction(InstructionBlock successor) {
+    private BranchInstruction(InstructionBlock successor) {
         this.successor = successor;
     }
 
@@ -47,5 +47,9 @@ public final class BranchInstruction implements VoidInstruction {
 
     public InstructionBlock getSuccessor() {
         return successor;
+    }
+
+    public static BranchInstruction fromTarget(InstructionBlock block) {
+        return new BranchInstruction(block);
     }
 }

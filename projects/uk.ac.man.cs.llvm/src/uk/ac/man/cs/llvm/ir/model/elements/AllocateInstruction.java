@@ -31,18 +31,18 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class AllocateInstruction extends ValueInstruction {
 
-    private final Symbol count;
+    private Symbol count;
 
     private final int align;
 
-    public AllocateInstruction(Type type, Symbol count, int align) {
+    private AllocateInstruction(Type type, int align) {
         super(type);
-        this.count = count;
         this.align = align;
     }
 
@@ -67,5 +67,18 @@ public final class AllocateInstruction extends ValueInstruction {
     @Override
     public PointerType getType() {
         return (PointerType) super.getType();
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (count == original) {
+            count = replacement;
+        }
+    }
+
+    public static AllocateInstruction fromSymbols(Symbols symbols, Type type, int count, int align) {
+        final AllocateInstruction inst = new AllocateInstruction(type, align);
+        inst.count = symbols.getSymbol(count, inst);
+        return inst;
     }
 }

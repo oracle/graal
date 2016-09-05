@@ -31,21 +31,19 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class ShuffleVectorInstruction extends ValueInstruction {
 
-    private final Symbol vector1;
+    private Symbol vector1;
 
-    private final Symbol vector2;
+    private Symbol vector2;
 
-    private final Symbol mask;
+    private Symbol mask;
 
-    public ShuffleVectorInstruction(Type type, Symbol vector1, Symbol vector2, Symbol mask) {
+    private ShuffleVectorInstruction(Type type) {
         super(type);
-        this.vector1 = vector1;
-        this.vector2 = vector2;
-        this.mask = mask;
     }
 
     @Override
@@ -63,5 +61,26 @@ public final class ShuffleVectorInstruction extends ValueInstruction {
 
     public Symbol getVector2() {
         return vector2;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (vector1 == original) {
+            vector1 = replacement;
+        }
+        if (vector2 == original) {
+            vector2 = replacement;
+        }
+        if (mask == original) {
+            mask = replacement;
+        }
+    }
+
+    public static ShuffleVectorInstruction fromSymbols(Symbols symbols, Type type, int vector1, int vector2, int mask) {
+        final ShuffleVectorInstruction inst = new ShuffleVectorInstruction(type);
+        inst.vector1 = symbols.getSymbol(vector1, inst);
+        inst.vector2 = symbols.getSymbol(vector2, inst);
+        inst.mask = symbols.getSymbol(mask, inst);
+        return inst;
     }
 }

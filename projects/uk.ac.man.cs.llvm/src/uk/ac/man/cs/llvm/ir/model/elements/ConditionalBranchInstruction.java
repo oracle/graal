@@ -32,17 +32,17 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 
 public final class ConditionalBranchInstruction implements VoidInstruction {
 
-    private final Symbol condition;
+    private Symbol condition;
 
     private final InstructionBlock trueSuccessor;
 
     private final InstructionBlock falseSuccessor;
 
-    public ConditionalBranchInstruction(Symbol condition, InstructionBlock trueSuccessor, InstructionBlock falseSuccessor) {
-        this.condition = condition;
+    private ConditionalBranchInstruction(InstructionBlock trueSuccessor, InstructionBlock falseSuccessor) {
         this.trueSuccessor = trueSuccessor;
         this.falseSuccessor = falseSuccessor;
     }
@@ -62,5 +62,18 @@ public final class ConditionalBranchInstruction implements VoidInstruction {
 
     public InstructionBlock getTrueSuccessor() {
         return trueSuccessor;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+        if (condition == original) {
+            condition = replacement;
+        }
+    }
+
+    public static ConditionalBranchInstruction fromSymbols(Symbols symbols, int conditionIndex, InstructionBlock trueSuccessor, InstructionBlock falseSuccessor) {
+        final ConditionalBranchInstruction inst = new ConditionalBranchInstruction(trueSuccessor, falseSuccessor);
+        inst.condition = symbols.getSymbol(conditionIndex, inst);
+        return inst;
     }
 }

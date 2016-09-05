@@ -36,8 +36,6 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public interface Call extends Instruction {
 
-    void addArgument(Symbol argument);
-
     Symbol getArgument(int index);
 
     int getArgumentCount();

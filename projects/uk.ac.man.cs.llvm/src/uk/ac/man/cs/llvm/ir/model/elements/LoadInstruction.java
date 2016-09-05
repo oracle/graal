@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -42,7 +43,7 @@ public final class LoadInstruction extends ValueInstruction {
 
     private Symbol source;
 
-    public LoadInstruction(Type type, int align, boolean isVolatile) {
+    private LoadInstruction(Type type, int align, boolean isVolatile) {
         super(type);
         this.align = align;
         this.isVolatile = isVolatile;
@@ -77,7 +78,9 @@ public final class LoadInstruction extends ValueInstruction {
         }
     }
 
-    public void setSource(Symbol source) {
-        this.source = source;
+    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile) {
+        final LoadInstruction inst = new LoadInstruction(type, align, isVolatile);
+        inst.source = symbols.getSymbol(source, inst);
+        return inst;
     }
 }

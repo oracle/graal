@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -42,7 +43,7 @@ public final class CompareInstruction extends ValueInstruction {
 
     private Symbol rhs;
 
-    public CompareInstruction(Type type, CompareOperator operator) {
+    private CompareInstruction(Type type, CompareOperator operator) {
         super(type);
         this.operator = operator;
     }
@@ -74,11 +75,10 @@ public final class CompareInstruction extends ValueInstruction {
         }
     }
 
-    public void setLHS(Symbol lhs) {
-        this.lhs = lhs;
-    }
-
-    public void setRHS(Symbol rhs) {
-        this.rhs = rhs;
+    public static CompareInstruction fromSymbols(Symbols symbols, Type type, int opcode, int lhs, int rhs) {
+        final CompareInstruction cmpInst = new CompareInstruction(type, CompareOperator.decode(opcode));
+        cmpInst.lhs = symbols.getSymbol(lhs, cmpInst);
+        cmpInst.rhs = symbols.getSymbol(rhs, cmpInst);
+        return cmpInst;
     }
 }
