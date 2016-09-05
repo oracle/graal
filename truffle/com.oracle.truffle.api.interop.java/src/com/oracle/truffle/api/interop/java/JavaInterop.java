@@ -189,7 +189,9 @@ public final class JavaInterop {
 
     /**
      * Takes executable object from a {@link TruffleLanguage} and converts it into an instance of a
-     * <b>Java</b> <em>functional interface</em>.
+     * <b>Java</b> <em>functional interface</em>. If the <code>functionalType</code> method is using
+     * {@link Method#isVarArgs() variable arguments}, then the arguments are unwrapped and passed
+     * into the <code>function</code> as indivual arguments.
      *
      * @param <T> requested and returned type
      * @param functionalType interface with a single defined method - so called <em>functional

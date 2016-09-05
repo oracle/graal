@@ -141,8 +141,17 @@ final class ToJavaNode extends Node {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
             Object ret;
-            if (method.isVarArgs() && arguments.length == 1) {
-                ret = call((Object[]) arguments[0]);
+            if (method.isVarArgs()) {
+                if (arguments.length == 1) {
+                    ret = call((Object[]) arguments[0]);
+                } else {
+                    final int allButOne = arguments.length - 1;
+                    Object[] last = (Object[]) arguments[allButOne];
+                    Object[] merge = new Object[allButOne + last.length];
+                    System.arraycopy(arguments, 0, merge, 0, allButOne);
+                    System.arraycopy(last, 0, merge, allButOne, last.length);
+                    ret = call(merge);
+                }
             } else {
                 ret = call(arguments);
             }
