@@ -95,7 +95,7 @@ public class SLJavaInteropTest {
         String scriptText = "function values(a, b) {\n" + //
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
-        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
         engine.eval(script);
         PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
         final Object value = fn.get();
@@ -115,7 +115,7 @@ public class SLJavaInteropTest {
         String scriptText = "function values(a, b) {\n" + //
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
-        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
         engine.eval(script);
         PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
         final Object value = fn.get();
@@ -137,7 +137,7 @@ public class SLJavaInteropTest {
         String scriptText = "function values(a, b) {\n" + //
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
-        Source script = Source.fromText(scriptText, "Test").withMimeType("application/x-sl");
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
         engine.eval(script);
         PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
         final Object value = fn.get();

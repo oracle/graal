@@ -38,9 +38,9 @@ public class BytesSourceSectionTest {
         assertEquals("description", source.getName());
         assertEquals("description", source.getShortName());
         assertEquals("description", source.getPath());
-        assertEquals("foo", source.createSection("identifier", 1).getCode());
-        assertEquals("bar", source.createSection("identifier", 2).getCode());
-        assertEquals("baz", source.createSection("identifier", 3).getCode());
+        assertEquals("foo", source.createSection(1).getCode());
+        assertEquals("bar", source.createSection(2).getCode());
+        assertEquals("baz", source.createSection(3).getCode());
     }
 
     @Test
