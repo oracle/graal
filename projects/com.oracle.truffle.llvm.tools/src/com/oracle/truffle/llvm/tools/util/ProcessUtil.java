@@ -39,6 +39,9 @@ public class ProcessUtil {
 
     private static final int PROCESS_WAIT_TIMEOUT = 5000;
 
+    /**
+     * This class represents the result of a native command executed by the operating system.
+     */
     public static final class ProcessResult {
 
         private final String originalCommand;
@@ -53,14 +56,29 @@ public class ProcessUtil {
             this.stdOutput = stdInput;
         }
 
+        /**
+         * Gets the Standard error stream of the executed native command.
+         *
+         * @return <code>stderr</code> as a string
+         */
         public String getStdErr() {
             return stdErr;
         }
 
+        /**
+         * Gets the Standard output stream of the executed native command.
+         *
+         * @return <code>stdout</code> as a string
+         */
         public String getStdOutput() {
             return stdOutput;
         }
 
+        /**
+         * Gets the return value of the executed native command.
+         *
+         * @return <code>stderr</code> as a string
+         */
         public int getReturnValue() {
             return returnValue;
         }
