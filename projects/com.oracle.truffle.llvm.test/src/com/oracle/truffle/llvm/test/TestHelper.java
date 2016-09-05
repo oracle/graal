@@ -257,4 +257,9 @@ public class TestHelper {
         }
     }
 
+    public static ProcessResult executeSourceAsBinary(TestCaseFiles tuple) {
+        File exe = Clang.compileToExecutable(tuple.getOriginalFile(), ClangOptions.builder());
+        return ProcessUtil.executeNativeCommand(exe.getAbsolutePath());
+    }
+
 }

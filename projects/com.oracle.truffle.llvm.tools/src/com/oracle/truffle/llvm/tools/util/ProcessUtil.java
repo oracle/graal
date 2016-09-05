@@ -39,35 +39,58 @@ public class ProcessUtil {
 
     private static final int PROCESS_WAIT_TIMEOUT = 5000;
 
+    /**
+     * This class represents the result of a native command executed by the operating system.
+     */
     public static final class ProcessResult {
 
         private final String originalCommand;
         private final String stdErr;
-        private final String stdInput;
+        private final String stdOutput;
         private final int returnValue;
 
         private ProcessResult(String originalCommand, int returnValue, String stdErr, String stdInput) {
             this.originalCommand = originalCommand;
             this.returnValue = returnValue;
             this.stdErr = stdErr;
-            this.stdInput = stdInput;
+            this.stdOutput = stdInput;
         }
 
+        /**
+         * Gets the Standard error stream of the executed native command.
+         *
+         * @return <code>stderr</code> as a string
+         */
         public String getStdErr() {
             return stdErr;
         }
 
-        public String getStdInput() {
-            return stdInput;
+        /**
+         * Gets the Standard output stream of the executed native command.
+         *
+         * @return <code>stdout</code> as a string
+         */
+        public String getStdOutput() {
+            return stdOutput;
         }
 
+        /**
+         * Gets the return value of the executed native command.
+         *
+         * @return <code>stderr</code> as a string
+         */
         public int getReturnValue() {
             return returnValue;
         }
 
         @Override
         public String toString() {
-            return originalCommand + ": " + returnValue;
+            StringBuilder sb = new StringBuilder();
+            sb.append("command : " + originalCommand + "\n");
+            sb.append("stderr: " + stdErr + "\n");
+            sb.append("stdout: " + stdOutput + "\n");
+            sb.append("return value: " + returnValue + "\n");
+            return sb.toString();
         }
 
     }

@@ -69,7 +69,7 @@ public class NWCCTestSuite extends RemoteTestSuiteBase {
             int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
             String sulongLines = launchRemote.stream().collect(Collectors.joining());
             ProcessResult processResult = TestHelper.executeLLVMBinary(bitCodeFile);
-            String expectedLines = processResult.getStdInput();
+            String expectedLines = processResult.getStdOutput();
             int expectedReturnValue = processResult.getReturnValue();
             boolean pass = expectedLines.equals(sulongLines);
             boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
