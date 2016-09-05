@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.tools.LLVMToolPaths.LLVMTool;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
@@ -78,11 +79,11 @@ public class Clang extends CompilerBase {
         String fileExtension = PathUtil.getExtension(path.getName());
         File tool;
         if (ProgrammingLanguage.C.isFile(path)) {
-            tool = LLVMToolPaths.LLVM_CLANG;
+            tool = LLVMToolPaths.getLLVMProgram(LLVMTool.CLANG);
         } else if (ProgrammingLanguage.C_PLUS_PLUS.isFile(path)) {
-            tool = LLVMToolPaths.LLVM_CLANGPlusPlus;
+            tool = LLVMToolPaths.getLLVMProgram(LLVMTool.CLANG_PP);
         } else if (ProgrammingLanguage.OBJECTIVE_C.isFile(path)) {
-            tool = LLVMToolPaths.LLVM_CLANG;
+            tool = LLVMToolPaths.getLLVMProgram(LLVMTool.CLANG);
         } else {
             throw new IllegalArgumentException(fileExtension);
         }

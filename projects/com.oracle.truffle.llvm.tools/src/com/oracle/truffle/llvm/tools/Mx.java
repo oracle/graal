@@ -46,6 +46,7 @@ public final class Mx {
 
     public static File executeGetLLVMProgramPath(String program) {
         ProcessResult result = Mx.execute("su-get-llvm " + program);
+        assert result.getReturnValue() == 0;
         File llvmPath = getProgramPathFromStdout(result);
         return llvmPath;
     }
@@ -53,6 +54,7 @@ public final class Mx {
     public static File executeGetGCCProgramPath(String program) {
         ProcessResult result = Mx.execute("su-get-gcc " + program);
         File llvmPath = getProgramPathFromStdout(result);
+        assert result.getReturnValue() == 0;
         return llvmPath;
     }
 

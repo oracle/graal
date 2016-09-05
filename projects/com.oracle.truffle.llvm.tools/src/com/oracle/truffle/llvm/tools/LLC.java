@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
 
+import com.oracle.truffle.llvm.tools.LLVMToolPaths.LLVMTool;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class LLC {
@@ -39,7 +40,7 @@ public final class LLC {
     }
 
     public static void compileBitCodeToObjectFile(File bitcodeFile, File objectFile) {
-        String compilationCommand = LLVMToolPaths.LLVM_COMPILER + " -filetype=obj " + bitcodeFile.getAbsolutePath() + " -o " + objectFile.getAbsolutePath();
+        String compilationCommand = LLVMToolPaths.getLLVMProgram(LLVMTool.COMPILER) + " -filetype=obj " + bitcodeFile.getAbsolutePath() + " -o " + objectFile.getAbsolutePath();
         ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
     }
 

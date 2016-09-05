@@ -33,6 +33,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.tools.LLVMToolPaths.LLVMTool;
 import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
@@ -87,7 +88,7 @@ public class Opt {
     }
 
     public static void optimizeBitcodeFile(File bitCodeFile, File destinationFile, OptOptions options) {
-        String clangCompileCommand = LLVMToolPaths.LLVM_OPT + " -S " + getStringPasses(options.getPasses()) + " " + bitCodeFile.getAbsolutePath() + " -o " + destinationFile;
+        String clangCompileCommand = LLVMToolPaths.getLLVMProgram(LLVMTool.OPT) + " -S " + getStringPasses(options.getPasses()) + " " + bitCodeFile.getAbsolutePath() + " -o " + destinationFile;
         ProcessUtil.executeNativeCommandZeroReturn(clangCompileCommand);
     }
 
