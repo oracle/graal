@@ -42,6 +42,10 @@ import java.util.concurrent.TimeoutException;
 
 import com.oracle.truffle.llvm.LLVM;
 
+/**
+ * This class is a compilation and execution server that can be executed as a remote process.
+ * Communication works by writing commands to the standard input of the process.
+ */
 public class RemoteLLVMTester {
 
     private static final int SLEEP_TIME_MS = 100;
