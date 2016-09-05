@@ -32,6 +32,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+// Workaround for Eclipse formatter behaving different when running on JDK 9.
+// @formatter:off
 /**
  * <p>
  * A parameter annotated with {@link Cached} in a {@link Specialization} refers to a <b>cached</b>
@@ -91,7 +93,7 @@ import java.lang.annotation.Target;
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
- * 
+ *
  *  Example executions:
  *  execute(1) => doCached(1, 1) // new instantiation, localOperand is bound to 1
  *  execute(0) => doCached(0, 1)
@@ -116,7 +118,7 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- * 
+ *
  * Example executions:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -143,10 +145,10 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- * 
+ *
  * &#064;Specialization(contains = &quot;doCached&quot;)
  * void doNormal(int operand) {...}
- * 
+ *
  * Example executions with contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -154,7 +156,7 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow; doCached gets removed.
  * execute(1) => doNormal(1)
- * 
+ *
  * Example executions without contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -162,7 +164,7 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
- * 
+ *
  * </code>
  *
  * </li>
@@ -173,14 +175,14 @@ import java.lang.annotation.Target;
  * &#064;Specialization
  * void s(int operand, {@code @Cached}(&quot;transformLocal(operand)&quot;) int cachedOperand) {
  * }
- * 
+ *
  * int transformLocal(int operand) {
  *     return operand & 0x42;
  * }
  *
  * </li>
  * </pre>
- * 
+ *
  * <li>The <code>new</code> keyword can be used to initialize a cached parameter using a constructor
  * of the parameter type.
  *
@@ -189,9 +191,9 @@ import java.lang.annotation.Target;
  * void s(Object operand, {@code @Cached}(&quot;new()&quot;) OtherNode someNode) {
  *     someNode.execute(operand);
  * }
- * 
+ *
  * static class OtherNode extends Node {
- * 
+ *
  *     public String execute(Object value) {
  *         throw new UnsupportedOperationException();
  *     }
@@ -220,6 +222,7 @@ import java.lang.annotation.Target;
  * @see ImportStatic
  * @since 0.8 or earlier
  */
+// @formatter:on
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 public @interface Cached {

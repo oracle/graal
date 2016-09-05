@@ -58,6 +58,18 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * {@codesnippet rectlayoutcreate}
  *
+ * <h3>Alternative constructor method</h3>
+ *
+ * As an alternative to the {@code create-} factory, you can declare a method named {@code build},
+ * which returns the arguments packed for {@link DynamicObjectFactory#newInstance(Object...)}.
+ *
+ * {@codesnippet rectlayoutbuild}
+ *
+ * This is particularly useful when the {@code DynamicObjectFactory} is not statically known or some
+ * generic allocation node taking {@code Object[]} arguments is used to create objects.
+ *
+ * {@codesnippet rectlayoutbuildinstance}
+ *
  * <h2>Guards</h2>
  *
  * Guards can tell you if an object is using layout. Guards are defined for {@link DynamicObject},
@@ -132,7 +144,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * for all instances.
  *
  * It is important to note that changing a shape-property for an existing object is both not a
- * fast-path operation, and depending on the design of your interpreter is likely ot invalidate
+ * fast-path operation, and depending on the design of your interpreter is likely to invalidate
  * caches.
  *
  * When shape properties are used there is an extra level of indirection, in that a
@@ -236,12 +248,44 @@ class Snippets {
         // END: rectlayoutimpl
     }
 
-    interface InterfaceSnippets {
+    interface CreateSnippets {
         // BEGIN: rectlayoutcreate
-        DynamicObject createRect();
+        DynamicObject createRect(int x, int y, int width, int height);
 
         // END: rectlayoutcreate
 
+        // BEGIN: rectlayoutbuild
+        Object[] build(int x, int y, int width, int height);
+
+        // END: rectlayoutbuild
+    }
+
+    static class BuildSnippets {
+        static class RectLayoutImpl implements CreateSnippets {
+            public DynamicObject createRect(int x, int y, int width, int height) {
+                return null;
+            }
+
+            public Object[] build(int x, int y, int width, int height) {
+                return null;
+            }
+
+            public static final CreateSnippets INSTANCE = new RectLayoutImpl();
+        }
+
+        DynamicObject createRect(Object type, int x, int y, int width, int height) {
+            // BEGIN: rectlayoutbuildinstance
+            DynamicObjectFactory factory = getCachedFactory(type);
+            return factory.newInstance(RectLayoutImpl.INSTANCE.build(x, y, width, height));
+            // END: rectlayoutbuildinstance
+        }
+
+        private static DynamicObjectFactory getCachedFactory(Object type) {
+            return (DynamicObjectFactory) type;
+        }
+    }
+
+    interface InterfaceSnippets {
         // BEGIN: rectlayoutguards
         boolean isRect(DynamicObject object);
 

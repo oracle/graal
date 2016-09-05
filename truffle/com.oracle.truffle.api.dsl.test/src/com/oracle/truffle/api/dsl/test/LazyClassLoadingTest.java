@@ -26,25 +26,34 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
+@DSLOptions
 public class LazyClassLoadingTest {
 
     @Test
     public void test() {
+        // this test does not make any sense for the flat layout
+        // there are no classes to be loaded lazily.
+        Assume.assumeFalse(LazyClassLoadingTest.class.getAnnotation(DSLOptions.class).defaultGenerator() == DSLGenerator.FLAT);
+
         String factoryName = TestNodeFactory.class.getName();
         String nodeName = factoryName + "$" + TestNode.class.getSimpleName() + "Gen";
         Assert.assertTrue(isLoaded(factoryName));
         Assert.assertFalse(isLoaded(nodeName));
 
         NodeFactory<TestNode> factory = TestNodeFactory.getInstance();
+
         Assert.assertTrue(isLoaded(factoryName));
         Assert.assertTrue(isLoaded(nodeName));
 

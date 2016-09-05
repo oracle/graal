@@ -35,7 +35,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.internal.DSLNode;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains1Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains2Factory;
@@ -61,10 +60,7 @@ public class ContainsTest {
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (value instanceof String) {
-                                    if (node.getNode() instanceof DSLNode) {
-                                        // assert that the final specialization is always Object
-                                        Assert.assertEquals(Object.class, ((DSLNode) node.getNode()).getMetadata0().getSpecializedTypes()[0]);
-                                    } else {
+                                    if (node.getNode() instanceof SpecializedNode) {
                                         Assert.assertTrue(((SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("F2Node_"));
                                     }
                                 }

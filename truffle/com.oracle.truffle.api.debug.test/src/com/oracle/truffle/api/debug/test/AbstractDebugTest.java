@@ -24,295 +24,131 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
 
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.io.Writer;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
+import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.vm.EventConsumer;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.DebuggerTester;
 
 /**
  * Framework for testing the Truffle {@linkplain Debugger Debugging API}.
  */
 public abstract class AbstractDebugTest {
-    private Debugger debugger;
-    private final LinkedList<Runnable> eventResponders = new LinkedList<>();
-    private SuspendedEvent suspendedEvent;
-    private Throwable ex;
-    private ExecutionEvent executionEvent;
-    private PolyglotEngine engine;
-    private final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    private final ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+    private DebuggerTester tester;
+    private ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
 
     AbstractDebugTest() {
     }
 
     @Before
     public void before() {
-        suspendedEvent = null;
-        executionEvent = null;
-        engine = PolyglotEngine.newBuilder().setOut(out).setErr(err).onEvent(new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
-            @Override
-            protected void on(ExecutionEvent event) {
-                executionEvent = event;
-                runNextResponder();
-                executionEvent = null;
-            }
-        }).onEvent(new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
-            @Override
-            protected void on(SuspendedEvent event) {
-                suspendedEvent = event;
-                runNextResponder();
-                suspendedEvent = null;
-            }
-        }).build();
-        debugger = Debugger.find(engine);
-        eventResponders.clear();
+        pushContext();
     }
 
     @After
     public void dispose() {
-        if (engine != null) {
-            engine.dispose();
-            engine = null;
+        popContext();
+    }
+
+    protected final DebuggerSession startSession() {
+        return tester.startSession();
+    }
+
+    protected final Thread getEvalThread() {
+        return tester.getEvalThread();
+    }
+
+    protected final void startEval(String source) {
+        startEval(testSource(source));
+    }
+
+    protected final void startEval(Source source) {
+        tester.startEval(source);
+    }
+
+    protected final void pushContext() {
+        if (tester != null) {
+            sessionStack.push(tester);
+        }
+        tester = new DebuggerTester();
+    }
+
+    protected final void popContext() {
+        tester.close();
+        if (!sessionStack.isEmpty()) {
+            tester = sessionStack.pop();
         }
     }
 
-    protected final String getOut() {
-        return new String(out.toByteArray());
-    }
-
-    protected final String getErr() {
-        try {
-            err.flush();
-        } catch (IOException e) {
-            throw new RuntimeException();
+    protected File testFile(String code) throws IOException {
+        File file = File.createTempFile("TestFile", FILENAME_EXTENSION).getCanonicalFile();
+        try (Writer w = new FileWriter(file)) {
+            w.write(code);
         }
-        return new String(err.toByteArray());
+        file.deleteOnExit();
+        return file;
     }
 
-    protected final PolyglotEngine getEngine() {
-        return engine;
+    protected Source testSource(String code) {
+        return Source.newBuilder(code).mimeType(InstrumentationTestLanguage.MIME_TYPE).name("test code").build();
     }
 
-    protected final Debugger getDebugger() {
-        return debugger;
+    protected SuspendedEvent checkState(SuspendedEvent suspendedEvent, final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode, final String... expectedFrame) {
+        final int actualLineNumber = suspendedEvent.getSourceSection().getLineLocation().getLineNumber();
+        Assert.assertEquals(expectedLineNumber, actualLineNumber);
+        final String actualCode = suspendedEvent.getSourceSection().getCode();
+        Assert.assertEquals(expectedCode, actualCode);
+        final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
+        Assert.assertEquals(expectedIsBefore, actualIsBefore);
+
+        checkStack(suspendedEvent.getTopStackFrame(), expectedFrame);
+        return suspendedEvent;
     }
 
-    /**
-     * Creates a new builder that creates a work list to be performed upon receipt of the next event
-     * which is asserted to be {@link SuspendedEvent}.
-     * <p>
-     * The work list is completed and added to the queue of responders only when a navigation is
-     * specified, e.g. {@linkplain SuspendedEventResponder#stepInto(int) stepInto()} or
-     * {@linkplain SuspendedEventResponder#resume resume()}.
-     */
-    protected final SuspendedEventResponder expectSuspendedEvent() {
-        return new SuspendedEventResponder();
-    }
-
-    /**
-     * Creates a new builder that creates a work list to be performed upon receipt of the next event
-     * which is asserted to be {@link ExecutionEvent}.
-     * <p>
-     * The work list is completed and added to the queue of responders only when a navigation is
-     * specified, e.g. {@linkplain SuspendedEventResponder#stepInto(int) stepInto()} or
-     * {@linkplain SuspendedEventResponder#resume resume()}.
-     */
-    protected final ExecutionEventResponder expectExecutionEvent() {
-        return new ExecutionEventResponder();
-    }
-
-    protected final class ExecutionEventResponder {
-
-        private final List<Runnable> workList = new ArrayList<>();
-        private boolean isComplete = false;
-
-        ExecutionEventResponder() {
-            workList.add(new Runnable() {
-
-                public void run() {
-                    assertNull(suspendedEvent);
-                    assertNotNull(executionEvent);
-                }
-            });
+    protected void checkStack(DebugStackFrame frame, String... expectedFrame) {
+        Map<String, DebugValue> values = new HashMap<>();
+        for (DebugValue value : frame) {
+            values.put(value.getName(), value);
         }
-
-        /** Perform a task while responding to a {@link ExecutionEvent}. */
-        ExecutionEventResponder run(Runnable work) {
-            assert !isComplete : "responder has been completed";
-            assert work != null;
-            workList.add(work);
-            return this;
-        }
-
-        /** Return from handling a {@link SuspendedEvent} by stepping. */
-        void stepInto() {
-            assert !isComplete : "responder has been completed";
-            workList.add(new Runnable() {
-                public void run() {
-                    executionEvent.prepareStepInto();
-                }
-            });
-            complete();
-        }
-
-        /** Return from handling a {@link SuspendedEvent}, allowing execution to continue. */
-        void resume() {
-            complete();
-        }
-
-        private void complete() {
-            assert !isComplete : "responder has been completed";
-            eventResponders.add(new Runnable() {
-                public void run() {
-                    for (Runnable work : workList) {
-                        work.run();
-                    }
-                }
-            });
-            isComplete = true;
+        Assert.assertEquals(expectedFrame.length / 2, values.size());
+        for (int i = 0; i < expectedFrame.length; i = i + 2) {
+            String expectedIdentifier = expectedFrame[i];
+            String expectedValue = expectedFrame[i + 1];
+            DebugValue value = values.get(expectedIdentifier);
+            Assert.assertNotNull(value);
+            Assert.assertEquals(expectedValue, value.as(String.class));
         }
     }
 
-    protected final class SuspendedEventResponder {
-
-        private final List<Runnable> workList = new ArrayList<>();
-        private boolean isComplete = false;
-
-        SuspendedEventResponder() {
-            workList.add(new Runnable() {
-
-                public void run() {
-                    assertNotNull(suspendedEvent);
-                    assertNull(executionEvent);
-                }
-            });
-        }
-
-        /** Assert facts about the execution state while responding to a {@link SuspendedEvent}. */
-        SuspendedEventResponder checkState(final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode, final Object... expectedFrame) {
-            assert !isComplete : "responder has been completed";
-            workList.add(new Runnable() {
-                public void run() {
-                    final int actualLineNumber = suspendedEvent.getNode().getSourceSection().getLineLocation().getLineNumber();
-                    Assert.assertEquals(expectedLineNumber, actualLineNumber);
-                    final String actualCode = suspendedEvent.getNode().getSourceSection().getCode();
-                    Assert.assertEquals(expectedCode, actualCode);
-                    final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
-                    Assert.assertEquals(expectedIsBefore, actualIsBefore);
-                    final MaterializedFrame frame = suspendedEvent.getFrame();
-
-                    Assert.assertEquals(expectedFrame.length / 2, frame.getFrameDescriptor().getSize());
-
-                    for (int i = 0; i < expectedFrame.length; i = i + 2) {
-                        String expectedIdentifier = (String) expectedFrame[i];
-                        Object expectedValue = expectedFrame[i + 1];
-                        FrameSlot slot = frame.getFrameDescriptor().findFrameSlot(expectedIdentifier);
-                        Assert.assertNotNull(slot);
-                        final Object actualValue = frame.getValue(slot);
-                        Assert.assertEquals(expectedValue, actualValue);
-                    }
-                }
-            });
-            return this;
-        }
-
-        /** Perform a task while responding to a {@link SuspendedEvent}. */
-        SuspendedEventResponder run(Runnable work) {
-            assert !isComplete : "responder has been completed";
-            assert work != null;
-            workList.add(work);
-            return this;
-        }
-
-        /** Return from handling a {@link SuspendedEvent} by stepping. */
-        void stepInto(final int size) {
-            assert !isComplete : "responder has been completed";
-            workList.add(new Runnable() {
-                public void run() {
-                    suspendedEvent.prepareStepInto(size);
-                }
-            });
-            complete();
-        }
-
-        /** Return from handling a {@link SuspendedEvent} by stepping. */
-        void stepOver(final int size) {
-            assert !isComplete : "responder has been completed";
-            workList.add(new Runnable() {
-                public void run() {
-                    suspendedEvent.prepareStepOver(size);
-                }
-            });
-            complete();
-        }
-
-        /** Return from handling a {@link SuspendedEvent} by stepping. */
-        void stepOut() {
-            assert !isComplete : "responder has been completed";
-            workList.add(new Runnable() {
-                public void run() {
-                    suspendedEvent.prepareStepOut();
-                }
-            });
-            complete();
-        }
-
-        /** Return from handling a {@link SuspendedEvent}, allowing execution to continue. */
-        void resume() {
-            complete();
-        }
-
-        private void complete() {
-            assert !isComplete : "responder has been completed";
-            eventResponders.add(new Runnable() {
-                public void run() {
-                    for (Runnable work : workList) {
-                        work.run();
-                    }
-                }
-            });
-            isComplete = true;
-        }
+    protected final String expectDone() {
+        return tester.expectDone();
     }
 
-    protected final void assertExecutedOK() throws Throwable {
-        Assert.assertTrue(getErr(), getErr().isEmpty());
-        if (ex != null) {
-            if (ex instanceof AssertionError) {
-                throw ex;
-            } else {
-                throw new AssertionError("Error during execution", ex);
-            }
-        }
-        assertTrue("Assuming all requests processed: " + eventResponders, eventResponders.isEmpty());
+    protected final void expectSuspended(SuspendedCallback handler) {
+        tester.expectSuspended(handler);
     }
 
-    private void runNextResponder() {
-        try {
-            if (ex == null && !eventResponders.isEmpty()) {
-                Runnable c = eventResponders.removeFirst();
-                c.run();
-            }
-        } catch (Throwable e) {
-            ex = e;
-        }
+    protected final void expectKilled() {
+        tester.expectKilled();
     }
 
 }

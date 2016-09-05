@@ -22,10 +22,16 @@
  */
 package com.oracle.truffle.api.profiles;
 
-import com.oracle.truffle.api.source.Source;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URLClassLoader;
+
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
+
+import com.oracle.truffle.api.source.Source;
 
 public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner {
     public SeparateClassloaderTestRunner(Class<?> clazz) throws InitializationError {
@@ -36,10 +42,7 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
 
     private static Class<?> getFromTestClassloader(Class<?> clazz) throws InitializationError {
         try {
-            // As of JDK9, unit tests are patched into any modules containing the Truffle API.
-            // This means tests can inject classes into Truffle API packages without any class
-            // loader tricks since Truffle and test classes are loaded by the same class loader.
-            ClassLoader testClassLoader = JDK8OrEarlier ? new TestClassLoader() : ClassLoader.getSystemClassLoader();
+            ClassLoader testClassLoader = JDK8OrEarlier ? new PreJDK9TestClassLoader() : new JDK9TestClassLoader();
             return Class.forName(clazz.getName(), true, testClassLoader);
         } catch (ClassNotFoundException e) {
             throw new InitializationError(e);
@@ -52,8 +55,9 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
         }
     }
 
-    private static class TestClassLoader extends URLClassLoader {
-        TestClassLoader() {
+    private static class PreJDK9TestClassLoader extends URLClassLoader {
+
+        PreJDK9TestClassLoader() {
             super(((URLClassLoader) getSystemClassLoader()).getURLs());
         }
 
@@ -72,4 +76,78 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
         }
     }
 
+    /**
+     * As of JDK9, Truffle API is deployed in a module (possibly the unnamed module) so to retrieve
+     * the class file bytes for separate class loading requires using module API. The latter is done
+     * via reflection so that this class still compiles on JDK8.
+     */
+    private static class JDK9TestClassLoader extends ClassLoader {
+
+        @Override
+        public Class<?> loadClass(String name) throws ClassNotFoundException {
+            if (name.startsWith(Profile.class.getPackage().getName())) {
+                return findClassInModule(name);
+            }
+            if (name.contains("ContextStore")) {
+                return findClassInModule(name);
+            }
+            if (name.contains(Source.class.getPackage().getName())) {
+                return findClassInModule(name);
+            }
+            return super.loadClass(name);
+        }
+
+        /**
+         * Reflective call to {@code java.lang.Class.getModule()}.
+         */
+        private static Object getModule(Class<?> cls) {
+            try {
+                return Class.class.getMethod("getModule").invoke(cls);
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        /**
+         * Reflective call to {@code java.lang.reflect.Module.getResourceAsStream(String name)}.
+         */
+        private static InputStream getResourceAsStream(Object module, String name) {
+            try {
+                return (InputStream) module.getClass().getMethod("getResourceAsStream", String.class).invoke(module, name);
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        protected Class<?> findClassInModule(String name) throws ClassNotFoundException {
+            Class<?> classInModule = super.loadClass(name);
+            Object module = getModule(classInModule);
+            String res = name.replace('.', '/') + ".class";
+            InputStream is = getResourceAsStream(module, res);
+            if (is == null) {
+                throw new ClassNotFoundException(name);
+            }
+            byte[] arr = readAllBytes(name, is);
+            return defineClass(name, arr, 0, arr.length, getClass().getProtectionDomain());
+        }
+    }
+
+    static byte[] readAllBytes(String name, InputStream is) throws ClassNotFoundException {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        byte[] arr = new byte[4096];
+        for (;;) {
+            int len;
+            try {
+                len = is.read(arr);
+            } catch (IOException ex) {
+                throw new ClassNotFoundException(name);
+            }
+            if (len < 0) {
+                break;
+            }
+            os.write(arr, 0, len);
+        }
+        arr = os.toByteArray();
+        return arr;
+    }
 }

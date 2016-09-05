@@ -35,8 +35,8 @@ final class REPLineLocation {
     private final int lineNumber;
 
     /**
-     * Attempts to extract description of a source line from {@code arg[1]}, either
-     * "<source name>:<n>" or just "<n>".
+     * Attempts to extract description of a source line from {@code arg[1]}, either "<source name>:
+     * <n>" or just "<n>".
      */
     static REPLineLocation parse(REPLClientContext context, String[] args) throws IllegalArgumentException {
         if (args.length == 1) {
@@ -71,8 +71,7 @@ final class REPLineLocation {
                 if (!file.canRead()) {
                     throw new IllegalArgumentException("Can't read file " + fileName);
                 }
-                final String path = file.getCanonicalPath();
-                source = Source.fromFileName(path);
+                source = Source.newBuilder(file.getCanonicalFile()).build();
             } catch (IOException e1) {
                 throw new IllegalArgumentException("Can't find file \"" + fileName + "\"");
             }

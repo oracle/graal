@@ -43,13 +43,14 @@ public final class WriteGenerator extends MessageGenerator {
     private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
     private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
-    public WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
     }
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private final static class ").append(WRITE_ROOT_NODE).append(" extends RootNode {\n");
+        w.append("    private static final class ").append(WRITE_ROOT_NODE).append(" extends RootNode {\n");
         w.append("        protected ").append(WRITE_ROOT_NODE).append("(Class<? extends TruffleLanguage<?>> language) {\n");
         w.append("            super(language, null, null);\n");
         w.append("        }\n");
@@ -96,7 +97,7 @@ public final class WriteGenerator extends MessageGenerator {
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 
         if (params.size() != expectedNumberOfArguments) {
-            return "Wrong number of arguments.";
+            return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, value: Object)";
         }
         return null;
     }

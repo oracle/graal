@@ -27,6 +27,7 @@ import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -75,7 +76,11 @@ public abstract class AbstractParser<M extends MessageContainer> {
 
             redirectMessages(new HashSet<MessageContainer>(), model, model);
             model.emitMessages(context, log);
-            return filterErrorElements(model);
+            if (model instanceof NodeData) {
+                return model;
+            } else {
+                return filterErrorElements(model);
+            }
         } catch (CompileErrorException e) {
             log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
             return null;

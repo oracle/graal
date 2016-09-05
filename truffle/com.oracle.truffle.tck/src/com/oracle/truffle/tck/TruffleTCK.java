@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,32 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.tck.impl.LongBinaryOperation;
-import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedCallback;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -44,20 +58,12 @@ import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.concurrent.Executors;
-import org.junit.AfterClass;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.oracle.truffle.tck.impl.LongBinaryOperation;
+import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
+import com.oracle.truffle.tck.impl.TestObject;
 
 /**
  * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
@@ -72,12 +78,12 @@ import static org.junit.Assert.fail;
  *     <em>// create the engine</em>
  *     <em>// execute necessary scripts</em>
  *   }
- * 
+ *
  *   {@link Override @Override}
  *   <b>protected</b> {@link String} fourtyTwo() {
  *     <b>return</b> <em>// name of function that returns 42</em>
  *   }
- * 
+ *
  *   <em>// and so on...</em>
  * }
  * </pre>
@@ -115,7 +121,7 @@ import static org.junit.Assert.fail;
  * Should the <em>TCK</em> be found unsuitable for your {@link TruffleLanguage language
  * implementation} please speak-up (at <em>Truffle/Graal</em> mailing list for example) and we do
  * our best to analyze your case and adjust the <em>TCK</em> to suite everyone's needs.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class TruffleTCK {
@@ -129,7 +135,7 @@ public abstract class TruffleTCK {
 
     /**
      * Disposes {@link PolyglotEngine} used during the test execution.
-     * 
+     *
      * @since 0.12
      */
     @AfterClass
@@ -362,11 +368,150 @@ public abstract class TruffleTCK {
      * the array, index into the array (expected to be an instance of {@link Number}) and another
      * number to add to value already present at the index-location in the array. The first element
      * in the array has index zero.
-     * 
+     *
      * @since 0.14
      */
     protected String addToArray() {
         throw new UnsupportedOperationException("implement addToArray() method");
+    }
+
+    /**
+     * Name of a function that returns an object with a numeric property called "value". The
+     * property must contain 42.0;
+     *
+     * @since 0.16
+     */
+    protected String objectWithValueProperty() {
+        throw new UnsupportedOperationException("implement objectWithValueProperty() method");
+    }
+
+    /**
+     * Name of a function that returns an object with a member method "add" and a numeric property
+     * called "value". The function "add" adds the parameter to "value" and returns "value".
+     *
+     * @since 0.16
+     */
+    protected String objectWithValueAndAddProperty() {
+        throw new UnsupportedOperationException("implement objectWithValueProperty() method");
+    }
+
+    /**
+     * Name of a function that returns an array-like object with a numeric property as its 3rd
+     * element. The element must be 42.0. The array-like object must have a length 4;
+     *
+     * @since 0.16
+     */
+    protected String objectWithElement() {
+        throw new UnsupportedOperationException("implement objectWithElement() method");
+    }
+
+    /**
+     * Name of a function that returns a function that can add up two numbers.
+     *
+     * @since 0.16
+     */
+    protected String functionAddNumbers() {
+        throw new UnsupportedOperationException("implement functionAddNumbers() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to read
+     * the "value" property of this object and needs to return it.
+     *
+     * @since 0.16
+     */
+    protected String readValueFromForeign() {
+        throw new UnsupportedOperationException("implement readValueFromForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to read
+     * the 3rd element of this array-object and needs to return it.
+     *
+     * @since 0.16
+     */
+    protected String readElementFromForeign() {
+        throw new UnsupportedOperationException("implement readElementFromForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * write 42.0 to the "value" property of this object.
+     *
+     * @since 0.16
+     */
+    protected String writeValueToForeign() {
+        throw new UnsupportedOperationException("implement readValueFromForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * write 42.0 to the 3rd element of this array-object.
+     *
+     * @since 0.16
+     */
+    protected String writeElementToForeign() {
+        throw new UnsupportedOperationException("implement writeElementToForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * return the size of this array-like object.
+     *
+     * @since 0.16
+     */
+    protected String getSizeOfForeign() {
+        throw new UnsupportedOperationException("implement getSizeOfForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * check if the foreign object has a size.
+     *
+     * @since 0.16
+     */
+    protected String hasSizeOfForeign() {
+        throw new UnsupportedOperationException("implement getHasSizeOfForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * check if the foreign object is a null value.
+     *
+     * @since 0.16
+     */
+    protected String isNullForeign() {
+        throw new UnsupportedOperationException("implement getIsNullForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. This function needs to
+     * check if the foreign object is an executable function.
+     *
+     * @since 0.16
+     */
+    protected String isExecutableOfForeign() {
+        throw new UnsupportedOperationException("implement getIsExecutableForeign() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign function as an argument. You need to call this
+     * function and pass arguments [41.0, 42.0]
+     *
+     * @since 0.16
+     */
+    protected String callFunction() {
+        throw new UnsupportedOperationException("implement callFunction() method");
+    }
+
+    /**
+     * Name of a function that receives a foreign object as an argument. You need to call method
+     * "foo" on this object and pass arguments [41.0, 42.0]
+     *
+     * @since 0.16
+     */
+    protected String callMethod() {
+        throw new UnsupportedOperationException("implement callMethod() method");
     }
 
     /**
@@ -447,6 +592,33 @@ public abstract class TruffleTCK {
      */
     protected String valuesObject() {
         throw new UnsupportedOperationException("valuesObject() method not implemented");
+    }
+
+    /**
+     * Create a <code>while-loop</code> execution in your language. Create a function that takes one
+     * parameter - another function and then repeatly counts from zero to infinity calling the
+     * provided function with a single argument - the value of the counter: 0, 1, 2, 3, etc. The
+     * execution is stopped while the value returned from the provided function isn't
+     * <code>true</code>. The code in JavaScript would look like:
+     *
+     * <pre>
+     * function countUpWhile(fn) {
+     *   var counter = 0;
+     *   for (;;) {
+     *     if (!fn(counter)) {
+     *       break;
+     *     }
+     *     counter++;
+     *   }
+     * }
+     * </pre>
+     *
+     *
+     * @return the name of the function that implements the <code>while-loop</code> execution
+     * @since 0.15
+     */
+    protected String countUpWhile() {
+        throw new UnsupportedOperationException("countUpWhile() method not implemented");
     }
 
     /**
@@ -777,11 +949,17 @@ public abstract class TruffleTCK {
     }
 
     /** @since 0.8 or earlier */
-    @Test(expected = IOException.class)
+    @Test(expected = Exception.class)
     public void testInvalidTestMethod() throws Exception {
         String mime = mimeType();
         String code = invalidCode();
-        Object ret = vm().eval(Source.fromText(code, "Invalid code").withMimeType(mime)).get();
+        // @formatter:off
+        Source invalidCode = Source.newBuilder(code).
+            name("Invalid code").
+            mimeType(mime).
+            build();
+        // @formatter:on
+        Object ret = vm().eval(invalidCode).get();
         fail("Should yield IOException, but returned " + ret);
     }
 
@@ -1199,7 +1377,12 @@ public abstract class TruffleTCK {
         final String firstVar = "var" + (char) ('A' + RANDOM.nextInt(24));
         final String secondVar = "var" + (char) ('0' + RANDOM.nextInt(10));
         String mulCode = multiplyCode(firstVar, secondVar);
-        Source source = Source.fromText("TCK42:" + mimeType() + ":" + mulCode, "evaluate " + firstVar + " * " + secondVar).withMimeType("application/x-tck");
+        // @formatter:off
+        Source source = Source.newBuilder("TCK42:" + mimeType() + ":" + mulCode).
+            name("evaluate " + firstVar + " * " + secondVar).
+            mimeType("application/x-tck").
+            build();
+        // @formatter:on
         final PolyglotEngine.Value evalSource = vm().eval(source);
         final PolyglotEngine.Value invokeMul = evalSource.execute(firstVar, secondVar);
         Object result = invokeMul.get();
@@ -1448,7 +1631,7 @@ public abstract class TruffleTCK {
     /**
      * Test for array access. Creates a {@link TruffleObject} around a Java array, fills it with
      * integers and asks the language to add one to each of the array elements.
-     * 
+     *
      * @since 0.14
      */
     @Test
@@ -1474,6 +1657,369 @@ public abstract class TruffleTCK {
         assertNotNull("Non-null value expected at index " + index, valueAtIndex);
         assertNotNull("Non-null value expected at index " + (index + 1), valueAfterIndex);
         assertEquals("Expecting same value at both indexes", valueAtIndex.intValue(), valueAfterIndex.intValue());
+    }
+
+    /**
+     * Tests whether execution can be suspended in debugger.
+     *
+     * @since 0.15
+     */
+    @Test
+    public void timeOutTest() throws Exception {
+        final ExecWithTimeOut timeOutExecution = new ExecWithTimeOut();
+        ScheduledExecutorService executor = new MockExecutorService();
+
+        timeOutExecution.engine = prepareVM(PolyglotEngine.newBuilder());
+        PolyglotEngine.Value counting = timeOutExecution.engine.findGlobalSymbol(countUpWhile());
+
+        int index = RANDOM.nextInt(50) + 50;
+        CountAndKill obj = new CountAndKill(index, executor);
+
+        timeOutExecution.executeWithTimeOut(executor, counting, obj);
+        assertEquals("Executed " + index + " times, and counted down to zero", 0, obj.countDown);
+        assertTrue("Last number bigger than requested", index <= obj.lastParameter);
+        assertTrue("All tasks processed", executor.isShutdown());
+    }
+
+    /** @since 0.15 */
+    @Test
+    public void testRootNodeName() throws Exception {
+        final int[] haltCount = new int[1];
+        final String name = applyNumbers();
+        final String[] actualName = new String[1];
+        final PolyglotEngine engine = prepareVM(PolyglotEngine.newBuilder());
+        final PolyglotEngine.Value apply = engine.findGlobalSymbol(name);
+        final int value = RANDOM.nextInt(100);
+        final TruffleObject fn = JavaInterop.asTruffleFunction(ObjectBinaryOperation.class, new ConstantFunction(value));
+        try (DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
+            public void onSuspend(SuspendedEvent ev) {
+                actualName[0] = ev.getTopStackFrame().getName();
+                haltCount[0] = haltCount[0] + 1;
+            }
+        })) {
+            session.suspendNextExecution();
+            apply.execute(fn).as(Number.class);
+        }
+
+        assertEquals(1, haltCount[0]);
+        assertEquals(name, actualName[0]);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testReadFromObjectWithValueProperty() throws Exception {
+        String id = objectWithValueProperty();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ObjectWithValueInterface object = JavaInterop.asJavaObject(ObjectWithValueInterface.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(42.0, object.value(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testReadFromObjectWithElement() throws Exception {
+        String id = objectWithElement();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        List<?> object = JavaInterop.asJavaObject(List.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(42.0, ((Number) object.get(2)).doubleValue(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testWriteToObjectWithValueProperty() throws Exception {
+        String id = objectWithValueProperty();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ObjectWithValueInterface object = JavaInterop.asJavaObject(ObjectWithValueInterface.class, (TruffleObject) apply.execute().get());
+        Assert.assertEquals(42.0, object.value(), 0.1);
+        object.value(13.0);
+        Assert.assertEquals(13.0, object.value(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testWriteToObjectWithElement() throws Exception {
+        String id = objectWithElement();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        @SuppressWarnings("unchecked")
+        List<Object> object = JavaInterop.asJavaObject(List.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(42.0, ((Number) object.get(2)).doubleValue(), 0.1);
+        object.set(2, 13.0);
+        Assert.assertEquals(13.0, ((Number) object.get(2)).doubleValue(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testGetSize() throws Exception {
+        String id = objectWithElement();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        @SuppressWarnings("unchecked")
+        List<Object> object = JavaInterop.asJavaObject(List.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(4, object.size());
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testHasSize() throws Exception {
+        String id = objectWithElement();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        MessageInterface object = JavaInterop.asJavaObject(MessageInterface.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(true, object.hasSize());
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testIsNotNull() throws Exception {
+        String id = objectWithValueProperty();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        MessageInterface object = JavaInterop.asJavaObject(MessageInterface.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(false, object.isNull());
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testIsExecutable() throws Exception {
+        String id = functionAddNumbers();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        MessageInterface object = JavaInterop.asJavaObject(MessageInterface.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(true, object.isExecutable());
+    }
+
+    private interface MessageInterface {
+        @MethodMessage(message = "GET_SIZE")
+        int length();
+
+        @MethodMessage(message = "IS_NULL")
+        boolean isNull();
+
+        @MethodMessage(message = "IS_EXECUTABLE")
+        boolean isExecutable();
+
+        @MethodMessage(message = "HAS_SIZE")
+        boolean hasSize();
+
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testObjectWithValueAndAddProperty() throws Exception {
+        String id = objectWithValueAndAddProperty();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        ObjectWithValueInterface object = JavaInterop.asJavaObject(ObjectWithValueInterface.class, (TruffleObject) apply.execute().get());
+        object.add(20.0);
+        object.add(22.0);
+
+        Assert.assertEquals(42.0, object.value(), 0.1);
+    }
+
+    private interface ObjectWithValueInterface {
+        @MethodMessage(message = "READ")
+        double value();
+
+        @MethodMessage(message = "WRITE")
+        void value(double v);
+
+        @MethodMessage(message = "INVOKE")
+        double add(double arg);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testFunctionAddNumbers() throws Exception {
+        String id = functionAddNumbers();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        FunctionFooInterface object = JavaInterop.asJavaFunction(FunctionFooInterface.class, (TruffleObject) apply.execute().get());
+
+        Assert.assertEquals(42.0, object.eval(20.0, 22.0), 0.1);
+    }
+
+    private interface FunctionFooInterface {
+        double eval(double a, double b);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testReadValueFromForeign() throws Exception {
+        String id = readValueFromForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        Assert.assertEquals(42.0, ((Number) apply.execute(JavaInterop.asTruffleObject(new TestObject(42.0))).get()).doubleValue(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testReadElementFromForeign() throws Exception {
+        String id = readElementFromForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        Assert.assertEquals(42.0, ((Number) apply.execute(JavaInterop.asTruffleObject(new double[]{-1, -2, 42.0, -4})).get()).doubleValue(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testWriteValueToForeign() throws Exception {
+        String id = writeValueToForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        TestObject obj = new TestObject(-1.5);
+        apply.execute(JavaInterop.asTruffleObject(obj));
+        Assert.assertEquals(42.0, obj.value, 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testWriteElementOfForeign() throws Exception {
+        String id = writeElementToForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        double[] arr = {-1, -1, -1, -1};
+        apply.execute(JavaInterop.asTruffleObject(arr));
+        Assert.assertEquals(42.0, arr[2], 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testGetSizeOfForeign() throws Exception {
+        String id = getSizeOfForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        double[] arr = {-1, -1, -1, -1};
+        Number size = (Number) apply.execute(JavaInterop.asTruffleObject(arr)).get();
+        Assert.assertEquals(4, size.intValue(), 0.1);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testHasSizeOfForeign() throws Exception {
+        String id = hasSizeOfForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        double[] arr = {-1, -1, -1, -1};
+        boolean result = (boolean) apply.execute(JavaInterop.asTruffleObject(arr)).get();
+        Assert.assertEquals(true, result);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testIsNullOfForeign() throws Exception {
+        String id = isNullForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+
+        boolean result = (boolean) apply.execute(JavaInterop.asTruffleObject(null)).get();
+        Assert.assertEquals(true, result);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testIsExecutableOfForeign() throws Exception {
+        String id = isExecutableOfForeign();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        boolean result = (boolean) apply.execute(JavaInterop.asTruffleFunction(FunctionFooInterface.class, new FunctionFooInterface() {
+
+            public double eval(double a, double b) {
+                if (a != 41.0 || b != 42.0) {
+                    throw new AssertionError("Expected [41.5, 42.5] but was [" + a + "," + b + "]");
+                }
+                return 0;
+            }
+        })).get();
+        Assert.assertEquals(true, result);
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testCallFunction() throws Exception {
+        String id = callFunction();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        apply.execute(JavaInterop.asTruffleFunction(FunctionFooInterface.class, new FunctionFooInterface() {
+
+            public double eval(double a, double b) {
+                if (a != 41.0 || b != 42.0) {
+                    throw new AssertionError("Expected [41.0, 42.0] but was [" + a + "," + b + "]");
+                }
+                return 0;
+            }
+        }));
+    }
+
+    /** @since 0.16 */
+    @Test
+    public void testCallMethod() throws Exception {
+        String id = callMethod();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        TestObject obj = new TestObject(0);
+        apply.execute(JavaInterop.asTruffleObject(obj));
+        Assert.assertEquals(obj.arg1, 41.0, 0.1);
+        Assert.assertEquals(obj.arg2, 42.0, 0.1);
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {

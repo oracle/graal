@@ -31,23 +31,29 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractIns
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents a binding from a {@link SourceSectionFilter} instance for a particular
- * {@link ExecutionEventListener} or {@link ExecutionEventNodeFactory}.
- *
- * A binding is active until disposed, either:
+ * An {@linkplain Instrumenter instrumentation} handle for a subscription to a
+ * {@linkplain SourceSectionFilter filtered} stream of execution event notifications.
+ * <p>
+ * The subscription remains active until:
  * <ul>
- * <li>by a call to dispose();</li>
- * <li>the instrumenter that created the binding is {@link EventBinding#dispose() disposed}; or</li>
- * <li>the engine running the language is disposed.</li>
- * </ul>
- * If all bindings of a listener or factory are disposed then their methods are not invoked again by
- * the instrumentation framework.
+ * <li>explicit {@linkplain #dispose() disposal} of the subscription; or</li>
  *
- * @param <T> represents the concrete type of the element bound. Either an implementation of
- *            {@link ExecutionEventListener} or {@link ExecutionEventNodeFactory}.
+ * <li>the instrument that created the subscription is
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled}; or
+ *
+ * <li>the instrumented engine is {@linkplain com.oracle.truffle.api.vm.PolyglotEngine#dispose()
+ * disposed}.</li>
+ * </ul>
+ * </p>
+ *
+ * @param <T> subscriber type: {@link ExecutionEventListener} or {@link ExecutionEventNodeFactory}.
+ * @see Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener)
+ * @see Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
+ *
  * @since 0.12
  */
 public final class EventBinding<T> {
@@ -55,27 +61,21 @@ public final class EventBinding<T> {
     private final AbstractInstrumenter instrumenter;
     private final SourceSectionFilter filter;
     private final T element;
+    private final boolean isExecutionEvent;
 
     /* language bindings needs special treatment. */
-    private boolean disposed;
+    private volatile boolean disposed;
 
-    EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element) {
+    EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element, boolean isExecutionEvent) {
         this.instrumenter = instrumenter;
         this.filter = query;
         this.element = element;
-    }
-
-    boolean isLanguageBinding() {
-        return instrumenter instanceof LanguageClientInstrumenter;
-    }
-
-    AbstractInstrumenter getInstrumenter() {
-        return instrumenter;
+        this.isExecutionEvent = isExecutionEvent;
     }
 
     /**
-     * Returns the bound element, either a {@link ExecutionEventNodeFactory factory} or a
-     * {@link ExecutionEventListener listener} implementation.
+     * @return the subscriber: an {@link ExecutionEventNodeFactory} or
+     *         {@link ExecutionEventListener}.
      *
      * @since 0.12
      */
@@ -84,9 +84,8 @@ public final class EventBinding<T> {
     }
 
     /**
-     * Returns the bound filter for this binding.
+     * @return the filter being applied to the subscription's stream of notifications
      *
-     * @return the filter never null
      * @since 0.12
      */
     public SourceSectionFilter getFilter() {
@@ -94,7 +93,7 @@ public final class EventBinding<T> {
     }
 
     /**
-     * Returns <code>true</code> if the binding was already disposed, otherwise <code>false</code>.
+     * @return whether the subscription has been permanently cancelled.
      *
      * @since 0.12
      */
@@ -103,18 +102,16 @@ public final class EventBinding<T> {
     }
 
     /**
-     * Disposes this binding. If a binding of a listener or factory is disposed then their methods
-     * are not invoked again by the instrumentation framework.
+     * Cancels the subscription permanently.
      *
      * @since 0.12
      */
-    public void dispose() throws IllegalStateException {
+    public synchronized void dispose() throws IllegalStateException {
         CompilerAsserts.neverPartOfCompilation();
-        if (disposed) {
-            throw new IllegalStateException("Bindings can only be disposed once");
+        if (!disposed) {
+            instrumenter.disposeBinding(this);
+            disposed = true;
         }
-        instrumenter.disposeBinding(this);
-        this.disposed = true;
     }
 
     boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
@@ -133,6 +130,26 @@ public final class EventBinding<T> {
 
     boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
         return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+    }
+
+    boolean isInstrumentedSource(Source source) {
+        return getInstrumenter().isInstrumentableSource(source) && getFilter().isInstrumentedSource(source);
+    }
+
+    boolean isExecutionEvent() {
+        return isExecutionEvent;
+    }
+
+    boolean isLanguageBinding() {
+        return instrumenter instanceof LanguageClientInstrumenter;
+    }
+
+    AbstractInstrumenter getInstrumenter() {
+        return instrumenter;
+    }
+
+    synchronized void disposeBulk() {
+        disposed = true;
     }
 
 }

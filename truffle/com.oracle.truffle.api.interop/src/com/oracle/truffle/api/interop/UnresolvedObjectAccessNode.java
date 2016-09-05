@@ -51,6 +51,9 @@ final class UnresolvedObjectAccessNode extends ObjectAccessNode {
 
     private static CachedObjectAccessNode createCachedAccess(TruffleObject receiver, Message accessTree, ObjectAccessNode next) {
         ForeignAccess fa = receiver.getForeignAccess();
+        if (fa == null) {
+            throw nullAccess(receiver);
+        }
         final CallTarget ct = fa.access(accessTree);
         if (ct == null) {
             throw UnsupportedMessageException.raise(accessTree);
@@ -62,6 +65,11 @@ final class UnresolvedObjectAccessNode extends ObjectAccessNode {
 
     private static GenericObjectAccessNode createGenericAccess(Message access) {
         return new GenericObjectAccessNode(access);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static NullPointerException nullAccess(TruffleObject receiver) {
+        throw new NullPointerException("Null getForeignAccess() for " + receiver);
     }
 
 }

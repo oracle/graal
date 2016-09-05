@@ -206,6 +206,7 @@ meth public void testAsynchronousFrameAccess() throws java.lang.InterruptedExcep
 meth public void testCallTargetStackTrace()
 meth public void testCombinedStackTrace()
 meth public void testDirectStackTrace()
+meth public void testFirstFrameIsCurrentFrame()
 meth public void testFrameAccess()
 meth public void testIndirectStackTrace()
 meth public void testNoStackTrace()
@@ -216,16 +217,10 @@ hcls ReturnStackTraceNode,StackTrace,TestCallNode,TestCallWithCallTargetNode,Tes
 
 CLSS public final com.oracle.truffle.api.TestingLanguage
 fld public final static com.oracle.truffle.api.TestingLanguage INSTANCE
-meth protected !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.io.IOException
-meth protected boolean isInstrumentable(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
+meth protected !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[])
 meth protected boolean isObjectOfLanguage(java.lang.Object)
-meth protected com.oracle.truffle.api.instrument.Visualizer getVisualizer()
- anno 0 java.lang.Deprecated()
-meth protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
 meth protected java.lang.Object createContext(com.oracle.truffle.api.TruffleLanguage$Env)
-meth protected java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.io.IOException
+meth protected java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
 meth protected java.lang.Object findExportedSymbol(java.lang.Object,java.lang.String,boolean)
 meth protected java.lang.Object getLanguageGlobal(java.lang.Object)
 supr com.oracle.truffle.api.TruffleLanguage<java.lang.Object>
@@ -247,40 +242,33 @@ CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang
 cons protected init()
 innr public abstract interface static !annotation Registration
 innr public final static Env
-meth protected abstract !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.io.IOException
+meth protected abstract !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.lang.Exception
 meth protected abstract boolean isObjectOfLanguage(java.lang.Object)
-meth protected abstract java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.io.IOException
+meth protected abstract java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.lang.Exception
 meth protected abstract java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
 meth protected abstract java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected abstract {com.oracle.truffle.api.TruffleLanguage%0} createContext(com.oracle.truffle.api.TruffleLanguage$Env)
-meth protected boolean isInstrumentable(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
-meth protected com.oracle.truffle.api.instrument.Visualizer getVisualizer()
- anno 0 java.lang.Deprecated()
-meth protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
 meth protected final com.oracle.truffle.api.nodes.Node createFindContextNode()
 meth protected final {com.oracle.truffle.api.TruffleLanguage%0} findContext(com.oracle.truffle.api.nodes.Node)
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
 supr java.lang.Object
 hfds API
 hcls AccessAPI,LangCtx,LanguageImpl
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
-meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[])
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
 meth public boolean isMimeTypeSupported(java.lang.String)
-meth public com.oracle.truffle.api.instrument.Instrumenter instrumenter()
- anno 0 java.lang.Deprecated()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
 meth public java.lang.Object importSymbol(java.lang.String)
 meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 supr java.lang.Object
-hfds config,err,in,instrumenter,lang,langCtx,out,services,vm
+hfds config,err,in,lang,langCtx,out,services,vm
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -319,6 +307,7 @@ meth public abstract com.oracle.truffle.api.nodes.IndirectCallNode createIndirec
 meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.oracle.truffle.api.nodes.RepeatingNode)
 meth public abstract java.lang.String getName()
 meth public abstract java.util.Collection<com.oracle.truffle.api.RootCallTarget> getCallTargets()
+ anno 0 java.lang.Deprecated()
 meth public abstract void notifyTransferToInterpreter()
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess

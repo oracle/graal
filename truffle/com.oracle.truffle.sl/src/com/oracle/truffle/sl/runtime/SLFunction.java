@@ -46,7 +46,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a
@@ -62,7 +62,8 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
  * <p>
  * The {@link #callTarget} can be {@code null}. To ensure that only one {@link SLFunction} instance
  * per name exists, the {@link SLFunctionRegistry} creates an instance also when performing name
- * lookup. A function that has been looked up, i.e., used, but not defined, has no call target.
+ * lookup. A function that has been looked up, i.e., used, but not defined, has a call target that
+ * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 public final class SLFunction implements TruffleObject {
 
@@ -77,12 +78,12 @@ public final class SLFunction implements TruffleObject {
      * {@link CyclicAssumption}, which automatically creates a new {@link Assumption} when the old
      * one gets invalidated.
      */
-    private Assumption callTargetStable;
+    private final CyclicAssumption callTargetStable;
 
     protected SLFunction(String name) {
         this.name = name;
-        /* We do not have a call target yet, so we also do not need a valid assumption. */
-        this.callTargetStable = NeverValidAssumption.INSTANCE;
+        this.callTarget = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(name));
+        this.callTargetStable = new CyclicAssumption(name);
     }
 
     public String getName() {
@@ -96,8 +97,6 @@ public final class SLFunction implements TruffleObject {
          * was stable.
          */
         callTargetStable.invalidate();
-        /* Create a new valid assumption for the new call target. */
-        callTargetStable = Truffle.getRuntime().createAssumption(name);
     }
 
     public RootCallTarget getCallTarget() {
@@ -105,7 +104,7 @@ public final class SLFunction implements TruffleObject {
     }
 
     public Assumption getCallTargetStable() {
-        return callTargetStable;
+        return callTargetStable.getAssumption();
     }
 
     /**

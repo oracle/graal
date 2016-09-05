@@ -21,8 +21,10 @@ Software of the Johannes Kepler University Linz.
 Truffle official documentation is part of [Truffle javadoc](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
 It includes description of common use-cases, references to various tutorials,
 code snippets and more. In case you want to embedded Truffle into your
-application or write your own high speed language interpreter, start
-[here](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
+application or write your own high speed language interpreter, start by
+downloading [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/)
+(which contains all the necessary pre-built components) and then follow to the
+[javadoc overview](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
 
 Truffle bits are uploaded to Maven central. You can use them from your
 `pom.xml` file as:

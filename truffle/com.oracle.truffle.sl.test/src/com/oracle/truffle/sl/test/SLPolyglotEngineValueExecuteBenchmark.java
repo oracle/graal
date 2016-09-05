@@ -70,7 +70,7 @@ public class SLPolyglotEngineValueExecuteBenchmark {
     @Setup
     public void prepare() throws IOException {
         vm = PolyglotEngine.newBuilder().build();
-        vm.eval(Source.fromText("function plus(x, y) { return x + y; }", "plus.sl").withMimeType(SLLanguage.MIME_TYPE));
+        vm.eval(Source.newBuilder("function plus(x, y) { return x + y; }").name("plus.sl").mimeType(SLLanguage.MIME_TYPE).build());
         plus = vm.findGlobalSymbol("plus");
         slFunction = plus.as(SLFunction.class);
     }

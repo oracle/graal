@@ -163,7 +163,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     public Iterable<Parameter> getDynamicParameters() {
         return new FilteredIterable<>(getParameters(), new Predicate<Parameter>() {
             public boolean evaluate(Parameter value) {
-                return !value.getSpecification().isLocal() && !value.getSpecification().isAnnotated();
+                return !value.getSpecification().isLocal() && !value.getSpecification().isCached();
             }
         });
     }

@@ -27,6 +27,8 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.FinalLocationException;
+import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.dsl.Layout;
 
@@ -74,16 +76,16 @@ public class ImplicitCastTest {
     private static final NoCastLayout NO_CAST_LAYOUT = NoCastLayoutImpl.INSTANCE;
     private static final CastLayout CAST_LAYOUT = CastLayoutImpl.INSTANCE;
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void testCantAssignIntToLong() throws UnsupportedOperationException {
+    @Test(expected = IncompatibleLocationException.class)
+    public void testCantAssignIntToLong() throws IncompatibleLocationException, FinalLocationException {
         final DynamicObject object = NO_CAST_LAYOUT.createNoCast(14, 14.2);
-        object.set(NoCastLayout.LONG_VALUE_IDENTIFIER, 14);
+        object.getShape().getProperty(NoCastLayout.LONG_VALUE_IDENTIFIER).set(object, 14, object.getShape());
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void testCantAssignIntToDouble() throws UnsupportedOperationException {
+    @Test(expected = IncompatibleLocationException.class)
+    public void testCantAssignIntToDouble() throws IncompatibleLocationException, FinalLocationException {
         final DynamicObject object = NO_CAST_LAYOUT.createNoCast(14, 14.2);
-        object.set(NoCastLayout.DOUBLE_VALUE_IDENTIFIER, 14);
+        object.getShape().getProperty(NoCastLayout.DOUBLE_VALUE_IDENTIFIER).set(object, 14, object.getShape());
     }
 
     @Test

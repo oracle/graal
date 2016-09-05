@@ -22,25 +22,35 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.model.NodeData;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
+
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
+import com.oracle.truffle.dsl.processor.model.NodeChildData;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 
 public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
@@ -54,7 +64,6 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             }
         }
         List<CodeTypeElement> generatedNodes = generateNodes(context, node);
-
         if (!generatedNodes.isEmpty() || !enclosedTypes.isEmpty()) {
             CodeTypeElement type;
             if (generatedNodes.isEmpty()) {
@@ -106,6 +115,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
                     }
                 }
             }
+
             new NodeFactoryFactory(context, node, second).createFactoryMethods(first);
             ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
 
@@ -127,14 +137,80 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
     }
 
     private static String getAccessorClassName(NodeData node) {
-        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : NodeGenFactory.nodeTypeName(node);
+        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : createNodeTypeName(node);
+    }
+
+    public static TypeMirror nodeType(NodeData node) {
+        return new GeneratedTypeMirror(ElementUtils.getPackageName(node.getTemplateType()), createNodeTypeName(node));
+    }
+
+    private static final String NODE_SUFFIX = "NodeGen";
+
+    private static String resolveNodeId(NodeData node) {
+        String nodeid = node.getNodeId();
+        if (nodeid.endsWith("Node") && !nodeid.equals("Node")) {
+            nodeid = nodeid.substring(0, nodeid.length() - 4);
+        }
+        return nodeid;
+    }
+
+    public static String createNodeTypeName(NodeData node) {
+        return resolveNodeId(node) + NODE_SUFFIX;
     }
 
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
-        return Arrays.asList(new NodeGenFactory(context, node).create());
+
+        CodeTypeElement type = GeneratorUtils.createClass(node, null, modifiers(FINAL), createNodeTypeName(node), node.getTemplateType().asType());
+        ElementUtils.setVisibility(type.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
+        if (node.hasErrors()) {
+            generateErrorNode(context, node, type);
+            return Arrays.asList(type);
+        }
+
+        DSLGenerator generator = node.getTypeSystem().getOptions().defaultGenerator();
+        switch (generator) {
+            case FLAT:
+                type = new FlatNodeGenFactory(context, node).create(type);
+                break;
+            case DEFAULT:
+                type = new DefaultNodeGenFactory(context, node).create(type);
+                break;
+            default:
+                throw new AssertionError();
+        }
+
+        return Arrays.asList(type);
+    }
+
+    private static void generateErrorNode(ProcessorContext context, NodeData node, CodeTypeElement type) {
+        for (ExecutableElement superConstructor : GeneratorUtils.findUserConstructors(node.getTemplateType().asType())) {
+            CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(modifiers(), type, superConstructor);
+            ElementUtils.setVisibility(constructor.getModifiers(), ElementUtils.getVisibility(superConstructor.getModifiers()));
+
+            List<CodeVariableElement> childParameters = new ArrayList<>();
+            for (NodeChildData child : node.getChildren()) {
+                childParameters.add(new CodeVariableElement(child.getOriginalType(), child.getName()));
+            }
+            constructor.getParameters().addAll(superConstructor.getParameters().size(), childParameters);
+
+            type.add(constructor);
+        }
+        for (ExecutableElement method : ElementFilter.methodsIn(context.getEnvironment().getElementUtils().getAllMembers(node.getTemplateType()))) {
+            if (method.getModifiers().contains(Modifier.ABSTRACT) && ElementUtils.getVisibility(method.getModifiers()) != Modifier.PRIVATE) {
+                CodeExecutableElement overrideMethod = CodeExecutableElement.clone(context.getEnvironment(), method);
+                overrideMethod.getModifiers().remove(Modifier.ABSTRACT);
+                List<Message> messages = node.collectMessages();
+
+                String message = messages.toString();
+                message = message.replaceAll("\"", "\\\\\"");
+                message = message.replaceAll("\n", "\\\\n");
+                overrideMethod.createBuilder().startThrow().startNew(context.getType(RuntimeException.class)).doubleQuote("Truffle DSL compiler errors: " + message).end().end();
+                type.add(overrideMethod);
+            }
+        }
     }
 
     private static ExecutableElement createGetFactories(ProcessorContext context, NodeData node) {

@@ -39,11 +39,9 @@ public final class DefaultCallTarget implements RootCallTarget {
     private final RootNode rootNode;
     private volatile boolean initialized;
 
-    @SuppressWarnings("deprecation")
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        this.rootNode.applyInstrumentation();
     }
 
     @Override
@@ -89,7 +87,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                ((DefaultTruffleRuntime) Truffle.getRuntime()).getTvmci().initCallTarget(this);
+                ((DefaultTruffleRuntime) Truffle.getRuntime()).getTvmci().onFirstExecution(this);
                 this.initialized = true;
             }
         }

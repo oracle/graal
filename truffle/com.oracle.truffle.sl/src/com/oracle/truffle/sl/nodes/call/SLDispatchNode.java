@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,7 +54,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -71,12 +69,13 @@ public abstract class SLDispatchNode extends Node {
      * Inline cached specialization of the dispatch.
      *
      * <p>
-     * Since SL is a quite simple language, the benefit of the inline cache is quite small: after
+     * Since SL is a quite simple language, the benefit of the inline cache seems small: after
      * checking that the actual function to be executed is the same as the cachedFuntion, we can
      * safely execute the cached call target. You can reasonably argue that caching the call target
      * is overkill, since we could just retrieve it via {@code function.getCallTarget()}. However,
-     * in a more complex language the lookup of the call target is usually much more complicated
-     * than in SL. In addition, caching the call target allows method inlining.
+     * caching the call target and using a {@link DirectCallNode} allows Truffle to perform method
+     * inlining. In addition, in a more complex language the lookup of the call target is usually
+     * much more complicated than in SL.
      * </p>
      *
      * <p>
@@ -93,8 +92,7 @@ public abstract class SLDispatchNode extends Node {
      * object is change. To avoid a check for that, we use an Assumption that is invalidated by the
      * SLFunction when the change is performed. Since checking an assumption is a no-op in compiled
      * code, the assumption check performed by the DSL does not add any overhead during optimized
-     * execution. The assumption check also covers the check for undefined functions: As long as a
-     * function is undefined, it has an always invalid assumption.
+     * execution.
      * </p>
      *
      * @see Cached
@@ -123,20 +121,12 @@ public abstract class SLDispatchNode extends Node {
      */
     @Specialization(contains = "doDirect")
     protected static Object doIndirect(VirtualFrame frame, SLFunction function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode,
-                    @Cached("create()") BranchProfile undefinedNameProfile) {
+                    @Cached("create()") IndirectCallNode callNode) {
         /*
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        RootCallTarget callTarget = function.getCallTarget();
-        if (callTarget == null) {
-            /* Undefined function. This is slow-path code (we are aborting execution). */
-            undefinedNameProfile.enter();
-            throw SLUndefinedNameException.undefinedFunction(function);
-        }
-
-        return callNode.call(frame, callTarget, arguments);
+        return callNode.call(frame, function.getCallTarget(), arguments);
     }
 
     /**

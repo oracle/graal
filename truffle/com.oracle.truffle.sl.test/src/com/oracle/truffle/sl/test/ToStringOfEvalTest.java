@@ -68,7 +68,7 @@ public class ToStringOfEvalTest {
     @Test
     public void checkToStringOnAFunction() throws IOException {
         PolyglotEngine.Language sl = engine.getLanguages().get(SLLanguage.MIME_TYPE);
-        sl.eval(Source.fromText("function checkName() {}", "defineFn"));
+        sl.eval(Source.newBuilder("function checkName() {}").name("defineFn").mimeType("content/unknown").build());
         PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");
         PolyglotEngine.Value value2 = engine.findGlobalSymbol("checkName");
 

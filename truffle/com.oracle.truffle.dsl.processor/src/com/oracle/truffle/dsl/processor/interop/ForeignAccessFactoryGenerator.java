@@ -65,11 +65,16 @@ public final class ForeignAccessFactoryGenerator {
         this.languageCheckFactoryInvokation = invocation;
     }
 
+    public String getFullClassName() {
+        return packageName + "." + simpleClassName;
+    }
+
     public void generate() throws IOException {
         JavaFileObject factoryFile = processingEnv.getFiler().createSourceFile(packageName + "." + simpleClassName, element);
         Writer w = factoryFile.openWriter();
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
+        Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         w.append("final class ").append(simpleClassName);
         w.append(" implements Factory10, Factory {\n");
 
@@ -98,7 +103,7 @@ public final class ForeignAccessFactoryGenerator {
         return languageCheckFactoryInvokation != null;
     }
 
-    private static void appendImports(Writer w) throws IOException {
+    private void appendImports(Writer w) throws IOException {
         w.append("import com.oracle.truffle.api.interop.UnsupportedMessageException;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory10;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
@@ -107,7 +112,12 @@ public final class ForeignAccessFactoryGenerator {
         w.append("import com.oracle.truffle.api.interop.TruffleObject;").append("\n");
         w.append("import com.oracle.truffle.api.CallTarget;").append("\n");
         w.append("import com.oracle.truffle.api.Truffle;").append("\n");
-        w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
+        if (!(messageHandlers.containsKey(Message.IS_BOXED) &&
+                        messageHandlers.containsKey(Message.IS_NULL) &&
+                        messageHandlers.containsKey(Message.IS_EXECUTABLE) &&
+                        messageHandlers.containsKey(Message.HAS_SIZE))) {
+            w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
+        }
     }
 
     private void appendSingletonAndGetter(Writer w) throws IOException {
@@ -118,16 +128,17 @@ public final class ForeignAccessFactoryGenerator {
             allocation = "ForeignAccess.create(null, new " + simpleClassName + "());";
         }
         w.append("  public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
-        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append("}\n");
+        w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append(" }\n");
         w.append("\n");
     }
 
     private void appendPrivateConstructor(Writer w) throws IOException {
-        w.append("  private ").append(simpleClassName).append("(){}").append("\n");
+        w.append("  private ").append(simpleClassName).append("() { }").append("\n");
         w.append("\n");
     }
 
     private void appendFactoryCanHandle(Writer w) throws IOException {
+        w.append("  @Override").append("\n");
         w.append("  public boolean canHandle(TruffleObject obj) {").append("\n");
         if (hasLanguageCheckNode()) {
             w.append("    return (boolean) Truffle.getRuntime().createCallTarget(").append(languageCheckFactoryInvokation).append(").call(obj);\n");
@@ -139,24 +150,28 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessIsNull(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsNull() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_NULL);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsBoxed(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsBoxed() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.IS_BOXED);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessHasSize(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessHasSize() {").append("\n");
         appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE);
         w.append("    }").append("\n");
@@ -171,42 +186,49 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessGetSize(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessGetSize() {").append("\n");
         appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessUnbox(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessUnbox() {").append("\n");
         appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessRead(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessRead() {").append("\n");
         appendOptionalHandlerBody(w, Message.READ, "Message.READ");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessWrite(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessWrite() {").append("\n");
         appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessExecute(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessInvoke(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessNew(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
         appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
         w.append("    }").append("\n");
@@ -221,6 +243,7 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendFactoryAccessMessage(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
         w.append("    public CallTarget accessMessage(Message unknown) {").append("\n");
         for (Object m : messageHandlers.keySet()) {
             if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {

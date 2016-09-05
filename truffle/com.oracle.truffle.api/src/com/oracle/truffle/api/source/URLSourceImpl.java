@@ -70,7 +70,22 @@ final class URLSourceImpl extends Content {
         } catch (URISyntaxException ex) {
             throw new IOException("Bad URL: " + url, ex);
         }
-        code = Source.read(new InputStreamReader(c.getInputStream()));
+        this.code = Source.read(new InputStreamReader(c.getInputStream()));
+    }
+
+    URLSourceImpl(URL url, String code, String name) throws IOException {
+        this.url = url;
+        this.name = name;
+        try {
+            this.uri = url.toURI();
+        } catch (URISyntaxException ex) {
+            throw new IOException("Bad URL: " + url, ex);
+        }
+        if (code != null) {
+            this.code = code;
+        } else {
+            this.code = Source.read(new InputStreamReader(url.openStream()));
+        }
     }
 
     @Override

@@ -26,9 +26,9 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -57,6 +57,18 @@ public abstract class TVMCI {
     protected abstract void onLoopCount(Node source, int iterations);
 
     /**
+     * Reports when a new root node is loaded into the system.
+     *
+     * @since 0.15
+     */
+    protected void onLoad(RootNode rootNode) {
+        InstrumentSupport support = Accessor.instrumentAccess();
+        if (support != null) {
+            support.onLoad(rootNode);
+        }
+    }
+
+    /**
      * Makes sure the <code>rootNode</code> is initialized.
      *
      * @param rootNode
@@ -66,13 +78,6 @@ public abstract class TVMCI {
         final Accessor.InstrumentSupport accessor = Accessor.instrumentAccess();
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
-        }
-        Accessor.DebugSupport debugAccessor = Accessor.debugAccess();
-        if (debugAccessor != null) {
-            final SourceSection section = rootNode.getSourceSection();
-            if (section != null) {
-                debugAccessor.executionSourceSection(section);
-            }
         }
     }
 

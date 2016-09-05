@@ -115,6 +115,16 @@ public class ElementUtils {
         return null;
     }
 
+    public static VariableElement findVariableElement(DeclaredType type, String name) {
+        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
+        for (VariableElement variableElement : elements) {
+            if (variableElement.getSimpleName().toString().equals(name)) {
+                return variableElement;
+            }
+        }
+        return null;
+    }
+
     public static boolean needsCastTo(TypeMirror sourceType, TypeMirror targetType) {
         if (typeEquals(sourceType, targetType)) {
             return false;
@@ -795,7 +805,7 @@ public class ElementUtils {
         return (T) unboxedValue;
     }
 
-    public static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name) {
+    public static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name, boolean resolveDefault) {
         ExecutableElement valueMethod = null;
         for (ExecutableElement method : ElementFilter.methodsIn(mirror.getAnnotationType().asElement().getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(name)) {
@@ -809,11 +819,18 @@ public class ElementUtils {
         }
 
         AnnotationValue value = mirror.getElementValues().get(valueMethod);
-        if (value == null) {
-            value = valueMethod.getDefaultValue();
+        if (resolveDefault) {
+            if (value == null) {
+                value = valueMethod.getDefaultValue();
+            }
         }
 
         return value;
+    }
+
+    public static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name) {
+        return getAnnotationValue(mirror, name, true);
+
     }
 
     private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor7<Object, Void> {

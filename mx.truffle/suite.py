@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.21.1",
+  "mxversion" : "5.34.4",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -91,6 +91,21 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.api.benchmark" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api",
+        "mx:JMH",
+      ],
+      "imports" : ["jdk.internal.loader"],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "annotationProcessors" : ["mx:JMH"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.api.dsl" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -169,6 +184,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.tools",
+        "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
       ],
@@ -198,10 +214,11 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.instrumentation.test",
         "com.oracle.truffle.api.dsl.test",
+        "com.oracle.truffle.tck",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
 
@@ -316,6 +333,18 @@ suite = {
       "workingSets" : "Truffle",
     },
 
+    "com.oracle.truffle.object.basic.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.object.basic",
+        "mx:JUNIT"
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "workingSets" : "Truffle",
+    },
+
     "com.oracle.truffle.tck" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -333,8 +362,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-                        "com.oracle.truffle.api.profiles",
-                        "com.oracle.truffle.api.instrumentation"],
+                        "com.oracle.truffle.api.vm"],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -389,7 +417,7 @@ suite = {
         "mx:JMH",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["mx:JMH"],
       "license" : "UPL",
@@ -408,6 +436,8 @@ suite = {
     # ------------- Distributions -------------
 
     "TRUFFLE_API" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_api",
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
       "dependencies" : [
@@ -478,7 +508,7 @@ suite = {
 
     "TRUFFLE_SL_TEST" : {
       "subDir" : "truffle",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl.test"
       ],
@@ -513,21 +543,24 @@ suite = {
 
      "TRUFFLE_TEST" : {
        "subDir" : "truffle",
-       "javaCompliance" : "1.7",
+       "javaCompliance" : "1.8",
        "dependencies" : [
          "com.oracle.truffle.api.test",
+         "com.oracle.truffle.api.benchmark",
          "com.oracle.truffle.api.dsl.test",
          "com.oracle.truffle.api.instrumentation.test",
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",
+         "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.tools.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_DEBUG",
+         "TRUFFLE_TCK",
       ],
       "maven" : False,
      },
