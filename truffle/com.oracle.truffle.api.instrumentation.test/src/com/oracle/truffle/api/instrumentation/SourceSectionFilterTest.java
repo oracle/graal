@@ -95,7 +95,7 @@ public class SourceSectionFilterTest {
         Node root = createNode(sampleSource.createSection(0, 23));
         Node unavailable = createNode(SourceSection.createUnavailable(null, null));
         SourceSectionFilter filter = SourceSectionFilter.ANY;
-        Node sampleSection = createNode(sampleSource.createSection(null, 2));
+        Node sampleSection = createNode(sampleSource.createSection(2));
 
         Assert.assertTrue(isInstrumentedNode(filter, source()));
         Assert.assertTrue(isInstrumentedNode(filter, unavailable));

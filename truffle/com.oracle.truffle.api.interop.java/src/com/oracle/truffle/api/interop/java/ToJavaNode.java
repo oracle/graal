@@ -125,7 +125,8 @@ final class ToJavaNode extends Node {
 
     @TruffleBoundary
     private static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, new SingleHandler(function));
+        final SingleHandler handler = new SingleHandler(function);
+        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
@@ -139,6 +140,25 @@ final class ToJavaNode extends Node {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+            Object ret;
+            if (method.isVarArgs()) {
+                if (arguments.length == 1) {
+                    ret = call((Object[]) arguments[0]);
+                } else {
+                    final int allButOne = arguments.length - 1;
+                    Object[] last = (Object[]) arguments[allButOne];
+                    Object[] merge = new Object[allButOne + last.length];
+                    System.arraycopy(arguments, 0, merge, 0, allButOne);
+                    System.arraycopy(last, 0, merge, allButOne, last.length);
+                    ret = call(merge);
+                }
+            } else {
+                ret = call(arguments);
+            }
+            return toJava(ret, method);
+        }
+
+        private Object call(Object[] arguments) {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
@@ -146,8 +166,16 @@ final class ToJavaNode extends Node {
                 RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
                 target = Truffle.getRuntime().createCallTarget(symbolNode);
             }
-            Object ret = target.call(args);
-            return toJava(ret, method);
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof TruffleObject) {
+                    continue;
+                }
+                if (isPrimitive(args[i])) {
+                    continue;
+                }
+                arguments[i] = JavaInterop.asTruffleObject(args[i]);
+            }
+            return target.call(args);
         }
     }
 
