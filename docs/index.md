@@ -9,4 +9,4 @@
 * [Truffle language interoperability and Sulong](INTEROP.md)
 * [Sulong-related publications](PUBLICATIONS.md)
 * [Sulong's test cases](TESTS.md)
-* [How to get Sulong installed](INSTALLATION.md)
+* [Distribution-specific installation of the external dependencies](DEPENDENCIES.md)
