@@ -157,6 +157,15 @@ final class ToJavaNode extends Node {
                 RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
                 target = Truffle.getRuntime().createCallTarget(symbolNode);
             }
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof TruffleObject) {
+                    continue;
+                }
+                if (isPrimitive(args[i])) {
+                    continue;
+                }
+                arguments[i] = JavaInterop.asTruffleObject(args[i]);
+            }
             return target.call(args);
         }
     }

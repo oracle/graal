@@ -56,7 +56,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import static org.junit.Assert.fail;
 
 public class SLJavaInteropTest {
 
@@ -113,7 +112,7 @@ public class SLJavaInteropTest {
     @Test
     public void asFunctionWithArr() throws Exception {
         String scriptText = "function values(a, b) {\n" + //
-                        "  println(\"Called with \" + a + \" and \" + b);\n" + //
+                        "  println(\"Called with \" + a[0] + a[1] + \" and \" + b);\n" + //
                         "}\n"; //
         Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
         engine.eval(script);
@@ -122,14 +121,8 @@ public class SLJavaInteropTest {
         assertTrue("It's truffle object", value instanceof TruffleObject);
         PassInArray valuesIn = JavaInterop.asJavaFunction(PassInArray.class, (TruffleObject) value);
 
-        try {
-            valuesIn.call(new Object[]{"OK", "Fine"});
-            assertEquals("Called with OK and null\n", os.toString("UTF-8"));
-        } catch (IllegalStateException ex) {
-            assertTrue(ex.getMessage(), ex.getMessage().contains("not a Truffle value"));
-            return;
-        }
-        fail("The call with array argument cannot succeed");
+        valuesIn.call(new Object[]{"OK", "Fine"});
+        assertEquals("Called with OKFine and null\n", os.toString("UTF-8"));
     }
 
     @Test
