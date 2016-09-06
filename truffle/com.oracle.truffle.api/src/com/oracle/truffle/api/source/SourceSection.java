@@ -90,7 +90,7 @@ public final class SourceSection {
         this.startLine = -1;
         this.startColumn = -1;
         this.charIndex = 0;
-        this.charLength = -1;
+        this.charLength = 0;
     }
 
     /**
@@ -104,7 +104,9 @@ public final class SourceSection {
      * @since 0.18
      */
     public boolean isAvailable() {
-        return charLength != -1;
+        // TODO this check can be simplified when the deprecated method #createUnavailable was
+        // removed. then source cannot become null anymore
+        return charLength != -1 && source != null;
     }
 
     /**
@@ -282,11 +284,14 @@ public final class SourceSection {
      * @see Source#getCode(int, int)
      */
     public String getCode() {
+        // TODO remove check for source == null if #createUnavailableSourceSection is removed.
+        if (source == null) {
+            return "<unavailable>";
+        }
         if (!isValid()) {
             return "";
         }
-        // TODO remove check for source == null if #createUnavailableSourceSection is removed.
-        return source == null ? "<unavailable>" : source.getCode(getCharIndex(), getCharLength());
+        return source.getCode(getCharIndex(), getCharLength());
     }
 
     /**

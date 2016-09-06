@@ -851,6 +851,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (!sourceSection.isValid()) {
+                    return false;
+                }
                 int otherStart = sourceSection.getCharIndex();
                 int otherEnd = otherStart + sourceSection.getCharLength();
                 for (IndexRange indexRange : ranges) {
@@ -888,11 +891,17 @@ public final class SourceSectionFilter {
                 if (rootSection == null) {
                     return true;
                 }
+                if (!rootSection.isValid()) {
+                    return false;
+                }
                 return LineIn.isLineIn(rootSection, ranges);
             }
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (!sourceSection.isValid()) {
+                    return false;
+                }
                 int otherStart = sourceSection.getStartLine();
                 for (IndexRange indexRange : ranges) {
                     if (indexRange.contains(otherStart, otherStart)) {
@@ -928,6 +937,9 @@ public final class SourceSectionFilter {
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
                 if (rootSection == null) {
                     return true;
+                }
+                if (!rootSection.isValid()) {
+                    return false;
                 }
                 return LineIn.isLineIn(rootSection, ranges);
             }
@@ -976,6 +988,9 @@ public final class SourceSectionFilter {
                 if (rootSourceSection == null) {
                     return true;
                 }
+                if (!rootSourceSection.isValid()) {
+                    return false;
+                }
                 return isIncluded(null, null, rootSourceSection);
             }
 
@@ -985,6 +1000,9 @@ public final class SourceSectionFilter {
             }
 
             static boolean isLineIn(SourceSection sourceSection, IndexRange[] ranges) {
+                if (!sourceSection.isValid()) {
+                    return false;
+                }
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
