@@ -25,6 +25,8 @@ package com.oracle.graal.replacements.test;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.replacements.BoxingSnippets;
 import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 public class MonitorTest extends GraalCompilerTest {
@@ -206,5 +208,25 @@ public class MonitorTest extends GraalCompilerTest {
             }
         }
         return new String(dst);
+    }
+
+    public static String lockBoxedLong(long value) {
+        Long lock = value;
+        synchronized (lock) {
+            return lock.toString();
+        }
+    }
+
+    /**
+     * Reproduces issue reported in https://github.com/graalvm/graal-core/issues/201. The stamp in
+     * the PiNode returned by {@link BoxingSnippets#longValueOf(long)} was overwritten when the node
+     * was subsequently canonicalized because {@code PiNode.computeValue()} ignored the
+     * {@link ValueNode#stamp()} field and used the {@code PiNode.piStamp} field.
+     */
+    @Test
+    public void test8() {
+        test("lockBoxedLong", 5L);
+        test("lockBoxedLong", Long.MAX_VALUE - 1);
+        test("lockBoxedLong", Long.MIN_VALUE + 1);
     }
 }

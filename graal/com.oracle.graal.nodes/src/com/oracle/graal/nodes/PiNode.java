@@ -101,13 +101,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public boolean inferStamp() {
-        if (piStamp == StampFactory.forNodeIntrinsic()) {
-            return false;
-        }
         return updateStamp(computeStamp());
     }
 
     private Stamp computeStamp() {
+        // When piStamp == StampFactory.forNodeIntrinsic() then stamp is either
+        // StampFactory.forNodeIntrinsic() or it has been updated during snippet
+        // lowering to be the stamp of the node being replaced by the snippet.
+        if (piStamp == StampFactory.forNodeIntrinsic()) {
+            return stamp;
+        }
         return piStamp.improveWith(object().stamp());
     }
 
