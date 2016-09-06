@@ -89,8 +89,8 @@ public final class SourceSection {
         this.identifier = identifier;
         this.startLine = -1;
         this.startColumn = -1;
-        this.charIndex = 0;
-        this.charLength = 0;
+        this.charIndex = -1;
+        this.charLength = -1;
     }
 
     /**
@@ -141,6 +141,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getStartLine() {
+        if (source == null) {
+            return -1;
+        }
         if (!isValid()) {
             return 1;
         }
@@ -178,6 +181,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getStartColumn() {
+        if (source == null) {
+            return -1;
+        }
         if (!isValid()) {
             return 1;
         }
@@ -197,6 +203,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getEndLine() {
+        if (source == null) {
+            return -1;
+        }
         if (!isValid()) {
             return 1;
         }
@@ -213,6 +222,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getEndColumn() {
+        if (source == null) {
+            return -1;
+        }
         if (!isValid()) {
             return 1;
         }
@@ -244,6 +256,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getCharLength() {
+        if (source == null) {
+            return -1;
+        }
         return charLength == -1 ? 0 : charLength;
     }
 
@@ -258,6 +273,9 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     public int getCharEndIndex() {
+        if (source == null) {
+            return -1;
+        }
         return getCharIndex() + getCharLength();
     }
 
