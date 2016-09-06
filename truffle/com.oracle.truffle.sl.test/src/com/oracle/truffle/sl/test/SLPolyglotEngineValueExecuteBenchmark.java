@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import org.openjdk.jmh.annotations.Fork;
 
 @State(value = Scope.Benchmark)
 @Warmup(iterations = 15)
@@ -68,7 +67,7 @@ public class SLPolyglotEngineValueExecuteBenchmark {
     private SLFunction slFunction;
 
     @Setup
-    public void prepare() throws IOException {
+    public void prepare() {
         vm = PolyglotEngine.newBuilder().build();
         vm.eval(Source.newBuilder("function plus(x, y) { return x + y; }").name("plus.sl").mimeType(SLLanguage.MIME_TYPE).build());
         plus = vm.findGlobalSymbol("plus");
@@ -77,7 +76,7 @@ public class SLPolyglotEngineValueExecuteBenchmark {
 
     @Benchmark
     @OutputTimeUnit(TimeUnit.SECONDS)
-    public long executePlus() throws IOException {
+    public long executePlus() {
         long res = plus.execute(1L, 2L).as(Number.class).longValue();
         if (res != 3) {
             throw new AssertionError();
