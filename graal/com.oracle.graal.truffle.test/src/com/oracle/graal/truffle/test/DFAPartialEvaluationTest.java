@@ -28,7 +28,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -114,8 +115,8 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         }
 
         @Override
-        public boolean match(byte b) {
-            return this.b == b;
+        public boolean match(byte bo) {
+            return b == bo;
         }
     }
 
@@ -309,7 +310,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertEquals(Boolean.TRUE, result);
     }
 
-    public static boolean constantTrue(Object[] args) {
+    public static boolean constantTrue() {
         return true;
     }
 
@@ -320,7 +321,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         // fail on Exceptions only for now
     }
 
-    private DFAStateNode[] createStates(int n) {
+    private static DFAStateNode[] createStates(int n) {
         DFAStateNode[] states = new DFAStateNode[n];
         for (int i = 0; i < n; i++) {
             states[i] = new DFAStateNode();
