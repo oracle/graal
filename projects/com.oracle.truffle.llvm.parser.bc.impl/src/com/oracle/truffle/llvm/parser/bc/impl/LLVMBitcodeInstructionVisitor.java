@@ -753,7 +753,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMBaseType llvmType = LLVMBitcodeHelper.toBaseType(zwitch.getCondition().getType()).getType();
         LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
         for (int i = 0; i < cases.length; i++) {
-            if (llvmType == LLVMBaseType.I32) {
+            if (llvmType == LLVMBaseType.I8) {
+                cases[i] = new LLVMI8LiteralNode((byte) zwitch.getCaseValue(i));
+            } else if (llvmType == LLVMBaseType.I16) {
+                cases[i] = new LLVMI16LiteralNode((short) zwitch.getCaseValue(i));
+            } else if (llvmType == LLVMBaseType.I32) {
                 cases[i] = new LLVMI32LiteralNode((int) zwitch.getCaseValue(i));
             } else {
                 cases[i] = new LLVMI64LiteralNode(zwitch.getCaseValue(i));
