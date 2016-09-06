@@ -354,7 +354,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 builder.string("0b", Integer.toBinaryString(index));
                 builder.end();
                 builder.end();
-                index++;
+                index = index << 1;
             }
 
             builder.startElseBlock();
@@ -392,7 +392,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 }
                 builder.end();
                 builder.end();
-                index++;
+                index = index << 1;
             }
 
             builder.startElseBlock();
@@ -430,7 +430,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 }
                 builder.end();
                 builder.end();
-                index++;
+                index = index << 1;
             }
 
             builder.startElseBlock();
@@ -463,7 +463,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                     builder.startIndention();
                 }
                 sep = " || ";
-                index++;
+                index = index << 1;
             }
             builder.end();
             builder.end();
