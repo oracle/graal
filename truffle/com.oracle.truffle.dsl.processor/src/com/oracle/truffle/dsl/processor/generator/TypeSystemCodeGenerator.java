@@ -345,16 +345,16 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
-            int index = 1;
+            int mask = 1;
             for (TypeMirror sourceType : sourceTypes) {
                 elseIf = builder.startIf(elseIf);
                 builder.tree(check(typeSystem, sourceType, LOCAL_VALUE));
                 builder.end().startBlock();
                 builder.startReturn();
-                builder.string("0b", Integer.toBinaryString(index));
+                builder.string("0b", Integer.toBinaryString(mask));
                 builder.end();
                 builder.end();
-                index++;
+                mask = mask << 1;
             }
 
             builder.startElseBlock();
@@ -374,10 +374,10 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
 
-            int index = 1;
+            int mask = 1;
             for (TypeMirror sourceType : sourceTypes) {
                 elseIf = builder.startIf(elseIf);
-                builder.string("(state & 0b").string(Integer.toBinaryString(index)).string(") != 0 && ");
+                builder.string("(state & 0b").string(Integer.toBinaryString(mask)).string(") != 0 && ");
                 builder.tree(check(typeSystem, sourceType, LOCAL_VALUE));
                 builder.end().startBlock();
 
@@ -392,7 +392,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 }
                 builder.end();
                 builder.end();
-                index++;
+                mask = mask << 1;
             }
 
             builder.startElseBlock();
@@ -412,10 +412,10 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
 
-            int index = 1;
+            int mask = 1;
             for (TypeMirror sourceType : sourceTypes) {
                 elseIf = builder.startIf(elseIf);
-                builder.string("(state & 0b").string(Integer.toBinaryString(index)).string(") != 0 && ");
+                builder.string("(state & 0b").string(Integer.toBinaryString(mask)).string(") != 0 && ");
                 builder.tree(check(typeSystem, sourceType, LOCAL_VALUE));
                 builder.end().startBlock();
 
@@ -430,7 +430,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 }
                 builder.end();
                 builder.end();
-                index++;
+                mask = mask << 1;
             }
 
             builder.startElseBlock();
@@ -450,10 +450,10 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
             builder.startReturn();
             String sep = "";
-            int index = 1;
+            int mask = 1;
             for (TypeMirror sourceType : sourceTypes) {
                 builder.string(sep);
-                builder.string("((state & 0b").string(Integer.toBinaryString(index)).string(") != 0 && ");
+                builder.string("((state & 0b").string(Integer.toBinaryString(mask)).string(") != 0 && ");
                 builder.tree(check(typeSystem, sourceType, LOCAL_VALUE));
                 builder.string(")");
                 if (sourceTypes.lastIndexOf(sourceType) != sourceTypes.size() - 1) {
@@ -463,7 +463,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                     builder.startIndention();
                 }
                 sep = " || ";
-                index++;
+                mask = mask << 1;
             }
             builder.end();
             builder.end();
