@@ -436,7 +436,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             descriptor = context.getGlobalVaraibleRegistry().lookupOrAdd(name, nativeResolver);
         }
 
-        if (!isExtern) {
+        if (!isExtern && !descriptor.isDeclared()) {
             ResolvedType resolvedType = runtime.resolve(globalVariable.getType());
             int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);

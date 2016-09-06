@@ -39,22 +39,22 @@ public class LLVMGlobalVariableDescriptor {
      * We determine this lazily, as we don't know if a global variable will be declared in managed
      * code or not until we have loaded all the managed code. Therefore global variables all start
      * in an UNKNOWN state.
-     * 
+     *
      * If a declaration is seen in managed code, the global variable moves to the DECLARED state.
-     * 
+     *
      * A global variable declared in managed code can either store managed or native values. Code
      * will often assign a native value as part of initialization, before wanting to use managed
      * values, so an initial write of a native value puts the global variable into the
      * INITIAL_NATIVE state. A global variable in either the DECLARED or INITIAL_NATIVE state can
      * then store a native or managed value, and on the first store it will transition to the NATIVE
      * or MANAGED state, and will stay in that state permanently.
-     * 
+     *
      * Reading a global variable in the DECLARED state is an error. Writing a managed value to a
      * global variable in the NATIVE state is an error.
-     * 
+     *
      * If a declaration is never seen, it transitions to the NATIVE state the first time it is read
      * or written, and the address is looked up in the native symbol table.
-     * 
+     *
      * The state of global variables is permanently fixed the first time they read or the first time
      * they are written with a managed value. They are permanently fixed the second time that they
      * written with a native value, due to our handling of initialization writes of native values
@@ -187,6 +187,10 @@ public class LLVMGlobalVariableDescriptor {
 
         LLVMAddress resolve();
 
+    }
+
+    public boolean isDeclared() {
+        return state == State.DECLARED;
     }
 
 }
