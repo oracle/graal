@@ -77,6 +77,7 @@ import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.extended.UnboxNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
+import com.oracle.graal.nodes.extended.UnsafeMemoryLoadNode;
 import com.oracle.graal.nodes.extended.UnsafeMemoryStoreNode;
 import com.oracle.graal.nodes.extended.UnsafeStoreNode;
 import com.oracle.graal.nodes.java.AbstractNewArrayNode;
@@ -182,6 +183,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
         } else if (n instanceof UnsafeLoadNode) {
             lowerUnsafeLoadNode((UnsafeLoadNode) n, tool);
+        } else if (n instanceof UnsafeMemoryLoadNode) {
+            lowerUnsafeMemoryLoadNode((UnsafeMemoryLoadNode) n);
         } else if (n instanceof UnsafeStoreNode) {
             lowerUnsafeStoreNode((UnsafeStoreNode) n);
         } else if (n instanceof UnsafeMemoryStoreNode) {
@@ -548,6 +551,21 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
+    }
+
+    protected void lowerUnsafeMemoryLoadNode(UnsafeMemoryLoadNode load) {
+        StructuredGraph graph = load.graph();
+        JavaKind readKind = load.getKind();
+        assert readKind != JavaKind.Object;
+        Stamp loadStamp = loadStamp(load.stamp(), readKind, false);
+        AddressNode address = graph.unique(new RawAddressNode(load.getAddress()));
+        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
+        // An unsafe read must not float otherwise it may float above
+        // a test guaranteeing the read is safe.
+        memoryRead.setForceFixed(true);
+        ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, false);
+        load.replaceAtUsages(readValue);
+        graph.replaceFixedWithFixed(load, memoryRead);
     }
 
     protected void lowerUnsafeStoreNode(UnsafeStoreNode store) {
