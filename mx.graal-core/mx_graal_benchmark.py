@@ -234,7 +234,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         raise NotImplementedError()
 
     def parserNames(self):
-        return super(mx_benchmark.JavaBenchmarkSuite, self).parserNames() + ["dacapo_benchmark_suite"]
+        return super(BaseDaCapoBenchmarkSuite, self).parserNames() + ["dacapo_benchmark_suite"]
 
     def validateEnvironment(self):
         if not self.daCapoPath():
