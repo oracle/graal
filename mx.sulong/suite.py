@@ -1,6 +1,7 @@
 suite = {
   "mxversion" : "5.43.0",
   "name" : "sulong",
+  "versionConflictResolution" : "latest",
 
   "imports" : {
     "suites" : [
@@ -11,6 +12,14 @@ suite = {
                 {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
             ]
+        },
+        {
+               "name" : "truffle",
+               "version" : "171cdc988836ded87bbc62ab595b219fa6a45a92",
+               "urls" : [
+                    {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+                ]
         },
     ],
   },

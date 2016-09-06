@@ -356,8 +356,6 @@ public class LLVM {
         try {
             Integer result = vm.eval(fileSource).as(Integer.class);
             return result;
-        } catch (IOException e) {
-            throw new AssertionError(e);
         } finally {
             vm.dispose();
         }
