@@ -163,7 +163,7 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public LLVMAddress getNativeStorage() {
-        assert state == State.INITIAL_NATIVE || state == State.NATIVE : this;
+        assert state == State.INITIAL_NATIVE || state == State.NATIVE || state == State.DECLARED : this;
         return nativeStorage;
     }
 
