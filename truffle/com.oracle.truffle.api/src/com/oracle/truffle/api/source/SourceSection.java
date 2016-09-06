@@ -25,19 +25,17 @@
 package com.oracle.truffle.api.source;
 
 /**
- * Description of contiguous section of text within a {@link Source} of program code; supports
- * multiple modes of access to the text and its location. A special
- * {@link #createUnavailable(java.lang.String, java.lang.String) null value} should be used for code
- * that is not available from source, e.g language builtins.
+ * Description of contiguous section of text within a {@link Source} of program code.; supports
+ * multiple modes of access to the text and its location.
  * <p>
- * Equality of instances is defined in terms of equivalent locations: the same start and length in
- * equal source code instances.
- *
+ * Two source sections are considered equal if their sources, start and length are equal.
+ * {@link #isAvailable() Unavailable} source sections are never equal with available ones. Source
+ * sections can be used as keys in hash maps.
  *
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
  * @see Source#createSection(String, int)
- * @see #createUnavailable
+ * @see Source#createUnavailableSection()
  * @since 0.8 or earlier
  */
 public final class SourceSection {
@@ -45,7 +43,7 @@ public final class SourceSection {
     private static final String UNKNOWN = "<unknown>"; // deprecated
     private final Source source;
     private final int charIndex;
-    private final int charLength;
+    private final int charLength; // -1 indicates unavailable
 
     private final String identifier; // deprecated
     private final int startLine; // deprecated
@@ -73,6 +71,17 @@ public final class SourceSection {
         this.startColumn = -1;
     }
 
+    SourceSection(Source source) {
+        this.source = source;
+        this.charIndex = 0;
+        this.charLength = -1;
+        // legacy support
+        this.kind = null;
+        this.identifier = null;
+        this.startLine = -1;
+        this.startColumn = -1;
+    }
+
     /** Special representation for unknown source. */
     private SourceSection(String kind, String identifier) {
         this.source = null;
@@ -80,20 +89,34 @@ public final class SourceSection {
         this.identifier = identifier;
         this.startLine = -1;
         this.startColumn = -1;
-        this.charIndex = -1;
+        this.charIndex = 0;
         this.charLength = -1;
     }
 
     /**
-     * Returns <code>true</code> if the source section is unavailable. Unavailable source sections
-     * return <code>-1</code> for all indices and lengths. They also return <code>null</code> for
-     * the {@link #getCode() code}.
+     * Returns whether this is a special instance that signifies that source information is
+     * available. Unavailable source sections can be created using
+     * {@link Source#createUnavailableSection()}. Available source sections are never equal to
+     * unavailable source sections. Unavailable source sections return the same indices and lengths
+     * as empty source sections starting at character index <code>0</code>.
+     *
+     * @see Source#createUnavailableSection()
+     * @since 0.18
+     */
+    public boolean isAvailable() {
+        return charLength != -1;
+    }
+
+    /**
+     * Returns whether the source section is in bounds of the {@link #getSource() source}
+     * {@link Source#getCode() code}. Please note that calling this method causes the
+     * {@link Source#getCode() code} of the {@link #getSource() source} to be loaded if it was not
+     * yet loaded.
      *
      * @since 0.18
-     * @see Source#createUnavailableSection()
      */
-    public boolean isUnavailable() {
-        return charIndex == -1;
+    public boolean isValid() {
+        return isAvailable() ? (charIndex + charLength <= getSource().getCode().length()) : false;
     }
 
     /**
@@ -108,30 +131,27 @@ public final class SourceSection {
 
     /**
      * Returns 1-based line number of the first character in this section (inclusive). Returns
-     * <code>-1</code> for {@link Source#createUnavailableSection() unavailable} source sections or
-     * if the source section was created out of bounds of the {@link #getSource() source}. Please
-     * note that computing the startLine is an expensive operation if performed for the first time
-     * for a {@link #getSource() source}.
+     * <code>1</code> for {@link #isValid() invalid} or {@link #isAvailable() unavailable} source
+     * sections. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting line number
      * @since 0.8 or earlier
      */
     public int getStartLine() {
-        if (!isInBounds()) {
-            return -1;
+        if (!isValid()) {
+            return 1;
         }
         if (startLine == -1) {
-            return source.getLineNumber(charIndex);
+            return source.getLineNumber(getCharIndex());
         }
         return startLine;
     }
 
     /**
-     * Gets a representation of the first line of the section, suitable for a hash key. Returns
-     * <code>null</code> for {@link Source#createUnavailableSection() unavailable} source sections
-     * or if the source section was created out of bounds of the {@link #getSource() source}. Please
-     * note that computing the line location is an expensive operation if performed for the first
-     * time for a {@link #getSource() source}.
+     * Gets a representation of the {@link #getStartLine() first line} of the section, suitable for
+     * a hash key. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return first line of the section
      * @since 0.8 or earlier
@@ -140,7 +160,7 @@ public final class SourceSection {
     @SuppressWarnings("deprecation")
     @Deprecated
     public LineLocation getLineLocation() {
-        if (!isInBounds()) {
+        if (!isValid()) {
             return null;
         }
         return source.createLineLocation(getStartLine());
@@ -148,67 +168,61 @@ public final class SourceSection {
 
     /**
      * Returns the 1-based column number of the first character in this section (inclusive). Returns
-     * <code>-1</code> for {@link Source#createUnavailableSection() unavailable} source sections or
-     * if the source section was created out of bounds of the {@link #getSource() source}. Please
-     * note that computing the start column is an expensive operation if performed for the first
-     * time for a {@link #getSource() source}.
+     * <code>1</code> for {@link #isValid() invalid} or {@link #isAvailable() unavailable} source
+     * sections. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting column number
      * @since 0.8 or earlier
      */
     public int getStartColumn() {
-        if (!isInBounds()) {
-            return -1;
+        if (!isValid()) {
+            return 1;
         }
         if (startColumn == -1) {
-            return source.getColumnNumber(charIndex);
+            return source.getColumnNumber(getCharIndex());
         }
         return startColumn;
     }
 
-    private boolean isInBounds() {
-        return charIndex != -1 && charIndex + charLength <= getSource().getCode().length();
-    }
-
     /**
      * Returns 1-based line number of the last character in this section (inclusive). Returns
-     * <code>-1</code> for {@link Source#createUnavailableSection() unavailable} source sections or
-     * if the source section was created out of bounds of the {@link #getSource() source}. Please
-     * note that computing the end line is an expensive operation if performed for the first time
-     * for a {@link #getSource() source}.
+     * <code>1</code> for {@link #isValid() invalid} or {@link #isAvailable() unavailable} source
+     * sections. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting line number
      * @since 0.8 or earlier
      */
     public int getEndLine() {
-        if (!isInBounds()) {
-            return -1;
+        if (!isValid()) {
+            return 1;
         }
-        return source.getLineNumber(charIndex + Math.max(0, charLength - 1));
+        return source.getLineNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
     }
 
     /**
      * Returns the 1-based column number of the last character in this section (inclusive). Returns
-     * <code>-1</code> for {@link Source#createUnavailableSection() unavailable} source sections or
-     * if the source section was created out of bounds of the {@link #getSource() source}. Please
-     * note that computing the end column is an expensive operation if performed for the first time
-     * for a {@link #getSource() source}.
+     * <code>1</code> for {@link #isValid() invalid} or {@link #isAvailable() unavailable} source
+     * sections. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting column number
      * @since 0.8 or earlier
      */
     public int getEndColumn() {
-        if (!isInBounds()) {
-            return -1;
+        if (!isValid()) {
+            return 1;
         }
-        return source.getColumnNumber(charIndex + Math.max(0, charLength - 1));
+        return source.getColumnNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
     }
 
     /**
-     * Returns the 0-based index of the first character in this section. Returns <code>-1</code> for
-     * {@link Source#createUnavailableSection() unavailable} source sections. Please note that this
-     * method might return character indices that are out of bounds of the {@link #getSource()
-     * source}. Calling this method always completes in constant time.
+     * Returns the 0-based index of the first character in this section. Returns <code>0</code> for
+     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
+     * not cause the {@link Source#getCode() code} of the {@link #getSource() source} to be loaded.
+     * The returned index might be out of bounds of the source code. Use {@link #isValid()} to find
+     * out if a source section is within its bounds.
      *
      * @return the starting character index
      * @since 0.8 or earlier
@@ -218,33 +232,31 @@ public final class SourceSection {
     }
 
     /**
-     * Returns the length of this section in characters. Returns <code>-1</code> for
-     * {@link Source#createUnavailableSection() unavailable} source sections. Please note that this
-     * method might return a character length that is out of bounds of the {@link #getSource()
-     * source}. Calling this method always completes in constant time.
+     * Returns the length of this section in characters. Returns <code>0</code> for
+     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
+     * not cause the {@link Source#getCode() code} of the {@link #getSource() source} to be loaded.
+     * The returned length might be out of bounds of the source code. Use {@link #isValid()} to find
+     * out if a source section is within its bounds.
      *
      * @return the number of characters in the section
      * @since 0.8 or earlier
      */
     public int getCharLength() {
-        return charLength;
+        return charLength == -1 ? 0 : charLength;
     }
 
     /**
      * Returns the index of the text position immediately following the last character in the
-     * section. Returns <code>-1</code> for {@link Source#createUnavailableSection() unavailable}
-     * source sections. Please note that this method might return an end character index that is out
-     * of bounds of the {@link #getSource() source}. Calling this method always completes in
-     * constant time.
+     * section. Returns <code>0</code> for {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method does not cause the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded. The returned index might be out of bounds of the
+     * source code. Use {@link #isValid()} to find out if a source section is within its bounds.
      *
      * @return the end position of the section
      * @since 0.8 or earlier
      */
     public int getCharEndIndex() {
-        if (charIndex == -1) {
-            return -1;
-        }
-        return charIndex + charLength;
+        return getCharIndex() + getCharLength();
     }
 
     /**
@@ -252,7 +264,7 @@ public final class SourceSection {
      *
      * @return the identifier of the section
      * @since 0.8 or earlier
-     * @deprecated "identifier" is no longer needed, will be removed to save space
+     * @deprecated without replacement
      */
     @Deprecated
     public String getIdentifier() {
@@ -260,20 +272,21 @@ public final class SourceSection {
     }
 
     /**
-     * Returns the source code fragment described by this section. Returns <code>null</code> for
-     * {@link Source#createUnavailableSection() unavailable} source sections or if the source
-     * section was created out of bounds of the {@link #getSource() source}.
+     * Returns the source code fragment described by this section. Returns an empty string for
+     * {@link #isValid() invalid} or {@link #isAvailable() unavailable} source sections. Please note
+     * that calling this method causes the {@link Source#getCode() code} of the {@link #getSource()
+     * source} to be loaded if it was not yet loaded.
      *
-     * @return the code as a string, or <code>null</code> if the SourceSection was created using
-     *         {@link Source#createUnavailableSection()}.
+     * @return the code as a string
      * @since 0.8 or earlier
      * @see Source#getCode(int, int)
      */
     public String getCode() {
-        if (!isInBounds()) {
-            return null;
+        if (!isValid()) {
+            return "";
         }
-        return source == null ? "<unavailable>" : source.getCode(charIndex, charLength);
+        // TODO remove check for source == null if #createUnavailableSourceSection is removed.
+        return source == null ? "<unavailable>" : source.getCode(getCharIndex(), getCharLength());
     }
 
     /**
@@ -306,12 +319,21 @@ public final class SourceSection {
         if (source == null) {
             return kind == null ? UNKNOWN : kind;
         } else {
-            String code = getCode();
-            if (code == null) {
-                code = "<out of bounds>";
+            StringBuilder b = new StringBuilder();
+            b.append("SourceSection(source=").append(getSource().getName());
+            if (isAvailable()) {
+                b.append(", index=").append(getCharIndex());
+                b.append(", length=").append(getCharLength());
+                if (isValid()) {
+                    b.append(", code=").append(getCode().replaceAll("\\n", "\\\\n"));
+                } else {
+                    b.append(", valid=false");
+                }
+            } else {
+                b.append(" available=false");
             }
-            return "source=" + source.getName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
-                            " code=" + code.replaceAll("\\n", "\\\\n");
+            b.append(")");
+            return b.toString();
         }
     }
 
@@ -361,7 +383,6 @@ public final class SourceSection {
         if (startLine != other.startLine) {
             return false;
         }
-
         return true;
     }
 

@@ -141,7 +141,6 @@ public abstract class Source {
     private String mimeType;
     private final boolean internal;
     private TextMap textMap;
-    private final SourceSection unavailableSourceSection = new SourceSection(this, -1, -1);
 
     /**
      * Locates an existing instance of a {@link Source} with given {@link #getName() name}.
@@ -790,20 +789,22 @@ public abstract class Source {
 
     /**
      * Returns an unavailable source section indicating that the source location is not available.
-     * Unavailable source sections return <code>-1</code> for all indices and lengths. They also
-     * return <code>null</code> for the {@link #getCode() code}. Multiple unavailable source
-     * sections for a source are equal but not necessarily identical with each other.
+     * Unavailable source sections have the same characteristics as empty source sections with
+     * character index <code>0</code>, but returns <code>false</code> for
+     * {@link SourceSection#isAvailable()}. Unavailable source sections are never
+     * {@link SourceSection#isValid() valid}.
      *
-     * @see SourceSection#isUnavailable()
+     * @see SourceSection#isAvailable()
      * @since 0.18
      */
     public final SourceSection createUnavailableSection() {
-        return unavailableSourceSection;
+        return new SourceSection(this);
     }
 
     /**
      * Creates a representation of a line of text in the source identified only by line number, from
-     * which the character information will be computed.
+     * which the character information will be computed. Please note that calling this method does
+     * cause the {@link Source#getCode() code} of this source to be loaded.
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
@@ -820,12 +821,9 @@ public abstract class Source {
     }
 
     /**
-     * Creates a representation of a contiguous region of text in the source. This is the most
-     * efficient way to create a new source section because it does not check the consistency of the
-     * locations with the source.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
+     * Creates a representation of a contiguous region of text in the source. Please note that
+     * calling this method does not cause the {@link Source#getCode() code} of this source to be
+     * loaded.
      *
      * @param charIndex 0-based position of the first character in the section
      * @param length the number of characters in the section
@@ -844,10 +842,8 @@ public abstract class Source {
 
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
+     * {@code charIndex} value by building a text map of lines in the source. Please note that
+     * calling this method does cause the {@link Source#getCode() code} of this source to be loaded.
      *
      * @param startLine 1-based line number of the first character in the section
      * @param startColumn 1-based column number of the first character in the section
@@ -881,9 +877,6 @@ public abstract class Source {
      * Creates a representation of a contiguous region of text in the source.
      * <p>
      * This method performs no checks on the validity of the arguments.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
      *
      * @param identifier terse description of the region
      * @param startLine 1-based line number of the first character in the section
@@ -905,9 +898,6 @@ public abstract class Source {
      * Creates a representation of a contiguous region of text in the source.
      * <p>
      * This method performs no checks on the validity of the arguments.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
      *
      * @param startLine 1-based line number of the first character in the section
      * @param startColumn 1-based column number of the first character in the section
@@ -936,9 +926,6 @@ public abstract class Source {
      * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
      * <p>
      * Checks the position arguments for consistency with the source.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
      *
      * @param identifier terse description of the region
      * @param startLine 1-based line number of the first character in the section
@@ -967,10 +954,6 @@ public abstract class Source {
      * source.
      * <p>
      * Checks the position arguments for consistency with the source.
-     * <p>
-     * The resulting representation defines hash/equality around equivalent location, presuming that
-     * {@link Source} representations are canonical.
-     *
      *
      * @param identifier terse description of the region
      * @param charIndex 0-based position of the first character in the section

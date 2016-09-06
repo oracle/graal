@@ -186,13 +186,14 @@ public class SourceSectionTest {
         assertEquals(7, section.getCharIndex());
         assertEquals(5, section.getCharLength());
 
-        assertEquals(-1, section.getStartColumn());
-        assertEquals(-1, section.getEndColumn());
-        assertEquals(-1, section.getStartLine());
-        assertEquals(-1, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+        assertEquals(1, section.getStartLine());
+        assertEquals(1, section.getEndLine());
 
-        assertFalse(section.isUnavailable());
-        assertNull(section.getCode());
+        assertTrue(section.isAvailable());
+        assertFalse(section.isValid());
+        assertEquals("", section.getCode());
         assertNotNull(section.toString());
 
         SourceSection other = longSource.createSection(longSource.getCode().length() - 4, 5);
@@ -208,13 +209,14 @@ public class SourceSectionTest {
         assertEquals(11, section.getCharIndex());
         assertEquals(1, section.getCharLength());
 
-        assertEquals(-1, section.getStartColumn());
-        assertEquals(-1, section.getEndColumn());
-        assertEquals(-1, section.getStartLine());
-        assertEquals(-1, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+        assertEquals(1, section.getStartLine());
+        assertEquals(1, section.getEndLine());
 
-        assertFalse(section.isUnavailable());
-        assertNull(section.getCode());
+        assertTrue(section.isAvailable());
+        assertFalse(section.isValid());
+        assertEquals("", section.getCode());
         assertNotNull(section.toString());
 
         SourceSection other = longSource.createSection(longSource.getCode().length(), 1);
@@ -230,13 +232,14 @@ public class SourceSectionTest {
         assertEquals(12, section.getCharIndex());
         assertEquals(0, section.getCharLength());
 
-        assertEquals(-1, section.getStartColumn());
-        assertEquals(-1, section.getEndColumn());
-        assertEquals(-1, section.getStartLine());
-        assertEquals(-1, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+        assertEquals(1, section.getStartLine());
+        assertEquals(1, section.getEndLine());
 
-        assertFalse(section.isUnavailable());
-        assertNull(section.getCode());
+        assertTrue(section.isAvailable());
+        assertFalse(section.isValid());
+        assertEquals("", section.getCode());
         assertNotNull(section.toString());
 
         SourceSection other = longSource.createSection(longSource.getCode().length() + 1, 0);
@@ -272,18 +275,19 @@ public class SourceSectionTest {
     @Test
     public void testUnavailable() {
         SourceSection section = longSource.createUnavailableSection();
-        assertEquals(-1, section.getCharEndIndex());
-        assertEquals(-1, section.getCharIndex());
-        assertEquals(-1, section.getCharLength());
+        assertEquals(0, section.getCharEndIndex());
+        assertEquals(0, section.getCharIndex());
+        assertEquals(0, section.getCharLength());
 
-        assertEquals(-1, section.getStartColumn());
-        assertEquals(-1, section.getEndColumn());
-        assertEquals(-1, section.getStartLine());
-        assertEquals(-1, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+        assertEquals(1, section.getStartLine());
+        assertEquals(1, section.getEndLine());
         assertSame(longSource, section.getSource());
-        assertTrue(section.isUnavailable());
+        assertFalse(section.isAvailable());
+        assertFalse(section.isValid());
 
-        assertNull(section.getCode());
+        assertEquals("", section.getCode());
         assertNotNull(section.toString());
 
         SourceSection other = longSource.createUnavailableSection();
