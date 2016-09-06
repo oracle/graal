@@ -228,8 +228,7 @@ def ctw(args, extraVMarguments=None):
             limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
             nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
             if nonBootJDKModules:
-                vmargs.append('-addmods')
-                vmargs.append(','.join(nonBootJDKModules))
+                vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
             if args.limitmods:
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
             vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld'])
@@ -444,14 +443,14 @@ def _unittest_config_participant(config):
 
             # Junit libraries are made into automatic modules so that they are visible to tests
             # patched into modules. These automatic modules must be declared to be read by
-            # Graal which means they must also be made root modules (i.e., ``-addmods``)
-            # since ``-XaddReads`` can only be applied to root modules.
+            # Graal which means they must also be made root modules (i.e., ``--add-modules``)
+            # since ``--add-reads`` can only be applied to root modules.
             junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
             junitModules = [_automatic_module_name(e) for e in junitCp]
-            vmArgs.extend(['-modulepath', os.pathsep.join(junitCp)])
-            vmArgs.extend(['-addmods', ','.join(junitModules + [m.name for m in deployedModules])])
+            vmArgs.append('--module-path=' + os.pathsep.join(junitCp))
+            vmArgs.append('--add-modules=' + ','.join(junitModules + [m.name for m in deployedModules]))
             for deployedModule in deployedModules:
-                vmArgs.append('-XaddReads:' + deployedModule.name + '=' + ','.join(junitModules))
+                vmArgs.append('--add-reads=' + deployedModule.name + '=' + ','.join(junitModules))
 
             # Explicitly export concealed JVMCI packages required by Graal. Even though
             # normally exported via jdk.vm.ci.services.Services.exportJVMCITo(), the
@@ -482,14 +481,14 @@ def _unittest_config_participant(config):
                             # From http://openjdk.java.net/jeps/261:
                             # If a package found in a module definition on a patch path is not already exported
                             # by that module then it will, still, not be exported. It can be exported explicitly
-                            # via either the reflection API or the -XaddExports option.
+                            # via either the reflection API or the --add-exports option.
                             for package in extraPackages:
                                 addedExports.setdefault(deployedModule.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
 
             for moduleName, cpEntries in patches.iteritems():
-                vmArgs.append('-Xpatch:' + moduleName + '=' + os.pathsep.join(cpEntries))
+                vmArgs.append('--patch-module=' + moduleName + '=' + os.pathsep.join(cpEntries))
 
-            vmArgs.extend(['-XaddExports:' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
+            vmArgs.extend(['--add-exports=' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
 
     if isJDK8:
         # Run the VM in a mode where application/test classes can
@@ -571,16 +570,16 @@ def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, 
 
 def _extract_added_exports(args, addedExports):
     """
-    Extracts ``-XaddExports`` entries from `args` and updates `addedExports` based on their values.
+    Extracts ``--add-exports`` entries from `args` and updates `addedExports` based on their values.
 
     :param list args: command line arguments
     :param dict addedExports: map from a module/package specifier to the set of modules it must be exported to
-    :return: the value of `args` minus all valid ``-XaddExports`` entries
+    :return: the value of `args` minus all valid ``--add-exports`` entries
     """
     res = []
     for arg in args:
-        if arg.startswith('-XaddExports:'):
-            parts = arg[len('-XaddExports:'):].split('=', 1)
+        if arg.startswith('--add-exports='):
+            parts = arg[len('--add-exports='):].split('=', 1)
             if len(parts) == 2:
                 export, targets = parts
                 addedExports.setdefault(export, set()).update(targets.split(','))
@@ -633,19 +632,23 @@ def _parseVmArgs(args, addDefaultArgs=True):
                         addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
         for export, targets in addedExports.iteritems():
-            argsPrefix.append('-XaddExports:' + export + '=' + ','.join(sorted(targets)))
+            argsPrefix.append('--add-exports=' + export + '=' + ','.join(sorted(targets)))
 
-        # Extend or set -modulepath argument
+        # Extend or set --module-path argument
         mpUpdated = False
         for mpIndex in range(len(args)):
-            if args[mpIndex] in ['-modulepath', '-mp']:
+            if args[mpIndex] == '--module-path':
                 assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
                 args[mpIndex + 1] = os.pathsep.join(_uniqify(args[mpIndex + 1].split(os.pathsep) + graalModulepath))
                 mpUpdated = True
                 break
+            elif args[mpIndex].startswith('--module-path='):
+                mp = args[mpIndex][len('--module-path='):]
+                args[mpIndex] = '--module-path=' + os.pathsep.join(_uniqify(mp.split(os.pathsep) + graalModulepath))
+                mpUpdated = True
+                break
         if not mpUpdated:
-            argsPrefix.append('-modulepath')
-            argsPrefix.append(os.pathsep.join(graalModulepath))
+            argsPrefix.append('--module-path=' + os.pathsep.join(graalModulepath))
 
     # Set the JVMCI compiler to Graal
     argsPrefix.append('-Djvmci.Compiler=graal')
