@@ -60,7 +60,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 
 /**
  * This interface decouples the parser and the concrete implementation of the nodes by only making
@@ -315,7 +314,7 @@ public interface NodeFactoryFacade {
 
     LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs);
 
-    LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable);
+    Object allocateGlobalVariable(GlobalVariable globalVariable);
 
     RootNode createStaticInitsRootNode(LLVMNode[] staticInits);
 
