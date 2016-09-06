@@ -78,12 +78,6 @@ public enum LLVMBaseOption implements LLVMOption {
                     null,
                     LLVMOptions::parseDynamicLibraryPath,
                     PropertyCategory.GENERAL),
-    CORRECT_EXTERNAL_VAR_LINKING(
-                    "CorrectExternalVariableLinking",
-                    "Enables the correct linking of external variables, so that external variables defined in other bitcode files are found, instead of attempting to use the Graal NFI to resolve them",
-                    false,
-                    LLVMOptions::parseBoolean,
-                    PropertyCategory.GENERAL),
     DYN_BITCODE_LIBRARIES(
                     "DynamicBitcodeLibraries",
                     "The paths to shared bitcode libraries delimited by " + LLVMOptions.getPathDelimiter(),

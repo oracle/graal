@@ -27,31 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.impl.others;
+package com.oracle.truffle.llvm.nodes.impl.base;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import java.util.HashMap;
+import java.util.Map;
 
-public abstract class LLVMGlobalVariableStorageGuards {
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor.NativeResolver;
 
-    @SuppressWarnings("unused")
-    public static boolean isUninitialized(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
-        return globalVariableStorage.isUninitialized();
-    }
+public class LLVMGlobalVariableRegistry {
 
-    @SuppressWarnings("unused")
-    public static boolean isInitializedNative(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
-        return globalVariableStorage.isInitializedNative();
-    }
+    private final Map<String, LLVMGlobalVariableDescriptor> descriptors = new HashMap<>();
 
-    @SuppressWarnings("unused")
-    public static boolean isNative(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
-        return globalVariableStorage.isNative();
-    }
+    public synchronized LLVMGlobalVariableDescriptor lookupOrAdd(String name, NativeResolver nativeResolver) {
+        LLVMGlobalVariableDescriptor descriptor = descriptors.get(name);
 
-    @SuppressWarnings("unused")
-    public static boolean isManaged(VirtualFrame frame, LLVMGlobalVariableStorage globalVariableStorage) {
-        return globalVariableStorage.isManaged();
+        if (descriptor == null) {
+            descriptor = new LLVMGlobalVariableDescriptor(name, nativeResolver);
+            descriptors.put(name, descriptor);
+        }
+
+        return descriptor;
     }
 
 }

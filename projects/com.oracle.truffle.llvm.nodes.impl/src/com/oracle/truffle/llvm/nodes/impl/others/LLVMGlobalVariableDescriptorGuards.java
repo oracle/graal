@@ -29,44 +29,24 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.others;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 
-@ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
-public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMAddressNode {
+public abstract class LLVMGlobalVariableDescriptorGuards {
 
-    protected final LLVMGlobalVariableDescriptor descriptor;
-
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobalVariableDescriptor descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    @Specialization(guards = "needsTransition(frame, descriptor)")
-    public LLVMAddress executeTransition(VirtualFrame frame) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        descriptor.transition(false, false);
-        return executeNative(frame);
+    @SuppressWarnings("unused")
+    public static boolean needsTransition(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+        return descriptor.needsTransition();
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "isNative(frame, descriptor)")
-    public LLVMAddress executeNative(VirtualFrame frame) {
-        return descriptor.getNativeStorage();
+    public static boolean isNative(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+        return descriptor.isNative();
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "isManaged(frame, descriptor)")
-    public Object executeManaged(VirtualFrame frame) {
-        return descriptor.getManagedStorage();
-    }
-
-    public LLVMGlobalVariableDescriptor getGlobalVariableStorage() {
-        return descriptor;
+    public static boolean isManaged(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+        return descriptor.isManaged();
     }
 
 }

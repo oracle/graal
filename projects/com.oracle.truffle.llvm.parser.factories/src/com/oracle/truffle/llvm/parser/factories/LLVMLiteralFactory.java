@@ -83,7 +83,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
@@ -361,8 +361,8 @@ public final class LLVMLiteralFactory {
             case ADDRESS:
                 if (value instanceof LLVMAddress) {
                     return new LLVMAddressLiteralNode((LLVMAddress) value);
-                } else if (value instanceof LLVMGlobalVariableStorage) {
-                    return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobalVariableStorage) value);
+                } else if (value instanceof LLVMGlobalVariableDescriptor) {
+                    return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobalVariableDescriptor) value);
                 } else {
                     throw new AssertionError(value.getClass());
                 }

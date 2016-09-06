@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableStorage;
+import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 
 /*
  * http://llvm.org/docs/LangRef.html#constant-expressions
@@ -120,14 +120,14 @@ public final class LLVMConstantEvaluator {
     }
 
     private static boolean isAddress(Object obj) {
-        return obj instanceof LLVMAddress || obj instanceof LLVMGlobalVariableStorage;
+        return obj instanceof LLVMAddress || obj instanceof LLVMGlobalVariableDescriptor;
     }
 
     private static long asLongAddress(Object obj) {
         if (obj instanceof LLVMAddress) {
             return ((LLVMAddress) obj).getVal();
-        } else if (obj instanceof LLVMGlobalVariableStorage) {
-            return ((LLVMGlobalVariableStorage) obj).getNativeStorage().getVal();
+        } else if (obj instanceof LLVMGlobalVariableDescriptor) {
+            return ((LLVMGlobalVariableDescriptor) obj).getNativeStorage().getVal();
         } else {
             throw new AssertionError(obj);
         }
