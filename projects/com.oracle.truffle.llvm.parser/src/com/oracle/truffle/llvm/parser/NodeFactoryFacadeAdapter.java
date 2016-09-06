@@ -60,7 +60,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 
 /**
  * This class implements an abstract adapter that returns <code>null</code> for each implemented
@@ -330,7 +329,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable) {
+    public Object allocateGlobalVariable(GlobalVariable globalVariable) {
         return null;
     }
 

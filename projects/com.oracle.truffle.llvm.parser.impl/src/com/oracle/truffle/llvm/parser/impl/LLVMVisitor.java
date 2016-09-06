@@ -161,7 +161,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 /**
@@ -181,7 +180,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private List<LLVMNode> functionEpilogue;
     private Map<FunctionHeader, Map<String, Integer>> functionToLabelMapping;
     private final Map<LLVMFunctionDescriptor, RootCallTarget> functionCallTargets = new HashMap<>();
-    private Map<String, LLVMGlobalVariableDescriptor> globalVariableScope = new HashMap<>();
+    private Map<String, Object> globalVariableScope = new HashMap<>();
     private Map<String, Integer> labelList;
     private FrameSlot retSlot;
     private FrameSlot stackPointerSlot;
@@ -401,7 +400,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private void addFunctionAttribute(GlobalVariable globalVar, List<LLVMNode> targetList) {
         ResolvedArrayType type = (ResolvedArrayType) typeResolver.resolve(globalVar.getType());
         int size = type.getSize();
-        LLVMGlobalVariableDescriptor allocGlobalVariable = globalVariableScope.get(globalVar.getName());
+        Object allocGlobalVariable = globalVariableScope.get(globalVar.getName());
         ResolvedType structType = type.getContainedType(0);
         int structSize = typeHelper.getByteSize(structType);
         for (int i = 0; i < size; i++) {
@@ -477,7 +476,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             if (constant != null) {
                 ResolvedType resolvedType = resolve(globalVariable.getType());
                 int byteSize = typeHelper.getByteSize(resolvedType);
-                LLVMGlobalVariableDescriptor allocGlobalVariable = globalVariableScope.get(globalVariable.getName());
+                Object allocGlobalVariable = globalVariableScope.get(globalVariable.getName());
                 if (byteSize == 0) {
                     return null;
                 } else {
@@ -496,7 +495,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    private LLVMGlobalVariableDescriptor findOrAllocateGlobal(GlobalVariable globalVariable) {
+    private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
         return factoryFacade.allocateGlobalVariable(globalVariable);
     }
 
