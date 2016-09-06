@@ -26,7 +26,10 @@ package com.oracle.truffle.api.dsl.internal;
 
 /**
  * This is NOT public API. Do not use directly. This code may change without notice.
+ *
+ * @deprecated will be removed soon
  */
+@Deprecated
 public final class DSLMetadata {
 
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[]{};

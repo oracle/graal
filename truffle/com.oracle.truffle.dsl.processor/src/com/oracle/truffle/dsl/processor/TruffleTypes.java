@@ -22,6 +22,17 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic.Kind;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -30,7 +41,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.internal.DSLMetadata;
 import com.oracle.truffle.api.dsl.internal.NodeFactoryBase;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -42,15 +52,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.ArrayList;
-import java.util.List;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic.Kind;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -78,7 +79,6 @@ public final class TruffleTypes {
     private final DeclaredType nodeUtil;
     private final DeclaredType nodeFactory;
     private final DeclaredType nodeFactoryBase;
-    private final DeclaredType dslMetadata;
     private final DeclaredType generateNodeFactory;
     private final TypeElement expectError;
 
@@ -104,17 +104,12 @@ public final class TruffleTypes {
         nodeUtil = getRequired(context, NodeUtil.class);
         nodeFactory = getRequired(context, NodeFactory.class);
         nodeFactoryBase = getRequired(context, NodeFactoryBase.class);
-        dslMetadata = getRequired(context, DSLMetadata.class);
         expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME);
         generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
     }
 
     public DeclaredType getGenerateNodeFactory() {
         return generateNodeFactory;
-    }
-
-    public DeclaredType getDslMetadata() {
-        return dslMetadata;
     }
 
     public DeclaredType getNodeFactory() {
