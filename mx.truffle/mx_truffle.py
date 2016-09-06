@@ -72,8 +72,8 @@ def _path_args(depNames=None):
                 else:
                     classpath.append(e)
             # The Truffle modules must be eagerly loaded as they could be referenced from
-            # the main class hence the -addmods argument
-            return ['-addmods', ','.join([m.name for m in modules]), '-mp', os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
+            # the main class hence the --add-modules argument
+            return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
     return ['-cp', mx.classpath(depNames)]
 
 def sl(args):

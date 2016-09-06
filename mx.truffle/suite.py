@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.34.4",
+  "mxversion" : "5.43.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
