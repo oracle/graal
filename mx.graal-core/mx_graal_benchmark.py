@@ -33,6 +33,8 @@ from shutil import rmtree
 import mx
 import mx_benchmark
 import mx_graal_core
+from mx_benchmark import ParserEntry
+from argparse import ArgumentParser
 
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(mx.suite('graal-core'), {
@@ -75,6 +77,14 @@ def createBenchmarkShortcut(benchSuite, args):
         benchname = args[0]
         remaining_args = args[1:]
     return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
+
+
+# dacapo suite parsers.
+mx_benchmark.parsers["dacapo_benchmark_suite"] = ParserEntry(
+    ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ..."),
+    "\n\nFlags for DaCapo-style benchmark suites:\n"
+)
+mx_benchmark.parsers["dacapo_benchmark_suite"].parser.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
 
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
@@ -200,7 +210,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.workdir
 
     def after(self, bmSuiteArgs):
-        rmtree(self.workdir)
+        if self.keepScratchDir:
+            mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
+        else:
+            rmtree(self.workdir)
 
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
@@ -244,6 +257,13 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
                 return None
             else:
                 return ["-n", str(iterations)] + remaining
+
+    def vmArgs(self, bmSuiteArgs):
+        parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
+        bmArgs, remainingBmSuiteArgs = parser.parse_known_args(bmSuiteArgs)
+        self.keepScratchDir = bmArgs.keep_scratch
+        vmArgs = super(BaseDaCapoBenchmarkSuite, self).vmArgs(remainingBmSuiteArgs)
+        return vmArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
