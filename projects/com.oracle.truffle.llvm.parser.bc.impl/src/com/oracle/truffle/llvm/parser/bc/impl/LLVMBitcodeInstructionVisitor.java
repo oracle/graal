@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.bc.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
@@ -51,6 +54,9 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMDoubleLiteralNode;
@@ -65,6 +71,7 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
@@ -97,11 +104,12 @@ import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.InlineAsmConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
@@ -383,23 +391,61 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(CallInstruction call) {
-        Symbol target = call.getCallTarget();
-
-        int argumentCount = call.getArgumentCount();
-
-        LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount + 1];
-
+        final int argumentCount = call.getArgumentCount();
+        final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount + 1];
         args[0] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
-
         for (int i = 0; i < argumentCount; i++) {
             args[i + 1] = resolve(call.getArgument(i));
         }
 
+        final Symbol target = call.getCallTarget();
         LLVMExpressionNode result;
-
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
             result = (LLVMExpressionNode) LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, call.getCallType().getArgumentTypes().length, method.getStackSlot(),
                             method.getOptimizationConfiguration());
+        } else if (target instanceof InlineAsmConstant) {
+            final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
+            final LLVMBaseType retType = LLVMBitcodeHelper.toBaseType(call.getType()).getType();
+            final Parser asmParser = new Parser(inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), args, retType);
+            final LLVMInlineAssemblyRootNode assemblyRootNode = asmParser.Parse();
+            final CallTarget callTarget = Truffle.getRuntime().createCallTarget(assemblyRootNode);
+            switch (retType) {
+                case VOID:
+                    result = new LLVMUnsupportedInlineAssemblerNode();
+                    break;
+                case I1:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode();
+                    break;
+                case I8:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode();
+                    break;
+                case I16:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode();
+                    break;
+                case I32:
+                    result = LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen.create(new LLVMCallNode.LLVMResolvedDirectCallNode(callTarget, args));
+                    break;
+                case I64:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode();
+                    break;
+                case FLOAT:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode();
+                    break;
+                case DOUBLE:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMDoubleUnsupportedInlineAssemblerNode();
+                    break;
+                case X86_FP80:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVM80BitFloatUnsupportedInlineAssemblerNode();
+                    break;
+                case ADDRESS:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMAddressUnsupportedInlineAssemblerNode();
+                    break;
+                case FUNCTION_ADDRESS:
+                    result = new LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode();
+                    break;
+                default:
+                    throw new AssertionError("Unknown Inline Assembly Return Type!");
+            }
         } else {
             LLVMFunctionNode function = (LLVMFunctionNode) resolve(target);
             result = (LLVMExpressionNode) LLVMFunctionFactory.createFunctionCall(function, args, LLVMBitcodeHelper.toBaseType(call.getType()).getType());
