@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import com.oracle.graal.debug.internal.DebugValuesPrinter;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
 import com.oracle.graal.graph.DefaultNodeCollectionsProvider;
 import com.oracle.graal.graph.NodeCollectionsProvider;
+import com.oracle.graal.hotspot.CompilerConfigurationFactory.BackendMap;
 import com.oracle.graal.hotspot.debug.BenchmarkCounters;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.spi.StampProvider;
@@ -108,11 +109,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(compilerConfigurationName);
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
+        BackendMap backendMap = compilerConfigurationFactory.createBackendMap();
 
         JVMCIBackend hostJvmciBackend = jvmciRuntime.getHostJVMCIBackend();
         Architecture hostArchitecture = hostJvmciBackend.getTarget().arch;
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
-            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(hostArchitecture);
+            HotSpotBackendFactory factory = backendMap.getBackendFactory(hostArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
@@ -125,7 +127,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
 
             Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
-            HotSpotBackendFactory factory = compilerConfigurationFactory.getBackendFactory(gpuArchitecture);
+            HotSpotBackendFactory factory = backendMap.getBackendFactory(gpuArchitecture);
             if (factory == null) {
                 throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
