@@ -36,6 +36,7 @@ import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
@@ -59,7 +60,13 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     @Override
     public int getAlign() {
-        return ((ValueSymbol) base).getAlign();
+        if (base instanceof ValueSymbol) {
+            return ((ValueSymbol) base).getAlign();
+        } else if (base instanceof GetElementPointerConstant) {
+            return ((ValueSymbol) ((GetElementPointerConstant) base).getBasePointer()).getAlign();
+        } else {
+            throw new IllegalStateException("Unknown Source of Alignment: " + base.getClass());
+        }
     }
 
     public Symbol getIndex(int index) {
