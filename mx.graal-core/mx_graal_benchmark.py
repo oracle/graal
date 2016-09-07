@@ -158,10 +158,13 @@ class TimingBenchmarkMixin(object):
             return r
         return None
 
+    def get_csv_filename(self, benchmarks, bmSuiteArgs):
+        return TimingBenchmarkMixin.debug_values_file
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.CSVFixedFileRule(
-            filename=TimingBenchmarkMixin.debug_values_file,
+            filename=self.get_csv_filename(benchmarks, bmSuiteArgs),
             colnames=['scope', 'name', 'value', 'unit'],
             replacement={
               "benchmark": self.getBechmarkName(),
@@ -184,6 +187,15 @@ class TimingBenchmarkMixin(object):
 
 
 class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
+
+    def get_csv_filename(self, benchmarks, bmSuiteArgs):
+        assert isinstance(self, mx_benchmark.JavaBenchmarkSuite), "DaCapo-style benchmarks must be subclasses of JavaBenchmarkSuite"
+        filename = super(DaCapoTimingBenchmarkMixin, self).get_csv_filename(benchmarks, bmSuiteArgs)
+        cwd = self.workingDirectory(benchmarks, bmSuiteArgs)
+        if cwd:
+            return join(cwd, filename)
+        return filename
+
     def postprocessRunArgs(self, benchname, runArgs):
         self.currentBenchname = benchname
         return super(DaCapoTimingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
