@@ -118,6 +118,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, int localsSize, int stackSize, int lockSize, boolean rethrowException, boolean duringCall,
                     List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
         super(TYPE);
+        assert method == null || bci < method.getCodeSize();
         assert stackSize >= 0;
         this.outerFrameState = outerFrameState;
         this.method = method;
