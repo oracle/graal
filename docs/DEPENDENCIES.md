@@ -7,18 +7,29 @@
 ```
 sudo pacman -S git mercurial pcre ruby
 ```
+#### install gcc-4.6
+
+```
+export LD_PRELOAD=/usr/lib/libstdc++.so.6
+yaourt -S gcc47
+```
 
 #### install gcc-4.7
 
-gcc-4.6 had some installation problems, so I used gcc-4.7 instead. (check out the comments on [archlinux.org](https://aur.archlinux.org/packages/gcc46) how they can probably be fixed)
-
-You need to compile gcc-4.7 by yourself using the AUR. Please note some modifications of PKGBUILD are required to get it working for Sulong:
+if you want to install gcc-4.7 instead of gcc-4.6, you have to do some modifications to PKGBUILD after executing yaourt:
 
 * add ```fortran``` to ```--enable-languages```
 * add the option ```--disable-libquadmath-support``` (see [bugreport](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47648))
 
 ```
 yaourt -S gcc47
+```
+
+You also need to set the following enviroment variables in ```sulong/mx.sulong/env```:
+
+```
+SULONG_GCC=gcc-4.7
+SULONG_GPP=g++-4.7
 ```
 
 #### add symlink for pcre
