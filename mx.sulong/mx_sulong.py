@@ -755,7 +755,7 @@ def getLLVMVersion(llvmProgram):
     versionString = getVersion(llvmProgram)
     printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
-        exit("could not find the LLVM version string in " + str(versionString))
+        return None
     else:
         return printLLVMVersion.group(3)
 
@@ -1050,6 +1050,8 @@ def checkCFiles(targetDir):
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    if clangFormat is None:
+        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
