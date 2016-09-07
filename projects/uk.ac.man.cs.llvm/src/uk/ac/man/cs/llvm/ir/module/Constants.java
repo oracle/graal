@@ -148,8 +148,12 @@ public class Constants implements ParserListener {
                 generator.createFromData(type, args);
                 break;
 
-            default:
+            case INLINEASM:
+                generator.createInlineASM(type, args);
                 break;
+
+            default:
+                throw new UnsupportedOperationException("Unsupported Constant Record: " + record);
         }
         symbols.add(type);
     }

@@ -52,6 +52,8 @@ public interface ConstantGenerator {
 
     void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds);
 
+    void createInlineASM(Type type, long[] args);
+
     void createInteger(Type type, long value);
 
     void createInteger(Type type, BigInteger value);

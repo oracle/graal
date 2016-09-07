@@ -37,12 +37,13 @@ import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.InstructionGenerator;
 import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.Constant;
-import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.InlineAsmConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
@@ -214,6 +215,11 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     @Override
     public void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds) {
         symbols.addSymbol(GetElementPointerConstant.fromSymbols(symbols, type, pointer, indices, isInbounds));
+    }
+
+    @Override
+    public void createInlineASM(Type type, long[] args) {
+        symbols.addSymbol(InlineAsmConstant.generate(type, args));
     }
 
     @Override
