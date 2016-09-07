@@ -48,15 +48,25 @@ darwin : {
   }
 }
 
-
-deploy-dry-run : ${common} ${java8Downloads} {
+maven-deploy-dry-run : ${common} ${java8Downloads} {
   capabilities : [linux, amd64, gate]
-  name : gate-deploy-dry-run
+  name : gate-maven-deploy-dry-run
   setup : [
      ["mx", "--strict-compliance", "build"]
   ]
   run : [
      ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  ]
+}
+
+deploy-binary : ${common} ${java8Downloads} {
+  capabilities : [linux, amd64, post-merge]
+  name : postmerge-deploy-binary
+  setup : [
+     ["mx", "--strict-compliance", "build"]
+  ]
+  run : [
+     ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
   ]
 }
 
@@ -92,7 +102,8 @@ builds = [
   ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
   ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
-  ${deploy-dry-run}
+  ${maven-deploy-dry-run}
+  ${deploy-binary}
   ${solaris} ${java8Downloads} ${gateLite} {
     capabilities : [solaris, sparcv9],
     targets : [ gate ],
