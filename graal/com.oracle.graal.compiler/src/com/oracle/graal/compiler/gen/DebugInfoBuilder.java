@@ -65,6 +65,9 @@ public class DebugInfoBuilder {
         this.nodeValueMap = nodeValueMap;
     }
 
+    private static final JavaValue[] NO_JAVA_VALUES = {};
+    private static final JavaKind[] NO_JAVA_KINDS = {};
+
     protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = Node.newMap();
     protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = Node.newIdentityMap();
 
@@ -100,13 +103,21 @@ public class DebugInfoBuilder {
                 VirtualObject vobjValue = virtualObjects.get(vobjNode);
                 assert vobjValue.getValues() == null;
 
-                JavaValue[] values = new JavaValue[vobjNode.entryCount()];
-                JavaKind[] slotKinds = new JavaKind[vobjNode.entryCount()];
+                JavaValue[] values;
+                JavaKind[] slotKinds;
+                int entryCount = vobjNode.entryCount();
+                if (entryCount == 0) {
+                    values = NO_JAVA_VALUES;
+                    slotKinds = NO_JAVA_KINDS;
+                } else {
+                    values = new JavaValue[entryCount];
+                    slotKinds = new JavaKind[entryCount];
+                }
                 if (values.length > 0) {
                     VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobjNode);
                     assert currentField != null;
                     int pos = 0;
-                    for (int i = 0; i < vobjNode.entryCount(); i++) {
+                    for (int i = 0; i < entryCount; i++) {
                         if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getJavaKind() != JavaKind.Illegal) {
                             ValueNode value = currentField.values().get(i);
                             values[pos] = toJavaValue(value);
@@ -117,7 +128,7 @@ public class DebugInfoBuilder {
                                             currentField.values().get(i - 1);
                         }
                     }
-                    if (pos != vobjNode.entryCount()) {
+                    if (pos != entryCount) {
                         values = Arrays.copyOf(values, pos);
                         slotKinds = Arrays.copyOf(slotKinds, pos);
                     }
@@ -202,8 +213,11 @@ public class DebugInfoBuilder {
             int numStack = state.stackSize();
             int numLocks = state.locksSize();
 
-            JavaValue[] values = new JavaValue[numLocals + numStack + numLocks];
-            JavaKind[] slotKinds = new JavaKind[numLocals + numStack];
+            int numValues = numLocals + numStack + numLocks;
+            int numKinds = numLocals + numStack;
+
+            JavaValue[] values = numValues == 0 ? NO_JAVA_VALUES : new JavaValue[numValues];
+            JavaKind[] slotKinds = numKinds == 0 ? NO_JAVA_KINDS : new JavaKind[numKinds];
             computeLocals(state, numLocals, values, slotKinds);
             computeStack(state, numLocals, numStack, values, slotKinds);
             computeLocks(state, values);
