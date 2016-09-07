@@ -35,16 +35,19 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
@@ -84,12 +87,28 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressDirectLoadNode extends LLVMAddressNode {
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {
             return LLVMMemory.getAddress(addr);
+        }
+
+        // The following specializations are simpler than supporting arbitrary foreign objects here
+
+        @Specialization
+        public Object executeAddress(ManagedMallocObject addr) {
+            return addr.get(0);
+        }
+
+        @Specialization(guards = "objectIsManagedMalloc(addr)")
+        public Object executeAddress(LLVMTruffleObject addr) {
+            return ((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMAddressNode.BYTE_SIZE));
+        }
+
+        protected boolean objectIsManagedMalloc(LLVMTruffleObject addr) {
+            return addr.getObject() instanceof ManagedMallocObject;
         }
     }
 

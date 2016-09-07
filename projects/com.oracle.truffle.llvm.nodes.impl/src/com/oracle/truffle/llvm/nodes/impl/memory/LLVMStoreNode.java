@@ -221,6 +221,16 @@ public abstract class LLVMStoreNode extends LLVMNode {
             throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address);
         }
 
+        @Specialization
+        public void execute(VirtualFrame frame, LLVMTruffleObject address, Object value) {
+            doForeignAccess(frame, address, LLVMAddressNode.BYTE_SIZE, value);
+        }
+
+        @Specialization
+        public void execute(VirtualFrame frame, TruffleObject address, Object value) {
+            doForeignAccess(frame, address, value);
+        }
+
     }
 
     @NodeChild(type = LLVMAddressNode.class, value = "valueNode")

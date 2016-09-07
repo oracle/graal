@@ -62,7 +62,7 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMAddressNod
     @SuppressWarnings("unused")
     @Specialization(guards = "isManaged(frame, descriptor)")
     public Object executeManaged(VirtualFrame frame) {
-        return descriptor.getManagedStorage();
+        return descriptor;
     }
 
     public LLVMGlobalVariableDescriptor getGlobalVariableStorage() {

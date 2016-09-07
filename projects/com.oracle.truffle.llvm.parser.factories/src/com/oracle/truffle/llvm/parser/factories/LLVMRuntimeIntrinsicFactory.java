@@ -73,6 +73,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleInvokeFa
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleInvokeFactory.LLVMTruffleInvokeLFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleInvokeFactory.LLVMTruffleInvokePFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleIsTruffleObjectFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleManagedMallocFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleReadFactory.LLVMTruffleReadBFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleReadFactory.LLVMTruffleReadCFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleReadFactory.LLVMTruffleReadDFactory;
@@ -211,6 +212,8 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@truffle_read_n_bytes", LLVMTruffleReadNBytesFactory.getInstance());
 
         intrinsics.put("@truffle_is_truffle_object", LLVMTruffleIsTruffleObjectFactory.getInstance());
+
+        intrinsics.put("@truffle_managed_malloc", LLVMTruffleManagedMallocFactory.getInstance());
     }
 
     /**

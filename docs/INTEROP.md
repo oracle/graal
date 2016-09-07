@@ -45,7 +45,7 @@ TODO
 
 `object()` sends `EXECUTE`
 
-## intrinsic functions
+## Intrinsic functions
 
 ### `string.h`
 
@@ -58,3 +58,8 @@ compares them.
 
 It is not possible to access members of objects from foreign languages or share
 structs with foreign languages.
+
+## Helper functions
+
+`truffle_managed_malloc` has the same signature as `malloc` but gives you
+memory in which you can store references to managed objects.

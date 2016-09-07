@@ -35,6 +35,8 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public abstract class LLVMAddressNode extends LLVMExpressionNode {
 
+    public static final int BYTE_SIZE = 8;
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         return executePointee(frame);

@@ -541,6 +541,15 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test043() {
+        Runner runner = new Runner("interop043");
+        ClassA a = new ClassA();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "foreign");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {
