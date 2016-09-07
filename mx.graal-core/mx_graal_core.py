@@ -678,7 +678,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [jdk.java] + ['-server'] + args
-    return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, env=env)
 
 _JVMCI_JDK_TAG = 'jvmci'
 
