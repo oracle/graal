@@ -100,6 +100,37 @@ public class Function implements ParserListener {
             return;
         }
 
+        /*
+         * FUNC_CODE_DEBUG_LOC as well as FUNC_CODE_DEBUG_LOC_AGAIN also occur after the RET
+         * Instruction, where the InstructionGenerator would already been deleted. This has to be
+         * improved in the future, but for now we simply parse those instructions before checking
+         * for an existing InstructionGenerator. Otherwise we would cause an RuntimeException.
+         */
+        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC) {
+            /*
+             * TODO: implement intial debugging support
+             *
+             * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_common_lifetime
+             * http://llvm.org/releases/3.4/docs/SourceLevelDebugging.html#object-lifetimes-and-scoping
+             *
+             * @formatter:off
+             *
+             * metadata !{
+             *  i32 4,          ;; line number
+             *  i32 0,          ;; column number (until now, this field was always zero)
+             *  metadata !12,   ;; scope
+             *  null            ;; original scope
+             * }
+             *
+             * @formatter:on
+             */
+            return;
+        }
+
+        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC_AGAIN) {
+            return;
+        }
+
         if (code == null) {
             code = generator.generateBlock();
         }

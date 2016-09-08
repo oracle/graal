@@ -35,6 +35,7 @@ import java.util.Map;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
@@ -168,6 +169,15 @@ public final class LLVMIntrinsicFactory {
                 return LLVMI64ObjectSizeNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMI1Node) realArgNodes[1]);
             } else if (functionName.startsWith("@llvm.expect")) {
                 return getExpect(realArgNodes, functionName, configuration);
+            } else if (functionName.startsWith("@llvm.dbg.declare")) {
+                return new LLVMNode() {
+
+                    @Override
+                    public void executeVoid(VirtualFrame frame) {
+                        // TODO: implement debugging support
+                    }
+
+                };
             } else {
                 throw new IllegalStateException("llvm intrinsic " + functionName + " not yet supported!");
             }
