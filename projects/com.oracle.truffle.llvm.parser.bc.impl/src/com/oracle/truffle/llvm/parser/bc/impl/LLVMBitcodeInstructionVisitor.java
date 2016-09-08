@@ -553,7 +553,29 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ExtractValueInstruction extract) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        if (!(extract.getAggregate().getType() instanceof ArrayType || extract.getAggregate().getType() instanceof StructureType)) {
+            throw new IllegalStateException("\'extractvalue\' can only extract elements of arrays and structs!");
+        }
+        final LLVMExpressionNode baseAddress = resolve(extract.getAggregate());
+        final Type baseType = extract.getAggregate().getType();
+        final int targetIndex = extract.getIndex();
+        final LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(extract.getType()).getType();
+
+        LLVMAddressNode targetAddress = (LLVMAddressNode) baseAddress;
+
+        final AggregateType aggregateType = (AggregateType) baseType;
+        int offset = 0;
+        for (int i = 0; i < targetIndex; i++) {
+            final Type elemType = aggregateType.getElementType(i);
+            offset += LLVMBitcodeHelper.getSize(elemType, elemType.getAlignment());
+        }
+        if (offset != 0) {
+            targetAddress = LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen.create(targetAddress, new LLVMI32LiteralNode(1), offset);
+        }
+
+        final LLVMExpressionNode result = LLVMAggregateFactory.createExtractValue(resultType, targetAddress);
+        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(resultType, result, method.getFrame().findFrameSlot(extract.getName()));
+        method.addInstruction(node);
     }
 
     @Override

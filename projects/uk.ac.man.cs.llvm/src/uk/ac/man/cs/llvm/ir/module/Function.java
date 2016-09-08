@@ -313,6 +313,11 @@ public class Function implements ParserListener {
         int aggregate = getIndex(args[0]);
         int index = (int) args[1];
 
+        if (args.length != 2) {
+            // This is supported in neither parser.
+            throw new UnsupportedOperationException("Multiple indices are not yet supported!");
+        }
+
         Type type = ((AggregateType) symbols.get(aggregate).getType()).getElementType(index);
 
         code.createExtractValue(type, aggregate, index);
