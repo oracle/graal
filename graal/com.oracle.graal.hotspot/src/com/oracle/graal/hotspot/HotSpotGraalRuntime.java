@@ -92,11 +92,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final GraalHotSpotVMConfig config;
 
     /**
-     * @param compilerConfigurationName value for the {@code name} parameter of
+     * @param compilerConfigurationFactory factory for the compiler configuration
      *            {@link CompilerConfigurationFactory#selectFactory(String)}
      */
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, String compilerConfigurationName) {
+    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory) {
 
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = new GraalHotSpotVMConfig(store);
@@ -107,7 +107,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
         }
 
-        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(compilerConfigurationName);
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
         BackendMap backendMap = compilerConfigurationFactory.createBackendMap();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
+import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.common.InitTimer;
@@ -173,7 +174,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
-        return createCompiler(runtime, null);
+        return createCompiler(runtime, CompilerConfigurationFactory.selectFactory(null));
     }
 
     /**
@@ -181,14 +182,13 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
      * returns the latter.
      *
      * @param runtime the JVMCI runtime on which the {@link HotSpotGraalRuntime} is built
-     * @param compilerConfigurationName value for the {@code name} parameter of
-     *            {@link CompilerConfigurationFactory#selectFactory(String)}
+     * @param compilerConfigurationFactory factory for the {@link CompilerConfiguration}
      */
     @SuppressWarnings("try")
-    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, String compilerConfigurationName) {
+    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, CompilerConfigurationFactory compilerConfigurationFactory) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationName);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationFactory);
             HotSpotGraalVMEventListener.addRuntime(graalRuntime);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }

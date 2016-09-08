@@ -169,7 +169,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * @param name the name of the compiler configuration to select (optional)
      */
     @SuppressWarnings("try")
-    static CompilerConfigurationFactory selectFactory(String name) {
+    public static CompilerConfigurationFactory selectFactory(String name) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
             String value = name == null ? Options.CompilerConfiguration.getValue() : name;
