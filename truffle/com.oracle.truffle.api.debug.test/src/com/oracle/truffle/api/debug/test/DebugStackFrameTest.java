@@ -181,10 +181,22 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         } catch (IllegalStateException s) {
         }
 
-        // should still work
-        value.isReadable();
-        value.isWriteable();
-        value.getName();
+        try {
+            value.isReadable();
+        } catch (IllegalStateException s) {
+        }
+
+        try {
+            value.isWriteable();
+            fail();
+        } catch (IllegalStateException s) {
+        }
+
+        try {
+            value.getName();
+            fail();
+        } catch (IllegalStateException s) {
+        }
 
     }
 

@@ -52,6 +52,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * Debug stack frames are only valid as long as {@link SuspendedEvent suspended events} are valid.
  * Suspended events are valid as long while the originating {@link SuspendedCallback} is still
  * executing. All methods of the frame throw {@link IllegalStateException} if they become invalid.
+ * <p>
+ * Clients may access the stack frame only on the execution thread where the suspended event of the
+ * stack frame was created and notification received; access from other threads may throw
+ * {@link IllegalStateException}. Please see the javadoc of the individual method for details.
  *
  * @see SuspendedEvent#getStackFrames()
  * @see SuspendedEvent#getTopStackFrame()
@@ -85,11 +89,13 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * <p>
      * The decision to mark a method as <em>internal</em> is language-specific, reflects judgments
      * about tool usability, and is subject to change.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.17
      */
     public boolean isInternal() {
-        verifyValidState();
+        verifyValidState(true);
         return findCurrentRoot().getSourceSection().getSource().isInternal();
     }
 
@@ -100,10 +106,13 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * often. If the language does not provide such a description then <code>null</code> is
      * returned.
      *
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
+     *
      * @since 0.17
      */
     public String getName() {
-        verifyValidState();
+        verifyValidState(true);
         RootNode root = findCurrentRoot();
         if (root == null) {
             return null;
@@ -125,10 +134,13 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * Returns the source section of the location where the debugging session was suspended. The
      * source section is <code>null</code> if the source location is not available.
      *
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
+     *
      * @since 0.17
      */
     public SourceSection getSourceSection() {
-        verifyValidState();
+        verifyValidState(true);
         EventContext context = getContext();
         if (currentFrame == null) {
             return context.getInstrumentedSourceSection();
@@ -146,13 +158,15 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * with that name <code>null</code> is returned. Stack values are only accessible as as long as
      * the {@link DebugStackFrame debug stack frame} is valid. Debug stack frames are only valid as
      * long as the source {@link SuspendedEvent suspended event} is valid.
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
      *
      * @param name the name of the local variable to query.
      * @return the value from the stack
      * @since 0.17
      */
     public DebugValue getValue(String name) {
-        verifyValidState();
+        verifyValidState(false);
         RootNode root = findCurrentRoot();
         if (root == null) {
             return null;
@@ -177,12 +191,15 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * as the current language is defined in. Returns a heap value that remains valid even if this
      * stack frame becomes invalid.
      *
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
+     *
      * @param code the code to evaluate
      * @return the return value of the expression
      * @since 0.17
      */
     public DebugValue eval(String code) {
-        verifyValidState();
+        verifyValidState(false);
         Object result;
         try {
             result = DebuggerSession.evalInContext(event, code, currentFrame);
@@ -196,10 +213,13 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * Returns an {@link Iterator iterator} for all stack values available in this frame. The
      * returned stack values remain valid as long as the current stack frame remains valid.
      *
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
+     *
      * @since 0.17
      */
     public Iterator<DebugValue> iterator() {
-        verifyValidState();
+        verifyValidState(false);
         RootNode root = findCurrentRoot();
         if (root == null) {
             return Collections.<DebugValue> emptyList().iterator();
@@ -279,8 +299,8 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         }
     }
 
-    void verifyValidState() {
-        event.verifyValidState();
+    void verifyValidState(boolean allowDifferentThread) {
+        event.verifyValidState(allowDifferentThread);
     }
 
 }

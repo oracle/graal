@@ -65,8 +65,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@linkplain SuspendedCallback#onSuspend(SuspendedEvent) callback} on the guest language execution
  * thread.</li>
  *
- * <li>Clients may access event state only on the execution thread where the event was created and
- * notification received; access from other threads throws {@link IllegalStateException}.</li>
+ * <li>Clients may access certain event state only on the execution thread where the event was
+ * created and notification received; access from other threads can throws
+ * {@link IllegalStateException}. Please see the javadoc of the individual method for details.</li>
  *
  * <li>A suspended thread resumes guest language execution after the client callback returns and the
  * thread unwinds back to instrumentation code in the AST.</li>
@@ -152,11 +153,11 @@ public final class SuspendedEvent {
         this.context = null;
     }
 
-    void verifyValidState() {
+    void verifyValidState(boolean allowDifferentThread) {
         if (disposed) {
             throw new IllegalStateException("Not in a suspended state.");
         }
-        if (Thread.currentThread() != thread) {
+        if (!allowDifferentThread && Thread.currentThread() != thread) {
             throw new IllegalStateException("Illegal thread access.");
         }
     }
@@ -170,17 +171,19 @@ public final class SuspendedEvent {
     }
 
     private void setNextStrategy(SteppingStrategy nextStrategy) {
-        verifyValidState();
+        verifyValidState(true);
         this.nextStrategy = nextStrategy;
     }
 
     /**
      * Returns the debugger session this suspended event was created for.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.17
      */
     public DebuggerSession getSession() {
-        verifyValidState();
+        verifyValidState(true);
         return session;
     }
 
@@ -200,6 +203,8 @@ public final class SuspendedEvent {
      * Debugger associated with the just suspended execution. This debugger remains valid after the
      * event is processed, it is possible and suggested to keep a reference to it and use it any
      * time later when evaluating sources in the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @return instance of debugger associated with the just suspended execution and any subsequent
      *         ones in the same {@link com.oracle.truffle.api.vm.PolyglotEngine}.
@@ -209,7 +214,7 @@ public final class SuspendedEvent {
      */
     @Deprecated
     public Debugger getDebugger() {
-        verifyValidState();
+        verifyValidState(true);
         return session.getDebugger();
     }
 
@@ -234,22 +239,26 @@ public final class SuspendedEvent {
     /**
      * Returns the guest language source section of the AST node before/after the execution is
      * suspended. Returns <code>null</code> if no source section information is available.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.17
      */
     public SourceSection getSourceSection() {
-        verifyValidState();
+        verifyValidState(true);
         return sourceSection;
     }
 
     /**
      * Returns <code>true</code> if the execution is suspended before executing a guest language
      * source location. Returns <code>false</code> if it was suspended after.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.14
      */
     public boolean isHaltedBefore() {
-        verifyValidState();
+        verifyValidState(true);
         return location == SteppingLocation.BEFORE_STATEMENT;
     }
 
@@ -259,6 +268,8 @@ public final class SuspendedEvent {
      * returned value is <code>null</code> if an exception occurred during execution of the
      * instrumented statement. The debug value remains valid event if the current execution was
      * suspend.
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.17
      */
@@ -295,7 +306,7 @@ public final class SuspendedEvent {
      */
     @Deprecated
     public List<String> getRecentWarnings() {
-        verifyValidState();
+        verifyValidState(false);
         List<String> list = new ArrayList<>();
         for (Breakpoint breakpoint : getBreakpoints()) {
             Throwable failure = getBreakpointConditionException(breakpoint);
@@ -310,13 +321,17 @@ public final class SuspendedEvent {
      * Returns the cause of failure, if any, during evaluation of a breakpoint's
      * {@linkplain Breakpoint#setCondition(String) condition}.
      *
+     *
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
+     *
      * @param breakpoint a breakpoint associated with this event
      * @return the cause of condition failure
      *
      * @since 0.17
      */
     public Throwable getBreakpointConditionException(Breakpoint breakpoint) {
-        verifyValidState();
+        verifyValidState(true);
         if (conditionFailures == null) {
             return null;
         }
@@ -326,13 +341,15 @@ public final class SuspendedEvent {
     /**
      * Returns the {@link Breakpoint breakpoints} that individually would cause the "hit" where
      * execution is suspended.
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @return an unmodifiable list of breakpoints
      *
      * @since 0.17
      */
     public List<Breakpoint> getBreakpoints() {
-        verifyValidState();
+        verifyValidState(true);
         return breakpoints;
     }
 
@@ -344,7 +361,7 @@ public final class SuspendedEvent {
     @Deprecated
     @CompilerDirectives.TruffleBoundary
     public List<FrameInstance> getStack() {
-        verifyValidState();
+        verifyValidState(false);
         final List<FrameInstance> frameInstances = new ArrayList<>();
         // Map the Truffle stack for this execution, ignore nested executions
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
@@ -362,6 +379,8 @@ public final class SuspendedEvent {
 
     /**
      * Returns the topmost stack frame returned by {@link #getStackFrames()}.
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
      *
      * @see #getStackFrames()
      * @since 0.17
@@ -377,10 +396,13 @@ public final class SuspendedEvent {
      * stack frames are usable only during {@link SuspendedCallback#onSuspend(SuspendedEvent)
      * suspend} and should not be stored permanently.
      *
+     * <p>
+     * This method is not allowed to be invoked from other threads than the execution thread.
+     *
      * @since 0.17
      */
     public Iterable<DebugStackFrame> getStackFrames() {
-        verifyValidState();
+        verifyValidState(false);
         if (cachedFrames == null) {
             cachedFrames = new DebugStackFrameIterable();
         }
@@ -407,6 +429,8 @@ public final class SuspendedEvent {
      * <strong>or:</strong></li>
      * <li>execution completes.</li>
      * </ul>
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.9
      */
@@ -446,6 +470,8 @@ public final class SuspendedEvent {
      * mode is set.</li>
      * </ul>
      * </ul>
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @param stepCount the number of times to perform StepInto before halting
      * @throws IllegalArgumentException if {@code stepCount <= 0}
@@ -480,6 +506,8 @@ public final class SuspendedEvent {
      * </ol>
      * </li>
      * </ul>
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.9
      */
@@ -519,6 +547,8 @@ public final class SuspendedEvent {
      * <li>this special treatment applies only for breakpoints created <strong>before</strong> the
      * mode is set.</li>
      * </ul>
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @param stepCount the number of times to perform StepOver before halting
      * @throws IllegalArgumentException if {@code stepCount <= 0}
@@ -536,6 +566,9 @@ public final class SuspendedEvent {
      * method is to shield an execution of an unknown code with a timeout:
      *
      * {@link com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets}
+     *
+     * <p>
+     * This method is allowed to be invoked from other threads than the execution thread.
      *
      * @since 0.12
      */
@@ -558,7 +591,7 @@ public final class SuspendedEvent {
      */
     @Deprecated
     public Object eval(String code, FrameInstance frameInstance) throws IOException {
-        verifyValidState();
+        verifyValidState(false);
         return DebuggerSession.evalInContext(this, code, frameInstance);
     }
 
@@ -578,7 +611,7 @@ public final class SuspendedEvent {
      */
     @Deprecated
     public String toString(Object value, FrameInstance frameInstance) {
-        verifyValidState();
+        verifyValidState(false);
         RootNode rootNode = null;
         if (frameInstance.getCallTarget() instanceof RootCallTarget) {
             rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
@@ -642,7 +675,7 @@ public final class SuspendedEvent {
                 private Iterator<DebugStackFrame> otherIterator;
 
                 public boolean hasNext() {
-                    verifyValidState();
+                    verifyValidState(false);
                     if (index == 0) {
                         return true;
                     } else {
@@ -651,7 +684,7 @@ public final class SuspendedEvent {
                 }
 
                 public DebugStackFrame next() {
-                    verifyValidState();
+                    verifyValidState(false);
                     if (index == 0) {
                         index++;
                         return getTopStackFrame();

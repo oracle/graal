@@ -35,6 +35,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  * as long as the current stack element is active. Heap values on the other hand remain valid. If a
  * value becomes invalid then setting or getting a value will throw an {@link IllegalStateException}
  * . {@link DebugValue} instances neither support equality or preserve identity.
+ * <p>
+ * Clients can access the debug value only on the execution thread where the suspended event of the
+ * stack frame was created and notification received; access from other threads will throw
+ * {@link IllegalStateException}.
  *
  * @since 0.17
  */
@@ -210,7 +214,7 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
         @SuppressWarnings("unchecked")
         @Override
         public <T> T as(Class<T> clazz) {
-            origin.verifyValidState();
+            origin.verifyValidState(false);
             if (!isReadable()) {
                 throw new IllegalStateException("Value is not readable");
             }
@@ -236,13 +240,13 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
 
         @Override
         Object get() {
-            origin.verifyValidState();
+            origin.verifyValidState(false);
             return origin.findTruffleFrame().getValue(slot);
         }
 
         @Override
         public void set(DebugValue value) {
-            origin.verifyValidState();
+            origin.verifyValidState(false);
             if (value.getLanguage() != getLanguage()) {
                 throw new IllegalStateException(String.format("Languages of set values do not match %s != %s.", value.getLanguage(), getLanguage()));
             }
@@ -252,16 +256,19 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
 
         @Override
         public String getName() {
+            origin.verifyValidState(false);
             return slot.getIdentifier().toString();
         }
 
         @Override
         public boolean isReadable() {
+            origin.verifyValidState(false);
             return true;
         }
 
         @Override
         public boolean isWriteable() {
+            origin.verifyValidState(false);
             return true;
         }
 

@@ -12,6 +12,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).createUnavailableSection(), [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).isAvailable() to find out whether a source section is available.
 * [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html).createSourceSection(int,int) now only throws IllegalArgumentExceptions if indices that are out of bounds with the source only when assertions (-ea) are enabled.
 * Deprecated [Source](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/Source.html).createSection(int, int, int, int) 
+* Relaxed the restrictions for calling methods on [SuspendedEvent](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/SuspendedEvent.html) and [DebugStackFrame](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebugStackFrame.html) from other threads than the execution thread. Please see the javadoc of the individual methods for details.
+
 
 ## Version 0.17
 1-Sep-2016
