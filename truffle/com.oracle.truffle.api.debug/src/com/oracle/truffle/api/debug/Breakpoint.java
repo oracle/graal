@@ -776,7 +776,7 @@ public final class Breakpoint {
             }
             if (column != -1) {
                 assert sectionLength != -1;
-                f.indexIn(column, sectionLength);
+                f.columnAndLength(column, sectionLength);
             }
             if (sourceSection != null) {
                 f.sourceSectionEquals(sourceSection);
