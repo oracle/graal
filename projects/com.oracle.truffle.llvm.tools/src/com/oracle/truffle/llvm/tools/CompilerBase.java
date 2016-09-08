@@ -34,6 +34,9 @@ import java.io.File;
 public abstract class CompilerBase {
 
     static String emitLLVMIRTo(File destinationFile) {
+        if (destinationFile.getName().endsWith(".bc")) {
+            return " -emit-llvm -o " + destinationFile;
+        }
         return " -S -emit-llvm -o " + destinationFile;
     }
 

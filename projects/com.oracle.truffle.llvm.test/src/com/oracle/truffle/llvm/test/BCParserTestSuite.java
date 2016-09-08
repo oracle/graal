@@ -81,7 +81,7 @@ public class BCParserTestSuite extends RemoteTestSuiteBase {
                 File toBeCompiledFile = toBeCompiled.getFile();
                 String expectedOutputName = PathUtil.replaceExtension(toBeCompiledFile.getAbsolutePath(), BCPARSER_REFERENCE_OUTPUT_EXTENSION);
                 File expectedOutputFile = new File(expectedOutputName);
-                File dest = TestHelper.getTempLLFile(toBeCompiledFile, "_main");
+                File dest = TestHelper.getTempBCFile(toBeCompiledFile);
                 try {
                     TestCaseFiles result = TestHelper.compileToLLVMIRWithClang(toBeCompiledFile, dest, expectedOutputFile, toBeCompiled.getFlags());
                     return Arrays.asList(result);
