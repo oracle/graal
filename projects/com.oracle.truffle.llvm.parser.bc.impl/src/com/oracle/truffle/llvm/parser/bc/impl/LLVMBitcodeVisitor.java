@@ -38,6 +38,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -62,6 +63,7 @@ import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -344,6 +346,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMNode[] afterFunction = new LLVMNode[0];
 
         LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, null, frame, method.getName());
+        if (LLVMBaseOptionFacade.printFunctionASTs()) {
+            NodeUtil.printTree(System.out, rootNode);
+        }
+
         LLVMRuntimeType llvmReturnType = LLVMBitcodeHelper.toRuntimeType(method.getReturnType());
         LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeHelper.toRuntimeTypes(method.getArgumentTypes());
         LLVMFunctionDescriptor function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
