@@ -222,7 +222,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.workdir
 
     def after(self, bmSuiteArgs):
-        if self.keepScratchDir:
+        if hasattr(self, "keepScrachDir") and self.keepScratchDir:
             mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
         else:
             rmtree(self.workdir)
