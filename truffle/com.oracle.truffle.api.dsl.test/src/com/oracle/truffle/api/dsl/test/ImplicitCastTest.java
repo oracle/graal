@@ -31,12 +31,16 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
 public class ImplicitCastTest {
 
@@ -51,6 +55,20 @@ public class ImplicitCastTest {
         @ImplicitCast
         static boolean castString(String strvalue) {
             return strvalue.equals("1");
+        }
+
+    }
+
+    private static int charSequenceCast;
+
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast1Types {
+
+        @ImplicitCast
+        static CharSequence castCharSequence(String strvalue) {
+            charSequenceCast++;
+            return strvalue;
         }
 
     }
@@ -159,6 +177,28 @@ public class ImplicitCastTest {
         Assert.assertEquals("42", root.getNode().executeEvaluated(null, "4", "2"));
         Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1, 1));
         Assert.assertEquals(true, root.getNode().executeEvaluated(null, true, true));
+    }
+
+    @TypeSystemReference(ImplicitCast1Types.class)
+    abstract static class ImplicitCast3Node extends Node {
+
+        @Specialization
+        public CharSequence op0(CharSequence v0, @SuppressWarnings("unused") CharSequence v1) {
+            return v0;
+        }
+
+        public abstract Object executeEvaluated(CharSequence v1, CharSequence v2);
+
+    }
+
+    @Test
+    public void testImplicitCast3() {
+        ImplicitCast3Node node = ImplicitCast3NodeGen.create();
+        CharSequence seq1 = "foo";
+        CharSequence seq2 = "bar";
+        charSequenceCast = 0;
+        node.executeEvaluated(seq1, seq2);
+        Assert.assertEquals(2, charSequenceCast);
     }
 
     @TypeSystem({String.class, boolean.class})
