@@ -29,6 +29,7 @@ You may need to [adjust your sources](https://github.com/graalvm/fastr/commit/09
 to compile.
 * Deprecate support for the "identifier" associated with each [SourceSection](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/SourceSection.html)
 * Deprecated `PolyglotEngine.Builder.onEvent(EventConsumer)` and class `EventConsumer`, debugger events are now dispatched using the `DebuggerSession`.
+* [@Fallback](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/Fallback.html) does not support arguments anymore that can lead to unsupported specializations.
 
 #### Additions
 
