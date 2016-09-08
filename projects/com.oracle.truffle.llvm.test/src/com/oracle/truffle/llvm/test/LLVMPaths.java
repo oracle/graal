@@ -77,7 +77,7 @@ public final class LLVMPaths {
 
     // LLVM test suite
     static final File BCPARSER_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "bcparser/");
-    static final File BCPARSER_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "bcparser/");
+    static final File BCPARSER_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "llvm/");
 
     static {
         TEMP_DIRECTORY.mkdir();
