@@ -41,7 +41,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.internal.NodeFactoryBase;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
@@ -78,7 +77,6 @@ public final class TruffleTypes {
     private final DeclaredType compilationFinal;
     private final DeclaredType nodeUtil;
     private final DeclaredType nodeFactory;
-    private final DeclaredType nodeFactoryBase;
     private final DeclaredType generateNodeFactory;
     private final TypeElement expectError;
 
@@ -103,7 +101,6 @@ public final class TruffleTypes {
         compilationFinal = getRequired(context, CompilationFinal.class);
         nodeUtil = getRequired(context, NodeUtil.class);
         nodeFactory = getRequired(context, NodeFactory.class);
-        nodeFactoryBase = getRequired(context, NodeFactoryBase.class);
         expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME);
         generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
     }
@@ -114,10 +111,6 @@ public final class TruffleTypes {
 
     public DeclaredType getNodeFactory() {
         return nodeFactory;
-    }
-
-    public DeclaredType getNodeFactoryBase() {
-        return nodeFactoryBase;
     }
 
     public DeclaredType getCompilationFinal() {
