@@ -2646,9 +2646,21 @@ public class FlatNodeGenFactory {
             int signatureIndex = typeGuard.getSignatureIndex();
             LocalVariable value = frameState.getValue(signatureIndex);
             TypeMirror targetType = typeGuard.getType();
+
             if (!ElementUtils.needsCastTo(value.getTypeMirror(), targetType)) {
-                continue;
+                List<ImplicitCastData> casts = typeSystem.lookupByTargetType(targetType);
+                boolean foundImplicitSubType = false;
+                for (ImplicitCastData cast : casts) {
+                    if (ElementUtils.isSubtype(cast.getSourceType(), targetType)) {
+                        foundImplicitSubType = true;
+                        break;
+                    }
+                }
+                if (!foundImplicitSubType) {
+                    continue;
+                }
             }
+
             NodeExecutionData execution = node.getChildExecutions().get(signatureIndex);
             if (!checksBuilder.isEmpty()) {
                 checksBuilder.string(" && ");
