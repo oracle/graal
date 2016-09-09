@@ -40,6 +40,7 @@ import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
@@ -118,7 +119,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, int localsSize, int stackSize, int lockSize, boolean rethrowException, boolean duringCall,
                     List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
         super(TYPE);
-        assert method == null || bci < method.getCodeSize();
+        if (method != null) {
+            /*
+             * Make sure the bci is within range of the bytecodes. If the code size is 0 then allow
+             * any value, otherwise the bci must be less than the code size. Any negative value is
+             * also allowed to represent special bytecode states.
+             */
+            int codeSize = method.getCodeSize();
+            if (codeSize != 0 && bci >= codeSize) {
+                throw new GraalError("bci %d is out of range for %s %d bytes", bci, method.format("%H.%n(%p)"), codeSize);
+            }
+        }
         assert stackSize >= 0;
         this.outerFrameState = outerFrameState;
         this.method = method;
