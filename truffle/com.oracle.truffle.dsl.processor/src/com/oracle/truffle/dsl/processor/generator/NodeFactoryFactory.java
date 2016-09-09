@@ -166,6 +166,7 @@ class NodeFactoryFactory {
             int index = 0;
             for (VariableElement param : element.getParameters()) {
                 if (ElementUtils.isObject(param.asType())) {
+                    index++;
                     continue;
                 }
                 builder.string(" && ");
