@@ -286,9 +286,9 @@ class GraalTags:
     ctw = ['ctw', 'fulltest']
 
 def _noneAsEmptyList(a):
-    if not a or not any(a):
+    if not a:
         return []
-    return a
+    return [x for x in a if x]
 
 def _gate_java_benchmark(args, successRe):
     """
