@@ -79,7 +79,7 @@ public class Clang extends CompilerBase {
     public static void compileToLLVMIR(File path, File destinationFile, ClangOptions options) {
         File tool = getCompileToolFromExtension(path);
         String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", emitLLVMIRTo(destinationFile), optimizationLevel(options),
-                        path.getAbsolutePath()};
+                        "-c ", path.getAbsolutePath()};
         ProcessUtil.executeNativeCommandZeroReturn(command);
     }
 

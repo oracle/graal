@@ -1,0 +1,4 @@
+test-suite-3.2.src/SingleSource/UnitTests/2003-05-31-LongShifts.c
+test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c
+test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c
+test-suite-3.2.src/SingleSource/UnitTests/initp1.cpp

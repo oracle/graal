@@ -75,6 +75,10 @@ public final class LLVMPaths {
     // Interop test suites
     public static final String INTEROP_TESTS = LOCAL_TESTS + "/../interoptests";
 
+    // LLVM test suite
+    static final File LLVMBC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "llvmbc/");
+    static final File LLVMBC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "llvm/");
+
     static {
         TEMP_DIRECTORY.mkdir();
     }

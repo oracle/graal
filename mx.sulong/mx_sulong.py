@@ -155,6 +155,8 @@ def travis1(args=None):
         if t: runTypeTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
+    with Task('TestLLVMBC', tasks) as t:
+        if t: runLLVMBCTests()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
 
@@ -528,6 +530,13 @@ def runLLVMTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
 
+def runLLVMBCTests(args=None):
+    """runs the BitCode Parser test suite"""
+    ensureLLVMBinariesExist()
+    ensureLLVMSuiteExists()
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMBCTestSuite"])
+
 def runTruffleTestCases(args=None):
     """runs the Sulong test suite"""
     ensureLLVMBinariesExist()
@@ -755,7 +764,7 @@ def getLLVMVersion(llvmProgram):
     versionString = getVersion(llvmProgram)
     printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
-        exit("could not find the LLVM version string in " + str(versionString))
+        return None
     else:
         return printLLVMVersion.group(3)
 
@@ -1050,6 +1059,8 @@ def checkCFiles(targetDir):
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    if clangFormat is None:
+        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
@@ -1076,6 +1087,7 @@ testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
     'llvm' : runLLVMTestCases,
+    'llvm-bc' : runLLVMBCTests,
     'sulong' : runTruffleTestCases,
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,

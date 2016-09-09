@@ -45,7 +45,7 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 @RunWith(Parameterized.class)
-public class LLVMTestSuite extends RemoteTestSuiteBase {
+public class LLVMBCTestSuite extends RemoteTestSuiteBase {
 
     private static final int TEST_TIMEOUT_TIME = 15000;
 
@@ -55,7 +55,7 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
     private TestCaseFiles tuple;
 
-    public LLVMTestSuite(TestCaseFiles tuple) {
+    public LLVMBCTestSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
         this.bitCodeFile = tuple.getBitCodeFile();
         this.originalFile = tuple.getOriginalFile();
@@ -64,9 +64,9 @@ public class LLVMTestSuite extends RemoteTestSuiteBase {
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
-        File configFile = LLVMPaths.LLVM_TEST_SUITE_CONFIG;
-        File testSuite = LLVMPaths.LLVM_TEST_SUITE;
-        return getTestCasesFromConfigFile(configFile, testSuite, new LLVMSuiteTestCaseGenerator(true));
+        File configFile = LLVMPaths.LLVMBC_TEST_SUITE_CONFIG;
+        File testSuite = LLVMPaths.LLVMBC_TEST_SUITE;
+        return getTestCasesFromConfigFile(configFile, testSuite, new LLVMSuiteTestCaseGenerator(false));
     }
 
     @Test(timeout = TEST_TIMEOUT_TIME)
