@@ -155,6 +155,8 @@ def travis1(args=None):
         if t: runTypeTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
+    with Task('TestLLVMBC', tasks) as t:
+        if t: runLLVMBCTests()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
 
