@@ -179,8 +179,7 @@ public abstract class Stub {
 
                 compResult = new CompilationResult(toString());
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
-                    Suites defaultSuites = providers.getSuites().getDefaultSuites();
-                    Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
+                    Suites suites = createSuites();
                     emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
                     LIRSuites lirSuites = createLIRSuites();
                     emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
@@ -240,7 +239,12 @@ public abstract class Stub {
         return true;
     }
 
-    private LIRSuites createLIRSuites() {
+    protected Suites createSuites() {
+        Suites defaultSuites = providers.getSuites().getDefaultSuites();
+        return new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
+    }
+
+    protected LIRSuites createLIRSuites() {
         LIRSuites lirSuites = new LIRSuites(providers.getSuites().getDefaultLIRSuites());
         ListIterator<LIRPhase<PostAllocationOptimizationContext>> moveProfiling = lirSuites.getPostAllocationOptimizationStage().findPhase(MoveProfilingPhase.class);
         if (moveProfiling != null) {
