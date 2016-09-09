@@ -528,12 +528,12 @@ def runLLVMTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
 
-def runBCParserTests(args=None):
+def runLLVMBCTests(args=None):
     """runs the BitCode Parser test suite"""
     ensureLLVMBinariesExist()
     ensureLLVMSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.BCParserTestSuite"])
+    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMBCTestSuite"])
 
 def runTruffleTestCases(args=None):
     """runs the Sulong test suite"""
@@ -1115,7 +1115,7 @@ mx.update_commands(_suite, {
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
     'su-tests' : [runTests, ''],
-    'su-tests-bc' : [runBCParserTests, ''],
+    'su-tests-bc' : [runLLVMBCTests, ''],
     'su-local-gate' : [localGate, ''],
     'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],

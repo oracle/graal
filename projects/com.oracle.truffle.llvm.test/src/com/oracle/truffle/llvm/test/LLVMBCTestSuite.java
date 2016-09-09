@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 
 @RunWith(Parameterized.class)
-public class BCParserTestSuite extends RemoteTestSuiteBase {
+public class LLVMBCTestSuite extends RemoteTestSuiteBase {
 
     private static final int TEST_TIMEOUT_TIME = 15000;
 
@@ -63,7 +63,7 @@ public class BCParserTestSuite extends RemoteTestSuiteBase {
 
     private TestCaseFiles tuple;
 
-    public BCParserTestSuite(TestCaseFiles tuple) {
+    public LLVMBCTestSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
         this.bitCodeFile = tuple.getBitCodeFile();
         this.originalFile = tuple.getOriginalFile();
