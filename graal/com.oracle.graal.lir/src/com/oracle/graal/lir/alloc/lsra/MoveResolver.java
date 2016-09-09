@@ -25,7 +25,6 @@ package com.oracle.graal.lir.alloc.lsra;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,6 +37,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInsertionBuffer;
 import com.oracle.graal.lir.LIRInstruction;
+import com.oracle.graal.lir.LIRValueUtil;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -335,7 +335,7 @@ public class MoveResolver {
                         } else {
                             insertMove(mappingFromOpr.get(i), toInterval);
                         }
-                        if (isStackSlot(toInterval.location())) {
+                        if (LIRValueUtil.isStackSlotValue(toInterval.location())) {
                             if (busySpillSlots == null) {
                                 busySpillSlots = new ArrayList<>(2);
                             }
