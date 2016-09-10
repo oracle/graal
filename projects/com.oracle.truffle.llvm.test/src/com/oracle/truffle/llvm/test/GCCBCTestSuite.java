@@ -33,48 +33,67 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
 @RunWith(Parameterized.class)
-public class TestGCCCompileSuite extends TestSuiteBase {
+public class GCCBCTestSuite extends TestSuiteBase {
 
+    private static final int UNSIGNED_BYTE_MAX_VALUE = 0xff;
     private TestCaseFiles tuple;
+    private File byteCodeFile;
 
-    public TestGCCCompileSuite(TestCaseFiles tuple) {
+    public GCCBCTestSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
+        this.byteCodeFile = tuple.getBitCodeFile();
     }
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
-        File configFile = LLVMPaths.GCC_TEST_SUITE_COMPILE_TORTURE_CONFIG;
-        File testSuite = LLVMPaths.GCC_TEST_SUITE_COMPILE_TORTURE;
+        File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
+        File testSuite = LLVMPaths.GCC_TEST_SUITE;
         LLVMLogger.info("...start to read and compile files");
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(true));
+        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false));
         LLVMLogger.info("...finished reading and compiling files!");
         return files;
     }
 
     @Test
-    public void test() throws Throwable {
+    public void test() {
         try {
             LLVMLogger.info("original file: " + tuple.getOriginalFile());
-            Builder engineBuilder = PolyglotEngine.newBuilder();
-            engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
-            PolyglotEngine build = engineBuilder.build();
-            build.eval(Source.newBuilder(tuple.getBitCodeFile()).build());
-            recordTestCase(tuple, true);
+            int expectedResult;
+            try {
+                expectedResult = TestHelper.executeLLVMBinary(byteCodeFile).getReturnValue();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                throw new LLVMUnsupportedException(UnsupportedReason.CLANG_ERROR);
+            }
+            int truffleResult = truncate(LLVM.executeMain(byteCodeFile));
+            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
+            boolean pass = true;
+            if (!undefinedReturnCode) {
+                pass &= expectedResult == truffleResult;
+            }
+            recordTestCase(tuple, pass);
+            if (!undefinedReturnCode) {
+                Assert.assertEquals(byteCodeFile.getAbsolutePath(), expectedResult, truffleResult);
+            }
         } catch (Throwable e) {
             recordError(tuple, e);
             throw e;
         }
+    }
+
+    private static int truncate(int retValue) {
+        return retValue & UNSIGNED_BYTE_MAX_VALUE;
     }
 
 }

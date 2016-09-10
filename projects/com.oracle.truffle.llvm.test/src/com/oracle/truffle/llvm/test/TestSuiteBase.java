@@ -174,13 +174,16 @@ public abstract class TestSuiteBase {
     public static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
         private boolean withOptimizations;
+        private boolean isLLFileTestGenerator;
 
-        public TestCaseGeneratorImpl(boolean withOptimizations) {
+        public TestCaseGeneratorImpl(boolean withOptimizations, boolean isLLFileTestGenerator) {
             this.withOptimizations = withOptimizations;
+            this.isLLFileTestGenerator = isLLFileTestGenerator;
         }
 
-        public TestCaseGeneratorImpl() {
+        public TestCaseGeneratorImpl(boolean isLLFileTestGenerator) {
             withOptimizations = true;
+            this.isLLFileTestGenerator = isLLFileTestGenerator;
         }
 
         @Override
@@ -192,7 +195,12 @@ public abstract class TestSuiteBase {
         public List<TestCaseFiles> getCompiledTestCaseFiles(SpecificationEntry toBeCompiled) {
             List<TestCaseFiles> files = new ArrayList<>();
             File toBeCompiledFile = toBeCompiled.getFile();
-            File dest = TestHelper.getTempLLFile(toBeCompiledFile, "_main");
+            File dest;
+            if (isLLFileTestGenerator) {
+                dest = TestHelper.getTempLLFile(toBeCompiledFile, "_main");
+            } else {
+                dest = TestHelper.getTempBCFile(toBeCompiledFile);
+            }
             try {
                 if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiledFile)) {
                     TestCaseFiles gccCompiledTestCase = TestHelper.compileToLLVMIRWithGCC(toBeCompiledFile, dest, toBeCompiled.getFlags());
