@@ -57,8 +57,8 @@ public class GCCBCTestSuite extends TestSuiteBase {
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
-        File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
-        File testSuite = LLVMPaths.GCC_TEST_SUITE;
+        File configFile = LLVMPaths.GCCBC_TEST_SUITE_CONFIG;
+        File testSuite = LLVMPaths.GCCBC_TEST_SUITE;
         LLVMLogger.info("...start to read and compile files");
         List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false));
         LLVMLogger.info("...finished reading and compiling files!");

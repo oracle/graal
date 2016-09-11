@@ -518,6 +518,15 @@ def runGCCTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuite'])
 
+def runGCCBCTestCases(args=None):
+    """runs the GCC test suite"""
+    ensureLLVMBinariesExist()
+    ensureGCCSuiteExists()
+    ensureDragonEggExists()
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.GCCBCTestSuite'])
+
+
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
     ensureLLVMBinariesExist()
@@ -1088,6 +1097,7 @@ def checkNoHttp(args=None):
 testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
+    'gcc-bc' : runGCCBCTestCases,
     'llvm' : runLLVMTestCases,
     'llvm-bc' : runLLVMBCTests,
     'sulong' : runTruffleTestCases,
