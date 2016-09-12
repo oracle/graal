@@ -227,4 +227,9 @@ public final class ModelModule implements ModuleGenerator {
     public void nameFunction(int index, int offset, String name) {
         symbols.setSymbolName(index, name);
     }
+
+    @Override
+    public String toString() {
+        return "ModelModule [types=" + types + ", variables=" + variables + ", declares=" + declares + ", defines=" + defines + ", symbols=" + symbols + ", currentFunction=" + currentFunction + "]";
+    }
 }

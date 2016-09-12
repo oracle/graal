@@ -62,4 +62,9 @@ public final class FunctionParameter implements ValueSymbol {
     public Type getType() {
         return type;
     }
+
+    @Override
+    public String toString() {
+        return "FunctionParameter [type=" + type + ", index=" + index + ", name=" + name + "]";
+    }
 }

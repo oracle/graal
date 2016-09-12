@@ -242,4 +242,9 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     public void setName(String name) {
         this.name = name;
     }
+
+    @Override
+    public String toString() {
+        return "InstructionBlock [function=" + function.getName() + ", blockIndex=" + blockIndex + ", instructionCount=" + instructions.size() + ", name=" + name + "]";
+    }
 }

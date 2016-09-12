@@ -184,6 +184,11 @@ public final class Symbols {
         }
     }
 
+    @Override
+    public String toString() {
+        return "Symbols [symbols=" + Arrays.toString(Arrays.copyOfRange(symbols, 0, size)) + ", size=" + size + ", forwardReferenceNames=" + forwardReferenceNames + "]";
+    }
+
     private static class ForwardReference implements Constant {
 
         private final List<Symbol> dependents = new ArrayList<>();
