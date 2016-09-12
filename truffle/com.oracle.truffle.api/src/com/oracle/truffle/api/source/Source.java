@@ -675,7 +675,8 @@ public abstract class Source {
     }
 
     /**
-     * Access to the source contents.
+     * Access to the source contents. Causes the contents of this source to be loaded if they are
+     * loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -684,7 +685,8 @@ public abstract class Source {
     }
 
     /**
-     * Gets the number of characters in the source.
+     * Gets the number of characters in the source. Causes the contents of this source to be loaded
+     * if they are loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -693,7 +695,8 @@ public abstract class Source {
     }
 
     /**
-     * Returns the complete text of the code.
+     * Returns the complete text of the code. Causes the contents of this source to be loaded if
+     * they are loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -702,7 +705,8 @@ public abstract class Source {
     }
 
     /**
-     * Returns a subsection of the code test.
+     * Returns a subsection of the code test. Causes the contents of this source to be loaded if
+     * they are loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -712,6 +716,7 @@ public abstract class Source {
 
     /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
+     * Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -723,7 +728,8 @@ public abstract class Source {
 
     /**
      * The number of text lines in the source, including empty lines; characters at the end of the
-     * source without a terminating newline count as a line.
+     * source without a terminating newline count as a line. Causes the contents of this source to
+     * be loaded if they are loaded lazily.
      *
      * @since 0.8 or earlier
      */
@@ -733,7 +739,7 @@ public abstract class Source {
 
     /**
      * Given a 0-based character offset, return the 1-based number of the line that includes the
-     * position.
+     * position. Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 0.8 or earlier
@@ -744,6 +750,7 @@ public abstract class Source {
 
     /**
      * Given a 0-based character offset, return the 1-based number of the column at the position.
+     * Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 0.8 or earlier
@@ -764,7 +771,7 @@ public abstract class Source {
 
     /**
      * The number of characters (not counting a possible terminating newline) in a (1-based)
-     * numbered line.
+     * numbered line. Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @throws IllegalArgumentException if there is no such line in the text
      * @since 0.8 or earlier
