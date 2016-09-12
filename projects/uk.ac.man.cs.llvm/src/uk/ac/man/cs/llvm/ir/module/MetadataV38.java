@@ -29,8 +29,12 @@
  */
 package uk.ac.man.cs.llvm.ir.module;
 
+import java.util.List;
+
+import uk.ac.man.cs.llvm.ir.types.Type;
+
 public class MetadataV38 extends Metadata {
-    public MetadataV38() {
-        super();
+    public MetadataV38(List<Type> symbols) {
+        super(symbols);
     }
 }

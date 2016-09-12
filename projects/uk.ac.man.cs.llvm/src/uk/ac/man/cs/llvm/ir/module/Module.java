@@ -97,7 +97,7 @@ public class Module implements ParserListener {
 
             case METADATA:
                 System.out.println("Metadata Block");// TODO
-                return version.createMetadata();
+                return version.createMetadata(symbols);
 
             default:
                 return ParserListener.DEFAULT;

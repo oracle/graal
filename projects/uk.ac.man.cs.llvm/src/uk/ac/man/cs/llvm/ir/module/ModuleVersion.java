@@ -44,7 +44,7 @@ public enum ModuleVersion {
     @FunctionalInterface
     private interface MetadataParser {
 
-        Metadata instantiate();
+        Metadata instantiate(List<Type> symbols);
     }
 
     @FunctionalInterface
@@ -80,8 +80,8 @@ public enum ModuleVersion {
         this.metadata = metadata;
     }
 
-    public Metadata createMetadata() {
-        return metadata.instantiate();
+    public Metadata createMetadata(List<Type> symbols) {
+        return metadata.instantiate(symbols);
     }
 
     public Constants createConstants(Types types, List<Type> symbols, ConstantGenerator generator) {
