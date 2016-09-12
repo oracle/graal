@@ -45,6 +45,11 @@ TODO
 
 `object()` sends `EXECUTE`
 
+A reference to a foreign object being converted to an integer (possibly to make
+a native call) sends `UNBOX` and treats the returned value as a native memory
+address. This behaviour is likely to change in the future, but currently
+enables foreign objects to convert to a native representation if possible.
+
 ## Intrinsic functions
 
 ### `string.h`

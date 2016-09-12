@@ -29,8 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.cast;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
@@ -189,6 +196,21 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
         public long executeI64(LLVMAddress from) {
             return from.getVal();
         }
+
+        @Specialization
+        public long executeRubyString(VirtualFrame frame, TruffleObject from,
+                        @Cached("createUnboxNode()") Node unboxNode) {
+            try {
+                return (long) ForeignAccess.sendUnbox(unboxNode, frame, from);
+            } catch (UnsupportedMessageException e) {
+                throw new UnsupportedOperationException(e);
+            }
+        }
+
+        protected Node createUnboxNode() {
+            return Message.UNBOX.createNode();
+        }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMFloatVectorNode.class)
