@@ -155,6 +155,54 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @Test
+    public void testCharSubstitutions() {
+        Object[] args = new Character[]{Character.MIN_VALUE, (char) -1, (char) 0, (char) 1, Character.MAX_VALUE};
+
+        testSubstitution("charReverseBytes", ReverseBytesNode.class, Character.class, "reverseBytes", false, args);
+    }
+
+    public static char charReverseBytes(char value) {
+        return Character.reverseBytes(value);
+    }
+
+    @Test
+    public void testCharSubstitutionsNarrowing() {
+        Object[] args = new Integer[]{(int) Character.MIN_VALUE, -1, 0, 1, (int) Character.MAX_VALUE};
+
+        for (Object arg : args) {
+            test("charReverseBytesNarrowing", arg);
+        }
+    }
+
+    public static char charReverseBytesNarrowing(int value) {
+        return Character.reverseBytes((char) value);
+    }
+
+    @Test
+    public void testShortSubstitutions() {
+        Object[] args = new Short[]{Short.MIN_VALUE, -1, 0, 1, Short.MAX_VALUE};
+
+        testSubstitution("shortReverseBytes", ReverseBytesNode.class, Short.class, "reverseBytes", false, args);
+    }
+
+    public static short shortReverseBytes(short value) {
+        return Short.reverseBytes(value);
+    }
+
+    @Test
+    public void testShortSubstitutionsNarrowing() {
+        Object[] args = new Integer[]{(int) Short.MIN_VALUE, -1, 0, 1, (int) Short.MAX_VALUE};
+
+        for (Object arg : args) {
+            test("shortReverseBytesNarrowing", arg);
+        }
+    }
+
+    public static short shortReverseBytesNarrowing(int value) {
+        return Short.reverseBytes((short) value);
+    }
+
+    @Test
     public void testIntegerSubstitutions() {
         Object[] args = new Object[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE};
 
