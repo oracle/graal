@@ -285,4 +285,18 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             debugValuesPrinter.clearDebugValues();
         }
     }
+
+    private boolean bootstrapFinished;
+
+    public void notifyBootstrapFinished() {
+        bootstrapFinished = true;
+    }
+
+    @Override
+    public boolean isBootstrapping() {
+        if (config.getFlag("BootstrapJVMCI", Boolean.class)) {
+            return !bootstrapFinished;
+        }
+        return false;
+    }
 }
