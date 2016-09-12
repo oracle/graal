@@ -14,6 +14,8 @@ from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner, gate_clean
 from mx_gitlogcheck import logCheck
 
+os.environ["LC_NUMERIC"] = "C"  # required for some testcases
+
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
 _libPath = join(_mx, 'libs')
