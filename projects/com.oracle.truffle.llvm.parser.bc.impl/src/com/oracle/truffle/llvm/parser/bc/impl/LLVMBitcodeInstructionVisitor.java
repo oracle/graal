@@ -97,6 +97,7 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
@@ -328,13 +329,23 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         Type type = allocate.getPointeeType();
         int align = allocate.getAlign();
 
+        if (align == 0) {
+            align = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
+        }
+
         Symbol count = allocate.getCount();
 
         int size = LLVMBitcodeHelper.getSize(type, align);
         int alignment = LLVMBitcodeHelper.getAlignment(type, align);
 
         LLVMExpressionNode result;
-        if (count instanceof IntegerConstant) {
+        if (count instanceof NullConstant) {
+            result = LLVMAllocaInstructionNodeGen.create(
+                            size,
+                            alignment,
+                            method.getContext(),
+                            method.getStackSlot());
+        } else if (count instanceof IntegerConstant) {
             result = LLVMAllocaInstructionNodeGen.create(
                             size * (int) ((IntegerConstant) count).getValue(),
                             alignment,
@@ -350,7 +361,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     result = LLVMI64AllocaInstructionNodeGen.create((LLVMI64Node) num, size, alignment, method.getContext(), method.getStackSlot());
                     break;
                 default:
-                    throw new AssertionError("Unsupported element type in alloca");
+                    throw new AssertionError("Unsupported type for \'count\' in alloca!");
             }
         }
 
