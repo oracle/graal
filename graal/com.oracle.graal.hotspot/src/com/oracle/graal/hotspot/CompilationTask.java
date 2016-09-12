@@ -306,11 +306,19 @@ public class CompilationTask {
 
     protected void handleException(Throwable t) {
         /*
-         * Automatically enable ExitVMOnException when asserts are enabled but respect
-         * ExitVMOnException if it's been explicitly set.
+         * Automatically enable ExitVMOnException during bootstrap or when asserts are enabled but
+         * respect ExitVMOnException if it's been explicitly set.
          */
         boolean exitVMOnException = ExitVMOnException.getValue();
-        assert ExitVMOnException.hasBeenSet() || (exitVMOnException = true) == true;
+        if (!ExitVMOnException.hasBeenSet()) {
+            assert (exitVMOnException = true) == true;
+            if (!exitVMOnException) {
+                HotSpotGraalRuntimeProvider runtime = compiler.getGraalRuntime();
+                if (runtime.isBootstrapping()) {
+                    exitVMOnException = true;
+                }
+            }
+        }
 
         if (PrintStackTraceOnException.getValue() || exitVMOnException) {
             try {
