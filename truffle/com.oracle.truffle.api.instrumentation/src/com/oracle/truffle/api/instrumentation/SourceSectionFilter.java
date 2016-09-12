@@ -851,7 +851,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-                if (!sourceSection.isValid()) {
+                if (!sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getCharIndex();
@@ -891,7 +891,7 @@ public final class SourceSectionFilter {
                 if (rootSection == null) {
                     return true;
                 }
-                if (!rootSection.isValid()) {
+                if (!rootSection.isAvailable()) {
                     return false;
                 }
                 return LineIn.isLineIn(rootSection, ranges);
@@ -899,7 +899,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-                if (!sourceSection.isValid()) {
+                if (!sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();
@@ -938,7 +938,7 @@ public final class SourceSectionFilter {
                 if (rootSection == null) {
                     return true;
                 }
-                if (!rootSection.isValid()) {
+                if (!rootSection.isAvailable()) {
                     return false;
                 }
                 return LineIn.isLineIn(rootSection, ranges);
@@ -988,7 +988,7 @@ public final class SourceSectionFilter {
                 if (rootSourceSection == null) {
                     return true;
                 }
-                if (!rootSourceSection.isValid()) {
+                if (!rootSourceSection.isAvailable()) {
                     return false;
                 }
                 return isIncluded(null, null, rootSourceSection);
@@ -1000,7 +1000,7 @@ public final class SourceSectionFilter {
             }
 
             static boolean isLineIn(SourceSection sourceSection, IndexRange[] ranges) {
-                if (!sourceSection.isValid()) {
+                if (!sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();

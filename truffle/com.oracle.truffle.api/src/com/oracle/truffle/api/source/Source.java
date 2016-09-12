@@ -791,8 +791,7 @@ public abstract class Source {
      * Returns an unavailable source section indicating that the source location is not available.
      * Unavailable source sections have the same characteristics as empty source sections with
      * character index <code>0</code>, but returns <code>false</code> for
-     * {@link SourceSection#isAvailable()}. Unavailable source sections are never
-     * {@link SourceSection#isValid() valid}.
+     * {@link SourceSection#isAvailable()}.
      *
      * @see SourceSection#isAvailable()
      * @since 0.18
@@ -817,18 +816,23 @@ public abstract class Source {
         }
         final int charIndex = getTextMap().lineStartOffset(lineNumber);
         final int length = getTextMap().lineLength(lineNumber);
-        return new SourceSection(this, charIndex, length);
+        SourceSection section = new SourceSection(this, charIndex, length);
+        assert assertValid(section);
+        return section;
     }
 
     /**
      * Creates a representation of a contiguous region of text in the source. Please note that
-     * calling this method does not cause the {@link Source#getCode() code} of this source to be
-     * loaded.
+     * calling this method does only cause the {@link Source#getCode() code} of this source to be
+     * loaded if assertions enabled. The bounds of the source section are only verified if
+     * assertions (-ea) are enabled in the host system. An {@link IllegalArgumentException} is
+     * thrown if the given indices are out of bounds of the source bounds.
      *
      * @param charIndex 0-based position of the first character in the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
-     * @throws IllegalArgumentException if charIndex < 0 or length < 0.
+     * @throws IllegalArgumentException if charIndex < 0 or length < 0; in case assertions are
+     *             enabled also if the given bounds are out of the source bounds.
      * @since 0.17
      */
     public final SourceSection createSection(int charIndex, int length) {
@@ -837,7 +841,9 @@ public abstract class Source {
         } else if (length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
-        return new SourceSection(this, charIndex, length);
+        SourceSection section = new SourceSection(this, charIndex, length);
+        assert assertValid(section);
+        return section;
     }
 
     /**
@@ -870,7 +876,16 @@ public abstract class Source {
         if (charIndex + length > getCode().length()) {
             throw new IllegalArgumentException("charIndex out of range");
         }
-        return new SourceSection(this, charIndex, length);
+        SourceSection section = new SourceSection(this, charIndex, length);
+        assert assertValid(section);
+        return section;
+    }
+
+    private static boolean assertValid(SourceSection section) {
+        if (!section.isValid()) {
+            throw new IllegalArgumentException("Invalid source section bounds.");
+        }
+        return true;
     }
 
     /**
