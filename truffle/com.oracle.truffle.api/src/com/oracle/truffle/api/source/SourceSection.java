@@ -30,7 +30,8 @@ package com.oracle.truffle.api.source;
  * <p>
  * Two source sections are considered equal if their sources, start and length are equal.
  * {@link #isAvailable() Unavailable} source sections are never equal with available ones. Source
- * sections can be used as keys in hash maps.
+ * sections can be used as keys in hash maps. Unavailable source sections are equal if their sources
+ * are equal.
  *
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
