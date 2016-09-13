@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 import static com.oracle.graal.compiler.common.GraalOptions.UseSnippetGraphCache;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
@@ -399,9 +398,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), replacements.providers.getConstantFieldProvider(), config,
                                 OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
 
-                if (OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
-                }
+                new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

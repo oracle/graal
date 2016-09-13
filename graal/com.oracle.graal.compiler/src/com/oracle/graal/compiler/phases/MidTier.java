@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.phases;
 
 import static com.oracle.graal.compiler.common.GraalOptions.ConditionalElimination;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 import static com.oracle.graal.compiler.common.GraalOptions.OptDeoptimizationGrouping;
 import static com.oracle.graal.compiler.common.GraalOptions.OptEliminatePartiallyRedundantGuards;
 import static com.oracle.graal.compiler.common.GraalOptions.OptFloatingReads;
@@ -68,9 +67,8 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         if (OptPushThroughPi.getValue()) {
             appendPhase(new PushThroughPiPhase());
         }
-        if (OptCanonicalizer.getValue()) {
-            appendPhase(canonicalizer);
-        }
+
+        appendPhase(canonicalizer);
 
         appendPhase(new ValueAnchorCleanupPhase());
         appendPhase(new LockEliminationPhase());
@@ -84,15 +82,13 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
         appendPhase(new RemoveValueProxyPhase());
 
-        if (OptCanonicalizer.getValue()) {
-            appendPhase(canonicalizer);
-        }
+        appendPhase(canonicalizer);
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
-        if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
+        if (ConditionalElimination.getValue()) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, true));
         }
 
@@ -100,9 +96,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
-        if (OptCanonicalizer.getValue()) {
-            appendPhase(canonicalizer);
-        }
+        appendPhase(canonicalizer);
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopSafepointEliminationPhase()));
 
@@ -129,8 +123,6 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             appendPhase(new DeoptimizationGroupingPhase());
         }
 
-        if (OptCanonicalizer.getValue()) {
-            appendPhase(canonicalizer);
-        }
+        appendPhase(canonicalizer);
     }
 }
