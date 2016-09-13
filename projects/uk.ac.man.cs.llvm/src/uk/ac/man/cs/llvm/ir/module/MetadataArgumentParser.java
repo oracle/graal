@@ -63,7 +63,7 @@ public class MetadataArgumentParser implements Iterator<Type> {
             return symbols.get((int) argVal); // should work
         } else if (typeOfArgument instanceof MetaType) {
             // TODO: return more suited type
-            return new IntegerConstantType(IntegerType.INTEGER, argVal); // TODO: check
+            return new IntegerConstantType(IntegerType.SHORT, argVal); // TODO: check
         } else if (typeOfArgument instanceof PointerType) {
             // TODO: return more suited type
             return new IntegerConstantType(IntegerType.INTEGER, argVal); // TODO: check

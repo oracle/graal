@@ -33,6 +33,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
+import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
+import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
+import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.Node;
+import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -40,7 +46,9 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 public class MetadataV32 extends Metadata {
     public MetadataV32(Types types, List<Type> symbols) {
         super(types, symbols);
-        idx = 0; // it seem's like there is a different offset of the id in LLVM 3.2 and LLVM 3.8
+        // it seem's like there is a different offset of the id in LLVM 3.2 and LLVM 3.8
+        metadata.setStartIndex(0);
+        idx = 0; // TODO: remove
     }
 
     protected boolean asInt1(Type t) {
@@ -55,8 +63,8 @@ public class MetadataV32 extends Metadata {
         return ((IntegerConstantType) t).getValue();
     }
 
-    protected long asMetadata(Type t) {
-        return ((IntegerConstantType) t).getValue(); // TODO
+    protected int asMetadata(Type t) {
+        return (int) ((IntegerConstantType) t).getValue(); // TODO
     }
 
     @Override
@@ -85,53 +93,88 @@ public class MetadataV32 extends Metadata {
 
         if (parsedArgs.peek() instanceof IntegerConstantType) {
             // System.out.println(parsedArgs);
-            DwTagRecord record = DwTagRecord.decode(asInt32(parsedArgs.next()));
+
+            /*
+             * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#LLVMDebugVersion
+             *
+             * The first field of a descriptor is always an i32 containing a tag value identifying
+             * the content of the descriptor. The remaining fields are specific to the descriptor.
+             * The values of tags are loosely bound to the tag values of DWARF information entries.
+             * However, that does not restrict the use of the information supplied to DWARF targets.
+             * To facilitate versioning of debug information, the tag is augmented with the current
+             * debug version (LLVMDebugVersion = 8 << 16 or 0x80000 or 524288.)
+             */
+            int ident = asInt32(parsedArgs.next());
+            DwTagRecord record = DwTagRecord.decode(ident);
+
+            // TODO: some hack, has to be changed when we can identify type informations clearly
+            if (ident < 0x00010000) {
+                record = DwTagRecord.DW_TAG_UNKNOW;
+            }
+
+            /*
+             * How the data is stored: http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html
+             */
             switch (record) {
                 case DW_TAG_VARIABLE:
                     createDwTagVariable(parsedArgs);
                     break;
+
                 case DW_TAG_COMPILE_UNIT:
                     createDwTagCompileUnit(parsedArgs);
                     break;
+
                 case DW_TAG_FILE_TYPE:
                     createDwTagFileType(parsedArgs);
                     break;
+
                 case DW_TAG_BASE_TYPE:
                     createDwTagBaseType(parsedArgs);
                     break;
+
+                case DW_TAG_ARRAY_TYPE:
                 case DW_TAG_ENUMERATION_TYPE:
-                    createDwTagEnumerationType(parsedArgs);
+                case DW_TAG_STRUCTURE_TYPE:
+                case DW_TAG_UNION_TYPE:
+                case DW_TAG_VECTOR_TYPE:
+                case DW_TAG_SUBROUTINE_TYPE:
+                case DW_TAG_INHERITANCE:
+                    createDwCompositeType(parsedArgs, record);
                     break;
+
                 case DW_TAG_ENUMERATOR:
                     createDwTagEnumerator(parsedArgs);
                     break;
+
                 case DW_TAG_SUBPROGRAM:
                     createDwTagSubprogram(parsedArgs);
                     break;
-                case DW_TAG_SUBROUTINE_TYPE:
-                    createDwTagSubroutineType(parsedArgs);
-                    break;
+
                 case DW_TAG_AUTO_VARIABLE:
                     createDwTagAutoVariable(parsedArgs);
                     break;
-                case DW_TAG_ARRAY_TYPE:
-                    createDwTagArrayType(parsedArgs);
-                    break;
+
                 case DW_TAG_SUBRANGE_TYPE:
                     createDwTagSubrangeType(parsedArgs);
                     break;
+
                 case DW_TAG_LEXICAL_BLOCK:
                     createDwTagLexicalBlock(parsedArgs);
                     break;
+
                 case DW_TAG_MEMBER:
                     createDwTagMember(parsedArgs);
                     break;
-                case DW_TAG_STRUCTURE_TYPE:
-                    createDwTagStructureType(parsedArgs);
-                    break;
+
                 default:
+                    System.out.println("!" + idx + " - TODO: #" + record);
+                    break;
+
+                case DW_TAG_UNKNOW:
                     parsedArgs.rewind();
-                    System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + " - UNSUPORTED: #" + asInt32(parsedArgs.next()));
+                    // System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + " -
+                    // UNSUPORTED: #" + asInt32(parsedArgs.next()));
+                    createDwNode(parsedArgs); // TODO: we need to know the type of the node
                     break;
             }
         } else if (args[0] == 6) {
@@ -150,9 +193,15 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwNode(MetadataArgumentParser args) {
-        // TODO
+        Node node = new Node();
 
-        System.out.println("!" + idx + " - DW_Node: ");
+        while (args.hasNext()) {
+            node.add(metadata.getReference(args.next()));
+        }
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagVariable(MetadataArgumentParser args) {
@@ -162,73 +211,41 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagCompileUnit(MetadataArgumentParser args) {
-        /*
-         * @formatter:off
-         *
-         *  metadata !{
-         *    i32 786449,                       ;; Tag
-         *    i32 0,                            ;; Context
-         *    i32 4,                            ;; Language
-         *    metadata !"foo.cpp",              ;; File
-         *    metadata !"/Volumes/Data/tmp",    ;; Directory
-         *    metadata !"clang version 3.1 ",   ;; Producer
-         *    i1 true,                          ;; Deprecated field
-         *    i1 false,                         ;; "isOptimized"?
-         *    metadata !"",                     ;; Flags
-         *    i32 0,                            ;; Runtime Version
-         *    metadata !1,                      ;; Enum Types
-         *    metadata !1,                      ;; Retained Types
-         *    metadata !1,                      ;; Subprograms
-         *    metadata !3                       ;; Global Variables
-         *  } ; [ DW_TAG_compile_unit ]
-         *
-         * @formatter:on
-         */
-        long context = asInt32(args.next());
-        long language = asInt32(args.next());
-        long file = asMetadata(args.next());
-        long directory = asMetadata(args.next());
-        long producer = asMetadata(args.next());
-        boolean isDeprecatedField = asInt1(args.next());
-        boolean isOptimized = asInt1(args.next());
-        long flags = asMetadata(args.next());
-        long runtimeVersion = asInt32(args.next());
-        long enumType = asMetadata(args.next());
-        long retainedTypes = asMetadata(args.next());
-        long subprograms = asMetadata(args.next());
-        long globalVariables = asMetadata(args.next());
+        CompileUnit node = new CompileUnit();
 
-        System.out.println("!" + idx + " - DW_TAG_compile_unit");
+        args.next(); // Unused
+        node.setLanguage(asInt32(args.next()));
+        node.setFile(metadata.getReference(args.next()));
+        node.setDirectory(metadata.getReference(args.next()));
+        node.setProducer(metadata.getReference(args.next()));
+        args.next(); // TODO: Main Compile Unit
+        node.setOptimized(asInt1(args.next()));
+        node.setFlags(metadata.getReference(args.next()));
+        node.setRuntimeVersion(asInt32(args.next()));
+        node.setEnumType(metadata.getReference(args.next()));
+        node.setRetainedTypes(metadata.getReference(args.next()));
+        node.setSubprograms(metadata.getReference(args.next()));
+        node.setGlobalVariables(metadata.getReference(args.next()));
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagFileType(MetadataArgumentParser args) {
-        long file = asMetadata(args.next());
-        long directory = asMetadata(args.next());
-        args.next(); // TODO
+        File node = new File();
 
-        System.out.println("!" + idx + " - DW_TAG_file_type");
+        node.setFile(metadata.getReference(args.next()));
+        node.setDirectory(metadata.getReference(args.next()));
+        args.next(); // Unused
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagBaseType(MetadataArgumentParser args) {
-        /*
-         * @formatter:off
-         *
-         * metadata !{
-         *   i32 786468,        ;; Tag
-         *   null,              ;; Unused
-         *   null,              ;; Unused
-         *   metadata !"int",   ;; Name
-         *   i32 0,             ;; Line
-         *   i64 32,            ;; Size in Bits
-         *   i64 32,            ;; Align in Bits
-         *   i64 0,             ;; Offset
-         *   i32 0,             ;; Flags
-         *   i32 5              ;; Encoding
-         * } ; [ DW_TAG_base_type ]
-         *
-         * @formatter:on
-         */
-
+        // TODO: implement
         args.next(); // Unused
         args.next(); // Unused
         long name = asMetadata(args.next());
@@ -242,41 +259,71 @@ public class MetadataV32 extends Metadata {
         System.out.println("!" + idx + " - DW_TAG_base_type");
     }
 
-    protected void createDwTagEnumerationType(MetadataArgumentParser args) {
-        // TODO
+    protected void createDwCompositeType(MetadataArgumentParser args, DwTagRecord record) {
+        CompositeType node = new CompositeType();
 
-        System.out.println("!" + idx + " - DW_TAG_enumeration_type");
+        node.setContext(metadata.getReference(args.next()));
+        node.setName(metadata.getReference(args.next()));
+        node.setFile(metadata.getReference(args.next()));
+        node.setLine(asInt32(args.next()));
+        node.setSize(asInt64(args.next()));
+        node.setAlign(asInt64(args.next()));
+        node.setOffset(asInt64(args.next()));
+        node.setFlags(asInt32(args.next()));
+        node.setDerivedFrom(metadata.getReference(args.next()));
+        node.setMemberDescriptors(metadata.getReference(args.next()));
+        node.setRuntimeLanguage(asInt32(args.next()));
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node + " - (" + record + ")");
     }
 
     protected void createDwTagEnumerator(MetadataArgumentParser args) {
-        // TODO long name = args[3];
-        // long value = getIntegerConstant(args[5]);
+        Enumerator node = new Enumerator();
 
-        System.out.println("!" + idx + " - DW_TAG_enumerator");
+        node.setName(metadata.getReference(args.next()));
+        node.setValue(asInt64(args.next()));
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagSubprogram(MetadataArgumentParser args) {
-        // TODO
+        Subprogram node = new Subprogram();
 
-        System.out.println("!" + idx + " - DW_TAG_subprogram");
-    }
+        // TODO: somehow reverse engineered, has to be checked
+        args.next();
+        args.next(); // scope?
+        node.setName(metadata.getReference(args.next()));
+        node.setLinkageName(metadata.getReference(args.next()));
+        args.next();
+        node.setFile(metadata.getReference(args.next()));
+        node.setLine(asInt32(args.next()));
+        args.next(); // DW_TAG_subroutine_type
+        node.setLocalToUnit(asInt1(args.next()));
+        node.setDefinition(asInt1(args.next()));
+        args.next();
+        args.next();
+        args.next();
+        args.next();
+        node.setOptimized(asInt1(args.next()));
+        args.next();
+        args.next();
+        args.next();
+        args.next();
+        node.setScopeLine(asInt32(args.next()));
 
-    protected void createDwTagSubroutineType(MetadataArgumentParser args) {
-        // TODO
+        metadata.add(node);
 
-        System.out.println("!" + idx + " - DW_TAG_subroutine_type");
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagAutoVariable(MetadataArgumentParser args) {
         // TODO
 
         System.out.println("!" + idx + " - DW_TAG_auto_variable");
-    }
-
-    protected void createDwTagArrayType(MetadataArgumentParser args) {
-        // TODO
-
-        System.out.println("!" + idx + " - DW_TAG_array_type");
     }
 
     protected void createDwTagSubrangeType(MetadataArgumentParser args) {
@@ -295,12 +342,6 @@ public class MetadataV32 extends Metadata {
         // TODO
 
         System.out.println("!" + idx + " - DW_TAG_member");
-    }
-
-    protected void createDwTagStructureType(MetadataArgumentParser args) {
-        // TODO
-
-        System.out.println("!" + idx + " - DW_TAG_structure_type");
     }
 
 }

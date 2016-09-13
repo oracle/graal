@@ -33,30 +33,43 @@ import java.util.Arrays;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
-import uk.ac.man.cs.llvm.ir.InstructionGenerator;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
+import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
+import uk.ac.man.cs.llvm.ir.model.metadata.Node;
+import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
-import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class Metadata implements ParserListener {
 
-    protected int idx = 1;
+    protected int idx = 1; // TODO: remove
 
     protected final Types types;
 
     protected final List<Type> symbols;
+
+    protected final MetadataBlock metadata = new MetadataBlock();
 
     // protected MetadataGenerator metadata;
 
     public Metadata(Types types, List<Type> symbols) {
         this.types = types;
         this.symbols = symbols;
+        metadata.setStartIndex(1);
         int i = 0;
-        System.out.println("Symbols");
+        /*
+         * @formatter:off
+         *
+         * System.out.println("Symbols");
         for (Type s : symbols) {
             System.out.println("!" + i + " - " + s);
             i++;
         }
+        @formatter:on
+        */
     }
 
     /*
@@ -165,7 +178,12 @@ public class Metadata implements ParserListener {
         for (long lc : args) {
             s += (char) (lc); // TODO: unicode characters?
         }
-        System.out.println("!" + idx + " - " + MetadataRecord.STRING + ": \"" + s + "\"");
+
+        MetadataNode node = new MetadataString(s);
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createValue(long[] args) {
@@ -176,9 +194,15 @@ public class Metadata implements ParserListener {
     }
 
     protected void createNode(long[] args) {
-        // [n x md num]
+        Node node = new Node();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.NODE + " - " + Arrays.toString(args));
+        for (long arg : args) {
+            node.add(metadata.getReference((int) arg));
+        }
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createName(long[] args) {
@@ -246,11 +270,15 @@ public class Metadata implements ParserListener {
     }
 
     protected void createEnumerator(long[] args) {
-        long distinct = args[0];
-        long value = args[1];
-        long name = args[2];
+        Enumerator node = new Enumerator();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.ENUMERATOR + ": value=" + value + ": name=!" + name + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        node.setValue(args[1]); // TODO: symbol table?
+        node.setName(metadata.getReference(args[2]));
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createBasicType(long[] args) {
@@ -266,35 +294,42 @@ public class Metadata implements ParserListener {
     }
 
     protected void createFile(long[] args) {
-        long distinct = args[0];
-        long filename = args[1];
-        long directory = args[2];
+        File node = new File();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.FILE + ": filename=!" + filename + ", directory=!" + directory + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        node.setFile(metadata.getReference(args[1]));
+        node.setDirectory(metadata.getReference(args[2]));
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createSubprogram(long[] args) {
         // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L1030
-        long distinct = args[0];
-        long scope = args[1];
-        long rawName = args[2];
-        long rawLinkageName = args[3];
-        long file = args[2];
-        long line = args[5];
-        long type = args[6];
-        long isLocalToUnit = args[7];
-        long isDefinition = args[8];
-        long scopeLine = args[9];
-        long containingType = args[10];
-        long virtuallity = args[11];
-        long virtualIndex = args[12];
-        long flags = args[13];
-        long isOptimized = args[14];
-        long templateParams = args[15];
-        long declaration = args[16];
-        long variables = args[17];
+        Subprogram node = new Subprogram();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.SUBPROGRAM + ": name=!" + rawName + ": line=" + line + ": type=!" + type + ": scopeLine=" + scopeLine + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        // long scope = args[1];
+        node.setName(metadata.getReference(args[2]));
+        node.setLinkageName(metadata.getReference(args[3]));
+        node.setFile(metadata.getReference(args[4]));
+        node.setLine(args[5]);
+        node.setType(metadata.getReference(args[6]));
+        node.setLocalToUnit(args[7] == 1);
+        node.setDefinition(args[8] == 1);
+        node.setScopeLine(args[9]);
+        // long virtuallity = args[11];
+        // long virtualIndex = args[12];
+        node.setFlags(metadata.getReference(args[13]));
+        node.setOptimized(args[14] == 1);
+        // long templateParams = args[15];
+        // long declaration = args[16];
+        // long variables = args[17];
+
+        metadata.add(node);
+
+        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createSubroutineType(long[] args) {
