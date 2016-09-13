@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
+import uk.ac.man.cs.llvm.ir.InstructionGenerator;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -40,9 +41,15 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 public class Metadata implements ParserListener {
 
     protected int idx = 1;
-    protected List<Type> symbols;
 
-    public Metadata(List<Type> symbols) {
+    protected final Types types;
+
+    protected final List<Type> symbols;
+
+    // protected MetadataGenerator metadata;
+
+    public Metadata(Types types, List<Type> symbols) {
+        this.types = types;
         this.symbols = symbols;
         int i = 0;
         System.out.println("Symbols");
@@ -50,14 +57,6 @@ public class Metadata implements ParserListener {
             System.out.println("!" + i + " - " + s);
             i++;
         }
-    }
-
-    protected long getIntegerConstant(long index) {
-        return getIntegerConstant((int) index);
-    }
-
-    protected long getIntegerConstant(int index) {
-        return ((IntegerConstantType) symbols.get(index)).getValue();
     }
 
     /*
