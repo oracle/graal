@@ -57,6 +57,8 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutParser;
 import com.oracle.truffle.llvm.parser.factories.LLVMBlockFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
@@ -77,11 +79,13 @@ import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.Model;
+import uk.ac.man.cs.llvm.ir.model.ModelModule;
 import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.constants.ArrayConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.module.ModuleVersion;
+import uk.ac.man.cs.llvm.ir.module.TargetDataLayout;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -98,7 +102,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(context, configuration, lifetimes, labels, phis);
+        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(context, configuration, lifetimes, labels, phis, ((ModelModule) model.createModule()).getTargetDataLayout());
 
         model.accept(module);
 
@@ -146,12 +150,21 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final Map<GlobalValueSymbol, LLVMAddressNode> variables = new HashMap<>();
 
-    public LLVMBitcodeVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration, LLVMFrameDescriptors frames, LLVMLabelList labels, LLVMPhiManager phis) {
+    private final DataLayoutConverter.DataSpecConverter targetDataLayout;
+
+    public LLVMBitcodeVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration, LLVMFrameDescriptors frames, LLVMLabelList labels, LLVMPhiManager phis,
+                    TargetDataLayout layout) {
         this.context = context;
         this.optimizationConfiguration = optimizationConfiguration;
         this.frames = frames;
         this.labels = labels;
         this.phis = phis;
+        if (layout != null) {
+            final List<DataLayoutParser.DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout.getDataLayout());
+            this.targetDataLayout = DataLayoutConverter.getConverter(dataLayout);
+        } else {
+            this.targetDataLayout = null;
+        }
     }
 
     private LLVMExpressionNode createFunction(FunctionDefinition method) {
@@ -231,6 +244,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     public LLVMContext getContext() {
         return context;
+    }
+
+    public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
+        return targetDataLayout;
     }
 
     public LLVMNode[] getDeallocations() {

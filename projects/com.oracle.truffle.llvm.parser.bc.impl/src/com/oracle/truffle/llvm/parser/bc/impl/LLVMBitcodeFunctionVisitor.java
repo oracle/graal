@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
@@ -104,6 +105,10 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     public LLVMContext getContext() {
         return module.getContext();
+    }
+
+    public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
+        return module.getTargetDataLayout();
     }
 
     public FrameDescriptor getFrame() {

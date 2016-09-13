@@ -49,6 +49,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
+import uk.ac.man.cs.llvm.ir.module.TargetDataLayout;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
@@ -67,6 +68,17 @@ public final class ModelModule implements ModuleGenerator {
     private final Symbols symbols = new Symbols();
 
     private int currentFunction = -1;
+
+    private TargetDataLayout targetDataLayout = null;
+
+    @Override
+    public void createTargetDataLayout(TargetDataLayout layout) {
+        targetDataLayout = layout;
+    }
+
+    public TargetDataLayout getTargetDataLayout() {
+        return targetDataLayout;
+    }
 
     public ModelModule() {
     }

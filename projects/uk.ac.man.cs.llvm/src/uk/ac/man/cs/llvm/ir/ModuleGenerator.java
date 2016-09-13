@@ -29,6 +29,7 @@
  */
 package uk.ac.man.cs.llvm.ir;
 
+import uk.ac.man.cs.llvm.ir.module.TargetDataLayout;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -37,6 +38,8 @@ public interface ModuleGenerator extends SymbolGenerator {
     void createAlias(Type type, int aliasedValue);
 
     void createFunction(FunctionType type, boolean isPrototype);
+
+    void createTargetDataLayout(TargetDataLayout layout);
 
     void createType(Type type);
 

@@ -27,21 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.util;
 
-public final class TargetDataLayout implements TargetInformation {
+import java.util.Arrays;
 
-    private final String layout;
+public final class LLVMParserAsserts {
 
-    private TargetDataLayout(String layout) {
-        this.layout = layout;
+    private LLVMParserAsserts() {
     }
 
-    public String getDataLayout() {
-        return layout;
+    public static Object[] assertNoNullElement(Object[] objects) {
+        for (Object o : objects) {
+            if (o == null) {
+                throw new AssertionError(Arrays.toString(objects));
+            }
+        }
+        return objects;
     }
 
-    public static TargetDataLayout fromString(String layout) {
-        return new TargetDataLayout(layout);
+    public static void assertNotNull(Object object) {
+        if (object == null) {
+            throw new AssertionError();
+        }
     }
+
+    public static <T> void assertNoNullElement(Iterable<T> it) {
+        for (T obj : it) {
+            if (obj == null) {
+                throw new AssertionError(it);
+            }
+        }
+    }
+
 }

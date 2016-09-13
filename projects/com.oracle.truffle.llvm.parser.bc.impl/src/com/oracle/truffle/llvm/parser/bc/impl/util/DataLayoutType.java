@@ -27,21 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.util;
 
-public final class TargetDataLayout implements TargetInformation {
-
-    private final String layout;
-
-    private TargetDataLayout(String layout) {
-        this.layout = layout;
-    }
-
-    public String getDataLayout() {
-        return layout;
-    }
-
-    public static TargetDataLayout fromString(String layout) {
-        return new TargetDataLayout(layout);
-    }
+public enum DataLayoutType {
+    INTEGER,
+    FLOAT,
+    VECTOR,
+    POINTER,
+    AGGREGATE,
+    STACK,
+    STACK_OBJECT,
+    INTEGER_WIDTHS
 }
