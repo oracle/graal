@@ -157,8 +157,6 @@ def travis1(args=None):
         if t: runTypeTestCases()
     with Task('TestLLVM', tasks) as t:
         if t: runLLVMTestCases()
-    with Task('TestLLVMBC', tasks) as t:
-        if t: runLLVMBCTests()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
 
@@ -181,6 +179,16 @@ def travis3(args=None):
         if t: runCompileTestCases()
     with Task('TestLifetime', tasks) as t:
         if t: runLifetimeTestCases()
+
+def travis4(args=None):
+    """executes the fourth Travis job (Javac build, LLVM and GCC test cases with BitCode parser)"""
+    tasks = []
+    with Task('BuildJavaWithJavac', tasks) as t:
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+    with Task('TestLLVMBC', tasks) as t:
+        if t: runLLVMBCTests()
+    with Task('TestGCCBC', tasks) as t:
+        if t: runGCCBCTestCases()
 
 def travisTestSulong(args=None):
     """executes the Sulong test cases (which also stress compilation)"""
@@ -1143,6 +1151,7 @@ mx.update_commands(_suite, {
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
     'su-travis3' : [travis3, ''],
+    'su-travis4' : [travis4, ''],
     'su-travis-sulong' : [travisTestSulong, ''],
     'su-travis-jruby' : [travisJRuby, ''],
     'su-travis-argon2' : [travisArgon2, ''],
