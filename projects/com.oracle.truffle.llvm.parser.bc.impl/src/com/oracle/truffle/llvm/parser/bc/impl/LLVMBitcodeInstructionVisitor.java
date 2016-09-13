@@ -32,10 +32,7 @@ package com.oracle.truffle.llvm.parser.bc.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
@@ -54,27 +51,18 @@ import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMDoubleLiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMFloatLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI16LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressGetElementPtrNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.factories.LLVMAggregateFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
@@ -84,7 +72,6 @@ import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMIntrinsicFactory;
-import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMSelectFactory;
@@ -94,33 +81,16 @@ import com.oracle.truffle.llvm.parser.factories.LLVMVectorFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
-import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
-import uk.ac.man.cs.llvm.ir.model.FunctionParameter;
-import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
-import uk.ac.man.cs.llvm.ir.model.constants.ArrayConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BigIntegerConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.InlineAsmConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
 import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.BranchInstruction;
@@ -143,12 +113,9 @@ import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
-import uk.ac.man.cs.llvm.ir.model.elements.ValueInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.AggregateType;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
-import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
-import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.StructureType;
@@ -163,10 +130,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final DataLayoutConverter.DataSpecConverter targetDataLayout;
 
+    private final LLVMNodeGenerator symbols;
+
     public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block) {
         this.method = method;
         this.block = block;
         this.targetDataLayout = method.getTargetDataLayout();
+        this.symbols = method.getSymbolResolver();
     }
 
     private LLVMNode[] getPhiWriteNodes() {
@@ -175,163 +145,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (phis != null) {
             for (Phi phi : phis) {
                 FrameSlot slot = method.getSlot(phi.getPhiValue().getName());
-                LLVMExpressionNode value = resolve(phi.getValue());
+                LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 LLVMBaseType baseType = LLVMBitcodeHelper.toBaseType(phi.getValue().getType()).getType();
                 LLVMNode phiWriteNode = LLVMFrameReadWriteFactory.createFrameWrite(baseType, value, slot);
                 nodes.add(phiWriteNode);
             }
         }
         return nodes.toArray(new LLVMNode[nodes.size()]);
-    }
-
-    private LLVMExpressionNode resolve(Symbol symbol) {
-        if (symbol instanceof ValueInstruction || symbol instanceof FunctionParameter) {
-            FrameSlot slot = method.getFrame().findFrameSlot(((ValueSymbol) symbol).getName());
-            return LLVMFrameReadWriteFactory.createFrameRead(LLVMBitcodeHelper.toBaseType(symbol.getType()).getType(), slot);
-
-        } else if (symbol instanceof GlobalValueSymbol) {
-            return method.global((GlobalValueSymbol) symbol);
-
-        } else if (symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration) {
-            String name = ((ValueSymbol) symbol).getName();
-            FunctionType type = (FunctionType) symbol;
-            LLVMRuntimeType returnType = LLVMBitcodeHelper.toRuntimeType(type.getReturnType());
-            LLVMRuntimeType[] argTypes = LLVMBitcodeHelper.toRuntimeTypes(type.getArgumentTypes());
-            return LLVMFunctionLiteralNodeGen.create(method.getContext().getFunctionRegistry().createFunctionDescriptor(name, returnType, argTypes, type.isVarArg()));
-
-        } else if (symbol instanceof BinaryOperationConstant) {
-            BinaryOperationConstant operation = (BinaryOperationConstant) symbol;
-            LLVMExpressionNode lhs = resolve(operation.getLHS());
-            LLVMExpressionNode rhs = resolve(operation.getRHS());
-            LLVMBaseType type = LLVMBitcodeHelper.toBaseType(operation.getType()).getType();
-            return LLVMBitcodeHelper.toBinaryOperatorNode(operation.getOperator(), type, lhs, rhs);
-
-        } else if (symbol instanceof BlockAddressConstant) {
-            BlockAddressConstant blockaddr = (BlockAddressConstant) symbol;
-            int val = method.labels().get(blockaddr.getInstructionBlock().getName());
-            return new LLVMAddressLiteralNode(LLVMAddress.fromLong(val));
-
-        } else if (symbol instanceof CastConstant) {
-            CastConstant cast = (CastConstant) symbol;
-            LLVMConversionType type = LLVMBitcodeHelper.toConversionType(cast.getOperator());
-            LLVMExpressionNode fromNode = resolve(cast.getValue());
-            LLVMBaseType from = LLVMBitcodeHelper.toBaseType(cast.getValue().getType()).getType();
-            LLVMBaseType to = LLVMBitcodeHelper.toBaseType(cast.getType()).getType();
-            return LLVMCastsFactory.cast(fromNode, to, from, type);
-
-        } else if (symbol instanceof CompareConstant) {
-            CompareConstant compare = (CompareConstant) symbol;
-            LLVMExpressionNode lhs = resolve(compare.getLHS());
-            LLVMExpressionNode rhs = resolve(compare.getRHS());
-            return LLVMBitcodeHelper.toCompareNode(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
-
-        } else if (symbol instanceof GetElementPointerConstant) {
-            GetElementPointerConstant ptr = (GetElementPointerConstant) symbol;
-
-            LLVMAddressNode baseNode = (LLVMAddressNode) resolve(ptr.getBasePointer());
-            LLVMAddressNode currentAddress = baseNode;
-
-            Type type = ptr.getBasePointer().getType();
-            int align = 0;
-            if (ptr.getBasePointer() instanceof ValueSymbol) {
-                align = ((ValueSymbol) ptr.getBasePointer()).getAlign();
-            } else if (ptr.getBasePointer() instanceof CastConstant) {
-                align = ((ValueSymbol) ((CastConstant) ptr.getBasePointer()).getValue()).getAlign();
-            }
-
-            for (int i = 0; i < ptr.getIndexCount(); i++) {
-                Symbol index = ptr.getIndex(i);
-                int idx = index instanceof NullConstant ? 0 : (int) ((IntegerConstant) index).getValue();
-
-                if (type instanceof ArrayType) {
-                    type = ((ArrayType) type).getElementType();
-                } else if (type instanceof PointerType) {
-                    type = ((PointerType) type).getPointeeType();
-                } else {
-                    int offset = 0;
-                    for (int j = 0; j < idx; j++) {
-                        Type t = ((StructureType) type).getElementType(j);
-                        offset = offset + LLVMBitcodeHelper.getPaddingSize(t, align, offset) + LLVMBitcodeHelper.getSize(t, align);
-                    }
-                    type = ((StructureType) type).getElementType(idx);
-                    offset += LLVMBitcodeHelper.getPaddingSize(type, align, offset);
-                    if (offset != 0) {
-                        currentAddress = LLVMGetElementPtrFactory.create(
-                                        LLVMBaseType.I32,
-                                        currentAddress,
-                                        new LLVMI32LiteralNode(1),
-                                        offset);
-                    }
-                    continue;
-                }
-
-                if (idx != 0) {
-                    currentAddress = LLVMGetElementPtrFactory.create(
-                                    LLVMBaseType.I32,
-                                    currentAddress,
-                                    new LLVMI32LiteralNode(idx),
-                                    LLVMBitcodeHelper.getSize(type, align));
-                }
-            }
-
-            return currentAddress;
-
-        } else if (symbol instanceof IntegerConstant) {
-            IntegerConstant constant = (IntegerConstant) symbol;
-            int bits = ((IntegerType) constant.getType()).getBitCount();
-            switch (bits) {
-                case 1:
-                    return new LLVMI1LiteralNode(constant.getValue() != 0);
-                case Byte.SIZE:
-                    return new LLVMI8LiteralNode((byte) constant.getValue());
-                case Short.SIZE:
-                    return new LLVMI16LiteralNode((short) constant.getValue());
-                case Integer.SIZE:
-                    return new LLVMI32LiteralNode((int) constant.getValue());
-                case Long.SIZE:
-                    return new LLVMI64LiteralNode(constant.getValue());
-                default:
-                    return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(bits, constant.getValue()));
-            }
-
-        } else if (symbol instanceof BigIntegerConstant) {
-            BigIntegerConstant constant = (BigIntegerConstant) symbol;
-            int bits = ((IntegerType) constant.getType()).getBitCount();
-            return new LLVMIVarBitLiteralNode(LLVMIVarBit.create(bits, constant.getValue().toByteArray()));
-
-        } else if (symbol instanceof FloatingPointConstant) {
-            FloatingPointConstant constant = (FloatingPointConstant) symbol;
-            switch ((FloatingPointType) constant.getType()) {
-                case FLOAT:
-                    return new LLVMFloatLiteralNode(constant.toFloat());
-                case DOUBLE:
-                    return new LLVMDoubleLiteralNode(constant.toDouble());
-                default:
-                    throw new AssertionError("Floating Point Constant with invalid Type: " + constant.getType());
-            }
-
-        } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
-            return LLVMBitcodeHelper.toConstantZeroNode(symbol.getType(), symbol.getType().getAlignment(), method.getContext(), method.getStackSlot());
-
-        } else if (symbol instanceof VectorConstant) {
-            VectorConstant vector = (VectorConstant) symbol;
-            List<LLVMExpressionNode> values = new ArrayList<>();
-            for (int i = 0; i < vector.getLength(); i++) {
-                values.add(resolve(vector.getElement(i)));
-            }
-            LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(vector, 0), LLVMBitcodeHelper.getAlignment(vector, 0), method.getContext(),
-                            method.getStackSlot());
-            return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeHelper.toBaseType(vector.getType()).getType());
-
-        } else if (symbol instanceof StructureConstant) {
-            throw new UnsupportedOperationException("Not implemented yet!");
-
-        } else if (symbol instanceof ArrayConstant) {
-            throw new UnsupportedOperationException("Not implemented yet!");
-
-        } else {
-            throw new AssertionError("Cannot resolve symbol: " + symbol);
-        }
     }
 
     @Override
@@ -362,7 +182,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                             method.getContext(),
                             method.getStackSlot());
         } else {
-            LLVMExpressionNode num = resolve(count);
+            LLVMExpressionNode num = symbols.resolve(count);
             switch (LLVMBitcodeHelper.toBaseType(count.getType()).getType()) {
                 case I32:
                     result = LLVMI32AllocaInstructionNodeGen.create((LLVMI32Node) num, size, alignment, method.getContext(), method.getStackSlot());
@@ -381,8 +201,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(BinaryOperationInstruction operation) {
-        LLVMExpressionNode lhs = resolve(operation.getLHS());
-        LLVMExpressionNode rhs = resolve(operation.getRHS());
+        LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
+        LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
         LLVMAddressNode target = null;
         if (operation.getType() instanceof VectorType) {
@@ -427,7 +247,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
         argNodes[argIndex++] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
-            argNodes[argIndex] = resolve(call.getArgument(i));
+            argNodes[argIndex] = symbols.resolve(call.getArgument(i));
         }
 
         final Symbol target = call.getCallTarget();
@@ -442,10 +262,10 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         } else if (target instanceof InlineAsmConstant) {
             final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-            result = resolveInlineAsmConstant(inlineAsmConstant, argNodes, targetLLVMType);
+            result = LLVMNodeGenerator.resolveInlineAsmConstant(inlineAsmConstant, argNodes, targetLLVMType);
 
         } else {
-            LLVMFunctionNode function = (LLVMFunctionNode) resolve(target);
+            LLVMFunctionNode function = (LLVMFunctionNode) symbols.resolve(target);
             result = (LLVMExpressionNode) LLVMFunctionFactory.createFunctionCall(function, argNodes, targetLLVMType);
         }
 
@@ -453,42 +273,10 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         method.addInstruction(node);
     }
 
-    private static LLVMExpressionNode resolveInlineAsmConstant(InlineAsmConstant asmConstant, LLVMExpressionNode[] argNodes, LLVMBaseType targetType) {
-        final Parser asmParser = new Parser(asmConstant.getAsmExpression(), asmConstant.getAsmFlags(), argNodes, targetType);
-        final LLVMInlineAssemblyRootNode assemblyRootNode = asmParser.Parse();
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(assemblyRootNode);
-        switch (targetType) {
-            case VOID:
-                return new LLVMUnsupportedInlineAssemblerNode();
-            case I1:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode();
-            case I8:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode();
-            case I16:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode();
-            case I32:
-                return LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen.create(new LLVMCallNode.LLVMResolvedDirectCallNode(callTarget, argNodes));
-            case I64:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode();
-            case FLOAT:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode();
-            case DOUBLE:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMDoubleUnsupportedInlineAssemblerNode();
-            case X86_FP80:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVM80BitFloatUnsupportedInlineAssemblerNode();
-            case ADDRESS:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMAddressUnsupportedInlineAssemblerNode();
-            case FUNCTION_ADDRESS:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode();
-            default:
-                throw new AssertionError("Unknown Inline Assembly Return Type!");
-        }
-    }
-
     @Override
     public void visit(CastInstruction cast) {
         LLVMConversionType type = LLVMBitcodeHelper.toConversionType(cast.getOperator());
-        LLVMExpressionNode fromNode = resolve(cast.getValue());
+        LLVMExpressionNode fromNode = symbols.resolve(cast.getValue());
         LLVMBaseType from = LLVMBitcodeHelper.toBaseType(cast.getValue().getType()).getType();
         LLVMBaseType to = LLVMBitcodeHelper.toBaseType(cast.getType()).getType();
 
@@ -515,14 +303,14 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                             compare.getOperator(),
                             compare.getLHS().getType(),
                             target,
-                            resolve(compare.getLHS()),
-                            resolve(compare.getRHS()));
+                            symbols.resolve(compare.getLHS()),
+                            symbols.resolve(compare.getRHS()));
         } else {
             result = LLVMBitcodeHelper.toCompareNode(
                             compare.getOperator(),
                             compare.getLHS().getType(),
-                            resolve(compare.getLHS()),
-                            resolve(compare.getRHS()));
+                            symbols.resolve(compare.getLHS()),
+                            symbols.resolve(compare.getRHS()));
         }
 
         LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeHelper.toBaseType(compare.getType()).getType(), result, method.getFrame().findFrameSlot(compare.getName()));
@@ -531,7 +319,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ConditionalBranchInstruction branch) {
-        LLVMExpressionNode conditionNode = resolve(branch.getCondition());
+        LLVMExpressionNode conditionNode = symbols.resolve(branch.getCondition());
         int trueIndex = method.labels().get(branch.getTrueSuccessor().getName());
         int falseIndex = method.labels().get(branch.getFalseSuccessor().getName());
 
@@ -542,7 +330,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (phis != null) {
             for (Phi phi : phis) {
                 FrameSlot slot = method.getSlot(phi.getPhiValue().getName());
-                LLVMExpressionNode value = resolve(phi.getValue());
+                LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 LLVMBaseType baseType = LLVMBitcodeHelper.toBaseType(phi.getValue().getType()).getType();
                 LLVMNode phiWriteNode = LLVMFrameReadWriteFactory.createFrameWrite(baseType, value, slot);
 
@@ -562,8 +350,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ExtractElementInstruction extract) {
-        LLVMExpressionNode vector = resolve(extract.getVector());
-        LLVMExpressionNode index = resolve(extract.getIndex());
+        LLVMExpressionNode vector = symbols.resolve(extract.getVector());
+        LLVMExpressionNode index = symbols.resolve(extract.getIndex());
         LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(extract.getType()).getType();
 
         LLVMExpressionNode result = LLVMVectorFactory.createExtractElement(resultType, vector, index);
@@ -577,7 +365,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (!(extract.getAggregate().getType() instanceof ArrayType || extract.getAggregate().getType() instanceof StructureType)) {
             throw new IllegalStateException("\'extractvalue\' can only extract elements of arrays and structs!");
         }
-        final LLVMExpressionNode baseAddress = resolve(extract.getAggregate());
+        final LLVMExpressionNode baseAddress = symbols.resolve(extract.getAggregate());
         final Type baseType = extract.getAggregate().getType();
         final int targetIndex = extract.getIndex();
         final LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(extract.getType()).getType();
@@ -601,7 +389,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        LLVMAddressNode baseNode = (LLVMAddressNode) resolve(gep.getBasePointer());
+        LLVMAddressNode baseNode = (LLVMAddressNode) symbols.resolve(gep.getBasePointer());
         LLVMAddressNode currentAddress = baseNode;
 
         Type type = gep.getBasePointer().getType();
@@ -644,7 +432,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     continue;
                 }
 
-                elements = resolve(gep.getIndex(i));
+                elements = symbols.resolve(gep.getIndex(i));
             } else {
                 throw new RuntimeException("Cannot index " + type + "in GEP");
             }
@@ -666,7 +454,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; i < labelTargets.length; i++) {
             labelTargets[i] = method.labels().get(branch.getSuccessor(i).getName());
         }
-        LLVMAddressNode value = (LLVMAddressNode) resolve(branch.getAddress());
+        LLVMAddressNode value = (LLVMAddressNode) symbols.resolve(branch.getAddress());
 
         LLVMTerminatorNode node = LLVMBranchFactory.createIndirectBranch(value, labelTargets, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
@@ -674,9 +462,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(InsertElementInstruction insert) {
-        LLVMExpressionNode vector = resolve(insert.getVector());
-        LLVMI32Node index = (LLVMI32Node) resolve(insert.getIndex());
-        LLVMExpressionNode element = resolve(insert.getValue());
+        LLVMExpressionNode vector = symbols.resolve(insert.getVector());
+        LLVMI32Node index = (LLVMI32Node) symbols.resolve(insert.getIndex());
+        LLVMExpressionNode element = symbols.resolve(insert.getValue());
         LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(insert.getType()).getType();
 
         LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(insert, 0), insert.getType().getAlignment(), method.getContext(),
@@ -694,8 +482,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             throw new IllegalStateException("\'insertvalue\' can only insert values into arrays and structs!");
         }
         final AggregateType sourceType = (AggregateType) insert.getAggregate().getType();
-        final LLVMExpressionNode sourceAggregate = resolve(insert.getAggregate());
-        final LLVMExpressionNode valueToInsert = resolve(insert.getValue());
+        final LLVMExpressionNode sourceAggregate = symbols.resolve(insert.getAggregate());
+        final LLVMExpressionNode valueToInsert = symbols.resolve(insert.getValue());
         final LLVMBaseType valueType = LLVMBitcodeHelper.toBaseType(insert.getValue().getType()).getType();
         final int targetIndex = insert.getIndex();
 
@@ -716,7 +504,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(LoadInstruction load) {
-        LLVMAddressNode source = (LLVMAddressNode) resolve(load.getSource());
+        LLVMAddressNode source = (LLVMAddressNode) symbols.resolve(load.getSource());
         LLVMBaseType resultType = LLVMBitcodeHelper.toBaseType(load.getType()).getType();
         LLVMExpressionNode result;
 
@@ -749,7 +537,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         } else {
             Type type = ret.getValue().getType();
 
-            LLVMExpressionNode value = resolve(ret.getValue());
+            LLVMExpressionNode value = symbols.resolve(ret.getValue());
 
             slot.setKind(LLVMBitcodeHelper.toFrameSlotKind(type));
 
@@ -802,9 +590,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(SelectInstruction select) {
-        LLVMExpressionNode condition = resolve(select.getCondition());
-        LLVMExpressionNode trueValue = resolve(select.getTrueValue());
-        LLVMExpressionNode falseValue = resolve(select.getFalseValue());
+        LLVMExpressionNode condition = symbols.resolve(select.getCondition());
+        LLVMExpressionNode trueValue = symbols.resolve(select.getTrueValue());
+        LLVMExpressionNode falseValue = symbols.resolve(select.getFalseValue());
         LLVMBaseType llvmType = LLVMBitcodeHelper.toBaseType(select.getType()).getType();
 
         LLVMExpressionNode result;
@@ -823,9 +611,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ShuffleVectorInstruction shuffle) {
-        LLVMExpressionNode vector1 = resolve(shuffle.getVector1());
-        LLVMExpressionNode vector2 = resolve(shuffle.getVector2());
-        LLVMI32VectorNode mask = (LLVMI32VectorNode) resolve(shuffle.getMask());
+        LLVMExpressionNode vector1 = symbols.resolve(shuffle.getVector1());
+        LLVMExpressionNode vector2 = symbols.resolve(shuffle.getVector2());
+        LLVMI32VectorNode mask = (LLVMI32VectorNode) symbols.resolve(shuffle.getMask());
 
         LLVMBaseType type = LLVMBitcodeHelper.toBaseType(shuffle.getType()).getType();
 
@@ -840,8 +628,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(StoreInstruction store) {
-        LLVMAddressNode pointerNode = (LLVMAddressNode) resolve(store.getDestination());
-        LLVMExpressionNode valueNode = resolve(store.getSource());
+        LLVMAddressNode pointerNode = (LLVMAddressNode) symbols.resolve(store.getDestination());
+        LLVMExpressionNode valueNode = symbols.resolve(store.getSource());
 
         Type type = store.getSource().getType();
 
@@ -853,7 +641,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(SwitchInstruction zwitch) {
-        LLVMExpressionNode cond = resolve(zwitch.getCondition());
+        LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
         int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
         int[] otherLabels = new int[zwitch.getCaseCount()];
         for (int i = 0; i < otherLabels.length; i++) {
@@ -861,7 +649,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
         LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
         for (int i = 0; i < cases.length; i++) {
-            cases[i] = resolve(zwitch.getCaseValue(i));
+            cases[i] = symbols.resolve(zwitch.getCaseValue(i));
         }
         LLVMBaseType llvmType = LLVMBitcodeHelper.toBaseType(zwitch.getCondition().getType()).getType();
 
@@ -871,7 +659,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(SwitchOldInstruction zwitch) {
-        LLVMExpressionNode cond = resolve(zwitch.getCondition());
+        LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
         int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
         int[] otherLabels = new int[zwitch.getCaseCount()];
         for (int i = 0; i < otherLabels.length; i++) {
@@ -911,7 +699,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         args[0] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
 
         for (int i = 0; i < argumentCount; i++) {
-            args[i + 1] = resolve(call.getArgument(i));
+            args[i + 1] = symbols.resolve(call.getArgument(i));
         }
 
         LLVMNode node;
@@ -919,7 +707,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
             node = LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, call.getCallType().getArgumentTypes().length, method.getStackSlot(), method.getOptimizationConfiguration());
         } else {
-            LLVMFunctionNode function = (LLVMFunctionNode) resolve(target);
+            LLVMFunctionNode function = (LLVMFunctionNode) symbols.resolve(target);
             node = LLVMFunctionFactory.createFunctionCall(function, args, LLVMBitcodeHelper.toBaseType(call.getType()).getType());
         }
 
