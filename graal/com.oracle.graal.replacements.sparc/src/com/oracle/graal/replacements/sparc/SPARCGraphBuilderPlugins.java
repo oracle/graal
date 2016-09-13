@@ -69,7 +69,7 @@ public class SPARCGraphBuilderPlugins {
         r.register1("bitCount", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null, value)));
+                b.push(JavaKind.Int, b.recursiveAppend(new BitCountNode(value).canonical(null)));
                 return true;
             }
         });

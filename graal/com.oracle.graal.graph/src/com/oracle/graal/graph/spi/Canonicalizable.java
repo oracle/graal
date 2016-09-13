@@ -91,9 +91,10 @@ public interface Canonicalizable {
          */
         T getValue();
 
+        @SuppressWarnings("unchecked")
         @Override
-        default Node canonical(CanonicalizerTool tool) {
-            return canonical(tool, getValue());
+        default T canonical(CanonicalizerTool tool) {
+            return (T) canonical(tool, getValue());
         }
     }
 
@@ -128,9 +129,10 @@ public interface Canonicalizable {
          */
         T getY();
 
+        @SuppressWarnings("unchecked")
         @Override
-        default Node canonical(CanonicalizerTool tool) {
-            return canonical(tool, getX(), getY());
+        default T canonical(CanonicalizerTool tool) {
+            return (T) canonical(tool, getX(), getY());
         }
     }
 

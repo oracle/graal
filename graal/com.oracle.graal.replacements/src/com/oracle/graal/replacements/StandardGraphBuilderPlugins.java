@@ -274,21 +274,21 @@ public class StandardGraphBuilderPlugins {
         r.register1("reverseBytes", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(kind, b.recursiveAppend(new ReverseBytesNode(value).canonical(null, value)));
+                b.push(kind, b.recursiveAppend(new ReverseBytesNode(value).canonical(null)));
                 return true;
             }
         });
         r.register2("divideUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                b.push(kind, b.recursiveAppend(new UnsignedDivNode(dividend, divisor).canonical(null, dividend, divisor)));
+                b.push(kind, b.recursiveAppend(new UnsignedDivNode(dividend, divisor).canonical(null)));
                 return true;
             }
         });
         r.register2("remainderUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                b.push(kind, b.recursiveAppend(new UnsignedRemNode(dividend, divisor).canonical(null, dividend, divisor)));
+                b.push(kind, b.recursiveAppend(new UnsignedRemNode(dividend, divisor).canonical(null)));
                 return true;
             }
         });
@@ -303,7 +303,7 @@ public class StandardGraphBuilderPlugins {
                 ReverseBytesNode reverse = b.add(new ReverseBytesNode(value));
                 RightShiftNode rightShift = b.add(new RightShiftNode(reverse, b.add(ConstantNode.forInt(16))));
                 ZeroExtendNode charCast = b.add(new ZeroExtendNode(b.add(new NarrowNode(rightShift, 16)), 32));
-                b.push(JavaKind.Char, b.recursiveAppend(charCast.canonical(null, value)));
+                b.push(JavaKind.Char, b.recursiveAppend(charCast.canonical(null)));
                 return true;
             }
         });
@@ -318,7 +318,7 @@ public class StandardGraphBuilderPlugins {
                 ReverseBytesNode reverse = b.add(new ReverseBytesNode(value));
                 RightShiftNode rightShift = b.add(new RightShiftNode(reverse, b.add(ConstantNode.forInt(16))));
                 SignExtendNode charCast = b.add(new SignExtendNode(b.add(new NarrowNode(rightShift, 16)), 32));
-                b.push(JavaKind.Short, b.recursiveAppend(charCast.canonical(null, value)));
+                b.push(JavaKind.Short, b.recursiveAppend(charCast.canonical(null)));
                 return true;
             }
         });
@@ -329,14 +329,14 @@ public class StandardGraphBuilderPlugins {
         r.register1("floatToRawIntBits", float.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.recursiveAppend(new ReinterpretNode(JavaKind.Int, value).canonical(null, value)));
+                b.push(JavaKind.Int, b.recursiveAppend(new ReinterpretNode(JavaKind.Int, value).canonical(null)));
                 return true;
             }
         });
         r.register1("intBitsToFloat", int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Float, b.recursiveAppend(new ReinterpretNode(JavaKind.Float, value).canonical(null, value)));
+                b.push(JavaKind.Float, b.recursiveAppend(new ReinterpretNode(JavaKind.Float, value).canonical(null)));
                 return true;
             }
         });
@@ -347,14 +347,14 @@ public class StandardGraphBuilderPlugins {
         r.register1("doubleToRawLongBits", double.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Long, b.recursiveAppend(new ReinterpretNode(JavaKind.Long, value).canonical(null, value)));
+                b.push(JavaKind.Long, b.recursiveAppend(new ReinterpretNode(JavaKind.Long, value).canonical(null)));
                 return true;
             }
         });
         r.register1("longBitsToDouble", long.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.recursiveAppend(new ReinterpretNode(JavaKind.Double, value).canonical(null, value)));
+                b.push(JavaKind.Double, b.recursiveAppend(new ReinterpretNode(JavaKind.Double, value).canonical(null)));
                 return true;
             }
         });
@@ -392,21 +392,21 @@ public class StandardGraphBuilderPlugins {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Float, b.recursiveAppend(new AbsNode(value).canonical(null, value)));
+                b.push(JavaKind.Float, b.recursiveAppend(new AbsNode(value).canonical(null)));
                 return true;
             }
         });
         r.register1("abs", Double.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.recursiveAppend(new AbsNode(value).canonical(null, value)));
+                b.push(JavaKind.Double, b.recursiveAppend(new AbsNode(value).canonical(null)));
                 return true;
             }
         });
         r.register1("sqrt", Double.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.recursiveAppend(new SqrtNode(value).canonical(null, value)));
+                b.push(JavaKind.Double, b.recursiveAppend(new SqrtNode(value).canonical(null)));
                 return true;
             }
         });
