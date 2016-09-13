@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
@@ -98,7 +97,7 @@ public class InlineableGraph implements Inlineable {
         try (Debug.Scope s = Debug.scope("InlineGraph", graph)) {
 
             ArrayList<Node> parameterUsages = replaceParamsWithMoreInformativeArguments(invoke, context);
-            if (parameterUsages != null && OptCanonicalizer.getValue()) {
+            if (parameterUsages != null) {
                 assert !parameterUsages.isEmpty() : "The caller didn't have more information about arguments after all";
                 canonicalizer.applyIncremental(graph, context, parameterUsages);
                 return true;
@@ -211,9 +210,7 @@ public class InlineableGraph implements Inlineable {
             }
             new DeadCodeEliminationPhase(Optional).apply(newGraph);
 
-            if (OptCanonicalizer.getValue()) {
-                canonicalizer.apply(newGraph, context);
-            }
+            canonicalizer.apply(newGraph, context);
 
             return newGraph;
         } catch (Throwable e) {
