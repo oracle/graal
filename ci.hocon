@@ -49,7 +49,8 @@ darwin : {
 }
 
 maven-deploy-dry-run : ${common} ${java8Downloads} {
-  capabilities : [linux, amd64, gate]
+  capabilities : [linux, amd64]
+  targets : [gate]
   name : gate-maven-deploy-dry-run
   setup : [
      ["mx", "--strict-compliance", "build"]
@@ -60,7 +61,8 @@ maven-deploy-dry-run : ${common} ${java8Downloads} {
 }
 
 deploy-binary : ${common} ${java8Downloads} {
-  capabilities : [linux, amd64, post-merge]
+  capabilities : [linux, amd64]
+  targets : [post-merge]
   name : postmerge-deploy-binary
   setup : [
      ["mx", "--strict-compliance", "build"]
@@ -98,10 +100,10 @@ gateLite : {
 }
 
 builds = [
-  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-8"},
-  ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64, gate],   name: "gate-truffle-9"},
-  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64, gate],   name: "gate-sigtest"},
-  ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64, post-merge],   name: "gate-downstream"},
+  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
+  ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
+  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
+  ${common} ${java8Downloads} {run : [["mx", "testdownstream"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-downstream"},
   ${maven-deploy-dry-run}
   ${deploy-binary}
   ${solaris} ${java8Downloads} ${gateLite} {
