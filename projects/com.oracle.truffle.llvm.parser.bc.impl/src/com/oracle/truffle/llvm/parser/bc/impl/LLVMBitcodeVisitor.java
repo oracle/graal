@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutParser;
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.factories.LLVMBlockFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
@@ -152,6 +153,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final DataLayoutConverter.DataSpecConverter targetDataLayout;
 
+    private final LLVMBitcodeTypeHelper typeHelper;
+
     public LLVMBitcodeVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration, LLVMFrameDescriptors frames, LLVMLabelList labels, LLVMPhiManager phis,
                     TargetDataLayout layout) {
         this.context = context;
@@ -165,6 +168,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         } else {
             this.targetDataLayout = null;
         }
+        this.typeHelper = new LLVMBitcodeTypeHelper(targetDataLayout);
     }
 
     private LLVMExpressionNode createFunction(FunctionDefinition method) {
@@ -248,6 +252,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
         return targetDataLayout;
+    }
+
+    public LLVMBitcodeTypeHelper getTypeHelper() {
+        return typeHelper;
     }
 
     public LLVMNode[] getDeallocations() {

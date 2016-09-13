@@ -63,7 +63,7 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
-import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.factories.LLVMAggregateFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMBranchFactory;
@@ -128,15 +128,15 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final InstructionBlock block;
 
-    private final DataLayoutConverter.DataSpecConverter targetDataLayout;
-
     private final LLVMNodeGenerator symbols;
+
+    private final LLVMBitcodeTypeHelper typeHelper;
 
     public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block) {
         this.method = method;
         this.block = block;
-        this.targetDataLayout = method.getTargetDataLayout();
         this.symbols = method.getSymbolResolver();
+        this.typeHelper = method.getModule().getTypeHelper();
     }
 
     private LLVMNode[] getPhiWriteNodes() {
