@@ -30,6 +30,7 @@
 package uk.ac.man.cs.llvm.ir.model.constants;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.model.Symbol;
@@ -59,6 +60,10 @@ public final class GetElementPointerConstant extends AbstractConstant {
 
     public int getIndexCount() {
         return indices.size();
+    }
+
+    public List<Symbol> getIndices() {
+        return Collections.unmodifiableList(indices);
     }
 
     public boolean isInbounds() {

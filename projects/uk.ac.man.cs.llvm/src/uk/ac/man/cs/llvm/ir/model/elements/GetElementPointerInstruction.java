@@ -30,6 +30,7 @@
 package uk.ac.man.cs.llvm.ir.model.elements;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
@@ -79,6 +80,10 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     public Symbol getBasePointer() {
         return base;
+    }
+
+    public List<Symbol> getIndices() {
+        return Collections.unmodifiableList(indices);
     }
 
     public boolean isInbounds() {
