@@ -50,6 +50,7 @@ import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -71,6 +72,14 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             crb.frameContext.leave(crb);
+            /*
+             * We potentially return to the interpreter, and that's an AVX-SSE transition. The only
+             * live value at this point should be the return value in either rax, or in xmm0 with
+             * the upper half of the register unused, so we don't destroy any value here.
+             */
+            if (masm.supports(CPUFeature.AVX)) {
+                masm.vzeroupper();
+            }
             masm.ret(0);
         }
     }

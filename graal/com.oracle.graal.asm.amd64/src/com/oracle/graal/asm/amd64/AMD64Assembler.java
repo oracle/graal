@@ -2654,9 +2654,6 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void ret(int imm16) {
-        if (supports(CPUFeature.AVX)) {
-            vzeroupper();
-        }
         if (imm16 == 0) {
             emitByte(0xC3);
         } else {
