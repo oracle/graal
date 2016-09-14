@@ -58,6 +58,7 @@ import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
+import com.oracle.truffle.object.Transition.ShareShapeTransition;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
@@ -102,6 +103,9 @@ public abstract class ShapeImpl extends Shape {
     protected final int primitiveArrayCapacity;
     /** @since 0.17 or earlier */
     protected final boolean hasPrimitiveArray;
+
+    /** @since 0.18 */
+    protected final boolean shared;
 
     /** @since 0.17 or earlier */
     protected final int depth;
@@ -155,6 +159,7 @@ public abstract class ShapeImpl extends Shape {
         this.primitiveArraySize = primitiveArraySize;
         this.primitiveArrayCapacity = capacityFromSize(primitiveArraySize);
         this.hasPrimitiveArray = hasPrimitiveArray;
+        this.shared = transitionFromParent instanceof ShareShapeTransition || (parent != null && parent.shared);
 
         if (parent != null) {
             this.propertyCount = makePropertyCount(parent, propertyMap);
@@ -911,6 +916,30 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     public <R> R accept(ShapeVisitor<R> visitor) {
         return visitor.visitShape(this);
+    }
+
+    /** @since 0.18 */
+    @Override
+    public boolean isShared() {
+        return shared;
+    }
+
+    /** @since 0.18 */
+    @Override
+    public Shape makeSharedShape() {
+        if (shared) {
+            throw new UnsupportedOperationException("makeSharedShape() can only be called on non-shared shapes.");
+        }
+
+        Transition transition = new ShareShapeTransition();
+        ShapeImpl cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return layout.getStrategy().ensureValid(cachedShape);
+        }
+
+        ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), id);
+        addDirectTransition(transition, newShape);
+        return newShape;
     }
 
     private static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
