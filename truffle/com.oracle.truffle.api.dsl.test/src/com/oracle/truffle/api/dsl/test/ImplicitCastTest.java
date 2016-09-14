@@ -26,6 +26,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -270,4 +271,31 @@ public class ImplicitCastTest {
 
     }
 
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast2Types {
+        @ImplicitCast
+        static String castString(CharSequence str) {
+            return str.toString();
+        }
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEqualsNode extends Node {
+        protected abstract boolean executeBoolean(VirtualFrame frame, String arg1, String arg2);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)", "cachedArg2.equals(arg2)"}, limit = "1")
+        protected static boolean doCached(String arg1, String arg2,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg2") String cachedArg2,
+                        @Cached("arg1.equals(arg2)") boolean result) {
+            return result;
+        }
+
+        @Specialization
+        protected static boolean doUncached(String arg1, String arg2) {
+            return arg1.equals(arg2);
+        }
+    }
 }
