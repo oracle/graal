@@ -403,6 +403,8 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.asm.amd64",
         "com.oracle.graal.hotspot.test",
+        "com.oracle.graal.lir.amd64",
+        "com.oracle.graal.lir.jtt",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
