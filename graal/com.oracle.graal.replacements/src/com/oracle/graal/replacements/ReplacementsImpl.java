@@ -29,7 +29,6 @@ import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuring
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static java.lang.String.format;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -160,8 +159,10 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingIntrinsic()) {
             IntrinsicContext intrinsic = b.getIntrinsic();
-            assert intrinsic.isCallToOriginal(method) : format("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
-                            intrinsic.getIntrinsicMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
+            if (!intrinsic.isCallToOriginal(method)) {
+                throw new GraalError("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
+                                intrinsic.getIntrinsicMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
+            }
         }
     }
 
