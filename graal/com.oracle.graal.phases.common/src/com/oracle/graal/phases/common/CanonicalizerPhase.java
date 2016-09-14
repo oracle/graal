@@ -217,41 +217,58 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             };
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 for (Node n : workList) {
-                    processNode(n);
+                    boolean changed = processNode(n);
+                    if (changed && Debug.isDumpEnabled(Debug.DETAILED_LOG_LEVEL)) {
+                        Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "CanonicalizerPhase %s", n);
+                    }
                 }
             }
         }
 
-        private void processNode(Node node) {
-            if (node.isAlive()) {
-                COUNTER_PROCESSED_NODES.increment();
+        /**
+         * @return true if the graph was changed.
+         */
+        private boolean processNode(Node node) {
+            if (!node.isAlive()) {
+                return false;
+            }
+            if (node instanceof FloatingNode && node.hasNoUsages()) {
+                // Dead but on the worklist so simply kill it
+                GraphUtil.killWithUnusedFloatingInputs(node);
+                return false;
+            }
+            COUNTER_PROCESSED_NODES.increment();
 
-                NodeClass<?> nodeClass = node.getNodeClass();
-                if (tryGlobalValueNumbering(node, nodeClass)) {
-                    return;
-                }
-                StructuredGraph graph = (StructuredGraph) node.graph();
-                if (!GraphUtil.tryKillUnused(node)) {
-                    if (!tryCanonicalize(node, nodeClass)) {
-                        if (node instanceof ValueNode) {
-                            ValueNode valueNode = (ValueNode) node;
-                            boolean improvedStamp = tryInferStamp(valueNode);
-                            Constant constant = valueNode.stamp().asConstant();
-                            if (constant != null && !(node instanceof ConstantNode)) {
-                                ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph);
-                                Debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
-                                valueNode.replaceAtUsages(InputType.Value, stampConstant);
-                                GraphUtil.tryKillUnused(valueNode);
-                            } else if (improvedStamp) {
-                                // the improved stamp may enable additional canonicalization
-                                if (!tryCanonicalize(valueNode, nodeClass)) {
-                                    valueNode.usages().forEach(workList::add);
-                                }
-                            }
-                        }
+            NodeClass<?> nodeClass = node.getNodeClass();
+            if (tryGlobalValueNumbering(node, nodeClass)) {
+                return true;
+            }
+            StructuredGraph graph = (StructuredGraph) node.graph();
+            if (GraphUtil.tryKillUnused(node)) {
+                return true;
+            }
+            if (tryCanonicalize(node, nodeClass)) {
+                return true;
+            }
+            if (node instanceof ValueNode) {
+                ValueNode valueNode = (ValueNode) node;
+                boolean improvedStamp = tryInferStamp(valueNode);
+                Constant constant = valueNode.stamp().asConstant();
+                if (constant != null && !(node instanceof ConstantNode)) {
+                    ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph);
+                    Debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
+                    valueNode.replaceAtUsages(InputType.Value, stampConstant);
+                    GraphUtil.tryKillUnused(valueNode);
+                    return true;
+                } else if (improvedStamp) {
+                    // the improved stamp may enable additional canonicalization
+                    if (tryCanonicalize(valueNode, nodeClass)) {
+                        return true;
                     }
+                    valueNode.usages().forEach(workList::add);
                 }
             }
+            return false;
         }
 
         public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
@@ -355,7 +372,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     assert canonical == null || !(canonical instanceof FixedNode) ||
                                     (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node +
                                                     " -> " + canonical + " : replacement should be floating or fixed and connected";
-                    node.replaceAtUsagesAndDelete(canonical);
+                    node.replaceAtUsages(canonical);
+                    GraphUtil.killWithUnusedFloatingInputs(node);
                 } else {
                     assert node instanceof FixedNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
                     FixedNode fixed = (FixedNode) node;
@@ -374,7 +392,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                         if (canonical == null) {
                             // case 3
                             node.replaceAtUsages(null);
-                            graph.removeFixed(fixedWithNext);
+                            GraphUtil.removeFixedWithUnusedInputs(fixedWithNext);
                         } else if (canonical instanceof FloatingNode) {
                             // case 4
                             graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
@@ -388,7 +406,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                                 assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
                                 // case 6
                                 node.replaceAtUsages(canonical);
-                                graph.removeFixed(fixedWithNext);
+                                GraphUtil.removeFixedWithUnusedInputs(fixedWithNext);
                             }
                         }
                     }
