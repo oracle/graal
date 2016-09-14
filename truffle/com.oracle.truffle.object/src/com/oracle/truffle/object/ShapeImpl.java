@@ -61,7 +61,7 @@ import com.oracle.truffle.object.Transition.PropertyTransition;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
- * actual store is not part of Shape's role, but JSObject's. Shapes are immutable; adding or
+ * actual store is not part of Shape's role, but DynamicObject's. Shapes are immutable; adding or
  * deleting a property yields a new Shape which links to the old one. This allows inline caching to
  * simply check the identity of an object's Shape to determine if the cache is valid. There is one
  * exception to this immutability, the transition map, but that is used simply to assure that an
@@ -433,7 +433,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Create a new shape that adds a property to the parent shape.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
@@ -450,7 +450,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Create a new shape that reserves the primitive extension array field.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
@@ -713,7 +713,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Duplicate shape exchanging existing property with new property.
-     * 
+     *
      * @since 0.17 or earlier
      */
     @Override
@@ -726,7 +726,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Find lowest common ancestor of two related shapes.
-     * 
+     *
      * @since 0.17 or earlier
      */
 
@@ -831,7 +831,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Clone off a separate shape with new shared data.
-     * 
+     *
      * @since 0.17 or earlier
      */
     @TruffleBoundary
