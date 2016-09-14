@@ -71,7 +71,6 @@ public class Metadata implements ParserListener {
         this.types = types;
         this.symbols = symbols;
         metadata.setStartIndex(1);
-        int i = 0;
     }
 
     protected void printMetadataDebugMsg() {

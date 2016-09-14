@@ -86,6 +86,8 @@ public class MetadataBlock {
         boolean isPresent();
 
         MetadataBaseNode get();
+
+        int getIndex();
     }
 
     public static final VoidReference voidRef = new VoidReference();
@@ -106,6 +108,7 @@ public class MetadataBlock {
             throw new IndexOutOfBoundsException("That's an empty reference");
         }
 
+        @Override
         public int getIndex() {
             return -1;
         }
@@ -133,6 +136,7 @@ public class MetadataBlock {
             return metadata.get(index - startIndex);
         }
 
+        @Override
         public int getIndex() {
             return index;
         }
