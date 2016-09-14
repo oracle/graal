@@ -51,7 +51,7 @@ public class MetadataArgumentParser implements Iterator<Type> {
 
     protected final List<Type> symbols;
 
-    private long[] args;
+    private final long[] args;
 
     private int index = 0;
 

@@ -92,7 +92,7 @@ public class MetadataV32 extends Metadata {
                 return;
         }
 
-        printMetadataDebugMsg();
+        // printMetadataDebugMsg(); // Enable to allow debugging of the metadata parser
 
         idx++;
     }
@@ -101,8 +101,6 @@ public class MetadataV32 extends Metadata {
         MetadataArgumentParser parsedArgs = new MetadataArgumentParser(types, symbols, args);
 
         if (parsedArgs.peek() instanceof IntegerConstantType) {
-            // System.out.println(parsedArgs);
-
             /*
              * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#LLVMDebugVersion
              *
@@ -190,8 +188,6 @@ public class MetadataV32 extends Metadata {
 
                 case DW_TAG_UNKNOW:
                     parsedArgs.rewind();
-                    // System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + " -
-                    // UNSUPORTED: #" + asInt32(parsedArgs.next()));
                     createDwNode(parsedArgs); // TODO: we need to know the type of the node
                     break;
             }
@@ -299,8 +295,6 @@ public class MetadataV32 extends Metadata {
         node.setRuntimeLanguage(asInt32(args.next()));
 
         metadata.add(node);
-
-        // System.out.println("!" + idx + " - " + node + " - (" + record + ")");
     }
 
     protected void createDwTagEnumerator(MetadataArgumentParser args) {
@@ -417,8 +411,6 @@ public class MetadataV32 extends Metadata {
         // i32 ;; (optional) Objective C property attributes.
 
         metadata.add(node);
-
-        // System.out.println("!" + idx + " - " + node + " - (" + record + ")");
     }
 
 }

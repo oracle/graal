@@ -68,28 +68,16 @@ public class Metadata implements ParserListener {
 
     protected int oldMetadataSize = 0; // TODO: only for debugging purpose
 
-    // protected MetadataGenerator metadata;
-
     public Metadata(Types types, List<Type> symbols) {
         this.types = types;
         this.symbols = symbols;
         metadata.setStartIndex(1);
         int i = 0;
-        /*
-         * @formatter:off
-         *
-         * System.out.println("Symbols");
-        for (Type s : symbols) {
-            System.out.println("!" + i + " - " + s);
-            i++;
-        }
-        @formatter:on
-        */
     }
 
     protected void printMetadataDebugMsg() {
         if (metadata.size() != oldMetadataSize) {
-            // System.out.println("!" + idx + " - " + metadata.getAbsolute(metadata.size() - 1));
+            System.out.println("!" + idx + " - " + metadata.getAbsolute(metadata.size() - 1));
             oldMetadataSize = metadata.size();
         }
     }
@@ -97,12 +85,6 @@ public class Metadata implements ParserListener {
     protected static long unrotateSign(long U) {
         return (U & 1) == 1 ? ~(U >> 1) : U >> 1;
     }
-
-    /*
-     * public static ParserListener getAttachments() { return ParserListener.DEFAULT; }
-     *
-     * public static ParserListener getKinds() { return ParserListener.DEFAULT; }
-     */
 
     // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L191
     @Override
@@ -209,7 +191,7 @@ public class Metadata implements ParserListener {
                 break;
         }
 
-        printMetadataDebugMsg();
+        // printMetadataDebugMsg(); // Enable to allow debugging of the metadata parser
 
         idx++;
     }
