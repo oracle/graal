@@ -94,6 +94,10 @@ public class Metadata implements ParserListener {
         }
     }
 
+    protected static long unrotateSign(long U) {
+        return (U & 1) == 1 ? ~(U >> 1) : U >> 1;
+    }
+
     /*
      * public static ParserListener getAttachments() { return ParserListener.DEFAULT; }
      *
@@ -308,7 +312,7 @@ public class Metadata implements ParserListener {
 
         // long distinct = args[0];
         node.setSize(args[1]);
-        node.setLowBound(args[2]);
+        node.setLowBound(unrotateSign(args[2]));
 
         metadata.add(node);
     }
@@ -317,7 +321,7 @@ public class Metadata implements ParserListener {
         Enumerator node = new Enumerator();
 
         // long distinct = args[0];
-        node.setValue(args[1]); // TODO: symbol table?
+        node.setValue(unrotateSign(args[1]));
         node.setName(metadata.getReference(args[2]));
 
         metadata.add(node);
