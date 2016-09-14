@@ -1,0 +1,11 @@
+gcc.dg/torture/pr39678.c
+gcc.dg/torture/pr36373-5.c
+gcc.dg/torture/pr36373-4.c
+gcc.dg/torture/pr55305.c
+gcc.dg/torture/pr59903.c
+gcc.dg/torture/pr61346.c
+gcc.dg/torture/pr52530.c
+gcc.dg/torture/pr44806.c
+gcc.dg/torture/builtin-math-7.c
+gcc.dg/torture/pr35634.c
+gcc.dg/torture/builtin-convert-2.c

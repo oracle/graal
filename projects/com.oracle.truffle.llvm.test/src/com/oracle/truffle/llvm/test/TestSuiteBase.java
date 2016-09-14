@@ -42,8 +42,10 @@ import java.util.stream.Stream;
 
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
@@ -66,6 +68,7 @@ public abstract class TestSuiteBase {
     private static List<File> succeedingTests;
     private static List<File> parserErrorTests;
     private static Map<UnsupportedReason, List<File>> unsupportedErrorTests;
+    private static final int UNSIGNED_BYTE_MAX_VALUE = 0xff;
 
     protected void recordTestCase(TestCaseFiles tuple, boolean pass) {
         if (pass) {
@@ -174,13 +177,16 @@ public abstract class TestSuiteBase {
     public static class TestCaseGeneratorImpl implements TestCaseGenerator {
 
         private boolean withOptimizations;
+        private boolean isLLFileTestGenerator;
 
-        public TestCaseGeneratorImpl(boolean withOptimizations) {
+        public TestCaseGeneratorImpl(boolean withOptimizations, boolean isLLFileTestGenerator) {
             this.withOptimizations = withOptimizations;
+            this.isLLFileTestGenerator = isLLFileTestGenerator;
         }
 
-        public TestCaseGeneratorImpl() {
+        public TestCaseGeneratorImpl(boolean isLLFileTestGenerator) {
             withOptimizations = true;
+            this.isLLFileTestGenerator = isLLFileTestGenerator;
         }
 
         @Override
@@ -192,7 +198,12 @@ public abstract class TestSuiteBase {
         public List<TestCaseFiles> getCompiledTestCaseFiles(SpecificationEntry toBeCompiled) {
             List<TestCaseFiles> files = new ArrayList<>();
             File toBeCompiledFile = toBeCompiled.getFile();
-            File dest = TestHelper.getTempLLFile(toBeCompiledFile, "_main");
+            File dest;
+            if (isLLFileTestGenerator) {
+                dest = TestHelper.getTempLLFile(toBeCompiledFile, "_main");
+            } else {
+                dest = TestHelper.getTempBCFile(toBeCompiledFile);
+            }
             try {
                 if (ProgrammingLanguage.FORTRAN.isFile(toBeCompiledFile)) {
                     TestCaseFiles gccCompiledTestCase = TestHelper.compileToLLVMIRWithGCC(toBeCompiledFile, dest, toBeCompiled.getFlags());
@@ -323,4 +334,34 @@ public abstract class TestSuiteBase {
         return TestCaseFiles.createFromCompiledFile(toBeOptimized.getOriginalFile(), destinationFile, toBeOptimized.getFlags());
     }
 
+    public void executeLLVMBitCodeFileTest(TestCaseFiles tuple) {
+        try {
+            LLVMLogger.info("original file: " + tuple.getOriginalFile());
+            File bitCodeFile = tuple.getBitCodeFile();
+            int expectedResult;
+            try {
+                expectedResult = TestHelper.executeLLVMBinary(bitCodeFile).getReturnValue();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                throw new LLVMUnsupportedException(UnsupportedReason.CLANG_ERROR);
+            }
+            int truffleResult = truncate(LLVM.executeMain(bitCodeFile));
+            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
+            boolean pass = true;
+            if (!undefinedReturnCode) {
+                pass &= expectedResult == truffleResult;
+            }
+            recordTestCase(tuple, pass);
+            if (!undefinedReturnCode) {
+                Assert.assertEquals(bitCodeFile.getAbsolutePath(), expectedResult, truffleResult);
+            }
+        } catch (Throwable e) {
+            recordError(tuple, e);
+            throw e;
+        }
+    }
+
+    private static int truncate(int retValue) {
+        return retValue & UNSIGNED_BYTE_MAX_VALUE;
+    }
 }

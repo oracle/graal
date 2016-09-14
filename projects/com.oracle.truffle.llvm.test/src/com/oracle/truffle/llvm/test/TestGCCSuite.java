@@ -33,26 +33,19 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
 @RunWith(Parameterized.class)
 public class TestGCCSuite extends TestSuiteBase {
 
-    private static final int UNSIGNED_BYTE_MAX_VALUE = 0xff;
     private TestCaseFiles tuple;
-    private File byteCodeFile;
 
     public TestGCCSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
-        this.byteCodeFile = tuple.getBitCodeFile();
     }
 
     @Parameterized.Parameters
@@ -60,40 +53,14 @@ public class TestGCCSuite extends TestSuiteBase {
         File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCC_TEST_SUITE;
         LLVMLogger.info("...start to read and compile files");
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl());
+        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(true));
         LLVMLogger.info("...finished reading and compiling files!");
         return files;
     }
 
     @Test
     public void test() {
-        try {
-            LLVMLogger.info("original file: " + tuple.getOriginalFile());
-            int expectedResult;
-            try {
-                expectedResult = TestHelper.executeLLVMBinary(byteCodeFile).getReturnValue();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                throw new LLVMUnsupportedException(UnsupportedReason.CLANG_ERROR);
-            }
-            int truffleResult = truncate(LLVM.executeMain(byteCodeFile));
-            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
-            boolean pass = true;
-            if (!undefinedReturnCode) {
-                pass &= expectedResult == truffleResult;
-            }
-            recordTestCase(tuple, pass);
-            if (!undefinedReturnCode) {
-                Assert.assertEquals(byteCodeFile.getAbsolutePath(), expectedResult, truffleResult);
-            }
-        } catch (Throwable e) {
-            recordError(tuple, e);
-            throw e;
-        }
-    }
-
-    private static int truncate(int retValue) {
-        return retValue & UNSIGNED_BYTE_MAX_VALUE;
+        executeLLVMBitCodeFileTest(tuple);
     }
 
 }

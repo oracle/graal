@@ -60,9 +60,22 @@ public final class GCC extends CompilerBase {
         } else {
             throw new AssertionError(toBeCompiled);
         }
-        String[] command = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(), "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationFile,
-                        toBeCompiled.getAbsolutePath()};
-        ProcessUtil.executeNativeCommandZeroReturn(command);
+
+        String destinationLLFileName = destinationFile.getAbsolutePath();
+        String interimLLFileName = "/tmp/interim.ll";
+
+        if (destinationFile.getName().endsWith(".bc")) {
+            destinationLLFileName = interimLLFileName;
+        }
+
+        String[] llFileGenerationCommand = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(),
+                        "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationLLFileName, toBeCompiled.getAbsolutePath()};
+        ProcessUtil.executeNativeCommandZeroReturn(llFileGenerationCommand);
+
+        // Converting interim .ll file to .bc file
+        if (destinationFile.getName().endsWith(".bc")) {
+            LLVMAssembler.assembleToBitcodeFile(new File(interimLLFileName), destinationFile);
+        }
     }
 
     private static String dragonEggOption() {

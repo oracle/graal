@@ -1,0 +1,7 @@
+gfortran.fortran-torture/execute/pr19269-1.f90
+gfortran.fortran-torture/execute/integer_select.f90
+gfortran.fortran-torture/execute/transfer2.f90
+gfortran.fortran-torture/execute/math.f90
+gfortran.fortran-torture/execute/intrinsic_abs.f90
+gfortran.fortran-torture/execute/intrinsic_associated.f90
+gfortran.fortran-torture/execute/der_point.f90

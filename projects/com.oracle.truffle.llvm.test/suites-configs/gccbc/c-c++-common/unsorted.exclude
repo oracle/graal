@@ -1,0 +1,5 @@
+c-c++-common/ubsan/align-2.c
+c-c++-common/ubsan/align-4.c
+c-c++-common/ubsan/float-cast-overflow-4.c
+c-c++-common/ubsan/pr63802.c
+c-c++-common/torture/vector-shift.c

@@ -109,7 +109,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
         File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCC_TEST_SUITE;
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false));
+        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false, true));
         return files;
     }
 
