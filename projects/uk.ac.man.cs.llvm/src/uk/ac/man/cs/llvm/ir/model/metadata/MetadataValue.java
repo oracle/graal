@@ -29,14 +29,21 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-import java.util.ArrayList;
+import uk.ac.man.cs.llvm.ir.types.Type;
 
-import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
+public class MetadataValue implements MetadataBaseNode {
+    protected final Type value;
 
-public class Node extends ArrayList<MetadataReference> implements MetadataNode {
+    public MetadataValue(Type value) {
+        this.value = value;
+    }
+
+    public Type getValue() {
+        return value;
+    }
 
     @Override
     public String toString() {
-        return "Node " + super.toString();
+        return "Value [" + value + "]";
     }
 }

@@ -29,7 +29,7 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-public class Subrange implements MetadataNode {
+public class Subrange implements MetadataBaseNode {
 
     protected long lowBound;
     protected long size;

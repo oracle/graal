@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class Enumerator implements MetadataNode {
+public class Enumerator implements MetadataBaseNode {
 
     protected MetadataReference name = MetadataBlock.voidRef;
     protected long value;

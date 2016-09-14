@@ -29,7 +29,7 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-public class MetadataString implements MetadataNode {
+public class MetadataString implements MetadataBaseNode {
     protected final String s;
 
     public MetadataString(String s) {

@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class LocalVariable implements MetadataNode {
+public class LocalVariable implements MetadataBaseNode {
 
     protected MetadataReference context = MetadataBlock.voidRef;
     protected MetadataReference name = MetadataBlock.voidRef;

@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class LexicalBlockFile implements MetadataNode {
+public class LexicalBlockFile implements MetadataBaseNode {
 
     protected MetadataReference file = MetadataBlock.voidRef;
 

@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class CompileUnit implements MetadataNode {
+public class CompileUnit implements MetadataBaseNode {
 
     protected long context;
     protected long language;
@@ -120,7 +120,7 @@ public class CompileUnit implements MetadataNode {
         this.runtimeVersion = runtimeVersion;
     }
 
-    public MetadataNode getEnumType() {
+    public MetadataBaseNode getEnumType() {
         return enumType;
     }
 

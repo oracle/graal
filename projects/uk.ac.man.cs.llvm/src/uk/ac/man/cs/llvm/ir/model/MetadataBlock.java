@@ -32,13 +32,13 @@ package uk.ac.man.cs.llvm.ir.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBaseNode;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataBlock {
 
-    protected final List<MetadataNode> metadata = new ArrayList<>();
+    protected final List<MetadataBaseNode> metadata = new ArrayList<>();
 
     protected int startIndex = 0;
 
@@ -46,15 +46,15 @@ public class MetadataBlock {
         startIndex = index;
     }
 
-    public void add(MetadataNode element) {
+    public void add(MetadataBaseNode element) {
         metadata.add(element);
     }
 
-    public MetadataNode get(int index) {
+    public MetadataBaseNode get(int index) {
         return metadata.get(index - startIndex);
     }
 
-    public MetadataNode getAbsolute(int index) { // TOOD: do index recalculation in getReference
+    public MetadataBaseNode getAbsolute(int index) { // TOOD: do index recalculation in getReference
         return metadata.get(index);
     }
 
@@ -81,10 +81,10 @@ public class MetadataBlock {
     /**
      * Based on the idea of Optional, but used for automatic forward reference lookup
      */
-    public interface MetadataReference extends MetadataNode {
+    public interface MetadataReference extends MetadataBaseNode {
         public boolean isPresent();
 
-        public MetadataNode get();
+        public MetadataBaseNode get();
     }
 
     public static final VoidReference voidRef = new VoidReference();
@@ -100,7 +100,7 @@ public class MetadataBlock {
         }
 
         @Override
-        public MetadataNode get() {
+        public MetadataBaseNode get() {
             // TODO: better exception
             throw new IndexOutOfBoundsException("That's an empty reference");
         }
@@ -128,7 +128,7 @@ public class MetadataBlock {
         }
 
         @Override
-        public MetadataNode get() {
+        public MetadataBaseNode get() {
             return metadata.get(index - startIndex);
         }
 

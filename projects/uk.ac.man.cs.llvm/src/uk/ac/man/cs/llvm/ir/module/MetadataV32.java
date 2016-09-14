@@ -38,12 +38,12 @@ import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
 import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
 import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
-import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFile;
 import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
 import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
-import uk.ac.man.cs.llvm.ir.model.metadata.Node;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
@@ -211,7 +211,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwNode(MetadataArgumentParser args) {
-        Node node = new Node();
+        MetadataNode node = new MetadataNode();
 
         while (args.hasNext()) {
             node.add(metadata.getReference(args.next()));
@@ -258,7 +258,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagFileType(MetadataArgumentParser args) {
-        File node = new File();
+        MetadataFile node = new MetadataFile();
 
         node.setFile(metadata.getReference(args.next()));
         node.setDirectory(metadata.getReference(args.next()));

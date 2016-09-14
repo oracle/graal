@@ -29,6 +29,14 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-public interface MetadataNode {
-    // public int getIndex();
+import java.util.ArrayList;
+
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
+
+public class MetadataNode extends ArrayList<MetadataReference> implements MetadataBaseNode {
+
+    @Override
+    public String toString() {
+        return "Node " + super.toString();
+    }
 }

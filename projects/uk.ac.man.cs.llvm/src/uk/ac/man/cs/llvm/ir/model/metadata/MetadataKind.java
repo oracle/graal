@@ -29,21 +29,27 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-import uk.ac.man.cs.llvm.ir.types.Type;
+public class MetadataKind implements MetadataBaseNode {
 
-public class Value implements MetadataNode {
-    protected final Type value;
+    protected final long id;
+    protected final String name;
 
-    public Value(Type value) {
-        this.value = value;
+    public MetadataKind(long id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
-    public Type getValue() {
-        return value;
+    public long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
     public String toString() {
-        return "Value [" + value + "]";
+        return "Kind [id=" + id + ", name=\"" + name + "\"]";
     }
+
 }

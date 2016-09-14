@@ -29,19 +29,33 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-public class Name implements MetadataNode {
-    protected final String name;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-    public Name(String name) {
-        this.name = name;
+public class MetadataFile implements MetadataBaseNode {
+
+    protected MetadataReference file = MetadataBlock.voidRef;
+    protected MetadataReference directory = MetadataBlock.voidRef;
+
+    public MetadataReference getFile() {
+        return file;
     }
 
-    public String getName() {
-        return name;
+    public void setFile(MetadataReference file) {
+        this.file = file;
+    }
+
+    public MetadataReference getDirectory() {
+        return directory;
+    }
+
+    public void setDirectory(MetadataReference directory) {
+        this.directory = directory;
     }
 
     @Override
     public String toString() {
-        return "Name [\"" + name + "\"]";
+        return "File [file=" + file + ", directory=" + directory + "]";
     }
+
 }

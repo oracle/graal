@@ -39,20 +39,20 @@ import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
 import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
 import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
-import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFile;
 import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
-import uk.ac.man.cs.llvm.ir.model.metadata.Kind;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataKind;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
 import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
-import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBaseNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
-import uk.ac.man.cs.llvm.ir.model.metadata.Name;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataName;
 import uk.ac.man.cs.llvm.ir.model.metadata.NamedNode;
-import uk.ac.man.cs.llvm.ir.model.metadata.Node;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
-import uk.ac.man.cs.llvm.ir.model.metadata.Value;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataValue;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -228,13 +228,13 @@ public class Metadata implements ParserListener {
     protected void createValue(long[] args) {
         Type t = MetadataArgumentParser.typeValToType(types, symbols, args[0], args[1]);
 
-        Value node = new Value(t);
+        MetadataValue node = new MetadataValue(t);
 
         metadata.add(node);
     }
 
     protected void createNode(long[] args) {
-        Node node = new Node();
+        MetadataNode node = new MetadataNode();
 
         for (long arg : args) {
             node.add(metadata.getReference((int) arg));
@@ -249,7 +249,7 @@ public class Metadata implements ParserListener {
             name += (char) (lc); // TODO: unicode characters?
         }
 
-        Name node = new Name(name);
+        MetadataName node = new MetadataName(name);
 
         metadata.add(node);
     }
@@ -266,7 +266,7 @@ public class Metadata implements ParserListener {
             name += (char) (args[i]); // TODO: unicode characters?
         }
 
-        Kind node = new Kind(args[0], name);
+        MetadataKind node = new MetadataKind(args[0], name);
 
         metadata.add(node);
     }
@@ -341,7 +341,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createFile(long[] args) {
-        File node = new File();
+        MetadataFile node = new MetadataFile();
 
         // long distinct = args[0];
         node.setFile(metadata.getReference(args[1]));
