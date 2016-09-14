@@ -349,10 +349,11 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
                 block(from);
             }
 
-            int spillCandidate = -1;
+            ArrayList<AllocatableValue> busySpillSlots = null;
             while (mappingFrom.size() > 0) {
                 boolean processedInterval = false;
 
+                int spillCandidate = -1;
                 for (int i = mappingFrom.size() - 1; i >= 0; i--) {
                     Value fromLocation = mappingFrom.get(i);
                     AllocatableValue toLocation = mappingTo.get(i);
@@ -360,12 +361,18 @@ final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhase.MoveR
                         // this interval can be processed because target is free
                         insertMove(fromLocation, toLocation);
                         unblock(fromLocation);
+                        if (isStackSlotValue(toLocation)) {
+                            if (busySpillSlots == null) {
+                                busySpillSlots = new ArrayList<>(2);
+                            }
+                            busySpillSlots.add(toLocation);
+                        }
                         mappingFrom.remove(i);
                         mappingFromStack.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromLocation != null && isRegister(fromLocation)) {
+                    } else if (fromLocation != null && isRegister(fromLocation) && (busySpillSlots == null || !busySpillSlots.contains(mappingFromStack.get(i)))) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
