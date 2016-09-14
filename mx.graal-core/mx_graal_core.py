@@ -213,7 +213,7 @@ def ctw(args, extraVMarguments=None):
 
     vmargs.append('-Dgraal.CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
-    if _get_XX_option_value(vmargs + _noneAsEmptyList(extraVMarguments), 'UseJVMCICompiler', False):
+    if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')
 
     if isJDK8:
@@ -235,7 +235,7 @@ def ctw(args, extraVMarguments=None):
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
-    run_vm(vmargs + _noneAsEmptyList(extraVMarguments))
+    run_vm(vmargs + _remove_empty_entries(extraVMarguments))
 
 class UnitTestRun:
     def __init__(self, name, args, tags):
@@ -250,7 +250,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if t: unittest(['--suite', suite, '--fail-fast'] + extra_args + self.args + _noneAsEmptyList(extraVMarguments))
+                if t: unittest(['--suite', suite, '--fail-fast'] + extra_args + self.args + _remove_empty_entries(extraVMarguments))
 
 class BootstrapTest:
     def __init__(self, name, args, tags, suppress=None):
@@ -266,7 +266,7 @@ class BootstrapTest:
                     out = mx.DuplicateSuppressingStream(self.suppress).write
                 else:
                     out = None
-                run_vm(self.args + ['-XX:+UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
+                run_vm(self.args + ['-XX:+UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 class MicrobenchRun:
     def __init__(self, name, args, tags):
@@ -276,7 +276,7 @@ class MicrobenchRun:
 
     def run(self, tasks, extraVMarguments=None):
         with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
-            if t: mx_microbench.get_microbenchmark_executor().microbench(_noneAsEmptyList(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
+            if t: mx_microbench.get_microbenchmark_executor().microbench(_remove_empty_entries(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
     bootstrap = ['bootstrap', 'fulltest']
@@ -285,10 +285,11 @@ class GraalTags:
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
 
-def _noneAsEmptyList(a):
-    if not a or not any(a):
+def _remove_empty_entries(a):
+    """Removes empty entries. Return value is always a list."""
+    if not a:
         return []
-    return a
+    return [x for x in a if x]
 
 def _gate_java_benchmark(args, successRe):
     """
@@ -314,12 +315,12 @@ def _gate_java_benchmark(args, successRe):
         mx.abort('Could not find benchmark success pattern: ' + successRe)
 
 def _gate_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.ExitVMOnException=true'] + _noneAsEmptyList(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.ExitVMOnException=true'] + _remove_empty_entries(extraVMarguments)
     dacapoJar = mx.library('DACAPO').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'] + _noneAsEmptyList(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'] + _remove_empty_entries(extraVMarguments)
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
@@ -327,15 +328,20 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
-        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
+        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
 
     # Run microbench in hosted mode (only for testing the JMH setup)
     for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=GraalTags.benchmarktest)]:
-        r.run(tasks, ['-XX:-UseJVMCICompiler'] + _noneAsEmptyList(extraVMarguments))
+        r.run(tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
 
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
-        if t: ctw(['--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler', '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m'], _noneAsEmptyList(extraVMarguments))
+        if t:
+            ctw([
+                    '--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler',
+                    '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
+                    '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m',
+                ], _remove_empty_entries(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -356,7 +362,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     }
     for name, iterations in sorted(dacapos.iteritems()):
         with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
     scala_dacapos = {
@@ -374,19 +380,19 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     }
     for name, iterations in sorted(scala_dacapos.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # ensure -Xbatch still works
     with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
     with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
-        if t: run_vm(_noneAsEmptyList(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+        if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
