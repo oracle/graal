@@ -35,6 +35,7 @@ import java.util.List;
 import uk.ac.man.cs.llvm.bc.ParserListener;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.BasicType;
+import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
 import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
 import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
@@ -51,6 +52,7 @@ import uk.ac.man.cs.llvm.ir.model.metadata.NamedNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.Node;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
+import uk.ac.man.cs.llvm.ir.model.metadata.Value;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -194,6 +196,10 @@ public class Metadata implements ParserListener {
                 createCompositeType(args);
                 break;
 
+            case COMPILE_UNIT:
+                createCompileUnit(args);
+                break;
+
             default:
                 System.out.println("!" + idx + " - " + record + ": " + Arrays.toString(args));
                 break;
@@ -216,10 +222,11 @@ public class Metadata implements ParserListener {
     }
 
     protected void createValue(long[] args) {
-        long typeNum = args[0];
-        long valueNum = args[1];
+        Type t = MetadataArgumentParser.typeValToType(types, symbols, args[0], args[1]);
 
-        System.out.println("!" + idx + " - " + MetadataRecord.VALUE + " - " + Arrays.toString(args));
+        Value node = new Value(t);
+
+        metadata.add(node);
     }
 
     protected void createNode(long[] args) {
@@ -301,7 +308,7 @@ public class Metadata implements ParserListener {
 
         // long distinct = args[0];
         node.setSize(args[1]);
-        node.setLowBound(args[3]);
+        node.setLowBound(args[2]);
 
         metadata.add(node);
     }
@@ -364,11 +371,13 @@ public class Metadata implements ParserListener {
     }
 
     protected void createSubroutineType(long[] args) {
-        long distinct = args[0];
-        long flags = args[1];
-        long types = args[2];
+        CompositeType node = new CompositeType();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.SUBROUTINE_TYPE + ": types=!" + types + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        node.setFlags(args[1]);
+        node.setMemberDescriptors(metadata.getReference(args[2])); // TODO: correct?
+
+        metadata.add(node);
     }
 
     protected void createLexicalBlock(long[] args) {
@@ -464,6 +473,29 @@ public class Metadata implements ParserListener {
         // long vTableHolder = args[13];
         // long templateParams = args[14];
         // long rawIdentifier = args[15];
+
+        metadata.add(node);
+    }
+
+    protected void createCompileUnit(long[] args) {
+        CompileUnit node = new CompileUnit();
+
+        // long distinct = args[0]; // always true
+        node.setLanguage(args[1]);
+        node.setFile(metadata.getReference(args[2]));
+        node.setProducer(metadata.getReference(args[3]));
+        node.setOptimized(args[4] == 1);
+        node.setFlags(metadata.getReference(args[5]));
+        node.setRuntimeVersion(args[6]);
+        // long rawSplitDebugFilename = args[7];
+        // long emissionKind = args[8];
+        node.setEnumType(metadata.getReference(args[9]));
+        node.setRetainedTypes(metadata.getReference(args[10]));
+        node.setSubprograms(metadata.getReference(args[11]));
+        node.setGlobalVariables(metadata.getReference(args[12]));
+        // long importedEntities = args[13];
+        // long DWOId = args[14];
+        // long macros = args[15];
 
         metadata.add(node);
     }

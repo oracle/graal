@@ -78,29 +78,32 @@ public class MetadataArgumentParser implements Iterator<Type> {
         return get(index);
     }
 
-    protected Type get(int i) {
-        assert (args.length >= i * 2 + 1);
+    public static Type typeValToType(Types types, List<Type> symbols, long typeId, long val) {
+        Type typeOfArgument = types.get(typeId);
 
-        Type typeOfArgument = types.get(args[i * 2]);
-
-        long argVal = args[(i * 2) + 1];
         if (typeOfArgument instanceof IntegerConstantType) {
-            return symbols.get((int) argVal); // TODO: check
+            return symbols.get((int) val); // TODO: check
         } else if (typeOfArgument instanceof BigIntegerConstantType) {
-            return symbols.get((int) argVal); // TODO: check
+            return symbols.get((int) val); // TODO: check
         } else if (typeOfArgument instanceof IntegerType) {
-            return symbols.get((int) argVal); // should work
+            return symbols.get((int) val); // should work
         } else if (typeOfArgument instanceof MetaType) {
             // TODO: return more suited type
-            return new IntegerConstantType(IntegerType.SHORT, argVal); // TODO: check
+            return new IntegerConstantType(IntegerType.SHORT, val); // TODO: check
         } else if (typeOfArgument instanceof PointerType) {
             // TODO: return more suited type
-            return new IntegerConstantType(IntegerType.INTEGER, argVal); // TODO: check
+            return new IntegerConstantType(IntegerType.INTEGER, val); // TODO: check
         } else {
 
             System.out.println(typeOfArgument.getClass().getName()); // TODO: get correct type
-            return new IntegerConstantType(IntegerType.SHORT, argVal);
+            return new IntegerConstantType(IntegerType.SHORT, val);
         }
+    }
+
+    protected Type get(int i) {
+        assert (args.length >= i * 2 + 1);
+
+        return typeValToType(types, symbols, args[i * 2], args[(i * 2) + 1]);
     }
 
     public int remaining() {
