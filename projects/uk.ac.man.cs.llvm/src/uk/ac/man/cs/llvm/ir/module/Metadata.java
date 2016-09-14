@@ -34,12 +34,23 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.BasicType;
+import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
 import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.Kind;
+import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
+import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
+import uk.ac.man.cs.llvm.ir.model.metadata.Name;
+import uk.ac.man.cs.llvm.ir.model.metadata.NamedNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.Node;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
+import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -52,6 +63,8 @@ public class Metadata implements ParserListener {
     protected final List<Type> symbols;
 
     protected final MetadataBlock metadata = new MetadataBlock();
+
+    protected int oldMetadataSize = 0; // TODO: only for debugging purpose
 
     // protected MetadataGenerator metadata;
 
@@ -70,6 +83,13 @@ public class Metadata implements ParserListener {
         }
         @formatter:on
         */
+    }
+
+    protected void printMetadataDebugMsg() {
+        if (metadata.size() != oldMetadataSize) {
+            // System.out.println("!" + idx + " - " + metadata.getAbsolute(metadata.size() - 1));
+            oldMetadataSize = metadata.size();
+        }
     }
 
     /*
@@ -150,6 +170,14 @@ public class Metadata implements ParserListener {
                 createSubroutineType(args);
                 break;
 
+            case LEXICAL_BLOCK:
+                createLexicalBlock(args);
+                break;
+
+            case LEXICAL_BLOCK_FILE:
+                createLexicalBlockFile(args);
+                break;
+
             case LOCAL_VAR:
                 createLocalVar(args);
                 break;
@@ -170,6 +198,9 @@ public class Metadata implements ParserListener {
                 System.out.println("!" + idx + " - " + record + ": " + Arrays.toString(args));
                 break;
         }
+
+        printMetadataDebugMsg();
+
         idx++;
     }
 
@@ -179,11 +210,9 @@ public class Metadata implements ParserListener {
             s += (char) (lc); // TODO: unicode characters?
         }
 
-        MetadataNode node = new MetadataString(s);
+        MetadataString node = new MetadataString(s);
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createValue(long[] args) {
@@ -201,17 +230,17 @@ public class Metadata implements ParserListener {
         }
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createName(long[] args) {
-        String s = "";
+        String name = "";
         for (long lc : args) {
-            s += (char) (lc); // TODO: unicode characters?
+            name += (char) (lc); // TODO: unicode characters?
         }
 
-        System.out.println("!" + idx + " - " + MetadataRecord.NAME + ": \"" + s + "\"");
+        Name node = new Name(name);
+
+        metadata.add(node);
     }
 
     protected void createDistinctNode(long[] args) {
@@ -221,12 +250,14 @@ public class Metadata implements ParserListener {
     }
 
     protected void createKind(long[] args) {
-        long id = args[0];
         String name = "";
         for (int i = 1; i < args.length; i++) {
             name += (char) (args[i]); // TODO: unicode characters?
         }
-        System.out.println("!" + idx + " - " + MetadataRecord.KIND + " id=" + id + ", name=\"" + name + "\"");
+
+        Kind node = new Kind(args[0], name);
+
+        metadata.add(node);
     }
 
     protected void createLocation(long[] args) {
@@ -240,9 +271,13 @@ public class Metadata implements ParserListener {
     }
 
     protected void createNamedNode(long[] args) {
-        // [n x mdnodes]
+        NamedNode node = new NamedNode();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.NAMED_NODE + " - " + Arrays.toString(args));
+        for (long arg : args) {
+            node.add(metadata.getReference((int) arg));
+        }
+
+        metadata.add(node);
     }
 
     protected void createAttachment(long[] args) {
@@ -262,11 +297,13 @@ public class Metadata implements ParserListener {
     }
 
     protected void createSubrange(long[] args) {
-        long distinct = args[0];
-        long count = args[1];
-        long lo = args[0]; // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L204
+        Subrange node = new Subrange();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.SUBRANGE + ": count=" + count + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        node.setSize(args[1]);
+        node.setLowBound(args[3]);
+
+        metadata.add(node);
     }
 
     protected void createEnumerator(long[] args) {
@@ -277,20 +314,19 @@ public class Metadata implements ParserListener {
         node.setName(metadata.getReference(args[2]));
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createBasicType(long[] args) {
-        // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L916
-        long distinct = args[0];
-        long tag = args[0];
-        long name = args[2];
-        long size = args[3];
-        long align = args[4];
-        long encoding = args[5]; // DW_ATE_signed=5, DW_ATE_signed_char=6
+        BasicType node = new BasicType();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.BASIC_TYPE + ": name=!" + name + ": size=" + size + ": align=" + align + ": encoding=" + encoding + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        // long tag = args[0];
+        node.setName(metadata.getReference(args[2]));
+        node.setSize(args[3]);
+        node.setAlign(args[4]);
+        node.setEncoding(args[5]);
+
+        metadata.add(node);
     }
 
     protected void createFile(long[] args) {
@@ -301,12 +337,9 @@ public class Metadata implements ParserListener {
         node.setDirectory(metadata.getReference(args[2]));
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createSubprogram(long[] args) {
-        // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L1030
         Subprogram node = new Subprogram();
 
         // long distinct = args[0];
@@ -317,7 +350,7 @@ public class Metadata implements ParserListener {
         node.setLine(args[5]);
         node.setType(metadata.getReference(args[6]));
         node.setLocalToUnit(args[7] == 1);
-        node.setDefinition(args[8] == 1);
+        node.setDefinedInCompileUnit(args[8] == 1);
         node.setScopeLine(args[9]);
         // long virtuallity = args[11];
         // long virtualIndex = args[12];
@@ -328,8 +361,6 @@ public class Metadata implements ParserListener {
         // long variables = args[17];
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createSubroutineType(long[] args) {
@@ -340,78 +371,100 @@ public class Metadata implements ParserListener {
         System.out.println("!" + idx + " - " + MetadataRecord.SUBROUTINE_TYPE + ": types=!" + types + " - " + Arrays.toString(args));
     }
 
-    protected void createLocalVar(long[] args) {
-        // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L1187
-        long distinct = args[0];
-        long scope = args[1];
-        long name = args[2];
-        long file = args[3];
-        long line = args[4];
-        long type = args[5];
-        long arg = args[6];
-        long flags = args[7];
+    protected void createLexicalBlock(long[] args) {
+        LexicalBlock node = new LexicalBlock();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.LOCAL_VAR + ": name=!" + name + ", scope=!" + scope + ", line=" + line + ", file=!" + file + ", type=!" + type + " - " +
-                        Arrays.toString(args));
+        // long distinct = args[0];
+        // long scope = args[1];
+        node.setFile(metadata.getReference(args[2]));
+        node.setLine(args[3]);
+        node.setColumn(args[4]);
+
+        metadata.add(node);
+    }
+
+    protected void createLexicalBlockFile(long[] args) {
+        LexicalBlockFile node = new LexicalBlockFile();
+
+        // long distinct = args[0];
+        // long scope = args[1];
+        node.setFile(metadata.getReference(args[2]));
+        // long discriminator = args[3]);
+
+        metadata.add(node);
+    }
+
+    protected void createLocalVar(long[] args) {
+        LocalVariable node = new LocalVariable();
+
+        // long distinct = args[0];
+        // long scope = args[1];
+        node.setName(metadata.getReference(args[2]));
+        node.setFile(metadata.getReference(args[3]));
+        node.setLine(args[4]);
+        node.setType(metadata.getReference(args[5]));
+        node.setArg(args[6]);
+        node.setFlags(args[7]);
+
+        metadata.add(node);
     }
 
     protected void createGlobalVar(long[] args) {
-// https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L1166
-        long distinct = args[0];
-        long scope = args[1];
-        long name = args[2];
-        long LinkageName = args[2];
-        long file = args[4];
-        long line = args[5];
-        long type = args[6];
-        long localToUnit = args[7];
-        long isDefinition = args[8];
-        long rawVariable = args[9];
-        long staticDataMemberDeclaration = args[10];
+        GlobalVariable node = new GlobalVariable();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.GLOBAL_VAR + ": name=!" + name + ", scope=!" + scope + ", line=" + line + ", file=!" + file + ", type=!" + type + " - " +
-                        Arrays.toString(args));
+        // long distinct = args[0];
+        // long scope = args[1];
+        node.setName(metadata.getReference(args[2]));
+        node.setLinkageName(metadata.getReference(args[3]));
+        node.setLine(args[5]);
+        node.setType(metadata.getReference(args[6]));
+        node.setLocalToCompileUnit(args[7] == 1);
+        node.setDefinedInCompileUnit(args[8] == 1);
+        // long rawVariable = args[9];
+        // long staticDataMemberDeclaration = args[10];
+
+        metadata.add(node);
     }
 
     protected void createDerivedType(long[] args) {
-        // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L931
-        long distinct = args[0];
-        long tag = args[1];
-        long name = args[2];
-        long file = args[3];
-        long line = args[4];
-        long scope = args[5];
-        long baseType = args[6];
-        long size = args[7];
-        long align = args[8];
-        long offset = args[9];
-        long flags = args[10];
-        long extraData = args[11];
+        DerivedType node = new DerivedType();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.DERIVED_TYPE + ": name=!" + name + ": size=" + size + ": align=" + align + ": offset=" + offset + ": baseType=!" + baseType + ": file=!" +
-                        file + ", line=" + line + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        // long tag = args[1];
+        node.setName(metadata.getReference(args[2]));
+        node.setFile(metadata.getReference(args[3]));
+        node.setLine(args[4]);
+        // long scope = args[5];
+        node.setBaseType(metadata.getReference(args[6]));
+        node.setSize(args[7]);
+        node.setAlign(args[8]);
+        node.setOffset(args[9]);
+        node.setFlags(args[10]);
+        // long extraData = args[11];
+
+        metadata.add(node);
     }
 
     protected void createCompositeType(long[] args) {
-        // https://github.com/llvm-mirror/llvm/blob/release_38/lib/Bitcode/Writer/BitcodeWriter.cpp#L953
-        long distinct = args[0];
-        long tag = args[1];
-        long name = args[2];
-        long file = args[3];
-        long line = args[4];
-        long scope = args[5];
-        long baseType = args[6];
-        long size = args[7];
-        long align = args[8];
-        long offset = args[9];
-        long flags = args[10];
-        long elements = args[11];
-        long runtimeLang = args[12];
-        long vTableHolder = args[13];
-        long templateParams = args[14];
-        long rawIdentifier = args[15];
+        CompositeType node = new CompositeType();
 
-        System.out.println("!" + idx + " - " + MetadataRecord.COMPOSITE_TYPE + ": name=!" + name + ": size=" + size + ": align=" + align + ": file=!" +
-                        file + ", line=" + line + ", elements=!" + elements + " - " + Arrays.toString(args));
+        // long distinct = args[0];
+        // long tag = args[1];
+        node.setName(metadata.getReference(args[2]));
+        node.setFile(metadata.getReference(args[3]));
+        node.setLine(args[4]);
+        // long scope = args[5];
+        node.setDerivedFrom(metadata.getReference(args[6])); // TODO: verify
+        node.setSize(args[7]);
+        node.setAlign(args[8]);
+        node.setOffset(args[9]);
+        node.setFlags(args[10]);
+        node.setMemberDescriptors(metadata.getReference(args[11]));
+        node.setRuntimeLanguage(args[12]);
+        // long vTableHolder = args[13];
+        // long templateParams = args[14];
+        // long rawIdentifier = args[15];
+
+        metadata.add(node);
     }
 }

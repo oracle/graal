@@ -29,6 +29,14 @@ public class MetadataBlock {
         return metadata.get(index - startIndex);
     }
 
+    public MetadataNode getAbsolute(int index) { // TOOD: do index recalculation in getReference
+        return metadata.get(index);
+    }
+
+    public int size() {
+        return metadata.size();
+    }
+
     public MetadataReference getReference(int index) {
         if (index == 0)
             return voidRef;

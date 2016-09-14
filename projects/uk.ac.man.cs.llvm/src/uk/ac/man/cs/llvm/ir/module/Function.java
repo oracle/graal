@@ -117,7 +117,7 @@ public class Function implements ParserListener {
              *
              * metadata !{
              *  i32 4,          ;; line number
-             *  i32 0,          ;; column number (until now, this field was always zero)
+             *  i32 0,          ;; column number
              *  metadata !12,   ;; scope
              *  null            ;; original scope
              * }

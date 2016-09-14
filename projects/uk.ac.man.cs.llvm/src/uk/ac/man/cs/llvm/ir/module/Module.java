@@ -96,7 +96,6 @@ public class Module implements ParserListener {
                 return new ValueSymbolTable(generator);
 
             case METADATA:
-                System.out.println("Metadata Block");// TODO
                 return version.createMetadata(types, symbols);
 
             default:

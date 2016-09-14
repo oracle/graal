@@ -33,12 +33,19 @@ import java.util.Arrays;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
+import uk.ac.man.cs.llvm.ir.model.metadata.BasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
 import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
 import uk.ac.man.cs.llvm.ir.model.metadata.File;
+import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
+import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.Node;
 import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
+import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -85,6 +92,8 @@ public class MetadataV32 extends Metadata {
                 return;
         }
 
+        printMetadataDebugMsg();
+
         idx++;
     }
 
@@ -116,8 +125,8 @@ public class MetadataV32 extends Metadata {
              * How the data is stored: http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html
              */
             switch (record) {
-                case DW_TAG_VARIABLE:
-                    createDwTagVariable(parsedArgs);
+                case DW_TAG_GLOBAL_VARIABLE:
+                    createDwTagGlobalVariable(parsedArgs);
                     break;
 
                 case DW_TAG_COMPILE_UNIT:
@@ -128,8 +137,8 @@ public class MetadataV32 extends Metadata {
                     createDwTagFileType(parsedArgs);
                     break;
 
-                case DW_TAG_BASE_TYPE:
-                    createDwTagBaseType(parsedArgs);
+                case DW_TAG_BASIC_TYPE:
+                    createDwTagBasicType(parsedArgs);
                     break;
 
                 case DW_TAG_ARRAY_TYPE:
@@ -142,6 +151,23 @@ public class MetadataV32 extends Metadata {
                     createDwCompositeType(parsedArgs, record);
                     break;
 
+                case DW_TAG_FORMAL_PARAMETER:
+                case DW_TAG_MEMBER:
+                case DW_TAG_POINTER_TYPE:
+                case DW_TAG_REFERENCE_TYPE:
+                case DW_TAG_TYPEDEF:
+                case DW_TAG_CONST_TYPE:
+                case DW_TAG_VOLATILE_TYPE:
+                case DW_TAG_RESTRICTED_TYPE:
+                    createDwDerivedType(parsedArgs, record);
+                    break;
+
+                case DW_TAG_AUTO_VARIABLE:
+                case DW_TAG_ARG_VARIABLE:
+                case DW_TAG_RETURN_VARIABLE:
+                    createDwTagLocalVariable(parsedArgs, record);
+                    break;
+
                 case DW_TAG_ENUMERATOR:
                     createDwTagEnumerator(parsedArgs);
                     break;
@@ -150,20 +176,12 @@ public class MetadataV32 extends Metadata {
                     createDwTagSubprogram(parsedArgs);
                     break;
 
-                case DW_TAG_AUTO_VARIABLE:
-                    createDwTagAutoVariable(parsedArgs);
-                    break;
-
                 case DW_TAG_SUBRANGE_TYPE:
                     createDwTagSubrangeType(parsedArgs);
                     break;
 
                 case DW_TAG_LEXICAL_BLOCK:
                     createDwTagLexicalBlock(parsedArgs);
-                    break;
-
-                case DW_TAG_MEMBER:
-                    createDwTagMember(parsedArgs);
                     break;
 
                 default:
@@ -200,14 +218,23 @@ public class MetadataV32 extends Metadata {
         }
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
-    protected void createDwTagVariable(MetadataArgumentParser args) {
-        // TODO
+    protected void createDwTagGlobalVariable(MetadataArgumentParser args) {
+        GlobalVariable node = new GlobalVariable();
 
-        System.out.println("!" + idx + " - DW_TAG_variable");
+        args.next(); // Unused
+        node.setContext(metadata.getReference(args.next()));
+        node.setName(metadata.getReference(args.next()));
+        node.setDisplayName(metadata.getReference(args.next()));
+        node.setLinkageName(metadata.getReference(args.next()));
+        node.setLine(asInt32(args.next()));
+        node.setType(metadata.getReference(args.next()));
+        node.setLocalToCompileUnit(asInt1(args.next()));
+        node.setDefinedInCompileUnit(asInt1(args.next()));
+        args.next(); // TODO: Reference to the global variable
+
+        metadata.add(node);
     }
 
     protected void createDwTagCompileUnit(MetadataArgumentParser args) {
@@ -228,8 +255,6 @@ public class MetadataV32 extends Metadata {
         node.setGlobalVariables(metadata.getReference(args.next()));
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagFileType(MetadataArgumentParser args) {
@@ -240,23 +265,22 @@ public class MetadataV32 extends Metadata {
         args.next(); // Unused
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
-    protected void createDwTagBaseType(MetadataArgumentParser args) {
-        // TODO: implement
-        args.next(); // Unused
-        args.next(); // Unused
-        long name = asMetadata(args.next());
-        long line = asInt32(args.next());
-        long size = asInt64(args.next());
-        long align = asInt64(args.next());
-        long offset = asInt64(args.next());
-        long flags = asInt32(args.next());
-        long encoding = asInt32(args.next());
+    protected void createDwTagBasicType(MetadataArgumentParser args) {
+        BasicType node = new BasicType();
 
-        System.out.println("!" + idx + " - DW_TAG_base_type");
+        args.next(); // Reference to context
+        node.setName(metadata.getReference(args.next()));
+        node.setFile(metadata.getReference(args.next()));
+        node.setLine(asInt32(args.next()));
+        node.setSize(asInt64(args.next()));
+        node.setAlign(asInt64(args.next()));
+        node.setOffset(asInt64(args.next()));
+        node.setFlags(asInt32(args.next()));
+        node.setEncoding(asInt32(args.next()));
+
+        metadata.add(node);
     }
 
     protected void createDwCompositeType(MetadataArgumentParser args, DwTagRecord record) {
@@ -276,7 +300,7 @@ public class MetadataV32 extends Metadata {
 
         metadata.add(node);
 
-        System.out.println("!" + idx + " - " + node + " - (" + record + ")");
+        // System.out.println("!" + idx + " - " + node + " - (" + record + ")");
     }
 
     protected void createDwTagEnumerator(MetadataArgumentParser args) {
@@ -286,62 +310,115 @@ public class MetadataV32 extends Metadata {
         node.setValue(asInt64(args.next()));
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
     protected void createDwTagSubprogram(MetadataArgumentParser args) {
         Subprogram node = new Subprogram();
 
-        // TODO: somehow reverse engineered, has to be checked
-        args.next();
-        args.next(); // scope?
+        args.next(); // Unused
+        args.next(); // context
         node.setName(metadata.getReference(args.next()));
+        node.setDisplayName(metadata.getReference(args.next()));
         node.setLinkageName(metadata.getReference(args.next()));
-        args.next();
         node.setFile(metadata.getReference(args.next()));
         node.setLine(asInt32(args.next()));
-        args.next(); // DW_TAG_subroutine_type
+        node.setType(metadata.getReference(args.next()));
         node.setLocalToUnit(asInt1(args.next()));
-        node.setDefinition(asInt1(args.next()));
-        args.next();
-        args.next();
-        args.next();
-        args.next();
-        node.setOptimized(asInt1(args.next()));
-        args.next();
-        args.next();
-        args.next();
-        args.next();
+        node.setDefinedInCompileUnit(asInt1(args.next()));
         node.setScopeLine(asInt32(args.next()));
+        args.next(); // i32, ;; Virtuality, e.g. dwarf::DW_VIRTUALITY__virtual
+        args.next(); // i32, ;; Index into a virtual function
+        args.next(); // metadata, ;; indicates which base type contains the vtable pointer...
+        node.setFlags(metadata.getReference(args.next()));
+        node.setOptimized(asInt1(args.next()));
+        args.next(); // Function *,;; Pointer to LLVM function
+        args.next(); // metadata, ;; Lists function template parameters
+        args.next(); // metadata ;; Function declaration descriptor
+        args.next(); // metadata ;; List of function variables
 
         metadata.add(node);
-
-        System.out.println("!" + idx + " - " + node);
     }
 
-    protected void createDwTagAutoVariable(MetadataArgumentParser args) {
-        // TODO
+    protected void createDwTagLocalVariable(MetadataArgumentParser args, DwTagRecord record) {
+        LocalVariable node = new LocalVariable();
 
-        System.out.println("!" + idx + " - DW_TAG_auto_variable");
+        node.setContext(metadata.getReference(args.next()));
+        node.setName(metadata.getReference(args.next()));
+        node.setFile(metadata.getReference(args.next()));
+        long lineAndArg = asInt32(args.next());
+        long line = lineAndArg & 0xFFFFFF;
+        long arg = (lineAndArg & 0xFF000000) >> 24;
+        node.setLine(line);
+        node.setArg(arg);
+        node.setType(metadata.getReference(args.next()));
+        node.setFlags(asInt32(args.next()));
+        // metadata ;; (optional) Reference to inline location
+
+        metadata.add(node);
     }
 
     protected void createDwTagSubrangeType(MetadataArgumentParser args) {
-        // TODO
+        Subrange node = new Subrange();
 
-        System.out.println("!" + idx + " - DW_TAG_subrange_type");
+        // TODO: if lowBound > highBound --> bound not included
+        long lowBound = asInt64(args.next());
+        long highBound = asInt64(args.next());
+
+        node.setLowBound(lowBound);
+        node.setSize(highBound - lowBound + 1);
+
+        metadata.add(node);
     }
 
     protected void createDwTagLexicalBlock(MetadataArgumentParser args) {
-        // TODO
+        switch (args.remaining()) {
+            case 2: {
+                LexicalBlockFile node = new LexicalBlockFile();
 
-        System.out.println("!" + idx + " - DW_TAG_lexical_block");
+                args.next(); // metadata ;; Reference to the scope we're annotating...
+                node.setFile(metadata.getReference(args.next()));
+
+                metadata.add(node);
+                break;
+            }
+
+            case 5: {
+                LexicalBlock node = new LexicalBlock();
+
+                args.next(); // metadata,;; Reference to context descriptor
+                node.setLine(asInt32(args.next()));
+                node.setColumn(asInt32(args.next()));
+                node.setFile(metadata.getReference(args.next()));
+                args.next(); // i32 ;; Unique ID to identify blocks from a template function
+
+                metadata.add(node);
+                break;
+            }
+
+            default:
+                throw new RuntimeException("Unknow Lexical Block");
+        }
     }
 
-    protected void createDwTagMember(MetadataArgumentParser args) {
-        // TODO
+    protected void createDwDerivedType(MetadataArgumentParser args, DwTagRecord record) {
+        DerivedType node = new DerivedType();
 
-        System.out.println("!" + idx + " - DW_TAG_member");
+        args.next(); // Context
+        node.setName(metadata.getReference(args.next()));
+        node.setFile(metadata.getReference(args.next()));
+        node.setLine(asInt32(args.next()));
+        node.setSize(asInt64(args.next()));
+        node.setAlign(asInt64(args.next()));
+        node.setOffset(asInt64(args.next()));
+        node.setFlags(asInt32(args.next()));
+        node.setBaseType(metadata.getReference(args.next()));
+        // metadata, ;; (optional) Name of the Objective C property getter selector.
+        // metadata, ;; (optional) Name of the Objective C property setter selector.
+        // i32 ;; (optional) Objective C property attributes.
+
+        metadata.add(node);
+
+        // System.out.println("!" + idx + " - " + node + " - (" + record + ")");
     }
 
 }

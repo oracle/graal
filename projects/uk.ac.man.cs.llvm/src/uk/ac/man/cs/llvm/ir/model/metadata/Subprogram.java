@@ -6,12 +6,13 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 public class Subprogram implements MetadataNode {
 
     protected MetadataReference name = MetadataBlock.voidRef;
+    protected MetadataReference displayName = MetadataBlock.voidRef;
     protected MetadataReference linkageName = MetadataBlock.voidRef;
     protected MetadataReference file = MetadataBlock.voidRef;
     protected long line;
     protected MetadataReference type = MetadataBlock.voidRef;
     protected boolean isLocalToUnit;
-    protected boolean isDefinition;
+    protected boolean isDefinedInCompileUnit;
     protected long scopeLine;
     protected MetadataReference containingType = MetadataBlock.voidRef;
     // long virtuallity = args[11];
@@ -31,6 +32,14 @@ public class Subprogram implements MetadataNode {
 
     public void setName(MetadataReference name) {
         this.name = name;
+    }
+
+    public MetadataReference getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(MetadataReference displayName) {
+        this.displayName = displayName;
     }
 
     public MetadataReference getLinkageName() {
@@ -73,12 +82,12 @@ public class Subprogram implements MetadataNode {
         this.isLocalToUnit = isLocalToUnit;
     }
 
-    public boolean isDefinition() {
-        return isDefinition;
+    public boolean isDefinedInCompileUnit() {
+        return isDefinedInCompileUnit;
     }
 
-    public void setDefinition(boolean isDefinition) {
-        this.isDefinition = isDefinition;
+    public void setDefinedInCompileUnit(boolean isDefinition) {
+        this.isDefinedInCompileUnit = isDefinition;
     }
 
     public long getScopeLine() {
@@ -115,8 +124,8 @@ public class Subprogram implements MetadataNode {
 
     @Override
     public String toString() {
-        return "Subprogram [name=" + name + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type + ", isLocalToUnit=" + isLocalToUnit + ", isDefinition=" +
-                        isDefinition + ", scopeLine=" + scopeLine + ", containingType=" + containingType + ", flags=" + flags + ", isOptimized=" + isOptimized + "]";
+        return "Subprogram [name=" + name + ", displayName=" + displayName + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type + ", isLocalToUnit=" +
+                        isLocalToUnit + ", isDefinedInCompileUnit=" + isDefinedInCompileUnit + ", scopeLine=" + scopeLine + ", containingType=" + containingType + ", flags=" + flags +
+                        ", isOptimized=" + isOptimized + "]";
     }
-
 }
