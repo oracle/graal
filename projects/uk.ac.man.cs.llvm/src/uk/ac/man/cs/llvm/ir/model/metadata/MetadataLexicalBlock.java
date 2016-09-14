@@ -32,49 +32,11 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class GlobalVariable implements MetadataBaseNode {
+public class MetadataLexicalBlock implements MetadataBaseNode {
 
-    protected MetadataReference context = MetadataBlock.voidRef;
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference displayName = MetadataBlock.voidRef;
-    protected MetadataReference linkageName = MetadataBlock.voidRef;
     protected MetadataReference file = MetadataBlock.voidRef;
     protected long line;
-    protected MetadataReference type = MetadataBlock.voidRef;
-    protected boolean isLocalToCompileUnit;
-    protected boolean isDefinedInCompileUnit;
-
-    public MetadataReference getContext() {
-        return context;
-    }
-
-    public void setContext(MetadataReference context) {
-        this.context = context;
-    }
-
-    public MetadataReference getName() {
-        return name;
-    }
-
-    public void setName(MetadataReference name) {
-        this.name = name;
-    }
-
-    public MetadataReference getDisplayName() {
-        return displayName;
-    }
-
-    public void setDisplayName(MetadataReference displayName) {
-        this.displayName = displayName;
-    }
-
-    public MetadataReference getLinkageName() {
-        return linkageName;
-    }
-
-    public void setLinkageName(MetadataReference linkageName) {
-        this.linkageName = linkageName;
-    }
+    protected long column;
 
     public MetadataReference getFile() {
         return file;
@@ -92,33 +54,16 @@ public class GlobalVariable implements MetadataBaseNode {
         this.line = line;
     }
 
-    public MetadataReference getType() {
-        return type;
+    public long getColumn() {
+        return column;
     }
 
-    public void setType(MetadataReference type) {
-        this.type = type;
-    }
-
-    public boolean isLocalToCompileUnit() {
-        return isLocalToCompileUnit;
-    }
-
-    public void setLocalToCompileUnit(boolean isLocalToCompileUnit) {
-        this.isLocalToCompileUnit = isLocalToCompileUnit;
-    }
-
-    public boolean isDefinedInCompileUnit() {
-        return isDefinedInCompileUnit;
-    }
-
-    public void setDefinedInCompileUnit(boolean isDefinedInCompileUnit) {
-        this.isDefinedInCompileUnit = isDefinedInCompileUnit;
+    public void setColumn(long column) {
+        this.column = column;
     }
 
     @Override
     public String toString() {
-        return "GlobalVariable [context=" + context + ", name=" + name + ", displayName=" + displayName + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type +
-                        ", isLocalToCompileUnit=" + isLocalToCompileUnit + ", isDefinedInCompileUnit=" + isDefinedInCompileUnit + "]";
+        return "LexicalBlock [file=" + file + ", line=" + line + ", column=" + column + "]";
     }
 }

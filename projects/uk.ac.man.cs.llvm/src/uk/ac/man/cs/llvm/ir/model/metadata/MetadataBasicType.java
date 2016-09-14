@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class BasicType implements MetadataBaseNode {
+public class MetadataBasicType implements MetadataBaseNode {
     // http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_basic_type
 
     protected MetadataReference name = MetadataBlock.voidRef;

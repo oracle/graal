@@ -33,19 +33,19 @@ import java.util.Arrays;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
-import uk.ac.man.cs.llvm.ir.model.metadata.BasicType;
-import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
-import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
-import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
-import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataDerivedType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataEnumerator;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFile;
-import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
-import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
-import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
-import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataGlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlockFile;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
-import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
-import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubprogram;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubrange;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -116,7 +116,7 @@ public class MetadataV32 extends Metadata {
 
             // TODO: some hack, has to be changed when we can identify type informations clearly
             if (ident < 0x00010000) {
-                record = DwTagRecord.DW_TAG_UNKNOW;
+                record = DwTagRecord.DW_TAG_UNKNOWN;
             }
 
             /*
@@ -182,7 +182,7 @@ public class MetadataV32 extends Metadata {
                     createDwTagLexicalBlock(parsedArgs);
                     break;
 
-                case DW_TAG_UNKNOW:
+                case DW_TAG_UNKNOWN:
                     parsedArgs.rewind();
                     createDwNode(parsedArgs); // TODO: we need to know the type of the node
                     break;
@@ -217,7 +217,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagGlobalVariable(MetadataArgumentParser args) {
-        GlobalVariable node = new GlobalVariable();
+        MetadataGlobalVariable node = new MetadataGlobalVariable();
 
         args.next(); // Unused
         node.setContext(metadata.getReference(args.next()));
@@ -234,7 +234,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagCompileUnit(MetadataArgumentParser args) {
-        CompileUnit node = new CompileUnit();
+        MetadataCompileUnit node = new MetadataCompileUnit();
 
         args.next(); // Unused
         node.setLanguage(asInt32(args.next()));
@@ -264,7 +264,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagBasicType(MetadataArgumentParser args) {
-        BasicType node = new BasicType();
+        MetadataBasicType node = new MetadataBasicType();
 
         args.next(); // Reference to context
         node.setName(metadata.getReference(args.next()));
@@ -280,7 +280,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwCompositeType(MetadataArgumentParser args) {
-        CompositeType node = new CompositeType();
+        MetadataCompositeType node = new MetadataCompositeType();
 
         node.setContext(metadata.getReference(args.next()));
         node.setName(metadata.getReference(args.next()));
@@ -298,7 +298,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagEnumerator(MetadataArgumentParser args) {
-        Enumerator node = new Enumerator();
+        MetadataEnumerator node = new MetadataEnumerator();
 
         node.setName(metadata.getReference(args.next()));
         node.setValue(asInt64(args.next()));
@@ -307,7 +307,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagSubprogram(MetadataArgumentParser args) {
-        Subprogram node = new Subprogram();
+        MetadataSubprogram node = new MetadataSubprogram();
 
         args.next(); // Unused
         args.next(); // context
@@ -334,7 +334,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagLocalVariable(MetadataArgumentParser args) {
-        LocalVariable node = new LocalVariable();
+        MetadataLocalVariable node = new MetadataLocalVariable();
 
         node.setContext(metadata.getReference(args.next()));
         node.setName(metadata.getReference(args.next()));
@@ -352,7 +352,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwTagSubrangeType(MetadataArgumentParser args) {
-        Subrange node = new Subrange();
+        MetadataSubrange node = new MetadataSubrange();
 
         // TODO: if lowBound > highBound --> bound not included
         long lowBound = asInt64(args.next());
@@ -367,7 +367,7 @@ public class MetadataV32 extends Metadata {
     protected void createDwTagLexicalBlock(MetadataArgumentParser args) {
         switch (args.remaining()) {
             case 2: {
-                LexicalBlockFile node = new LexicalBlockFile();
+                MetadataLexicalBlockFile node = new MetadataLexicalBlockFile();
 
                 args.next(); // metadata ;; Reference to the scope we're annotating...
                 node.setFile(metadata.getReference(args.next()));
@@ -377,7 +377,7 @@ public class MetadataV32 extends Metadata {
             }
 
             case 5: {
-                LexicalBlock node = new LexicalBlock();
+                MetadataLexicalBlock node = new MetadataLexicalBlock();
 
                 args.next(); // metadata,;; Reference to context descriptor
                 node.setLine(asInt32(args.next()));
@@ -395,7 +395,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createDwDerivedType(MetadataArgumentParser args) {
-        DerivedType node = new DerivedType();
+        MetadataDerivedType node = new MetadataDerivedType();
 
         args.next(); // Context
         node.setName(metadata.getReference(args.next()));

@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class Subprogram implements MetadataBaseNode {
+public class MetadataSubprogram implements MetadataBaseNode {
 
     protected MetadataReference name = MetadataBlock.voidRef;
     protected MetadataReference displayName = MetadataBlock.voidRef;

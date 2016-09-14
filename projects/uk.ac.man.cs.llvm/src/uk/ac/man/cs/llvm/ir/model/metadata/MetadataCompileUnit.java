@@ -32,7 +32,7 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class CompileUnit implements MetadataBaseNode {
+public class MetadataCompileUnit implements MetadataBaseNode {
 
     protected long context;
     protected long language;

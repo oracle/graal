@@ -29,32 +29,16 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import java.util.ArrayList;
+
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class Enumerator implements MetadataBaseNode {
+public class MetadataNamedNode extends ArrayList<MetadataReference> implements MetadataBaseNode {
 
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected long value;
-
-    public MetadataReference getName() {
-        return name;
-    }
-
-    public void setName(MetadataReference name) {
-        this.name = name;
-    }
-
-    public long getValue() {
-        return value;
-    }
-
-    public void setValue(long value) {
-        this.value = value;
-    }
+    private static final long serialVersionUID = 1L;
 
     @Override
     public String toString() {
-        return "Enumerator [name=" + name + ", value=" + value + "]";
+        return "NamedNode " + super.toString();
     }
 }

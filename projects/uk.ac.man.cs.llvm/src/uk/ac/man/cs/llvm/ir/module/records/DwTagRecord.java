@@ -31,7 +31,7 @@ package uk.ac.man.cs.llvm.ir.module.records;
 
 public enum DwTagRecord {
 
-    DW_TAG_UNKNOW(-1),
+    DW_TAG_UNKNOWN(-1),
 
     DW_TAG_ARRAY_TYPE(1),
     DW_TAG_ENUMERATION_TYPE(4),
@@ -68,7 +68,7 @@ public enum DwTagRecord {
                 return cc;
             }
         }
-        return DW_TAG_UNKNOW;
+        return DW_TAG_UNKNOWN;
     }
 
     private final int code;

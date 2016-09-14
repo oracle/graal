@@ -32,9 +32,8 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class CompositeType implements MetadataBaseNode {
+public class MetadataDerivedType implements MetadataBaseNode {
 
-    protected MetadataReference context = MetadataBlock.voidRef;
     protected MetadataReference name = MetadataBlock.voidRef;
     protected MetadataReference file = MetadataBlock.voidRef;
     protected long line;
@@ -42,17 +41,7 @@ public class CompositeType implements MetadataBaseNode {
     protected long align;
     protected long offset;
     protected long flags;
-    protected MetadataReference derivedFrom = MetadataBlock.voidRef;
-    protected MetadataReference memberDescriptors = MetadataBlock.voidRef;
-    protected long runtimeLanguage;
-
-    public MetadataReference getContext() {
-        return context;
-    }
-
-    public void setContext(MetadataReference context) {
-        this.context = context;
-    }
+    protected MetadataReference baseType = MetadataBlock.voidRef;
 
     public MetadataReference getName() {
         return name;
@@ -110,34 +99,17 @@ public class CompositeType implements MetadataBaseNode {
         this.flags = flags;
     }
 
-    public MetadataReference getDerivedFrom() {
-        return derivedFrom;
+    public MetadataReference getBaseType() {
+        return baseType;
     }
 
-    public void setDerivedFrom(MetadataReference derivedFrom) {
-        this.derivedFrom = derivedFrom;
-    }
-
-    public MetadataReference getMemberDescriptors() {
-        return memberDescriptors;
-    }
-
-    public void setMemberDescriptors(MetadataReference memberDescriptors) {
-        this.memberDescriptors = memberDescriptors;
-    }
-
-    public long getRuntimeLanguage() {
-        return runtimeLanguage;
-    }
-
-    public void setRuntimeLanguage(long runtimeLanguage) {
-        this.runtimeLanguage = runtimeLanguage;
+    public void setBaseType(MetadataReference baseType) {
+        this.baseType = baseType;
     }
 
     @Override
     public String toString() {
-        return "CompositeType [context=" + context + ", name=" + name + ", file=" + file + ", line=" + line + ", size=" + size + ", align=" + align + ", offset=" + offset + ", flags=" + flags +
-                        ", derivedFrom=" + derivedFrom + ", memberDescriptors=" + memberDescriptors + ", runtimeLanguage=" + runtimeLanguage + "]";
+        return "DerivedType [name=" + name + ", file=" + file + ", line=" + line + ", size=" + size + ", align=" + align + ", offset=" + offset + ", flags=" + flags + ", baseType=" + baseType + "]";
     }
 
 }

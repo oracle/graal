@@ -34,23 +34,23 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
-import uk.ac.man.cs.llvm.ir.model.metadata.BasicType;
-import uk.ac.man.cs.llvm.ir.model.metadata.CompileUnit;
-import uk.ac.man.cs.llvm.ir.model.metadata.CompositeType;
-import uk.ac.man.cs.llvm.ir.model.metadata.DerivedType;
-import uk.ac.man.cs.llvm.ir.model.metadata.Enumerator;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataDerivedType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataEnumerator;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFile;
-import uk.ac.man.cs.llvm.ir.model.metadata.GlobalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataGlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataKind;
-import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
-import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
-import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlock;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlockFile;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataName;
-import uk.ac.man.cs.llvm.ir.model.metadata.NamedNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNamedNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
-import uk.ac.man.cs.llvm.ir.model.metadata.Subprogram;
-import uk.ac.man.cs.llvm.ir.model.metadata.Subrange;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubprogram;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubrange;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataValue;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.types.Type;
@@ -265,7 +265,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createNamedNode(long[] args) {
-        NamedNode node = new NamedNode();
+        MetadataNamedNode node = new MetadataNamedNode();
 
         for (long arg : args) {
             node.add(metadata.getReference((int) arg));
@@ -293,7 +293,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createSubrange(long[] args) {
-        Subrange node = new Subrange();
+        MetadataSubrange node = new MetadataSubrange();
 
         int i = 0;
         i++; // distinct
@@ -304,7 +304,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createEnumerator(long[] args) {
-        Enumerator node = new Enumerator();
+        MetadataEnumerator node = new MetadataEnumerator();
 
         int i = 0;
         i++; // distinct
@@ -315,7 +315,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createBasicType(long[] args) {
-        BasicType node = new BasicType();
+        MetadataBasicType node = new MetadataBasicType();
 
         int i = 0;
         i++; // distinct
@@ -340,7 +340,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createSubprogram(long[] args) {
-        Subprogram node = new Subprogram();
+        MetadataSubprogram node = new MetadataSubprogram();
 
         int i = 0;
         i++; // distinct
@@ -365,7 +365,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createSubroutineType(long[] args) {
-        CompositeType node = new CompositeType();
+        MetadataCompositeType node = new MetadataCompositeType();
 
         int i = 0;
         i++; // distinct
@@ -376,7 +376,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createLexicalBlock(long[] args) {
-        LexicalBlock node = new LexicalBlock();
+        MetadataLexicalBlock node = new MetadataLexicalBlock();
 
         int i = 0;
         i++; // distinct
@@ -389,7 +389,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createLexicalBlockFile(long[] args) {
-        LexicalBlockFile node = new LexicalBlockFile();
+        MetadataLexicalBlockFile node = new MetadataLexicalBlockFile();
 
         int i = 0;
         i++; // distinct
@@ -401,7 +401,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createLocalVar(long[] args) {
-        LocalVariable node = new LocalVariable();
+        MetadataLocalVariable node = new MetadataLocalVariable();
 
         int i = 0;
         i++; // distinct
@@ -417,7 +417,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createGlobalVar(long[] args) {
-        GlobalVariable node = new GlobalVariable();
+        MetadataGlobalVariable node = new MetadataGlobalVariable();
 
         int i = 0;
         i++; // distinct
@@ -435,7 +435,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createDerivedType(long[] args) {
-        DerivedType node = new DerivedType();
+        MetadataDerivedType node = new MetadataDerivedType();
 
         int i = 0;
         i++; // distinct
@@ -455,7 +455,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createCompositeType(long[] args) {
-        CompositeType node = new CompositeType();
+        MetadataCompositeType node = new MetadataCompositeType();
 
         int i = 0;
         i++; // distinct
@@ -479,7 +479,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void createCompileUnit(long[] args) {
-        CompileUnit node = new CompileUnit();
+        MetadataCompileUnit node = new MetadataCompileUnit();
 
         int i = 0;
         i++; // distinct, always true

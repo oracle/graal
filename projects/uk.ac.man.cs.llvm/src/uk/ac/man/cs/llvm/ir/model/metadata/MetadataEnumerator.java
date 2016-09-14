@@ -29,30 +29,32 @@
  */
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
-public class Subrange implements MetadataBaseNode {
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-    protected long lowBound;
-    protected long size;
+public class MetadataEnumerator implements MetadataBaseNode {
 
-    public long getLowBound() {
-        return lowBound;
+    protected MetadataReference name = MetadataBlock.voidRef;
+    protected long value;
+
+    public MetadataReference getName() {
+        return name;
     }
 
-    public void setLowBound(long lowBound) {
-        this.lowBound = lowBound;
+    public void setName(MetadataReference name) {
+        this.name = name;
     }
 
-    public long getSize() {
-        return size;
+    public long getValue() {
+        return value;
     }
 
-    public void setSize(long size) {
-        this.size = size;
+    public void setValue(long value) {
+        this.value = value;
     }
 
     @Override
     public String toString() {
-        return "Subrange [lowBound=" + lowBound + ", size=" + size + "]";
+        return "Enumerator [name=" + name + ", value=" + value + "]";
     }
-
 }
