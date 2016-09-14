@@ -24,9 +24,9 @@ package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
@@ -66,4 +66,16 @@ public interface DiagnosticLIRGeneratorTool {
      */
     interface ZapRegistersAfterInstruction {
     }
+
+    /**
+     * Marker interface for {@link LIRInstruction instructions} that should be preceded with a
+     * {@link DiagnosticLIRGeneratorTool#zapArgumentSpace ZapArgumentSpaceOp} if assertions are
+     * enabled.
+     */
+    interface ZapStackArgumentSpaceBeforeInstruction {
+    }
+
+    LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues);
+
+    LIRInstruction zapArgumentSpace();
 }

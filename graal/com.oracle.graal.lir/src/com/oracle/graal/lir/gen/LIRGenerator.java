@@ -27,9 +27,11 @@ import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +67,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -523,5 +526,33 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             zapValues[i] = zapValueForKind(kind);
         }
         return createZapRegisters(zappedRegisters, zapValues);
+    }
+
+    @Override
+    public abstract LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues);
+
+    @Override
+    public LIRInstruction zapArgumentSpace() {
+        List<StackSlot> slots = null;
+        for (AllocatableValue arg : res.getCallingConvention().getArguments()) {
+            if (isStackSlot(arg)) {
+                if (slots == null) {
+                    slots = new ArrayList<>();
+                }
+                slots.add((StackSlot) arg);
+            } else {
+                assert !isVirtualStackSlot(arg);
+            }
+        }
+        if (slots == null) {
+            return null;
+        }
+        StackSlot[] zappedStack = slots.toArray(new StackSlot[slots.size()]);
+        JavaConstant[] zapValues = new JavaConstant[zappedStack.length];
+        for (int i = 0; i < zappedStack.length; i++) {
+            PlatformKind kind = zappedStack[i].getPlatformKind();
+            zapValues[i] = zapValueForKind(kind);
+        }
+        return createZapArgumentSpace(zappedStack, zapValues);
     }
 }
