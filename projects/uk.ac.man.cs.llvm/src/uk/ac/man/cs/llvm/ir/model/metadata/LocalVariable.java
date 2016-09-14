@@ -42,9 +42,6 @@ public class LocalVariable implements MetadataNode {
     protected MetadataReference type = MetadataBlock.voidRef;
     protected long flags;
 
-    public LocalVariable() {
-    }
-
     public MetadataReference getContext() {
         return context;
     }

@@ -37,9 +37,6 @@ public class Enumerator implements MetadataNode {
     protected MetadataReference name = MetadataBlock.voidRef;
     protected long value;
 
-    public Enumerator() {
-    }
-
     public MetadataReference getName() {
         return name;
     }

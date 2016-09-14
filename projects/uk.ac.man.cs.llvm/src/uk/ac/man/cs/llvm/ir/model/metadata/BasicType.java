@@ -44,9 +44,6 @@ public class BasicType implements MetadataNode {
     protected long flags;
     protected long encoding; // DWARF type encoding
 
-    public BasicType() {
-    }
-
     public MetadataReference getName() {
         return name;
     }

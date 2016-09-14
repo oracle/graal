@@ -38,9 +38,6 @@ public class LexicalBlock implements MetadataNode {
     protected long line;
     protected long column;
 
-    public LexicalBlock() {
-    }
-
     public MetadataReference getFile() {
         return file;
     }

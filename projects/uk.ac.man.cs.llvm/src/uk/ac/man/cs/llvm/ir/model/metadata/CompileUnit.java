@@ -48,9 +48,6 @@ public class CompileUnit implements MetadataNode {
     protected MetadataReference subprograms = MetadataBlock.voidRef;
     protected MetadataReference globalVariables = MetadataBlock.voidRef;
 
-    public CompileUnit() {
-    }
-
     public long getContext() {
         return context;
     }

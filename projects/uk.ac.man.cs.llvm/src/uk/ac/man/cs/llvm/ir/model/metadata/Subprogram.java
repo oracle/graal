@@ -52,9 +52,6 @@ public class Subprogram implements MetadataNode {
     // long declaration = args[16];
     // long variables = args[17];
 
-    public Subprogram() {
-    }
-
     public MetadataReference getName() {
         return name;
     }

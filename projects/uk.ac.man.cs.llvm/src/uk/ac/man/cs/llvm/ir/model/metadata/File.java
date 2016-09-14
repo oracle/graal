@@ -37,9 +37,6 @@ public class File implements MetadataNode {
     protected MetadataReference file = MetadataBlock.voidRef;
     protected MetadataReference directory = MetadataBlock.voidRef;
 
-    public File() {
-    }
-
     public MetadataReference getFile() {
         return file;
     }

@@ -36,9 +36,6 @@ public class LexicalBlockFile implements MetadataNode {
 
     protected MetadataReference file = MetadataBlock.voidRef;
 
-    public LexicalBlockFile() {
-    }
-
     public MetadataReference getFile() {
         return file;
     }

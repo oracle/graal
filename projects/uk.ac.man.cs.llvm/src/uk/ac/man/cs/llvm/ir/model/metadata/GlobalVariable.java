@@ -44,9 +44,6 @@ public class GlobalVariable implements MetadataNode {
     protected boolean isLocalToCompileUnit;
     protected boolean isDefinedInCompileUnit;
 
-    public GlobalVariable() {
-    }
-
     public MetadataReference getContext() {
         return context;
     }

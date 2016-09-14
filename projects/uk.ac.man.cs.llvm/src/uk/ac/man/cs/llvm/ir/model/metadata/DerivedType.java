@@ -43,9 +43,6 @@ public class DerivedType implements MetadataNode {
     protected long flags;
     protected MetadataReference baseType = MetadataBlock.voidRef;
 
-    public DerivedType() {
-    }
-
     public MetadataReference getName() {
         return name;
     }

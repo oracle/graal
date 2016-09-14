@@ -34,9 +34,6 @@ public class Subrange implements MetadataNode {
     protected long lowBound;
     protected long size;
 
-    public Subrange() {
-    }
-
     public long getLowBound() {
         return lowBound;
     }

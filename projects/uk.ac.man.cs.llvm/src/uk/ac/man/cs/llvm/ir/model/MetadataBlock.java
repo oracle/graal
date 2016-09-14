@@ -42,10 +42,6 @@ public class MetadataBlock {
 
     protected int startIndex = 0;
 
-    public MetadataBlock() {
-
-    }
-
     public void setStartIndex(int index) {
         startIndex = index;
     }
@@ -109,7 +105,6 @@ public class MetadataBlock {
             throw new IndexOutOfBoundsException("That's an empty reference");
         }
 
-        // @Override
         public int getIndex() {
             return -1;
         }
@@ -137,7 +132,6 @@ public class MetadataBlock {
             return metadata.get(index - startIndex);
         }
 
-        // @Override
         public int getIndex() {
             return index;
         }

@@ -46,9 +46,6 @@ public class CompositeType implements MetadataNode {
     protected MetadataReference memberDescriptors = MetadataBlock.voidRef;
     protected long runtimeLanguage;
 
-    public CompositeType() {
-    }
-
     public MetadataReference getContext() {
         return context;
     }
