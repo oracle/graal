@@ -378,10 +378,11 @@ final class TraceLocalMoveResolver {
                 }
             }
 
-            int spillCandidate = -1;
+            ArrayList<AllocatableValue> busySpillSlots = null;
             while (mappingFrom.size() > 0) {
                 boolean processedInterval = false;
 
+                int spillCandidate = -1;
                 for (i = mappingFrom.size() - 1; i >= 0; i--) {
                     TraceInterval fromInterval = mappingFrom.get(i);
                     TraceInterval toInterval = mappingTo.get(i);
@@ -394,12 +395,18 @@ final class TraceLocalMoveResolver {
                         } else {
                             insertMove(mappingFromOpr.get(i), toInterval);
                         }
+                        if (isStackSlotValue(toInterval.location())) {
+                            if (busySpillSlots == null) {
+                                busySpillSlots = new ArrayList<>(2);
+                            }
+                            busySpillSlots.add(toInterval.location());
+                        }
                         mappingFrom.remove(i);
                         mappingFromOpr.remove(i);
                         mappingTo.remove(i);
 
                         processedInterval = true;
-                    } else if (fromInterval != null && isRegister(fromInterval.location())) {
+                    } else if (fromInterval != null && isRegister(fromInterval.location()) && (busySpillSlots == null || !busySpillSlots.contains(fromInterval.spillSlot()))) {
                         // this interval cannot be processed now because target is not free
                         // it starts in a register, so it is a possible candidate for spilling
                         spillCandidate = i;
@@ -440,7 +447,6 @@ final class TraceLocalMoveResolver {
         // Arbitrarily select the first entry for spilling.
         int stackSpillCandidate = 0;
         TraceInterval fromInterval = getMappingFrom(stackSpillCandidate);
-        assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
         VirtualStackSlot spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
         spillInterval(stackSpillCandidate, fromInterval, spillSlot);
