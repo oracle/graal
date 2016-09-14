@@ -48,6 +48,7 @@ import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubrange;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataV32 extends Metadata {
@@ -100,7 +101,10 @@ public class MetadataV32 extends Metadata {
     protected void createOldNode(long[] args) {
         MetadataArgumentParser parsedArgs = new MetadataArgumentParser(types, symbols, args);
 
-        if (parsedArgs.peek() instanceof IntegerConstantType) {
+        if (types.get(args[0]) instanceof MetaType) {
+            parsedArgs.rewind();
+            createDwNode(parsedArgs);
+        } else if (parsedArgs.peek() instanceof IntegerConstantType) {
             /*
              * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#LLVMDebugVersion
              *
@@ -113,11 +117,6 @@ public class MetadataV32 extends Metadata {
              */
             int ident = asInt32(parsedArgs.next());
             DwTagRecord record = DwTagRecord.decode(ident);
-
-            // TODO: some hack, has to be changed when we can identify type informations clearly
-            if (ident < 0x00010000) {
-                record = DwTagRecord.DW_TAG_UNKNOWN;
-            }
 
             /*
              * How the data is stored: http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html
@@ -191,11 +190,6 @@ public class MetadataV32 extends Metadata {
                     System.out.println("!" + idx + " - TODO: #" + record);
                     break;
             }
-        } else if (args[0] == 6) {
-            parsedArgs.rewind();
-            createDwNode(parsedArgs); // no idea how the real name is, it's normaly a list of
-                                      // metadata
-            // seperated with 6
         } else {
             parsedArgs.rewind();
             System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + ": " + parsedArgs);
@@ -333,6 +327,10 @@ public class MetadataV32 extends Metadata {
         metadata.add(node);
     }
 
+    private static final long DW_TAG_LOCAL_VARIABLE_LINE_PART = 0x00FFFFFF;
+    private static final long DW_TAG_LOCAL_VARIABLE_ARG_PART = 0xFF000000;
+    private static final long DW_TAG_LOCAL_VARIABLE_ARG_SHIFT = 24;
+
     protected void createDwTagLocalVariable(MetadataArgumentParser args) {
         MetadataLocalVariable node = new MetadataLocalVariable();
 
@@ -340,8 +338,8 @@ public class MetadataV32 extends Metadata {
         node.setName(metadata.getReference(args.next()));
         node.setFile(metadata.getReference(args.next()));
         long lineAndArg = asInt32(args.next());
-        long line = lineAndArg & 0xFFFFFF;
-        long arg = (lineAndArg & 0xFF000000) >> 24;
+        long line = lineAndArg & DW_TAG_LOCAL_VARIABLE_LINE_PART;
+        long arg = (lineAndArg & DW_TAG_LOCAL_VARIABLE_ARG_PART) >> DW_TAG_LOCAL_VARIABLE_ARG_SHIFT;
         node.setLine(line);
         node.setArg(arg);
         node.setType(metadata.getReference(args.next()));
@@ -364,9 +362,12 @@ public class MetadataV32 extends Metadata {
         metadata.add(node);
     }
 
+    private static final int DW_LEXICAL_BLOCK_FILE_LENGTH = 2;
+    private static final int DW_LEXICAL_BLOCK_LENGTH = 5;
+
     protected void createDwTagLexicalBlock(MetadataArgumentParser args) {
         switch (args.remaining()) {
-            case 2: {
+            case DW_LEXICAL_BLOCK_FILE_LENGTH: {
                 MetadataLexicalBlockFile node = new MetadataLexicalBlockFile();
 
                 args.next(); // metadata ;; Reference to the scope we're annotating...
@@ -376,7 +377,7 @@ public class MetadataV32 extends Metadata {
                 break;
             }
 
-            case 5: {
+            case DW_LEXICAL_BLOCK_LENGTH: {
                 MetadataLexicalBlock node = new MetadataLexicalBlock();
 
                 args.next(); // metadata,;; Reference to context descriptor

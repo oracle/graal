@@ -61,8 +61,10 @@ public enum DwTagRecord {
     DW_TAG_RETURN_VARIABLE(258),
     DW_TAG_VECTOR_TYPE(259);
 
+    private static final long DW_TAG_DECODE_LOWER_BYTES = 0x0000FFFF;
+
     public static DwTagRecord decode(long code) {
-        long codePart = code & 0x0000FFFF; // only the lower bytes are interesting for us
+        long codePart = code & DW_TAG_DECODE_LOWER_BYTES;
         for (DwTagRecord cc : values()) {
             if (cc.code() == codePart) {
                 return cc;

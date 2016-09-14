@@ -80,7 +80,7 @@ public class MetadataBlock {
     }
 
     /**
-     * Based on the idea of Optional, but used for automatic forward reference lookup
+     * Based on the idea of Optional, but used for automatic forward reference lookup.
      */
     public interface MetadataReference extends MetadataBaseNode {
         boolean isPresent();

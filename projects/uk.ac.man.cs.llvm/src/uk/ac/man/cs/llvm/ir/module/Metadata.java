@@ -81,8 +81,8 @@ public class Metadata implements ParserListener {
         }
     }
 
-    protected static long unrotateSign(long U) {
-        return (U & 1) == 1 ? ~(U >> 1) : U >> 1;
+    protected static long unrotateSign(long u) {
+        return (u & 1) == 1 ? ~(u >> 1) : u >> 1;
     }
 
     // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L191
@@ -443,7 +443,7 @@ public class Metadata implements ParserListener {
         i++; // tag
         node.setName(metadata.getReference(args[i++]));
         node.setFile(metadata.getReference(args[i++]));
-        node.setLine(args[4]);
+        node.setLine(args[i++]);
         i++; // scope
         node.setBaseType(metadata.getReference(args[i++]));
         node.setSize(args[i++]);
