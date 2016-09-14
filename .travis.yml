@@ -23,10 +23,7 @@ env:
   - TEST_COMMAND='mx/mx canonicalizeprojects'
   - TEST_COMMAND='mx/mx checkstyle'
   - TEST_COMMAND='sh .travis.sigtest.sh'
-  - TEST_COMMAND='mx/mx testdownstream'
 matrix:
     include:
       - env: TEST_COMMAND='mx/mx -v build'
         jdk: oraclejdk7
-    allow_failures:
-    - env: TEST_COMMAND='mx/mx testdownstream'
