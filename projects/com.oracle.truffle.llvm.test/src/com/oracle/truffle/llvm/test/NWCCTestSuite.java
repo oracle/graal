@@ -58,7 +58,7 @@ public class NWCCTestSuite extends RemoteTestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException, AssertionError {
         File configFile = LLVMPaths.NWCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.NWCC_TEST_SUITE;
-        return getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(true));
+        return getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(true, true));
     }
 
     @Test

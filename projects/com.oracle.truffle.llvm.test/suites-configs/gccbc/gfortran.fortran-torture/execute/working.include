@@ -34,7 +34,6 @@ gfortran.fortran-torture/execute/der_init_5.f90
 gfortran.fortran-torture/execute/read_null_string.f90
 gfortran.fortran-torture/execute/common_2.f90
 gfortran.fortran-torture/execute/data.f90
-gfortran.fortran-torture/execute/intrinsic_associated.f90
 gfortran.fortran-torture/execute/inquire_3.f90
 gfortran.fortran-torture/execute/getarg_1.f90
 gfortran.fortran-torture/execute/pr23373-1.f90
@@ -146,7 +145,6 @@ gfortran.fortran-torture/execute/plusconst_1.f90
 gfortran.fortran-torture/execute/where_10.f90
 gfortran.fortran-torture/execute/intrinsic_mmloc_2.f90
 gfortran.fortran-torture/execute/intrinsic_sum.f90
-gfortran.fortran-torture/execute/der_point.f90
 gfortran.fortran-torture/execute/der_type.f90
 gfortran.fortran-torture/execute/intrinsic_present.f90
 gfortran.fortran-torture/execute/entry_9.f90
