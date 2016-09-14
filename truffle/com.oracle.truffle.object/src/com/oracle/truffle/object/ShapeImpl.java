@@ -893,24 +893,7 @@ public abstract class ShapeImpl extends Shape {
             }
         }
 
-        return new DynamicObjectFactory() {
-            @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields = properties.toArray(new PropertyImpl[properties.size()]);
-
-            @ExplodeLoop
-            public DynamicObject newInstance(Object... initialValues) {
-                assert initialValues.length == instanceFields.length;
-                DynamicObject store = ShapeImpl.this.newInstance();
-                CompilerAsserts.partialEvaluationConstant(instanceFields.length);
-                for (int i = 0; i < instanceFields.length; i++) {
-                    instanceFields[i].setInternal(store, initialValues[i]);
-                }
-                return store;
-            }
-
-            public Shape getShape() {
-                return ShapeImpl.this;
-            }
-        };
+        return new DynamicObjectFactoryImpl(this, properties);
     }
 
     /** @since 0.17 or earlier */
@@ -928,6 +911,42 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     public <R> R accept(ShapeVisitor<R> visitor) {
         return visitor.visitShape(this);
+    }
+
+    private static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
+        private final ShapeImpl shape;
+        @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields;
+
+        private DynamicObjectFactoryImpl(ShapeImpl shape, List<Property> properties) {
+            this.shape = shape;
+            this.instanceFields = properties.toArray(new PropertyImpl[properties.size()]);
+        }
+
+        @ExplodeLoop
+        public DynamicObject newInstance(Object... initialValues) {
+            assert initialValues.length == instanceFields.length : wrongArguments(initialValues.length);
+            DynamicObject store = shape.newInstance();
+            CompilerAsserts.partialEvaluationConstant(instanceFields.length);
+            for (int i = 0; i < instanceFields.length; i++) {
+                instanceFields[i].setInternal(store, initialValues[i]);
+            }
+            return store;
+        }
+
+        private String wrongArguments(int givenLength) {
+            String message = givenLength + " arguments given but the factory takes " + instanceFields.length + ": ";
+            for (int i = 0; i < instanceFields.length; i++) {
+                message += instanceFields[i].getKey();
+                if (i != instanceFields.length - 1) {
+                    message += ", ";
+                }
+            }
+            return message;
+        }
+
+        public Shape getShape() {
+            return shape;
+        }
     }
 
     /** @since 0.17 or earlier */
