@@ -31,8 +31,8 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 
 public class MetadataSubrange implements MetadataBaseNode {
 
-    protected long lowBound;
-    protected long size;
+    private long lowBound;
+    private long size;
 
     public long getLowBound() {
         return lowBound;

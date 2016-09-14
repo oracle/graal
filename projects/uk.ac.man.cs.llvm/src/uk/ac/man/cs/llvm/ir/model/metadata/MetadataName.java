@@ -30,7 +30,8 @@
 package uk.ac.man.cs.llvm.ir.model.metadata;
 
 public class MetadataName implements MetadataBaseNode {
-    protected final String name;
+
+    private final String name;
 
     public MetadataName(String name) {
         this.name = name;

@@ -32,7 +32,8 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataValue implements MetadataBaseNode {
-    protected final Type value;
+
+    private final Type value;
 
     public MetadataValue(Type value) {
         this.value = value;

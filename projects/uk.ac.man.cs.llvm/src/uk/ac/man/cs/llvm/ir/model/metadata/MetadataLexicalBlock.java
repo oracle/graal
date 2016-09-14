@@ -34,9 +34,9 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataLexicalBlock implements MetadataBaseNode {
 
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected long column;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private long column;
 
     public MetadataReference getFile() {
         return file;

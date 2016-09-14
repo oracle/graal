@@ -34,13 +34,13 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataLocalVariable implements MetadataBaseNode {
 
-    protected MetadataReference context = MetadataBlock.voidRef;
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected long arg;
-    protected MetadataReference type = MetadataBlock.voidRef;
-    protected long flags;
+    private MetadataReference context = MetadataBlock.voidRef;
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private long arg;
+    private MetadataReference type = MetadataBlock.voidRef;
+    private long flags;
 
     public MetadataReference getContext() {
         return context;

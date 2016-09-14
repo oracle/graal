@@ -34,14 +34,14 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataDerivedType implements MetadataBaseNode {
 
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected long size;
-    protected long align;
-    protected long offset;
-    protected long flags;
-    protected MetadataReference baseType = MetadataBlock.voidRef;
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private long size;
+    private long align;
+    private long offset;
+    private long flags;
+    private MetadataReference baseType = MetadataBlock.voidRef;
 
     public MetadataReference getName() {
         return name;

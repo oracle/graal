@@ -34,15 +34,15 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataGlobalVariable implements MetadataBaseNode {
 
-    protected MetadataReference context = MetadataBlock.voidRef;
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference displayName = MetadataBlock.voidRef;
-    protected MetadataReference linkageName = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected MetadataReference type = MetadataBlock.voidRef;
-    protected boolean isLocalToCompileUnit;
-    protected boolean isDefinedInCompileUnit;
+    private MetadataReference context = MetadataBlock.voidRef;
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference displayName = MetadataBlock.voidRef;
+    private MetadataReference linkageName = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private MetadataReference type = MetadataBlock.voidRef;
+    private boolean isLocalToCompileUnit;
+    private boolean isDefinedInCompileUnit;
 
     public MetadataReference getContext() {
         return context;

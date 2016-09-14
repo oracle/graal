@@ -34,23 +34,23 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataSubprogram implements MetadataBaseNode {
 
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference displayName = MetadataBlock.voidRef;
-    protected MetadataReference linkageName = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected MetadataReference type = MetadataBlock.voidRef;
-    protected boolean isLocalToUnit;
-    protected boolean isDefinedInCompileUnit;
-    protected long scopeLine;
-    protected MetadataReference containingType = MetadataBlock.voidRef;
-    // long virtuallity = args[11];
-    // long virtualIndex = args[12];
-    protected MetadataReference flags = MetadataBlock.voidRef;
-    protected boolean isOptimized;
-    // long templateParams = args[15];
-    // long declaration = args[16];
-    // long variables = args[17];
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference displayName = MetadataBlock.voidRef;
+    private MetadataReference linkageName = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private MetadataReference type = MetadataBlock.voidRef;
+    private boolean isLocalToUnit;
+    private boolean isDefinedInCompileUnit;
+    private long scopeLine;
+    private MetadataReference containingType = MetadataBlock.voidRef;
+    // virtuallity
+    // virtualIndex
+    private MetadataReference flags = MetadataBlock.voidRef;
+    private boolean isOptimized;
+    // templateParams
+    // declaration
+    // variables
 
     public MetadataReference getName() {
         return name;

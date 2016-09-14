@@ -34,19 +34,19 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataCompileUnit implements MetadataBaseNode {
 
-    protected long context;
-    protected long language;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected MetadataReference directory = MetadataBlock.voidRef;
-    protected MetadataReference producer = MetadataBlock.voidRef;
-    protected boolean isDeprecatedField;
-    protected boolean isOptimized;
-    protected MetadataReference flags = MetadataBlock.voidRef;
-    protected long runtimeVersion;
-    protected MetadataReference enumType = MetadataBlock.voidRef;
-    protected MetadataReference retainedTypes = MetadataBlock.voidRef;
-    protected MetadataReference subprograms = MetadataBlock.voidRef;
-    protected MetadataReference globalVariables = MetadataBlock.voidRef;
+    private long context;
+    private long language;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private MetadataReference directory = MetadataBlock.voidRef;
+    private MetadataReference producer = MetadataBlock.voidRef;
+    private boolean isDeprecatedField;
+    private boolean isOptimized;
+    private MetadataReference flags = MetadataBlock.voidRef;
+    private long runtimeVersion;
+    private MetadataReference enumType = MetadataBlock.voidRef;
+    private MetadataReference retainedTypes = MetadataBlock.voidRef;
+    private MetadataReference subprograms = MetadataBlock.voidRef;
+    private MetadataReference globalVariables = MetadataBlock.voidRef;
 
     public long getContext() {
         return context;

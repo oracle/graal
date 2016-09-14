@@ -31,8 +31,8 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 
 public class MetadataKind implements MetadataBaseNode {
 
-    protected final long id;
-    protected final String name;
+    private final long id;
+    private final String name;
 
     public MetadataKind(long id, String name) {
         this.id = id;

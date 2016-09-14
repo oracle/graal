@@ -34,8 +34,8 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataEnumerator implements MetadataBaseNode {
 
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected long value;
+    private MetadataReference name = MetadataBlock.voidRef;
+    private long value;
 
     public MetadataReference getName() {
         return name;

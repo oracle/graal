@@ -34,17 +34,17 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class MetadataCompositeType implements MetadataBaseNode {
 
-    protected MetadataReference context = MetadataBlock.voidRef;
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected long size;
-    protected long align;
-    protected long offset;
-    protected long flags;
-    protected MetadataReference derivedFrom = MetadataBlock.voidRef;
-    protected MetadataReference memberDescriptors = MetadataBlock.voidRef;
-    protected long runtimeLanguage;
+    private MetadataReference context = MetadataBlock.voidRef;
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private long size;
+    private long align;
+    private long offset;
+    private long flags;
+    private MetadataReference derivedFrom = MetadataBlock.voidRef;
+    private MetadataReference memberDescriptors = MetadataBlock.voidRef;
+    private long runtimeLanguage;
 
     public MetadataReference getContext() {
         return context;

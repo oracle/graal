@@ -35,14 +35,14 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 public class MetadataBasicType implements MetadataBaseNode {
     // http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_basic_type
 
-    protected MetadataReference name = MetadataBlock.voidRef;
-    protected MetadataReference file = MetadataBlock.voidRef;
-    protected long line;
-    protected long size;
-    protected long align;
-    protected long offset;
-    protected long flags;
-    protected long encoding; // DWARF type encoding
+    private MetadataReference name = MetadataBlock.voidRef;
+    private MetadataReference file = MetadataBlock.voidRef;
+    private long line;
+    private long size;
+    private long align;
+    private long offset;
+    private long flags;
+    private long encoding; // DWARF type encoding
 
     public MetadataReference getName() {
         return name;
