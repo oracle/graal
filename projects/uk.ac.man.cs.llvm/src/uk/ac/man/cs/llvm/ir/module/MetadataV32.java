@@ -320,15 +320,15 @@ public class MetadataV32 extends Metadata {
         node.setLocalToUnit(asInt1(args.next()));
         node.setDefinedInCompileUnit(asInt1(args.next()));
         node.setScopeLine(asInt32(args.next()));
-        args.next(); // i32, ;; Virtuality, e.g. dwarf::DW_VIRTUALITY__virtual
-        args.next(); // i32, ;; Index into a virtual function
+        node.setVirtuallity(asInt32(args.next()));
+        node.setVirtualIndex(asInt32(args.next()));
         args.next(); // metadata, ;; indicates which base type contains the vtable pointer...
         node.setFlags(metadata.getReference(args.next()));
         node.setOptimized(asInt1(args.next()));
         args.next(); // Function *,;; Pointer to LLVM function
-        args.next(); // metadata, ;; Lists function template parameters
-        args.next(); // metadata ;; Function declaration descriptor
-        args.next(); // metadata ;; List of function variables
+        node.setTemplateParams(metadata.getReference(args.next()));
+        node.setDeclaration(metadata.getReference(args.next()));
+        node.setVariables(metadata.getReference(args.next()));
 
         metadata.add(node);
     }

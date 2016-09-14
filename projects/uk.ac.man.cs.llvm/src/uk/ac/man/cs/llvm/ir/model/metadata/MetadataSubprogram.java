@@ -44,13 +44,13 @@ public class MetadataSubprogram implements MetadataBaseNode {
     private boolean isDefinedInCompileUnit;
     private long scopeLine;
     private MetadataReference containingType = MetadataBlock.voidRef;
-    // virtuallity
-    // virtualIndex
+    private long virtuallity;
+    private long virtualIndex;
     private MetadataReference flags = MetadataBlock.voidRef;
     private boolean isOptimized;
-    // templateParams
-    // declaration
-    // variables
+    private MetadataReference templateParams = MetadataBlock.voidRef;
+    private MetadataReference declaration = MetadataBlock.voidRef;
+    private MetadataReference variables = MetadataBlock.voidRef;
 
     public MetadataReference getName() {
         return name;
@@ -132,6 +132,22 @@ public class MetadataSubprogram implements MetadataBaseNode {
         this.containingType = containingType;
     }
 
+    public long getVirtuallity() {
+        return virtuallity;
+    }
+
+    public void setVirtuallity(long virtuallity) {
+        this.virtuallity = virtuallity;
+    }
+
+    public long getVirtualIndex() {
+        return virtualIndex;
+    }
+
+    public void setVirtualIndex(long virtualIndex) {
+        this.virtualIndex = virtualIndex;
+    }
+
     public MetadataReference getFlags() {
         return flags;
     }
@@ -148,10 +164,36 @@ public class MetadataSubprogram implements MetadataBaseNode {
         this.isOptimized = isOptimized;
     }
 
+    public MetadataReference getTemplateParams() {
+        return templateParams;
+    }
+
+    public void setTemplateParams(MetadataReference templateParams) {
+        this.templateParams = templateParams;
+    }
+
+    public MetadataReference getDeclaration() {
+        return declaration;
+    }
+
+    public void setDeclaration(MetadataReference declaration) {
+        this.declaration = declaration;
+    }
+
+    public MetadataReference getVariables() {
+        return variables;
+    }
+
+    public void setVariables(MetadataReference variables) {
+        this.variables = variables;
+    }
+
     @Override
     public String toString() {
-        return "Subprogram [name=" + name + ", displayName=" + displayName + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type + ", isLocalToUnit=" +
-                        isLocalToUnit + ", isDefinedInCompileUnit=" + isDefinedInCompileUnit + ", scopeLine=" + scopeLine + ", containingType=" + containingType + ", flags=" + flags +
-                        ", isOptimized=" + isOptimized + "]";
+        return "MetadataSubprogram [name=" + name + ", displayName=" + displayName + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type + ", isLocalToUnit=" +
+                        isLocalToUnit + ", isDefinedInCompileUnit=" + isDefinedInCompileUnit + ", scopeLine=" + scopeLine + ", containingType=" + containingType + ", virtuallity=" + virtuallity +
+                        ", virtualIndex=" + virtualIndex + ", flags=" + flags + ", isOptimized=" + isOptimized + ", templateParams=" + templateParams + ", declaration=" + declaration +
+                        ", variables=" + variables + "]";
     }
+
 }

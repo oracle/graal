@@ -353,13 +353,14 @@ public class Metadata implements ParserListener {
         node.setLocalToUnit(args[i++] == 1);
         node.setDefinedInCompileUnit(args[i++] == 1);
         node.setScopeLine(args[i++]);
-        i++; // virtuallity
-        i++; // virtualIndex
+        node.setContainingType(metadata.getReference(args[i++]));
+        node.setVirtuallity(args[i++]);
+        node.setVirtualIndex(args[i++]);
         node.setFlags(metadata.getReference(args[i++]));
         node.setOptimized(args[i++] == 1);
-        i++; // templateParams
-        i++; // declaration
-        i++; // variables
+        node.setTemplateParams(metadata.getReference(args[i++]));
+        node.setDeclaration(metadata.getReference(args[i++]));
+        node.setVariables(metadata.getReference(args[i++]));
 
         metadata.add(node);
     }
