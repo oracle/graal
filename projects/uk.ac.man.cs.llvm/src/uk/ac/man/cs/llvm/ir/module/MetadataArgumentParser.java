@@ -29,7 +29,6 @@
  */
 package uk.ac.man.cs.llvm.ir.module;
 
-import java.util.AbstractCollection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -40,7 +39,7 @@ import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-/**
+/*
  * Metadata Nodes from the type OLD_NODE are structured in a way like:
  *
  * [type, value, type, value, ...]

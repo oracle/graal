@@ -63,10 +63,11 @@ public class MetadataBlock {
     }
 
     public MetadataReference getReference(int index) {
-        if (index == 0)
+        if (index == 0) {
             return voidRef;
-        else
+        } else {
             return new Reference(index);
+        }
     }
 
     public MetadataReference getReference(long index) {
@@ -82,14 +83,14 @@ public class MetadataBlock {
      * Based on the idea of Optional, but used for automatic forward reference lookup
      */
     public interface MetadataReference extends MetadataBaseNode {
-        public boolean isPresent();
+        boolean isPresent();
 
-        public MetadataBaseNode get();
+        MetadataBaseNode get();
     }
 
     public static final VoidReference voidRef = new VoidReference();
 
-    public static class VoidReference implements MetadataReference {
+    public static final class VoidReference implements MetadataReference {
 
         private VoidReference() {
         }
@@ -115,7 +116,7 @@ public class MetadataBlock {
         }
     }
 
-    public class Reference implements MetadataReference {
+    public final class Reference implements MetadataReference {
         public final int index;
 
         private Reference(int index) {

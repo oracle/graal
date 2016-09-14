@@ -45,7 +45,6 @@ import uk.ac.man.cs.llvm.ir.model.metadata.MetadataKind;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.LexicalBlockFile;
 import uk.ac.man.cs.llvm.ir.model.metadata.LocalVariable;
-import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBaseNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataName;
 import uk.ac.man.cs.llvm.ir.model.metadata.NamedNode;
@@ -254,11 +253,13 @@ public class Metadata implements ParserListener {
     }
 
     protected void createLocation(long[] args) {
-        long distinct = args[0];
-        long line = args[1];
-        long column = args[2];
-        long scope = args[3];
-        long inlineAt = args[4];
+        // int i = 0;
+        //
+        // long distinct = args[argNumber++];
+        // long line = args[i++];
+        // long column = args[i++];
+        // long scope = args[i++];
+        // long inlineAt = args[i++];
 
         System.out.println("!" + idx + " - " + MetadataRecord.LOCATION + " - " + Arrays.toString(args));
     }
@@ -280,10 +281,12 @@ public class Metadata implements ParserListener {
     }
 
     protected void createGenericDebug(long[] args) {
-        long distinct = args[0];
-        long tag = args[1];
-        long vers = args[2];
-        long header = args[3];
+        // int i = 0;
+        //
+        // long distinct = args[i++];
+        // long tag = args[i++];
+        // long vers = args[i++];
+        // long header = args[i++];
         // TODO: args[4] // n x md num
 
         System.out.println("!" + idx + " - " + MetadataRecord.GENERIC_DEBUG + " - " + Arrays.toString(args));
@@ -292,9 +295,10 @@ public class Metadata implements ParserListener {
     protected void createSubrange(long[] args) {
         Subrange node = new Subrange();
 
-        // long distinct = args[0];
-        node.setSize(args[1]);
-        node.setLowBound(unrotateSign(args[2]));
+        int i = 0;
+        i++; // distinct
+        node.setSize(args[i++]);
+        node.setLowBound(unrotateSign(args[i++]));
 
         metadata.add(node);
     }
@@ -302,9 +306,10 @@ public class Metadata implements ParserListener {
     protected void createEnumerator(long[] args) {
         Enumerator node = new Enumerator();
 
-        // long distinct = args[0];
-        node.setValue(unrotateSign(args[1]));
-        node.setName(metadata.getReference(args[2]));
+        int i = 0;
+        i++; // distinct
+        node.setValue(unrotateSign(args[i++]));
+        node.setName(metadata.getReference(args[i++]));
 
         metadata.add(node);
     }
@@ -312,12 +317,13 @@ public class Metadata implements ParserListener {
     protected void createBasicType(long[] args) {
         BasicType node = new BasicType();
 
-        // long distinct = args[0];
-        // long tag = args[0];
-        node.setName(metadata.getReference(args[2]));
-        node.setSize(args[3]);
-        node.setAlign(args[4]);
-        node.setEncoding(args[5]);
+        int i = 0;
+        i++; // distinct
+        i++; // tag
+        node.setName(metadata.getReference(args[i++]));
+        node.setSize(args[i++]);
+        node.setAlign(args[i++]);
+        node.setEncoding(args[i++]);
 
         metadata.add(node);
     }
@@ -325,9 +331,10 @@ public class Metadata implements ParserListener {
     protected void createFile(long[] args) {
         MetadataFile node = new MetadataFile();
 
-        // long distinct = args[0];
-        node.setFile(metadata.getReference(args[1]));
-        node.setDirectory(metadata.getReference(args[2]));
+        int i = 0;
+        i++; // distinct
+        node.setFile(metadata.getReference(args[i++]));
+        node.setDirectory(metadata.getReference(args[i++]));
 
         metadata.add(node);
     }
@@ -335,23 +342,24 @@ public class Metadata implements ParserListener {
     protected void createSubprogram(long[] args) {
         Subprogram node = new Subprogram();
 
-        // long distinct = args[0];
-        // long scope = args[1];
-        node.setName(metadata.getReference(args[2]));
-        node.setLinkageName(metadata.getReference(args[3]));
-        node.setFile(metadata.getReference(args[4]));
-        node.setLine(args[5]);
-        node.setType(metadata.getReference(args[6]));
-        node.setLocalToUnit(args[7] == 1);
-        node.setDefinedInCompileUnit(args[8] == 1);
-        node.setScopeLine(args[9]);
-        // long virtuallity = args[11];
-        // long virtualIndex = args[12];
-        node.setFlags(metadata.getReference(args[13]));
-        node.setOptimized(args[14] == 1);
-        // long templateParams = args[15];
-        // long declaration = args[16];
-        // long variables = args[17];
+        int i = 0;
+        i++; // distinct
+        i++; // scope
+        node.setName(metadata.getReference(args[i++]));
+        node.setLinkageName(metadata.getReference(args[i++]));
+        node.setFile(metadata.getReference(args[i++]));
+        node.setLine(args[i++]);
+        node.setType(metadata.getReference(args[i++]));
+        node.setLocalToUnit(args[i++] == 1);
+        node.setDefinedInCompileUnit(args[i++] == 1);
+        node.setScopeLine(args[i++]);
+        i++; // virtuallity
+        i++; // virtualIndex
+        node.setFlags(metadata.getReference(args[i++]));
+        node.setOptimized(args[i++] == 1);
+        i++; // templateParams
+        i++; // declaration
+        i++; // variables
 
         metadata.add(node);
     }
@@ -359,9 +367,10 @@ public class Metadata implements ParserListener {
     protected void createSubroutineType(long[] args) {
         CompositeType node = new CompositeType();
 
-        // long distinct = args[0];
-        node.setFlags(args[1]);
-        node.setMemberDescriptors(metadata.getReference(args[2])); // TODO: correct?
+        int i = 0;
+        i++; // distinct
+        node.setFlags(args[i++]);
+        node.setMemberDescriptors(metadata.getReference(args[i++])); // TODO: correct?
 
         metadata.add(node);
     }
@@ -369,11 +378,12 @@ public class Metadata implements ParserListener {
     protected void createLexicalBlock(long[] args) {
         LexicalBlock node = new LexicalBlock();
 
-        // long distinct = args[0];
-        // long scope = args[1];
-        node.setFile(metadata.getReference(args[2]));
-        node.setLine(args[3]);
-        node.setColumn(args[4]);
+        int i = 0;
+        i++; // distinct
+        i++; // scope
+        node.setFile(metadata.getReference(args[i++]));
+        node.setLine(args[i++]);
+        node.setColumn(args[i++]);
 
         metadata.add(node);
     }
@@ -381,10 +391,11 @@ public class Metadata implements ParserListener {
     protected void createLexicalBlockFile(long[] args) {
         LexicalBlockFile node = new LexicalBlockFile();
 
-        // long distinct = args[0];
-        // long scope = args[1];
-        node.setFile(metadata.getReference(args[2]));
-        // long discriminator = args[3]);
+        int i = 0;
+        i++; // distinct
+        i++; // scope
+        node.setFile(metadata.getReference(args[i++]));
+        i++; // discriminator
 
         metadata.add(node);
     }
@@ -392,14 +403,15 @@ public class Metadata implements ParserListener {
     protected void createLocalVar(long[] args) {
         LocalVariable node = new LocalVariable();
 
-        // long distinct = args[0];
-        // long scope = args[1];
-        node.setName(metadata.getReference(args[2]));
-        node.setFile(metadata.getReference(args[3]));
-        node.setLine(args[4]);
-        node.setType(metadata.getReference(args[5]));
-        node.setArg(args[6]);
-        node.setFlags(args[7]);
+        int i = 0;
+        i++; // distinct
+        i++; // scope
+        node.setName(metadata.getReference(args[i++]));
+        node.setFile(metadata.getReference(args[i++]));
+        node.setLine(args[i++]);
+        node.setType(metadata.getReference(args[i++]));
+        node.setArg(args[i++]);
+        node.setFlags(args[i++]);
 
         metadata.add(node);
     }
@@ -407,16 +419,17 @@ public class Metadata implements ParserListener {
     protected void createGlobalVar(long[] args) {
         GlobalVariable node = new GlobalVariable();
 
-        // long distinct = args[0];
-        // long scope = args[1];
-        node.setName(metadata.getReference(args[2]));
-        node.setLinkageName(metadata.getReference(args[3]));
-        node.setLine(args[5]);
-        node.setType(metadata.getReference(args[6]));
-        node.setLocalToCompileUnit(args[7] == 1);
-        node.setDefinedInCompileUnit(args[8] == 1);
-        // long rawVariable = args[9];
-        // long staticDataMemberDeclaration = args[10];
+        int i = 0;
+        i++; // distinct
+        i++; // scope
+        node.setName(metadata.getReference(args[i++]));
+        node.setLinkageName(metadata.getReference(args[i++]));
+        node.setLine(args[i++]);
+        node.setType(metadata.getReference(args[i++]));
+        node.setLocalToCompileUnit(args[i++] == 1);
+        node.setDefinedInCompileUnit(args[i++] == 1);
+        i++; // rawVariable
+        i++; // staticDataMemberDeclaration
 
         metadata.add(node);
     }
@@ -424,18 +437,19 @@ public class Metadata implements ParserListener {
     protected void createDerivedType(long[] args) {
         DerivedType node = new DerivedType();
 
-        // long distinct = args[0];
-        // long tag = args[1];
-        node.setName(metadata.getReference(args[2]));
-        node.setFile(metadata.getReference(args[3]));
+        int i = 0;
+        i++; // distinct
+        i++; // tag
+        node.setName(metadata.getReference(args[i++]));
+        node.setFile(metadata.getReference(args[i++]));
         node.setLine(args[4]);
-        // long scope = args[5];
-        node.setBaseType(metadata.getReference(args[6]));
-        node.setSize(args[7]);
-        node.setAlign(args[8]);
-        node.setOffset(args[9]);
-        node.setFlags(args[10]);
-        // long extraData = args[11];
+        i++; // scope
+        node.setBaseType(metadata.getReference(args[i++]));
+        node.setSize(args[i++]);
+        node.setAlign(args[i++]);
+        node.setOffset(args[i++]);
+        node.setFlags(args[i++]);
+        i++; // extraData
 
         metadata.add(node);
     }
@@ -443,22 +457,23 @@ public class Metadata implements ParserListener {
     protected void createCompositeType(long[] args) {
         CompositeType node = new CompositeType();
 
-        // long distinct = args[0];
-        // long tag = args[1];
-        node.setName(metadata.getReference(args[2]));
-        node.setFile(metadata.getReference(args[3]));
-        node.setLine(args[4]);
-        // long scope = args[5];
-        node.setDerivedFrom(metadata.getReference(args[6])); // TODO: verify
-        node.setSize(args[7]);
-        node.setAlign(args[8]);
-        node.setOffset(args[9]);
-        node.setFlags(args[10]);
-        node.setMemberDescriptors(metadata.getReference(args[11]));
-        node.setRuntimeLanguage(args[12]);
-        // long vTableHolder = args[13];
-        // long templateParams = args[14];
-        // long rawIdentifier = args[15];
+        int i = 0;
+        i++; // distinct
+        i++; // tag
+        node.setName(metadata.getReference(args[i++]));
+        node.setFile(metadata.getReference(args[i++]));
+        node.setLine(args[i++]);
+        i++; // scope
+        node.setDerivedFrom(metadata.getReference(args[i++])); // TODO: verify
+        node.setSize(args[i++]);
+        node.setAlign(args[i++]);
+        node.setOffset(args[i++]);
+        node.setFlags(args[i++]);
+        node.setMemberDescriptors(metadata.getReference(args[i++]));
+        node.setRuntimeLanguage(args[i++]);
+        i++; // vTableHolder
+        i++; // templateParams
+        i++; // rawIdentifier
 
         metadata.add(node);
     }
@@ -466,22 +481,23 @@ public class Metadata implements ParserListener {
     protected void createCompileUnit(long[] args) {
         CompileUnit node = new CompileUnit();
 
-        // long distinct = args[0]; // always true
-        node.setLanguage(args[1]);
-        node.setFile(metadata.getReference(args[2]));
-        node.setProducer(metadata.getReference(args[3]));
-        node.setOptimized(args[4] == 1);
-        node.setFlags(metadata.getReference(args[5]));
-        node.setRuntimeVersion(args[6]);
-        // long rawSplitDebugFilename = args[7];
-        // long emissionKind = args[8];
-        node.setEnumType(metadata.getReference(args[9]));
-        node.setRetainedTypes(metadata.getReference(args[10]));
-        node.setSubprograms(metadata.getReference(args[11]));
-        node.setGlobalVariables(metadata.getReference(args[12]));
-        // long importedEntities = args[13];
-        // long DWOId = args[14];
-        // long macros = args[15];
+        int i = 0;
+        i++; // distinct, always true
+        node.setLanguage(args[i++]);
+        node.setFile(metadata.getReference(args[i++]));
+        node.setProducer(metadata.getReference(args[i++]));
+        node.setOptimized(args[i++] == 1);
+        node.setFlags(metadata.getReference(args[i++]));
+        node.setRuntimeVersion(args[i++]);
+        i++; // rawSplitDebugFilename
+        i++; // emissionKind
+        node.setEnumType(metadata.getReference(args[i++]));
+        node.setRetainedTypes(metadata.getReference(args[i++]));
+        node.setSubprograms(metadata.getReference(args[i++]));
+        node.setGlobalVariables(metadata.getReference(args[i++]));
+        i++; // importedEntities
+        i++; // DWOId
+        i++; // macros
 
         metadata.add(node);
     }

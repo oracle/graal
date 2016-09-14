@@ -35,6 +35,8 @@ import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
 public class NamedNode extends ArrayList<MetadataReference> implements MetadataBaseNode {
 
+    private static final long serialVersionUID = 1L;
+
     @Override
     public String toString() {
         return "NamedNode " + super.toString();

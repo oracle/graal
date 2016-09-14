@@ -146,7 +146,7 @@ public class MetadataV32 extends Metadata {
                 case DW_TAG_VECTOR_TYPE:
                 case DW_TAG_SUBROUTINE_TYPE:
                 case DW_TAG_INHERITANCE:
-                    createDwCompositeType(parsedArgs, record);
+                    createDwCompositeType(parsedArgs);
                     break;
 
                 case DW_TAG_FORMAL_PARAMETER:
@@ -157,13 +157,13 @@ public class MetadataV32 extends Metadata {
                 case DW_TAG_CONST_TYPE:
                 case DW_TAG_VOLATILE_TYPE:
                 case DW_TAG_RESTRICTED_TYPE:
-                    createDwDerivedType(parsedArgs, record);
+                    createDwDerivedType(parsedArgs);
                     break;
 
                 case DW_TAG_AUTO_VARIABLE:
                 case DW_TAG_ARG_VARIABLE:
                 case DW_TAG_RETURN_VARIABLE:
-                    createDwTagLocalVariable(parsedArgs, record);
+                    createDwTagLocalVariable(parsedArgs);
                     break;
 
                 case DW_TAG_ENUMERATOR:
@@ -182,13 +182,13 @@ public class MetadataV32 extends Metadata {
                     createDwTagLexicalBlock(parsedArgs);
                     break;
 
-                default:
-                    System.out.println("!" + idx + " - TODO: #" + record);
-                    break;
-
                 case DW_TAG_UNKNOW:
                     parsedArgs.rewind();
                     createDwNode(parsedArgs); // TODO: we need to know the type of the node
+                    break;
+
+                default:
+                    System.out.println("!" + idx + " - TODO: #" + record);
                     break;
             }
         } else if (args[0] == 6) {
@@ -279,7 +279,7 @@ public class MetadataV32 extends Metadata {
         metadata.add(node);
     }
 
-    protected void createDwCompositeType(MetadataArgumentParser args, DwTagRecord record) {
+    protected void createDwCompositeType(MetadataArgumentParser args) {
         CompositeType node = new CompositeType();
 
         node.setContext(metadata.getReference(args.next()));
@@ -333,7 +333,7 @@ public class MetadataV32 extends Metadata {
         metadata.add(node);
     }
 
-    protected void createDwTagLocalVariable(MetadataArgumentParser args, DwTagRecord record) {
+    protected void createDwTagLocalVariable(MetadataArgumentParser args) {
         LocalVariable node = new LocalVariable();
 
         node.setContext(metadata.getReference(args.next()));
@@ -394,7 +394,7 @@ public class MetadataV32 extends Metadata {
         }
     }
 
-    protected void createDwDerivedType(MetadataArgumentParser args, DwTagRecord record) {
+    protected void createDwDerivedType(MetadataArgumentParser args) {
         DerivedType node = new DerivedType();
 
         args.next(); // Context
