@@ -42,8 +42,10 @@ import java.util.stream.Stream;
 
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
@@ -66,6 +68,7 @@ public abstract class TestSuiteBase {
     private static List<File> succeedingTests;
     private static List<File> parserErrorTests;
     private static Map<UnsupportedReason, List<File>> unsupportedErrorTests;
+    private static final int UNSIGNED_BYTE_MAX_VALUE = 0xff;
 
     protected void recordTestCase(TestCaseFiles tuple, boolean pass) {
         if (pass) {
@@ -331,4 +334,34 @@ public abstract class TestSuiteBase {
         return TestCaseFiles.createFromCompiledFile(toBeOptimized.getOriginalFile(), destinationFile, toBeOptimized.getFlags());
     }
 
+    public void executeLLVMBitCodeFileTest(TestCaseFiles tuple) {
+        try {
+            LLVMLogger.info("original file: " + tuple.getOriginalFile());
+            File bitCodeFile = tuple.getBitCodeFile();
+            int expectedResult;
+            try {
+                expectedResult = TestHelper.executeLLVMBinary(bitCodeFile).getReturnValue();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                throw new LLVMUnsupportedException(UnsupportedReason.CLANG_ERROR);
+            }
+            int truffleResult = truncate(LLVM.executeMain(bitCodeFile));
+            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
+            boolean pass = true;
+            if (!undefinedReturnCode) {
+                pass &= expectedResult == truffleResult;
+            }
+            recordTestCase(tuple, pass);
+            if (!undefinedReturnCode) {
+                Assert.assertEquals(bitCodeFile.getAbsolutePath(), expectedResult, truffleResult);
+            }
+        } catch (Throwable e) {
+            recordError(tuple, e);
+            throw e;
+        }
+    }
+
+    private static int truncate(int retValue) {
+        return retValue & UNSIGNED_BYTE_MAX_VALUE;
+    }
 }

@@ -39,7 +39,6 @@ public final class GCC extends CompilerBase {
     private static final File GPP_PATH = Mx.executeGetGCCProgramPath("g++");
     private static final File GFORTRAN_PATH = Mx.executeGetGCCProgramPath("gfortran");
     private static final File GCC_PATH = Mx.executeGetGCCProgramPath("gcc");
-    private static final File LLVM_AS_PATH = Mx.executeGetLLVMProgramPath("llvm-as");
 
     private GCC() {
     }
@@ -61,23 +60,22 @@ public final class GCC extends CompilerBase {
         } else {
             throw new AssertionError(toBeCompiled);
         }
+
+        String destinationLLFileName = destinationFile.getAbsolutePath();
+        String interimLLFileName = "/tmp/interim.ll";
+
         if (destinationFile.getName().endsWith(".bc")) {
-            // TODO: Check for more elegant way to generate .bc file for FORTRAN source file
-
-            // Creating .ll file for the FORTRAN source file
-            String llFileGenerationcommand = tool + " -I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include -S " + dragonEggOption() + " -fplugin-arg-dragonegg-emit-ir  -o /tmp/temp.ll " +
-                            toBeCompiled.getAbsolutePath();
-            ProcessUtil.executeNativeCommandZeroReturn(llFileGenerationcommand);
-
-            // Converting .ll file to .bc file
-            String llToBCConversionCommand = LLVM_AS_PATH.toString() + " /tmp/temp.ll -o " + destinationFile;
-            ProcessUtil.executeNativeCommandZeroReturn(llToBCConversionCommand);
-        } else {
-            String[] command = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(), "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationFile,
-                            toBeCompiled.getAbsolutePath()};
-            ProcessUtil.executeNativeCommandZeroReturn(command);
+            destinationLLFileName = interimLLFileName;
         }
 
+        String[] llFileGenerationCommand = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(),
+                        "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationLLFileName, toBeCompiled.getAbsolutePath()};
+        ProcessUtil.executeNativeCommandZeroReturn(llFileGenerationCommand);
+
+        // Converting interim .ll file to .bc file
+        if (destinationFile.getName().endsWith(".bc")) {
+            LLVMAssembler.assembleToBitcodeFile(new File(interimLLFileName), destinationFile);
+        }
     }
 
     private static String dragonEggOption() {
