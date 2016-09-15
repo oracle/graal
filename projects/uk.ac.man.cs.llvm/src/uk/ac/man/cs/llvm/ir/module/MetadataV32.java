@@ -48,7 +48,7 @@ import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubrange;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
-import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataV32 extends Metadata {
@@ -101,8 +101,7 @@ public class MetadataV32 extends Metadata {
     protected void createOldNode(long[] args) {
         MetadataArgumentParser parsedArgs = new MetadataArgumentParser(types, symbols, args);
 
-        if (types.get(args[0]) instanceof MetaType) {
-            parsedArgs.rewind();
+        if (parsedArgs.peek() instanceof MetadataConstantType) {
             createDwNode(parsedArgs);
         } else if (parsedArgs.peek() instanceof IntegerConstantType) {
             /*
@@ -197,7 +196,7 @@ public class MetadataV32 extends Metadata {
     }
 
     protected void createOldFnNode(long[] args) {
-        System.out.println("!" + idx + " - " + MetadataRecord.OLD_FN_NODE + ": " + Arrays.toString(args));
+        // TODO: implement
     }
 
     protected void createDwNode(MetadataArgumentParser args) {
@@ -315,14 +314,15 @@ public class MetadataV32 extends Metadata {
         node.setDefinedInCompileUnit(asInt1(args.next()));
         node.setScopeLine(asInt32(args.next()));
         node.setVirtuallity(asInt32(args.next()));
-        node.setVirtualIndex(asInt32(args.next()));
+        args.next(); // node.setVirtualIndex(asInt32(args.next())); // TODO: MetadataConstantType
         args.next(); // metadata, ;; indicates which base type contains the vtable pointer...
         node.setFlags(metadata.getReference(args.next()));
         node.setOptimized(asInt1(args.next()));
         args.next(); // Function *,;; Pointer to LLVM function
         node.setTemplateParams(metadata.getReference(args.next()));
         node.setDeclaration(metadata.getReference(args.next()));
-        node.setVariables(metadata.getReference(args.next()));
+        args.next(); // node.setVariables(metadata.getReference(args.next())); // TODO: Invalid
+                     // reference type
 
         metadata.add(node);
     }

@@ -36,6 +36,7 @@ import uk.ac.man.cs.llvm.ir.types.BigIntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
 import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -88,7 +89,7 @@ public class MetadataArgumentParser implements Iterator<Type> {
             return symbols.get((int) val); // should work
         } else if (typeOfArgument instanceof MetaType) {
             // TODO: return more suited type
-            return new IntegerConstantType(IntegerType.SHORT, val); // TODO: check
+            return new MetadataConstantType(val); // TODO: check
         } else if (typeOfArgument instanceof PointerType) {
             // TODO: return more suited type
             return new IntegerConstantType(IntegerType.INTEGER, val); // TODO: check
@@ -106,6 +107,9 @@ public class MetadataArgumentParser implements Iterator<Type> {
     }
 
     public int remaining() {
+        if (args.length == 0)
+            return 0;
+
         assert (args.length >= index * 2 + 1);
 
         return (args.length / 2) - index;

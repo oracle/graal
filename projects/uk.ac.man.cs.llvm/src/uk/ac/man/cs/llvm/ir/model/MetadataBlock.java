@@ -34,6 +34,7 @@ import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBaseNode;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
+import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataBlock {
@@ -75,8 +76,15 @@ public class MetadataBlock {
     }
 
     public MetadataReference getReference(Type t) {
-        int index = (int) ((IntegerConstantType) t).getValue(); // TODO
-        return getReference(index);
+        if (t instanceof MetadataConstantType) {
+            int index = (int) ((MetadataConstantType) t).getValue();
+            return getReference(index);
+        } else if (t instanceof IntegerConstantType) {
+            int index = (int) ((IntegerConstantType) t).getValue();
+            if (index == 0) // We only allow 0 as integer constant
+                return voidRef;
+        }
+        throw new RuntimeException("Invalid reference type");
     }
 
     /**
