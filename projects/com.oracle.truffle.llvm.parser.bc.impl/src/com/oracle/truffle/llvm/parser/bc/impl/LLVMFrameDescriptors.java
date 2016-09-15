@@ -76,6 +76,7 @@ import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class LLVMFrameDescriptors {
@@ -150,7 +151,9 @@ public final class LLVMFrameDescriptors {
         @Override
         public void visit(FunctionDefinition method) {
             FrameDescriptor frame = new FrameDescriptor();
-            frame.addFrameSlot(LLVMBitcodeHelper.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+            if (method.getReturnType() != MetaType.VOID) {
+                frame.addFrameSlot(LLVMBitcodeHelper.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+            }
             frame.addFrameSlot(LLVMBitcodeHelper.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : method.getParameters()) {
