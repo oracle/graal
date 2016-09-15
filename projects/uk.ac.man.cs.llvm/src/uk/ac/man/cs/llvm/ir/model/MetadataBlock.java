@@ -81,8 +81,9 @@ public class MetadataBlock {
             return getReference(index);
         } else if (t instanceof IntegerConstantType) {
             int index = (int) ((IntegerConstantType) t).getValue();
-            if (index == 0) // We only allow 0 as integer constant
+            if (index == 0) { // We only allow 0 as integer constant
                 return voidRef;
+            }
         }
         throw new RuntimeException("Invalid reference type");
     }

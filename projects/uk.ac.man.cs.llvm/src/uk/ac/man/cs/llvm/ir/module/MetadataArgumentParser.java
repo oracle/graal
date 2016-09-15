@@ -107,8 +107,9 @@ public class MetadataArgumentParser implements Iterator<Type> {
     }
 
     public int remaining() {
-        if (args.length == 0)
+        if (args.length == 0) {
             return 0;
+        }
 
         assert (args.length >= index * 2 + 1);
 
