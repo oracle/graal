@@ -698,6 +698,9 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final ShapeImpl removeProperty(Property prop) {
         assert isValid();
+        if (shared) {
+            throw new UnsupportedOperationException("Do not use delete() with a shared shape as it moves locations");
+        }
         onPropertyTransition(prop);
 
         return layout.getStrategy().removeProperty(this, prop);
@@ -994,6 +997,8 @@ public abstract class ShapeImpl extends Shape {
         protected boolean hasPrimitiveArray;
         /** @since 0.17 or earlier */
         protected int depth;
+        /** @since 0.18 */
+        protected boolean shared;
 
         /** @since 0.17 or earlier */
         protected BaseAllocator(LayoutImpl layout) {
@@ -1009,6 +1014,7 @@ public abstract class ShapeImpl extends Shape {
             this.primitiveArraySize = shape.primitiveArraySize;
             this.hasPrimitiveArray = shape.hasPrimitiveArray;
             this.depth = shape.depth;
+            this.shared = shape.shared;
         }
 
         /** @since 0.17 or earlier */
