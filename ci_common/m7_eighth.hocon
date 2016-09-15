@@ -1,0 +1,23 @@
+# Eigth of a M7 processor with 4 cores, 8 threads each
+
+m7_eighth.default : ${commonSolaris} {
+  capabilities: [solaris, m7_eighth]
+  environment : {
+    XMX         : "16g"
+    XMS         : "16g"
+    JVM_CONFIG  : ${jvm-config.default}
+    JVM         : "server"
+    MACHINE_NAME: "m7_eighth"
+  }
+}
+
+builds += [
+  ${m7_eighth.default} ${bench-dacapo}              { name: "bench-dacapo-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-solaris-m7_eighth" }  
+  ${m7_eighth.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-solaris-m7_eighth" }
+]
