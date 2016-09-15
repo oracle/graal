@@ -204,6 +204,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                         // JDK 9
                         "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                         "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V",
+                        "java/lang/Math.fma(DDD)D",
+                        "java/lang/Math.fma(FFF)F",
                         "java/lang/Object.notify()V",
                         "java/lang/Object.notifyAll()V",
                         "java/lang/StringCoding.hasNegatives([BII)Z",
