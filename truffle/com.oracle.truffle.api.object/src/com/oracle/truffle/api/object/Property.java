@@ -27,13 +27,13 @@ package com.oracle.truffle.api.object;
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
  * Optionally, properties may have metadata attached to them.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Property {
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected Property() {
@@ -54,14 +54,14 @@ public abstract class Property {
 
     /**
      * Get property identifier.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Object getKey();
 
     /**
      * Get property flags, which are free for language-specific use.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract int getFlags();
@@ -123,7 +123,7 @@ public abstract class Property {
     /**
      * Like {@link #set(DynamicObject, Object, Shape)}, but throws an {@link IllegalStateException}
      * instead.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract void setSafe(DynamicObject store, Object value, Shape shape);
@@ -182,14 +182,14 @@ public abstract class Property {
 
     /**
      * Returns {@code true} if this property and some other property have the same key and flags.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean isSame(Property other);
 
     /**
      * Get the property location.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Location getLocation();
@@ -207,7 +207,7 @@ public abstract class Property {
 
     /**
      * Create a copy of the property with the given flags.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Property copyWithFlags(int newFlags);

@@ -27,19 +27,19 @@ package com.oracle.truffle.api.object;
 /**
  * Location modifiers specify the desired semantics and allowed use of a location to be allocated by
  * {@link Shape.Allocator}.
- * 
+ *
  * @since 0.8 or earlier
  */
 public enum LocationModifier {
     /**
      * Location is going to be set only during object initialization.
-     * 
+     *
      * @since 0.8 or earlier
      */
     Final,
     /**
      * Location is never set to {@code null} and initialized before it is read.
-     * 
+     *
      * @since 0.8 or earlier
      */
     NonNull

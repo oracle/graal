@@ -26,7 +26,7 @@ package com.oracle.truffle.api.object;
 
 /**
  * Implementation class.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface LayoutFactory {

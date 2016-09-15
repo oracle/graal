@@ -44,7 +44,7 @@ import java.util.List;
 public abstract class Shape {
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected Shape() {
@@ -86,7 +86,7 @@ public abstract class Shape {
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Iterable<Property> getProperties();
@@ -118,49 +118,49 @@ public abstract class Shape {
 
     /**
      * Get a filtered list of property keys in insertion order.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract List<Object> getKeyList(Pred<Property> filter);
 
     /**
      * Get a list of all property keys in insertion order.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract List<Object> getKeyList();
 
     /**
      * Get all property keys in insertion order.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Iterable<Object> getKeys();
 
     /**
      * Get an assumption that the shape is valid.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Assumption getValidAssumption();
 
     /**
      * Check whether this shape is valid.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean isValid();
 
     /**
      * Get an assumption that the shape is a leaf.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Assumption getLeafAssumption();
 
     /**
      * Check whether this shape is a leaf in the transition graph, i.e. transitionless.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean isLeaf();
@@ -173,28 +173,28 @@ public abstract class Shape {
 
     /**
      * Check whether the shape has a property with the given key.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean hasProperty(Object key);
 
     /**
      * Remove the given property from the shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape removeProperty(Property property);
 
     /**
      * Replace a property in the shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape replaceProperty(Property oldProperty, Property newProperty);
 
     /**
      * Get the last added property.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Property getLastProperty();
@@ -204,112 +204,112 @@ public abstract class Shape {
 
     /**
      * Append the property, relocating it to the next allocated location.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape append(Property oldProperty);
 
     /**
      * Obtain an {@link Allocator} instance for the purpose of allocating locations.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Allocator allocator();
 
     /**
      * Get number of properties in this shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract int getPropertyCount();
 
     /**
      * Get the shape's operations.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract ObjectType getObjectType();
 
     /**
      * Get the root shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape getRoot();
 
     /**
      * Check whether this shape is identical to the given shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean check(DynamicObject subject);
 
     /**
      * Get the shape's layout.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Layout getLayout();
 
     /**
      * Get the shape's custom data.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Object getData();
 
     /**
      * Get the shape's shared data.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Object getSharedData();
 
     /**
      * Query whether the shape has a transition with the given key.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean hasTransitionWithKey(Object key);
 
     /**
      * Clone off a separate shape with new shared data.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape createSeparateShape(Object sharedData);
 
     /**
      * Change the shape's type, yielding a new shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape changeType(ObjectType newOps);
 
     /**
      * Reserve the primitive extension array field.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape reservePrimitiveExtensionArray();
 
     /**
      * Create a new {@link DynamicObject} instance with this shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract DynamicObject newInstance();
 
     /**
      * Create a {@link DynamicObjectFactory} for creating instances of this shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract DynamicObjectFactory createFactory();
 
     /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Object getMutex();
@@ -334,7 +334,7 @@ public abstract class Shape {
 
     /**
      * Utility class to allocate locations in an object layout.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract static class Allocator {
@@ -396,7 +396,7 @@ public abstract class Shape {
         /**
          * Creates a new location from a constant value. The value is stored in the shape rather
          * than in the object.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public abstract Location constantLocation(Object value);
@@ -404,7 +404,7 @@ public abstract class Shape {
         /**
          * Creates a new declared location with a default value. A declared location only assumes a
          * type after the first set (initialization).
-         * 
+         *
          * @since 0.8 or earlier
          */
         public abstract Location declaredLocation(Object value);
@@ -412,14 +412,14 @@ public abstract class Shape {
         /**
          * Reserves space for the given location, so that it will not be available to subsequently
          * allocated locations.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public abstract Allocator addLocation(Location location);
 
         /**
          * Creates an copy of this allocator state.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public abstract Allocator copy();
