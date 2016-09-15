@@ -119,7 +119,9 @@ public class Module implements ParserListener {
                 break;
 
             case TARGET_DATALAYOUT:
-                info.add(new TargetDataLayout(Records.toString(args)));
+                final TargetDataLayout layout = TargetDataLayout.fromString(Records.toString(args));
+                info.add(layout);
+                generator.createTargetDataLayout(layout);
                 break;
 
             case GLOBAL_VARIABLE:
@@ -166,7 +168,7 @@ public class Module implements ParserListener {
         i++; // Unused parameter
         int align = (int) args[i++];
 
-        generator.createVariable(type, isConstant, initialiser, align);
+        generator.createGlobal(type, isConstant, initialiser, align);
         symbols.add(type);
     }
 }

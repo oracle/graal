@@ -27,31 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl.layout;
+package com.oracle.truffle.llvm.parser.base.datalayout;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.impl.LLVMParserAsserts;
+class DataLayoutParser {
 
-public class DataLayoutParser {
-
-    public static class DataTypeSpecification {
+    static class DataTypeSpecification {
 
         private final DataLayoutType type;
         private final int[] values;
 
-        public DataTypeSpecification(DataLayoutType type, int[] values) {
+        DataTypeSpecification(DataLayoutType type, int[] values) {
             this.type = type;
             this.values = values;
         }
 
-        public DataLayoutType getType() {
+        DataLayoutType getType() {
             return type;
         }
 
-        public int[] getValues() {
+        int[] getValues() {
             return values;
         }
 
@@ -62,10 +60,9 @@ public class DataLayoutParser {
 
     }
 
-    public static List<DataTypeSpecification> parseDataLayout(String layout) {
-        String layoutWithoutQuotes = layout.substring(1, layout.length() - 2);
-        String[] layoutSpecs = layoutWithoutQuotes.split("-");
-        LLVMParserAsserts.assertNoNullElement(layoutSpecs);
+    static List<DataTypeSpecification> parseDataLayout(String layout) {
+        String[] layoutSpecs = layout.split("-");
+        assertNoNullElement(layoutSpecs);
         List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
             if (spec.equals("e") || spec.equals("E")) {
@@ -86,7 +83,7 @@ public class DataLayoutParser {
             typeWidths = typeWidths.substring(1);
         }
         String[] components = typeWidths.split(":");
-        LLVMParserAsserts.assertNoNullElement(components);
+        assertNoNullElement(components);
         int[] values = new int[components.length];
         for (int i = 0; i < values.length; i++) {
             values[i] = Integer.parseInt(components[i]);
@@ -115,6 +112,15 @@ public class DataLayoutParser {
             default:
                 throw new AssertionError(string);
         }
+    }
+
+    private static Object[] assertNoNullElement(Object[] objects) {
+        for (Object o : objects) {
+            if (o == null) {
+                throw new AssertionError(Arrays.toString(objects));
+            }
+        }
+        return objects;
     }
 
 }

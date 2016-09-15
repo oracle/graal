@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
@@ -72,6 +73,8 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final List<LLVMNode> instructions = new ArrayList<>();
 
+    private final LLVMNodeGenerator symbolResolver;
+
     public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels,
                     Map<InstructionBlock, List<Phi>> phis) {
         this.module = module;
@@ -79,6 +82,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.slotsToNull = slotsToNull;
         this.labels = labels;
         this.phis = phis;
+        this.symbolResolver = new LLVMNodeGenerator(this);
     }
 
     public void addInstruction(LLVMNode node) {
@@ -106,6 +110,10 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return module.getContext();
     }
 
+    public LLVMBitcodeVisitor getModule() {
+        return module;
+    }
+
     public FrameDescriptor getFrame() {
         return frame;
     }
@@ -120,6 +128,10 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     public FrameSlot getStackSlot() {
         return getSlot(LLVMBitcodeHelper.STACK_ADDRESS_FRAME_SLOT_ID);
+    }
+
+    public LLVMNodeGenerator getSymbolResolver() {
+        return symbolResolver;
     }
 
     public LLVMExpressionNode global(GlobalValueSymbol symbol) {

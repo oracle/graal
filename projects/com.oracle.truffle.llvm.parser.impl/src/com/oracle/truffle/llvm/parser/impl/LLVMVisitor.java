@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 
@@ -140,10 +141,6 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
-import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter;
-import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutConverter.DataSpecConverter;
-import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutParser;
-import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -448,8 +445,14 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 // ignore
                 break;
             case "datalayout":
-                List<DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(object.getLayout());
-                layoutConverter = DataLayoutConverter.getConverter(dataLayout);
+                String layout = object.getLayout();
+                if (layout != null) {
+                    // remove enclosing quotes
+                    layout = layout.substring(1, layout.length() - 2);
+                    layoutConverter = DataLayoutConverter.getConverter(layout);
+                } else {
+                    throw new AssertionError("Invalid Layout!");
+                }
                 break;
             default:
                 throw new AssertionError(infoType + " not supported!");
@@ -665,7 +668,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return labels;
     }
 
-    public static DataSpecConverter layoutConverter;
+    public static DataLayoutConverter.DataSpecConverter layoutConverter;
 
     private LLVMNode[] deallocations;
 
