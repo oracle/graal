@@ -540,4 +540,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         throw GraalError.unimplemented();
     }
 
+    @Override
+    public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
+        throw GraalError.unimplemented();
+    }
 }

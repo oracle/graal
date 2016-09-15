@@ -47,6 +47,7 @@ import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRValueUtil;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -72,6 +73,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.amd64.AMD64PauseOp;
 import com.oracle.graal.lir.amd64.AMD64ZapRegistersOp;
+import com.oracle.graal.lir.amd64.AMD64ZapStackOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
@@ -81,6 +83,7 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -449,5 +452,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         return new AMD64ZapRegistersOp(zappedRegisters, zapValues);
+    }
+
+    @Override
+    public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
+        return new AMD64ZapStackOp(zappedStack, zapValues);
     }
 }
