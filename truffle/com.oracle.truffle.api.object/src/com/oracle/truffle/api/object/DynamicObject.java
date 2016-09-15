@@ -45,7 +45,7 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
 
     /**
      * Get the object's current shape.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Shape getShape();
@@ -83,7 +83,7 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
 
     /**
      * Returns {@code true} if this object contains a property with the given key.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final boolean containsKey(Object key) {
@@ -133,14 +133,14 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
 
     /**
      * Returns the number of properties in this object.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract int size();
 
     /**
      * Returns {@code true} if this object contains no properties.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean isEmpty();

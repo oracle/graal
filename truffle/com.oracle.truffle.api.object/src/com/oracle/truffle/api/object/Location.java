@@ -37,7 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 public abstract class Location {
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected Location() {
@@ -179,7 +179,7 @@ public abstract class Location {
 
     /**
      * Returns {@code true} if this is a final location, i.e. readonly once set.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public boolean isFinal() {
@@ -188,7 +188,7 @@ public abstract class Location {
 
     /**
      * Returns {@code true} if this is an immutable constant location.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public boolean isConstant() {
@@ -197,7 +197,7 @@ public abstract class Location {
 
     /**
      * Abstract to force overriding.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Override
@@ -205,7 +205,7 @@ public abstract class Location {
 
     /**
      * Abstract to force overriding.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Override
@@ -213,7 +213,7 @@ public abstract class Location {
 
     /**
      * Equivalent to {@link Shape#check(DynamicObject)}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected static boolean checkShape(DynamicObject store, Shape shape) {
