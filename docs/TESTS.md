@@ -67,6 +67,7 @@ are remote test cases.
 | test suite | type   | config | description                              |
 |------------|--------|--------|------------------------------------------|
 | llvm       | remote | yes    | LLVM's test suite                        |
+| llvm-bc    | remote | yes    | LLVM's test suite for BitCode parser     |
 | interop    | local  | no     | Truffle interoperability test suite      |
 | polyglot   | local  | no     | Minimal Polyglot engine test             |
 | tck        | local  | no     | Test suite to certify Truffle compliance |
@@ -75,6 +76,7 @@ are remote test cases.
 | asm        | local  | no     | Inline assembler tests                   |
 | sulong     | local  | no     | Sulong's own primary test suite          |
 | gcc        | local  | yes    | GCC's test suite                         |
+| gcc-bc     | local  | yes    | GCC's test suite for BitCode parser      |
 | main-arg   | local  | no     | Tests arguments to the main function     |
 | bench      | local  | no     | Language Benchmark game benchmarks       |
 | compile    | local  | yes    | GCC's compile-only test cases            |
