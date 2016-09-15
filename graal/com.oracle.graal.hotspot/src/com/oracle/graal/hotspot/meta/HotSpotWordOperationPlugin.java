@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.word.HotSpotOperation;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.hotspot.word.PointerCastNode;
 import com.oracle.graal.nodes.AbstractBeginNode;
+import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.ConditionalNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
@@ -116,7 +117,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 ValueNode pointer = args[0];
                 assert pointer.stamp() instanceof MetaspacePointerStamp;
 
-                IsNullNode isNull = b.add(new IsNullNode(pointer));
+                LogicNode isNull = b.add(IsNullNode.create(pointer));
                 b.addPush(returnKind, new ConditionalNode(isNull, b.add(forBoolean(true)), b.add(forBoolean(false))));
                 break;
 

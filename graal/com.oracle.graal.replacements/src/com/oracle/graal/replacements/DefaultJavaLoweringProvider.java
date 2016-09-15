@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
 import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -411,7 +412,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (!elementType.isJavaLangObject()) {
                     TypeReference typeReference = TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType);
                     LogicNode typeTest = graph.addOrUniqueWithInputs(InstanceOfNode.create(typeReference, value));
-                    condition = LogicNode.or(graph.unique(new IsNullNode(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                    condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
                 }
             } else {
                 /*
@@ -423,7 +424,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
-                condition = LogicNode.or(graph.unique(new IsNullNode(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
             }
         }
 
@@ -945,8 +946,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (StampTool.isPointerNonNull(object)) {
             return null;
         }
-        return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, JavaConstant.NULL_POINTER,
-                        true);
+        return tool.createGuard(before, before.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, JavaConstant.NULL_POINTER, true);
     }
 
     @Override

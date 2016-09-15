@@ -784,7 +784,7 @@ public class StandardGraphBuilderPlugins {
                     b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException));
                     return true;
                 }
-                IsNullNode isNull = b.add(new IsNullNode(value));
+                LogicNode isNull = b.add(IsNullNode.create(value));
                 FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
                 Stamp newStamp = objectStamp.improveWith(StampFactory.objectNonNull());
                 b.addPush(value.getStackKind(), new PiNode(value, newStamp, fixedGuard));
