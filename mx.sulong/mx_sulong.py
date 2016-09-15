@@ -132,12 +132,8 @@ def travis1(args=None):
     """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithEcj', tasks) as t:
-        if t:
-            if mx.get_env('JDT'):
-                mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
-                gate_clean([], tasks, name='CleanAfterEcjBuild')
-            else:
-                mx._warn_or_abort('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.', args.strict_mode)
+        if t: compileWithEcjStrict()
+        gate_clean([], tasks, name='CleanAfterEcjBuild')
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('Findbugs', tasks) as t:
@@ -508,6 +504,29 @@ def runTests(args=None):
             print 'executing', testSuiteName, 'test suite'
         command = testCases[testSuiteName]
         command(vmArgs)
+
+def checkCode(args=None):
+    """executes some basic formating checks (gitlogcheck, ECJ, checkstyle, mdlCheck, findbugs)"""
+    tasks = []
+    with Task('gitlogcheck', tasks) as t:
+        if t: logCheck()
+    with Task('BuildJavaWithEcj', tasks) as t:
+        if t: compileWithEcjStrict()
+        gate_clean([], tasks, name='CleanAfterEcjBuild')
+    with Task('checkstyle', tasks) as t:
+        if t: mx.checkstyle([])
+    with Task('mdlCheck', tasks) as t:
+        if t: mdlCheck()
+    with Task('Findbugs', tasks) as t:
+        if t and mx_findbugs.findbugs([]) != 0:
+            t.abort('FindBugs warnings were found')
+
+def compileWithEcjStrict(args=None):
+    """build project with the option --warning-as-error"""
+    if mx.get_env('JDT'):
+        mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
+    else:
+        exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
 def runBenchmarkTestCases(args=None):
     """runs the test cases from the language benchmark game"""
@@ -1155,6 +1174,8 @@ mx.update_commands(_suite, {
     'su-travis-sulong' : [travisTestSulong, ''],
     'su-travis-jruby' : [travisJRuby, ''],
     'su-travis-argon2' : [travisArgon2, ''],
+    'su-ecj-strict' : [compileWithEcjStrict, ''],
+    'su-basic-checkcode' : [checkCode, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
