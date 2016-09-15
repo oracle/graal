@@ -58,11 +58,15 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeFunctionVisitor;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
+import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -89,6 +93,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
 import uk.ac.man.cs.llvm.ir.model.elements.ValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
@@ -126,6 +131,20 @@ public final class LLVMNodeGenerator {
         } else {
             return null;
         }
+    }
+
+    public static LLVMExpressionNode generateBinaryOperatorNode(BinaryOperator operator, LLVMBaseType type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
+        final LLVMArithmeticInstructionType arithmeticOperationType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operator);
+        if (arithmeticOperationType != null) {
+            return LLVMArithmeticFactory.createArithmeticOperation(lhs, rhs, arithmeticOperationType, type, null);
+        }
+
+        final LLVMLogicalInstructionType logicalOperationType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operator);
+        if (logicalOperationType != null) {
+            return LLVMLogicalFactory.createLogicalOperation(lhs, rhs, logicalOperationType, type, null);
+        }
+
+        throw new RuntimeException("Missed a binary operator");
     }
 
     private static LLVMExpressionNode resolveBigIntegerConstant(BigIntegerConstant constant) {
@@ -387,7 +406,7 @@ public final class LLVMNodeGenerator {
         final LLVMExpressionNode lhs = resolve(constant.getLHS());
         final LLVMExpressionNode rhs = resolve(constant.getRHS());
         final LLVMBaseType type = LLVMBitcodeHelper.toBaseType(constant.getType()).getType();
-        return LLVMBitcodeHelper.toBinaryOperatorNode(constant.getOperator(), type, lhs, rhs);
+        return generateBinaryOperatorNode(constant.getOperator(), type, lhs, rhs);
     }
 
     private LLVMExpressionNode resolveBlockAddressConstant(BlockAddressConstant constant) {
@@ -410,8 +429,8 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveFunction(String name, FunctionType type) {
-        final LLVMFunctionDescriptor.LLVMRuntimeType returnType = LLVMBitcodeHelper.toRuntimeType(type.getReturnType());
-        final LLVMFunctionDescriptor.LLVMRuntimeType[] argTypes = LLVMBitcodeHelper.toRuntimeTypes(type.getArgumentTypes());
+        final LLVMFunctionDescriptor.LLVMRuntimeType returnType = LLVMBitcodeTypeHelper.toRuntimeType(type.getReturnType());
+        final LLVMFunctionDescriptor.LLVMRuntimeType[] argTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(type.getArgumentTypes());
         return LLVMFunctionLiteralNodeGen.create(method.getContext().getFunctionRegistry().createFunctionDescriptor(name, returnType, argTypes, type.isVarArg()));
     }
 
@@ -452,7 +471,7 @@ public final class LLVMNodeGenerator {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(LLVMBitcodeHelper.getSize(constant, 0), LLVMBitcodeHelper.getAlignment(constant, 0),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()), typeHelper.getAlignment(constant.getType()),
                         method.getContext(),
                         method.getStackSlot());
 

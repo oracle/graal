@@ -481,7 +481,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
             LLVMExpressionNode value = symbols.resolve(ret.getValue());
 
-            slot.setKind(LLVMBitcodeHelper.toFrameSlotKind(type));
+            slot.setKind(LLVMBitcodeTypeHelper.toFrameSlotKind(type));
 
             switch (typeHelper.getLLVMBaseType(type)) {
                 case I1:
