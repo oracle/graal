@@ -217,7 +217,7 @@ public class Function implements ParserListener {
                 break;
 
             case CALL:
-                crateCall(args);
+                createCall(args);
                 break;
 
             case GEP:
@@ -275,7 +275,7 @@ public class Function implements ParserListener {
         code = null;
     }
 
-    protected void crateCall(long[] args) {
+    protected void createCall(long[] args) {
         int i = 2;
 
         FunctionType function = (FunctionType) types.get(args[i++]);
