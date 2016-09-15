@@ -44,7 +44,7 @@ class NodeIdAccessor {
      * @return true if the check succeeds
      * @throws VerificationError if the check fails
      */
-    public boolean verifyIdsAreStable() {
+    boolean verifyIdsAreStable() {
         int compressions = graph.compressions - epoch;
         if (compressions != 0) {
             throw new VerificationError("accessing node id in %s across %d graph compression%s", graph, compressions, compressions == 1 ? "" : "s");
@@ -56,7 +56,7 @@ class NodeIdAccessor {
      * Gets the identifier for a node. If assertions are enabled, this method asserts that the
      * identifier is stable.
      */
-    public int getNodeId(Node node) {
+    int getNodeId(Node node) {
         assert verifyIdsAreStable();
         return node.id();
     }
