@@ -396,7 +396,7 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveCastConstant(CastConstant constant) {
-        final LLVMConversionType type = LLVMBitcodeHelper.toConversionType(constant.getOperator());
+        final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(constant.getOperator());
         final LLVMExpressionNode fromNode = resolve(constant.getValue());
         final LLVMBaseType from = LLVMBitcodeHelper.toBaseType(constant.getValue().getType()).getType();
         final LLVMBaseType to = LLVMBitcodeHelper.toBaseType(constant.getType()).getType();

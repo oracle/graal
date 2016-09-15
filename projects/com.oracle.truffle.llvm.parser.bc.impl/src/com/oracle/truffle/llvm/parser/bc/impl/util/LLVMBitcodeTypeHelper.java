@@ -174,8 +174,9 @@ public class LLVMBitcodeTypeHelper {
 
     public static LLVMConversionType toConversionType(CastOperator operator) {
         switch (operator) {
-            case ZERO_EXTEND:
             case FP_TO_UNSIGNED_INT:
+                return LLVMConversionType.FLOAT_TO_UINT;
+            case ZERO_EXTEND:
             case UNSIGNED_INT_TO_FP:
             case INT_TO_PTR:
                 return LLVMConversionType.ZERO_EXTENSION;

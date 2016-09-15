@@ -637,7 +637,7 @@ public final class LLVMBitcodeHelper {
         }
         if (value instanceof CastConstant) {
             CastConstant cast = (CastConstant) value;
-            LLVMConversionType type = toConversionType(cast.getOperator());
+            LLVMConversionType type = LLVMBitcodeHelper.toConversionType(cast.getOperator());
             LLVMExpressionNode fromNode = toConstantNode(cast.getValue(), align, variables, context, stack, labels);
             LLVMBaseType from = toBaseType(cast.getValue().getType()).getType();
             LLVMBaseType to = toBaseType(cast.getType()).getType();
