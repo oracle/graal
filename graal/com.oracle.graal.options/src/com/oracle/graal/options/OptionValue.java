@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.ServiceLoader;
 
 /**
@@ -260,16 +259,6 @@ public class OptionValue<T> {
             defaultValue = defaultValue();
         }
         return defaultValue;
-    }
-
-    /**
-     * Returns true if the option has the same value that was set in the source code.
-     */
-    public boolean hasDefaultValue() {
-        if (!(this instanceof StableOptionValue)) {
-            getValue(); // ensure initialized
-        }
-        return value == DEFAULT || Objects.equals(value, getDefaultValue());
     }
 
     /**
