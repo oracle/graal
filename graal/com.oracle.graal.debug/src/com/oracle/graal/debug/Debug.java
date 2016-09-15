@@ -115,6 +115,7 @@ public class Debug {
     public static final int BASIC_LOG_LEVEL = 1;
     public static final int INFO_LOG_LEVEL = 2;
     public static final int VERBOSE_LOG_LEVEL = 3;
+    public static final int DETAILED_LOG_LEVEL = 4;
 
     public static boolean isDumpEnabled(int dumpLevel) {
         return ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel);
