@@ -352,7 +352,7 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
-    
+
     "com.oracle.truffle.llvm.parser.base" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
