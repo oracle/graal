@@ -168,7 +168,7 @@ public class Module implements ParserListener {
         i++; // Unused parameter
         int align = (int) args[i++];
 
-        generator.createVariable(type, isConstant, initialiser, align);
+        generator.createGlobal(type, isConstant, initialiser, align);
         symbols.add(type);
     }
 }

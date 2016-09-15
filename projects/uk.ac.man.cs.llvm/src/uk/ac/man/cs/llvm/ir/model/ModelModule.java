@@ -59,7 +59,7 @@ public final class ModelModule implements ModuleGenerator {
 
     private final List<Type> types = new ArrayList<>();
 
-    private final List<GlobalValueSymbol> variables = new ArrayList<>();
+    private final List<GlobalValueSymbol> globals = new ArrayList<>();
 
     private final List<FunctionDeclaration> declares = new ArrayList<>();
 
@@ -87,7 +87,7 @@ public final class ModelModule implements ModuleGenerator {
         for (Type type : types) {
             visitor.visit(type);
         }
-        for (GlobalValueSymbol variable : variables) {
+        for (GlobalValueSymbol variable : globals) {
             variable.accept(visitor);
         }
         for (FunctionDefinition define : defines) {
@@ -103,7 +103,7 @@ public final class ModelModule implements ModuleGenerator {
         GlobalAlias alias = new GlobalAlias(type, aliasedValue);
 
         symbols.addSymbol(alias);
-        variables.add(alias);
+        globals.add(alias);
     }
 
     @Override
@@ -195,20 +195,20 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createVariable(Type type, boolean isConstant, int initialiser, int align) {
-        GlobalValueSymbol variable;
+    public void createGlobal(Type type, boolean isConstant, int initialiser, int align) {
+        final GlobalValueSymbol global;
         if (isConstant) {
-            variable = new GlobalConstant(type, initialiser, align);
+            global = new GlobalConstant(type, initialiser, align);
         } else {
-            variable = new GlobalVariable(type, initialiser, align);
+            global = new GlobalVariable(type, initialiser, align);
         }
-        symbols.addSymbol(variable);
-        variables.add(variable);
+        symbols.addSymbol(global);
+        globals.add(global);
     }
 
     @Override
     public void exitModule() {
-        for (GlobalValueSymbol variable : variables) {
+        for (GlobalValueSymbol variable : globals) {
             variable.initialise(symbols);
         }
     }
@@ -242,6 +242,6 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public String toString() {
-        return "ModelModule [types=" + types + ", variables=" + variables + ", declares=" + declares + ", defines=" + defines + ", symbols=" + symbols + ", currentFunction=" + currentFunction + "]";
+        return "ModelModule [types=" + types + ", globals=" + globals + ", declares=" + declares + ", defines=" + defines + ", symbols=" + symbols + ", currentFunction=" + currentFunction + "]";
     }
 }

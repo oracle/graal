@@ -31,9 +31,15 @@ package com.oracle.truffle.llvm.parser.bc.impl.util;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
+import uk.ac.man.cs.llvm.ir.model.enums.CastOperator;
 import uk.ac.man.cs.llvm.ir.types.AggregateType;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.BigIntegerConstantType;
@@ -61,6 +67,32 @@ public class LLVMBitcodeTypeHelper {
             return ((PointerType) parent).getPointeeType();
         } else {
             throw new IllegalStateException("Cannot index type: " + parent);
+        }
+    }
+
+    public static LLVMArithmeticInstructionType toArithmeticInstructionType(BinaryOperator operator) {
+        switch (operator) {
+            case INT_ADD:
+            case FP_ADD:
+                return LLVMArithmeticInstructionType.ADDITION;
+            case INT_SUBTRACT:
+            case FP_SUBTRACT:
+                return LLVMArithmeticInstructionType.SUBTRACTION;
+            case INT_MULTIPLY:
+            case FP_MULTIPLY:
+                return LLVMArithmeticInstructionType.MULTIPLICATION;
+            case INT_UNSIGNED_DIVIDE:
+                return LLVMArithmeticInstructionType.UNSIGNED_DIVISION;
+            case INT_SIGNED_DIVIDE:
+            case FP_DIVIDE:
+                return LLVMArithmeticInstructionType.DIVISION;
+            case INT_UNSIGNED_REMAINDER:
+                return LLVMArithmeticInstructionType.UNSIGNED_REMAINDER;
+            case INT_SIGNED_REMAINDER:
+            case FP_REMAINDER:
+                return LLVMArithmeticInstructionType.REMAINDER;
+            default:
+                return null;
         }
     }
 
@@ -138,6 +170,164 @@ public class LLVMBitcodeTypeHelper {
         } else {
             throw new RuntimeException("Unsupported type " + type);
         }
+    }
+
+    public static LLVMConversionType toConversionType(CastOperator operator) {
+        switch (operator) {
+            case ZERO_EXTEND:
+            case FP_TO_UNSIGNED_INT:
+            case UNSIGNED_INT_TO_FP:
+            case INT_TO_PTR:
+                return LLVMConversionType.ZERO_EXTENSION;
+            case SIGN_EXTEND:
+            case FP_TO_SIGNED_INT:
+            case SIGNED_INT_TO_FP:
+            case FP_EXTEND:
+                return LLVMConversionType.SIGN_EXTENSION;
+            case TRUNCATE:
+            case PTR_TO_INT:
+            case FP_TRUNCATE:
+                return LLVMConversionType.TRUNC;
+            case BITCAST:
+                return LLVMConversionType.BITCAST;
+            case ADDRESS_SPACE_CAST:
+            default:
+                return null;
+        }
+    }
+
+    public static LLVMLogicalInstructionType toLogicalInstructionType(BinaryOperator operator) {
+        switch (operator) {
+            case INT_SHIFT_LEFT:
+                return LLVMLogicalInstructionType.SHIFT_LEFT;
+            case INT_LOGICAL_SHIFT_RIGHT:
+                return LLVMLogicalInstructionType.LOGICAL_SHIFT_RIGHT;
+            case INT_ARITHMETIC_SHIFT_RIGHT:
+                return LLVMLogicalInstructionType.ARITHMETIC_SHIFT_RIGHT;
+            case INT_AND:
+                return LLVMLogicalInstructionType.AND;
+            case INT_OR:
+                return LLVMLogicalInstructionType.OR;
+            case INT_XOR:
+                return LLVMLogicalInstructionType.XOR;
+            default:
+                return null;
+        }
+    }
+
+    public static LLVMFunctionDescriptor.LLVMRuntimeType toRuntimeType(final Type type) {
+        if (type == MetaType.VOID) {
+            return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
+
+        } else if (type instanceof IntegerType) {
+            switch (((IntegerType) type).getBitCount()) {
+                case 1:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I1;
+                case Byte.SIZE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I8;
+                case Short.SIZE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I16;
+                case Integer.SIZE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I32;
+                case Long.SIZE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I64;
+                default:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I_VAR_BITWIDTH;
+            }
+
+        } else if (type instanceof FloatingPointType) {
+            switch (((FloatingPointType) type)) {
+                case HALF:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.HALF;
+                case FLOAT:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT;
+                case DOUBLE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE;
+                case X86_FP80:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.X86_FP80;
+                default:
+                    throw new RuntimeException("Unsupported type " + type);
+            }
+
+        } else if (type instanceof PointerType) {
+            final Type pointee = ((PointerType) type).getPointeeType();
+            if (pointee instanceof FunctionType) {
+                return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
+
+            } else if (pointee instanceof IntegerType) {
+                switch (((IntegerType) pointee).getBitCount()) {
+                    case 1:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.I1_POINTER;
+                    case Byte.SIZE:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.I8_POINTER;
+                    case Short.SIZE:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.I16_POINTER;
+                    case Integer.SIZE:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.I32_POINTER;
+                    case Long.SIZE:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.I64_POINTER;
+                    default:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
+                }
+
+            } else if (pointee instanceof FloatingPointType) {
+                switch (((FloatingPointType) pointee)) {
+                    case HALF:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.HALF_POINTER;
+                    case FLOAT:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_POINTER;
+                    case DOUBLE:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_POINTER;
+                    case X86_FP80:
+                    default:
+                        return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
+                }
+
+            } else {
+                return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
+            }
+
+        } else if (type instanceof StructureType) {
+            return LLVMFunctionDescriptor.LLVMRuntimeType.STRUCT;
+
+        } else if (type instanceof ArrayType) {
+            return LLVMFunctionDescriptor.LLVMRuntimeType.ARRAY;
+
+        } else if (type instanceof FunctionType) {
+            return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
+
+        } else if (type instanceof VectorType) {
+            final Type base = ((VectorType) type).getElementType();
+            switch (toRuntimeType(base)) {
+                case I1:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I1_VECTOR;
+                case I8:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I8_VECTOR;
+                case I16:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I16_VECTOR;
+                case I32:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I32_VECTOR;
+                case I64:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.I64_VECTOR;
+                case FLOAT:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_VECTOR;
+                case DOUBLE:
+                    return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_VECTOR;
+                default:
+                    throw new RuntimeException("Unsupported type " + type);
+            }
+
+        } else {
+            throw new RuntimeException("Unsupported type " + type);
+        }
+    }
+
+    public static LLVMFunctionDescriptor.LLVMRuntimeType[] toRuntimeTypes(Type[] types) {
+        final LLVMFunctionDescriptor.LLVMRuntimeType[] llvmtypes = new LLVMFunctionDescriptor.LLVMRuntimeType[types.length];
+        for (int i = 0; i < types.length; i++) {
+            llvmtypes[i] = toRuntimeType(types[i].getType());
+        }
+        return llvmtypes;
     }
 
     public int getPadding(int offset, int alignment) {

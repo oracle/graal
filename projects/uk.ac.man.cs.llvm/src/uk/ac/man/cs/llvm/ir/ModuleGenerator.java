@@ -43,7 +43,7 @@ public interface ModuleGenerator extends SymbolGenerator {
 
     void createType(Type type);
 
-    void createVariable(Type type, boolean isConstant, int initialiser, int align);
+    void createGlobal(Type type, boolean isConstant, int initialiser, int align);
 
     void exitModule();
 
