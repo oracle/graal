@@ -69,6 +69,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64PrefetchOp;
 import com.oracle.graal.lir.amd64.AMD64RestoreRegistersOp;
 import com.oracle.graal.lir.amd64.AMD64SaveRegistersOp;
+import com.oracle.graal.lir.amd64.AMD64VZeroUpper;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -265,6 +266,15 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
+        HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
+        AMD64 arch = (AMD64) target().arch;
+        if (arch.getFeatures().contains(AMD64.CPUFeature.AVX) && hsLinkage.mayContainFP() && !hsLinkage.isCompiledStub()) {
+            /*
+             * If the target may contain FP ops, and it is not compiled by us, we may have an
+             * AVX-SSE transition.
+             */
+            append(new AMD64VZeroUpper());
+        }
         super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }
 
