@@ -92,3 +92,8 @@ gateLinuxAMD64TraceRA : ${gateLinuxAMD64} {
     EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
   }
 }
+
+gateLinuxAMD64Bootstrap : ${gateLinuxAMD64}
+gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
+gateSolarisSPARCBootstrap : ${gateSolarisSPARC}
+gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA}
