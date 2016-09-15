@@ -52,7 +52,13 @@ public class MetadataSubrange implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "Subrange [lowBound=" + lowBound + ", size=" + size + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataSubrange [lowBound=");
+        builder.append(lowBound);
+        builder.append(", size=");
+        builder.append(size);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

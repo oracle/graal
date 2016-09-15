@@ -110,7 +110,25 @@ public class MetadataBasicType implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "BasicType [name=" + name + ", file=" + file + ", line=" + line + ", size=" + size + ", align=" + align + ", offset=" + offset + ", flags=" + flags + ", encoding=" + encoding + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataBasicType [name=");
+        builder.append(name);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", line=");
+        builder.append(line);
+        builder.append(", size=");
+        builder.append(size);
+        builder.append(", align=");
+        builder.append(align);
+        builder.append(", offset=");
+        builder.append(offset);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append(", encoding=");
+        builder.append(encoding);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

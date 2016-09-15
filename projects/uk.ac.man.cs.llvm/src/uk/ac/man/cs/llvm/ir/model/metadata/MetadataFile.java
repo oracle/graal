@@ -55,7 +55,13 @@ public class MetadataFile implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "File [file=" + file + ", directory=" + directory + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataFile [file=");
+        builder.append(file);
+        builder.append(", directory=");
+        builder.append(directory);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

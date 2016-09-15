@@ -136,8 +136,31 @@ public class MetadataCompositeType implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "CompositeType [context=" + context + ", name=" + name + ", file=" + file + ", line=" + line + ", size=" + size + ", align=" + align + ", offset=" + offset + ", flags=" + flags +
-                        ", derivedFrom=" + derivedFrom + ", memberDescriptors=" + memberDescriptors + ", runtimeLanguage=" + runtimeLanguage + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataCompositeType [context=");
+        builder.append(context);
+        builder.append(", name=");
+        builder.append(name);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", line=");
+        builder.append(line);
+        builder.append(", size=");
+        builder.append(size);
+        builder.append(", align=");
+        builder.append(align);
+        builder.append(", offset=");
+        builder.append(offset);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append(", derivedFrom=");
+        builder.append(derivedFrom);
+        builder.append(", memberDescriptors=");
+        builder.append(memberDescriptors);
+        builder.append(", runtimeLanguage=");
+        builder.append(runtimeLanguage);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

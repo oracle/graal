@@ -49,7 +49,7 @@ public class MetadataKind implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "Kind [id=" + id + ", name=\"" + name + "\"]";
+        return "MetadataKind [id=" + id + ", name=\"" + name + "\"]";
     }
 
 }

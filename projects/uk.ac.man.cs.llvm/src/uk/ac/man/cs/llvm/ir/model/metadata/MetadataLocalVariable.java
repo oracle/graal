@@ -100,6 +100,22 @@ public class MetadataLocalVariable implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "LocalVariable [context=" + context + ", name=" + name + ", file=" + file + ", line=" + line + ", arg=" + arg + ", type=" + type + ", flags=" + flags + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataLocalVariable [context=");
+        builder.append(context);
+        builder.append(", name=");
+        builder.append(name);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", line=");
+        builder.append(line);
+        builder.append(", arg=");
+        builder.append(arg);
+        builder.append(", type=");
+        builder.append(type);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append("]");
+        return builder.toString();
     }
 }

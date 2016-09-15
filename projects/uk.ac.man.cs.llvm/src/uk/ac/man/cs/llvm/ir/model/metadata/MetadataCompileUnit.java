@@ -154,8 +154,34 @@ public class MetadataCompileUnit implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "CompileUnit [context=" + context + ", language=" + language + ", file=" + file + ", directory=" + directory + ", producer=" + producer + ", isDeprecatedField=" + isDeprecatedField +
-                        ", isOptimized=" + isOptimized + ", flags=" + flags + ", runtimeVersion=" + runtimeVersion + ", enumType=" + enumType + ", retainedTypes=" + retainedTypes + ", subprograms=" +
-                        subprograms + ", globalVariables=" + globalVariables + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataCompileUnit [context=");
+        builder.append(context);
+        builder.append(", language=");
+        builder.append(language);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", directory=");
+        builder.append(directory);
+        builder.append(", producer=");
+        builder.append(producer);
+        builder.append(", isDeprecatedField=");
+        builder.append(isDeprecatedField);
+        builder.append(", isOptimized=");
+        builder.append(isOptimized);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append(", runtimeVersion=");
+        builder.append(runtimeVersion);
+        builder.append(", enumType=");
+        builder.append(enumType);
+        builder.append(", retainedTypes=");
+        builder.append(retainedTypes);
+        builder.append(", subprograms=");
+        builder.append(subprograms);
+        builder.append(", globalVariables=");
+        builder.append(globalVariables);
+        builder.append("]");
+        return builder.toString();
     }
 }

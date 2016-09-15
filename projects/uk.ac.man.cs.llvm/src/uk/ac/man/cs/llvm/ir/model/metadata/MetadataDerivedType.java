@@ -109,7 +109,25 @@ public class MetadataDerivedType implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "DerivedType [name=" + name + ", file=" + file + ", line=" + line + ", size=" + size + ", align=" + align + ", offset=" + offset + ", flags=" + flags + ", baseType=" + baseType + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataDerivedType [name=");
+        builder.append(name);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", line=");
+        builder.append(line);
+        builder.append(", size=");
+        builder.append(size);
+        builder.append(", align=");
+        builder.append(align);
+        builder.append(", offset=");
+        builder.append(offset);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append(", baseType=");
+        builder.append(baseType);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

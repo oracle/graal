@@ -190,10 +190,43 @@ public class MetadataSubprogram implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "MetadataSubprogram [name=" + name + ", displayName=" + displayName + ", linkageName=" + linkageName + ", file=" + file + ", line=" + line + ", type=" + type + ", isLocalToUnit=" +
-                        isLocalToUnit + ", isDefinedInCompileUnit=" + isDefinedInCompileUnit + ", scopeLine=" + scopeLine + ", containingType=" + containingType + ", virtuallity=" + virtuallity +
-                        ", virtualIndex=" + virtualIndex + ", flags=" + flags + ", isOptimized=" + isOptimized + ", templateParams=" + templateParams + ", declaration=" + declaration +
-                        ", variables=" + variables + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataSubprogram [name=");
+        builder.append(name);
+        builder.append(", displayName=");
+        builder.append(displayName);
+        builder.append(", linkageName=");
+        builder.append(linkageName);
+        builder.append(", file=");
+        builder.append(file);
+        builder.append(", line=");
+        builder.append(line);
+        builder.append(", type=");
+        builder.append(type);
+        builder.append(", isLocalToUnit=");
+        builder.append(isLocalToUnit);
+        builder.append(", isDefinedInCompileUnit=");
+        builder.append(isDefinedInCompileUnit);
+        builder.append(", scopeLine=");
+        builder.append(scopeLine);
+        builder.append(", containingType=");
+        builder.append(containingType);
+        builder.append(", virtuallity=");
+        builder.append(virtuallity);
+        builder.append(", virtualIndex=");
+        builder.append(virtualIndex);
+        builder.append(", flags=");
+        builder.append(flags);
+        builder.append(", isOptimized=");
+        builder.append(isOptimized);
+        builder.append(", templateParams=");
+        builder.append(templateParams);
+        builder.append(", declaration=");
+        builder.append(declaration);
+        builder.append(", variables=");
+        builder.append(variables);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

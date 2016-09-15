@@ -55,6 +55,12 @@ public class MetadataEnumerator implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        return "Enumerator [name=" + name + ", value=" + value + "]";
+        StringBuilder builder = new StringBuilder();
+        builder.append("MetadataEnumerator [name=");
+        builder.append(name);
+        builder.append(", value=");
+        builder.append(value);
+        builder.append("]");
+        return builder.toString();
     }
 }
