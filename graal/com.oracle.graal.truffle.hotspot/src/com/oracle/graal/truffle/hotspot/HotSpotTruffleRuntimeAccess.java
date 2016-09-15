@@ -74,7 +74,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         }
 
         static GraalJVMCICompiler getCompiler() {
-            if (Options.TruffleCompilerConfiguration.hasDefaultValue()) {
+            if (!Options.TruffleCompilerConfiguration.hasBeenSet()) {
                 JVMCICompiler compiler = JVMCI.getRuntime().getCompiler();
                 if (compiler instanceof GraalJVMCICompiler) {
                     return (GraalJVMCICompiler) compiler;
