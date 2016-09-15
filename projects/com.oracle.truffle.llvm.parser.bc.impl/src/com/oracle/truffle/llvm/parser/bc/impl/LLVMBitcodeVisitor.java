@@ -57,8 +57,6 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutConverter;
-import com.oracle.truffle.llvm.parser.bc.impl.util.DataLayoutParser;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.factories.LLVMBlockFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
@@ -71,6 +69,7 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
+import datalayout.DataLayoutConverter;
 import uk.ac.man.cs.llvm.ir.LLVMParser;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
@@ -163,8 +162,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         this.labels = labels;
         this.phis = phis;
         if (layout != null) {
-            final List<DataLayoutParser.DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout.getDataLayout());
-            this.targetDataLayout = DataLayoutConverter.getConverter(dataLayout);
+            this.targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         } else {
             this.targetDataLayout = null;
         }

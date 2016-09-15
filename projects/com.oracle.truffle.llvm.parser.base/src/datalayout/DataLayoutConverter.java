@@ -27,21 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl.layout;
+package datalayout;
+
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
 import java.util.Arrays;
 import java.util.List;
-
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.impl.layout.DataLayoutParser.DataTypeSpecification;
 
 public class DataLayoutConverter {
 
     public static class DataSpecConverter {
 
-        private final List<DataTypeSpecification> dataLayout;
+        private final List<DataLayoutParser.DataTypeSpecification> dataLayout;
 
-        public DataSpecConverter(List<DataTypeSpecification> dataLayout) {
+        DataSpecConverter(List<DataLayoutParser.DataTypeSpecification> dataLayout) {
             this.dataLayout = dataLayout;
         }
 
@@ -57,7 +56,7 @@ public class DataLayoutConverter {
             return getDataTypeSpecification(baseType).getValues()[0];
         }
 
-        DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
+        DataLayoutParser.DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
             // Checkstyle: stop magic number name check
             switch (baseType) {
                 case I1:
@@ -88,11 +87,11 @@ public class DataLayoutConverter {
             // Checkstyle: resume magic number name check
         }
 
-        private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int... values) {
-            for (DataTypeSpecification spec : dataLayout) {
+        private DataLayoutParser.DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int... values) {
+            for (DataLayoutParser.DataTypeSpecification spec : dataLayout) {
                 CONT: if (spec.getType().equals(dataLayoutType)) {
-                    for (int i = 0; i < values.length; i++) {
-                        if (values[i] != spec.getValues()[0]) {
+                    for (int value : values) {
+                        if (value != spec.getValues()[0]) {
                             break CONT;
                         }
                     }
@@ -108,7 +107,8 @@ public class DataLayoutConverter {
 
     }
 
-    public static DataSpecConverter getConverter(List<DataTypeSpecification> dataLayout) {
+    public static DataSpecConverter getConverter(String layout) {
+        final List<DataLayoutParser.DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
         return new DataSpecConverter(dataLayout);
     }
 
