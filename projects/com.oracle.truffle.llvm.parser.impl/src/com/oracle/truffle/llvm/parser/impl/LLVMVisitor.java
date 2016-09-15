@@ -39,7 +39,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 
@@ -449,8 +449,10 @@ public final class LLVMVisitor implements LLVMParserRuntime {
                 if (layout != null) {
                     // remove enclosing quotes
                     layout = layout.substring(1, layout.length() - 2);
+                    layoutConverter = DataLayoutConverter.getConverter(layout);
+                } else {
+                    throw new AssertionError("Invalid Layout!");
                 }
-                layoutConverter = DataLayoutConverter.getConverter(layout);
                 break;
             default:
                 throw new AssertionError(infoType + " not supported!");

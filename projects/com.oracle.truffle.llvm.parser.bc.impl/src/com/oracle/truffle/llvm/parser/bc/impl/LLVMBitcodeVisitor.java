@@ -69,7 +69,7 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-import datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import uk.ac.man.cs.llvm.ir.LLVMParser;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;

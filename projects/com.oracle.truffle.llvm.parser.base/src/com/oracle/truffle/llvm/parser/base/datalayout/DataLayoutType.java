@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package datalayout;
+package com.oracle.truffle.llvm.parser.base.datalayout;
 
 enum DataLayoutType {
     INTEGER,
