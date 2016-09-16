@@ -35,9 +35,18 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PR
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.replacements.SnippetTemplate;
+import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Word;
+
+import jdk.vm.ci.code.TargetDescription;
 
 public class HashCodeSnippets implements Snippets {
 
@@ -62,4 +71,23 @@ public class HashCodeSnippets implements Snippets {
         }
         return identityHashCode(IDENTITY_HASHCODE, x);
     }
+
+    public static class Templates extends AbstractTemplates {
+
+        private final SnippetInfo identityHashCodeSnippet = snippet(HashCodeSnippets.class, "identityHashCodeSnippet", HotSpotReplacementsUtil.MARK_WORD_LOCATION);
+
+        public Templates(HotSpotProviders providers, TargetDescription target) {
+            super(providers, providers.getSnippetReflection(), target);
+        }
+
+        public void lower(IdentityHashCodeNode node, LoweringTool tool) {
+            StructuredGraph graph = node.graph();
+            Arguments args = new Arguments(identityHashCodeSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+            args.add("thisObj", node.object);
+            SnippetTemplate template = template(args);
+            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+
+    }
+
 }

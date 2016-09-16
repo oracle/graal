@@ -35,6 +35,6 @@ public class ObjectSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
-        return System.identityHashCode(thisObj);
+        return IdentityHashCodeNode.identityHashCode(thisObj);
     }
 }

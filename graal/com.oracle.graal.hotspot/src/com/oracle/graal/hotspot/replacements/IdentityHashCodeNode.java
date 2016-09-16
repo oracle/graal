@@ -26,44 +26,35 @@ import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
 
-import java.lang.reflect.Method;
-
 import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
+import com.oracle.graal.compiler.common.type.StampFactory;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.graph.spi.Canonicalizable;
+import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
+import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.replacements.nodes.PureFunctionMacroNode;
 
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class IdentityHashCodeNode extends PureFunctionMacroNode {
+public class IdentityHashCodeNode extends FixedWithNextNode implements Canonicalizable, Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);
 
-    private static final Method HashCodeSnippet;
+    @Input ValueNode object;
 
-    static {
-        Method snippet = null;
-        try {
-            snippet = HashCodeSnippets.class.getDeclaredMethod("identityHashCodeSnippet", Object.class);
-        } catch (NoSuchMethodException | SecurityException e) {
-            GraalError.shouldNotReachHere(e.getMessage());
-        }
-        HashCodeSnippet = snippet;
-    }
+    public IdentityHashCodeNode(ValueNode object) {
+        super(TYPE, StampFactory.forInteger(32));
+        this.object = object;
 
-    public IdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode object) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, object);
     }
 
     @Override
@@ -72,22 +63,31 @@ public class IdentityHashCodeNode extends PureFunctionMacroNode {
     }
 
     @Override
-    protected JavaConstant evaluate(JavaConstant param, MetaAccessProvider metaAccess) {
-        if (ImmutableCode.getValue() || param.isNull()) {
-            return null;
+    public Node canonical(CanonicalizerTool tool) {
+        if (object.isConstant()) {
+            assert object.stamp() instanceof AbstractObjectStamp;
+            JavaConstant c = (JavaConstant) object.asConstant();
+            if (ImmutableCode.getValue()) {
+                return this;
+            }
+            JavaConstant identityHashCode = null;
+            if (c.isNull()) {
+                identityHashCode = JavaConstant.forInt(0);
+            } else {
+                identityHashCode = JavaConstant.forInt(((HotSpotObjectConstant) c).getIdentityHashCode());
+            }
+
+            return new ConstantNode(identityHashCode, StampFactory.forConstant(identityHashCode));
         }
-        HotSpotObjectConstant c = (HotSpotObjectConstant) param;
-        return JavaConstant.forInt(c.getIdentityHashCode());
+        return this;
     }
 
     @Override
-    @SuppressWarnings("try")
-    protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
-        final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(HashCodeSnippet);
-        final Replacements replacements = tool.getReplacements();
-        StructuredGraph snippetGraph = null;
-        snippetGraph = replacements.getSnippet(snippetMethod, null);
-        assert snippetGraph != null : "HashCodeSnippets should be installed";
-        return lowerReplacement((StructuredGraph) snippetGraph.copy(), tool);
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
+
+    @NodeIntrinsic
+    public static native int identityHashCode(Object object);
+
 }

@@ -873,6 +873,11 @@ public class StandardGraphBuilderPlugins {
                 b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), throwable, message));
                 return true;
             }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
         });
     }
 
