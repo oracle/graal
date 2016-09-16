@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
-import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -38,11 +37,11 @@ import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
+import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
@@ -113,24 +112,8 @@ public class InliningUtil {
         printInlining(info.methodAt(0), info.invoke(), inliningDepth, success, msg, args);
     }
 
-    /**
-     * Print a HotSpot-style inlining message to the console.
-     */
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
-        if (HotSpotPrintInlining.getValue()) {
-            // 1234567
-            TTY.print("        ");     // print timestamp
-            // 1234
-            TTY.print("     ");        // print compilation number
-            // % s ! b n
-            TTY.printf("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
-            TTY.print("     ");        // more indent
-            TTY.print("    ");         // initial inlining indent
-            for (int i = 0; i < inliningDepth; i++) {
-                TTY.print("  ");
-            }
-            TTY.println(String.format("@ %d  %s   %s%s", invoke.bci(), methodName(method, null), success ? "" : "not inlining ", String.format(msg, args)));
-        }
+        Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
     }
 
     public static void logInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {

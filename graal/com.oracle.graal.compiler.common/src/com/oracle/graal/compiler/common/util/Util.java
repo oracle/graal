@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common.util;
 
+import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
+
 import java.io.PrintStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -637,4 +640,29 @@ public class Util {
                 throw new IllegalArgumentException(x.getJavaKind().toString());
         }
     }
+
+    /**
+     * Print a HotSpot-style inlining message to the console.
+     */
+    public static void printInlining(final ResolvedJavaMethod method, final int bci, final int inliningDepth, final boolean success, final String msg, final Object... args) {
+        if (HotSpotPrintInlining.getValue()) {
+            // 1234567
+            TTY.print("        ");     // print timestamp
+            // 1234
+            TTY.print("     ");        // print compilation number
+            // % s ! b n
+            TTY.printf("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
+            TTY.print("     ");        // more indent
+            TTY.print("    ");         // initial inlining indent
+            for (int i = 0; i < inliningDepth; i++) {
+                TTY.print("  ");
+            }
+            TTY.println(String.format("@ %d  %s   %s%s", bci, methodName(method), success ? "" : "not inlining ", String.format(msg, args)));
+        }
+    }
+
+    private static String methodName(ResolvedJavaMethod method) {
+        return method.format("%H.%n(%p):%r") + " (" + method.getCodeSize() + " bytes)";
+    }
+
 }
