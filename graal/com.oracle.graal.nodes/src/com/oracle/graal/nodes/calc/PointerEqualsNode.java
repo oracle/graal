@@ -75,9 +75,9 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
             return LogicConstantNode.contradiction();
         } else if (((AbstractPointerStamp) forX.stamp()).alwaysNull()) {
-            return new IsNullNode(forY);
+            return IsNullNode.create(forY);
         } else if (((AbstractPointerStamp) forY.stamp()).alwaysNull()) {
-            return new IsNullNode(forX);
+            return IsNullNode.create(forX);
         } else {
             return null;
         }

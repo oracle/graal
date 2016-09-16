@@ -220,7 +220,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 if (instanceOfNode.allowsNull()) {
                     ValueNode object = instanceOfNode.getValue();
                     LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.profile(), instanceOfNode.getAnchor()));
-                    LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+                    LogicNode newNode = LogicNode.or(graph.unique(IsNullNode.create(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                     instanceOfNode.replaceAndDelete(newNode);
                 }
             }
@@ -239,7 +239,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     ValueNode object = instanceOfDynamicNode.getObject();
                     LogicNode newTypeCheck = graph.addOrUniqueWithInputs(
                                     InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), instanceOfDynamicNode.getMirrorOrHub(), object, false));
-                    LogicNode newNode = LogicNode.or(graph.unique(new IsNullNode(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+                    LogicNode newNode = LogicNode.or(graph.unique(IsNullNode.create(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
                     instanceOfDynamicNode.replaceAndDelete(newNode);
                 }
             }

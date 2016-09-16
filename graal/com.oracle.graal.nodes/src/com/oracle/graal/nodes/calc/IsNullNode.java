@@ -31,6 +31,7 @@ import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeCycles;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
+import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.PiNode;
 import com.oracle.graal.nodes.UnaryOpLogicNode;
 import com.oracle.graal.nodes.ValueNode;
@@ -56,6 +57,20 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
         assert object != null;
     }
 
+    public static LogicNode create(ValueNode forValue) {
+        LogicNode result = tryCanonicalize(forValue);
+        return result == null ? new IsNullNode(forValue) : result;
+    }
+
+    public static LogicNode tryCanonicalize(ValueNode forValue) {
+        if (StampTool.isPointerAlwaysNull(forValue)) {
+            return LogicConstantNode.tautology();
+        } else if (StampTool.isPointerNonNull(forValue)) {
+            return LogicConstantNode.contradiction();
+        }
+        return null;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         // Nothing to do.
@@ -70,12 +85,8 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (StampTool.isPointerAlwaysNull(forValue)) {
-            return LogicConstantNode.tautology();
-        } else if (StampTool.isPointerNonNull(forValue)) {
-            return LogicConstantNode.contradiction();
-        }
-        return this;
+        LogicNode result = tryCanonicalize(forValue);
+        return result == null ? this : result;
     }
 
     @Override
