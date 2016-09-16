@@ -95,6 +95,9 @@ public class Module implements ParserListener {
             case VALUE_SYMTAB:
                 return new ValueSymbolTable(generator);
 
+            case METADATA:
+                return version.createMetadata(types, symbols);
+
             default:
                 return ParserListener.DEFAULT;
         }

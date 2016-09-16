@@ -31,9 +31,14 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
+import uk.ac.man.cs.llvm.ir.model.constants.MetadataConstant;
+import uk.ac.man.cs.llvm.ir.types.FunctionType;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
+import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class VoidCallInstruction implements Call, VoidInstruction {
 
@@ -80,8 +85,20 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
     public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments) {
         final VoidCallInstruction inst = new VoidCallInstruction();
         inst.target = symbols.getSymbol(targetIndex, inst);
-        for (int argument : arguments) {
-            inst.arguments.add(symbols.getSymbol(argument, inst));
+        if (inst.target instanceof FunctionType) {
+            Type[] types = ((FunctionType) (inst.target)).getArgumentTypes();
+            for (int i = 0; i < arguments.length; i++) {
+                // TODO: why it's possible to have more arguments than argument types?
+                if (types.length > i && types[i] instanceof MetaType) {
+                    inst.arguments.add(new MetadataConstant(arguments[i]));
+                } else {
+                    inst.arguments.add(symbols.getSymbol(arguments[i], inst));
+                }
+            }
+        } else {
+            for (int i = 0; i < arguments.length; i++) {
+                inst.arguments.add(symbols.getSymbol(arguments[i], inst));
+            }
         }
         return inst;
     }

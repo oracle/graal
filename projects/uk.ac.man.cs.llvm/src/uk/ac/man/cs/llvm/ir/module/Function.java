@@ -81,7 +81,14 @@ public class Function implements ParserListener {
             case VALUE_SYMTAB:
                 return new ValueSymbolTable(generator);
 
+            case METADATA:
+                return version.createMetadata(types, symbols);
+
+            case METADATA_ATTACHMENT:
+                return ParserListener.DEFAULT; // TODO
+
             default:
+                System.out.printf("ENTER #12-FUNCTION-BLOCK: %s%n", block);
                 return ParserListener.DEFAULT;
         }
     }
@@ -97,6 +104,37 @@ public class Function implements ParserListener {
 
         if (record == FunctionRecord.DECLAREBLOCKS) {
             generator.allocateBlocks((int) args[0]);
+            return;
+        }
+
+        /*
+         * FUNC_CODE_DEBUG_LOC as well as FUNC_CODE_DEBUG_LOC_AGAIN also occur after the RET
+         * Instruction, where the InstructionGenerator would already been deleted. This has to be
+         * improved in the future, but for now we simply parse those instructions before checking
+         * for an existing InstructionGenerator. Otherwise we would cause an RuntimeException.
+         */
+        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC) {
+            /*
+             * TODO: implement intial debugging support
+             *
+             * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_common_lifetime
+             * http://llvm.org/releases/3.4/docs/SourceLevelDebugging.html#object-lifetimes-and-scoping
+             *
+             * @formatter:off
+             *
+             * metadata !{
+             *  i32 4,          ;; line number
+             *  i32 0,          ;; column number
+             *  metadata !12,   ;; scope
+             *  null            ;; original scope
+             * }
+             *
+             * @formatter:on
+             */
+            return;
+        }
+
+        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC_AGAIN) {
             return;
         }
 
@@ -186,7 +224,7 @@ public class Function implements ParserListener {
                 break;
 
             case CALL:
-                crateCall(args);
+                createCall(args);
                 break;
 
             case GEP:
@@ -244,7 +282,7 @@ public class Function implements ParserListener {
         code = null;
     }
 
-    protected void crateCall(long[] args) {
+    protected void createCall(long[] args) {
         int i = 2;
 
         FunctionType function = (FunctionType) types.get(args[i++]);

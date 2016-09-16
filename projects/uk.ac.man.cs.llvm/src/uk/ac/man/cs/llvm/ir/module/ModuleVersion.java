@@ -37,9 +37,15 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public enum ModuleVersion {
 
-    LLVM_3_2(ModuleV32::new, FunctionV32::new, ConstantsV32::new),
-    LLVM_3_8(ModuleV38::new, FunctionV38::new, ConstantsV38::new),
-    DEFAULT(Module::new, Function::new, Constants::new);
+    LLVM_3_2(ModuleV32::new, FunctionV32::new, ConstantsV32::new, MetadataV32::new),
+    LLVM_3_8(ModuleV38::new, FunctionV38::new, ConstantsV38::new, MetadataV38::new),
+    DEFAULT(Module::new, Function::new, Constants::new, Metadata::new);
+
+    @FunctionalInterface
+    private interface MetadataParser {
+
+        Metadata instantiate(Types types, List<Type> symbols);
+    }
 
     @FunctionalInterface
     private interface ConstantsParser {
@@ -65,10 +71,17 @@ public enum ModuleVersion {
 
     private final ConstantsParser constants;
 
-    ModuleVersion(ModuleParser module, FunctionParser function, ConstantsParser constants) {
+    private final MetadataParser metadata;
+
+    ModuleVersion(ModuleParser module, FunctionParser function, ConstantsParser constants, MetadataParser metadata) {
         this.module = module;
         this.function = function;
         this.constants = constants;
+        this.metadata = metadata;
+    }
+
+    public Metadata createMetadata(Types types, List<Type> symbols) {
+        return metadata.instantiate(types, symbols);
     }
 
     public Constants createConstants(Types types, List<Type> symbols, ConstantGenerator generator) {
