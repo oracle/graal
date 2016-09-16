@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions.OptionParser;
 public enum LLVMBaseOption implements LLVMOption {
 
     DEBUG("Debug", "Turns debugging on/off", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
-    VERBOSE("Verbose", "Turn chatty debugging informations on/off", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    VERBOSE("Verbose", "Enables verbose printing of debugging information", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),

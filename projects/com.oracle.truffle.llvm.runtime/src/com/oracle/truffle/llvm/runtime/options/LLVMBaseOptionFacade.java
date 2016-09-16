@@ -39,7 +39,7 @@ public final class LLVMBaseOptionFacade {
     }
 
     public static boolean verboseEnabled() {
-        return LLVMOptions.getParsedProperty(LLVMBaseOption.VERBOSE);
+        return debugEnabled() && (boolean) LLVMOptions.getParsedProperty(LLVMBaseOption.VERBOSE);
     }
 
     public static boolean printFunctionASTs() {

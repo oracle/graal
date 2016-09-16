@@ -78,7 +78,7 @@ public class Metadata implements ParserListener {
 
     protected void printMetadataDebugMsg() {
         if (metadata.size() != oldMetadataSize) {
-            LLVMLogger.unconditionalInfo("!" + idx + " - " + metadata.getAbsolute(metadata.size() - 1));
+            LLVMLogger.info("!" + idx + " - " + metadata.getAbsolute(metadata.size() - 1));
             oldMetadataSize = metadata.size();
         }
     }
