@@ -48,11 +48,16 @@ public abstract class LayoutStrategy {
     }
 
     /** @since 0.17 or earlier */
-    protected static final LocationFactory DEFAULT_LAYOUT_FACTORY = new LocationFactory() {
+    @Deprecated protected static final LocationFactory DEFAULT_LAYOUT_FACTORY = new LocationFactory() {
         public Location createLocation(Shape shape, Object value) {
             return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
         }
     };
+
+    /** @since 0.18 */
+    protected LocationFactory getDefaultLocationFactory() {
+        return DEFAULT_LAYOUT_FACTORY;
+    }
 
     /** @since 0.17 or earlier */
     protected abstract boolean updateShape(DynamicObject object);
@@ -134,7 +139,7 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected void propertySetFallback(Property property, DynamicObject store, Object value, ShapeImpl currentShape) {
         ShapeImpl oldShape = currentShape;
-        ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), DEFAULT_LAYOUT_FACTORY);
+        ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), getDefaultLocationFactory());
         Property newProperty = newShape.getProperty(property.getKey());
         newProperty.setSafe(store, value, oldShape, newShape);
     }
@@ -299,7 +304,7 @@ public abstract class LayoutStrategy {
 
     /**
      * Get the (parent) shape that holds the given property.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl getShapeFromProperty(ShapeImpl shape, Object propertyName) {
@@ -317,7 +322,7 @@ public abstract class LayoutStrategy {
 
     /**
      * Get the (parent) shape that holds the given property.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl getShapeFromProperty(ShapeImpl shape, Property prop) {

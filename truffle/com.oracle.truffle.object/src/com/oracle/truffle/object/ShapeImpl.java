@@ -395,7 +395,7 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags) {
-        return defineProperty(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
+        return defineProperty(key, value, flags, layout.getStrategy().getDefaultLocationFactory());
     }
 
     /** @since 0.17 or earlier */
@@ -433,7 +433,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Create a new shape that adds a property to the parent shape.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
@@ -450,7 +450,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Create a new shape that reserves the primitive extension array field.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
@@ -713,7 +713,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Duplicate shape exchanging existing property with new property.
-     * 
+     *
      * @since 0.17 or earlier
      */
     @Override
@@ -726,7 +726,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Find lowest common ancestor of two related shapes.
-     * 
+     *
      * @since 0.17 or earlier
      */
 
@@ -831,7 +831,7 @@ public abstract class ShapeImpl extends Shape {
 
     /**
      * Clone off a separate shape with new shared data.
-     * 
+     *
      * @since 0.17 or earlier
      */
     @TruffleBoundary
