@@ -187,7 +187,7 @@ public abstract class Location {
     }
 
     /**
-     * Returns {@code true} if this is an immutable constant location.
+     * Returns {@code true} if this is a constant value location.
      *
      * @since 0.8 or earlier
      */
@@ -210,6 +210,26 @@ public abstract class Location {
      */
     @Override
     public abstract boolean equals(Object obj);
+
+    /**
+     * Returns {@code true} if this is a declared value location.
+     *
+     * @since 0.18
+     */
+    public boolean isDeclared() {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if this is a value location.
+     *
+     * @see #isConstant()
+     * @see #isDeclared()
+     * @since 0.18
+     */
+    public boolean isValue() {
+        return false;
+    }
 
     /**
      * Equivalent to {@link Shape#check(DynamicObject)}.
