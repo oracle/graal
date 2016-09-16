@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
-import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
-import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.lang.invoke.ConstantCallSite;
@@ -43,8 +41,8 @@ import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
 import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
 import com.oracle.graal.hotspot.replacements.ClassGetHubNode;
-import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
 import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
+import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
 import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
 import com.oracle.graal.hotspot.replacements.ReflectionGetCallerClassNode;
@@ -324,8 +322,8 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerSystemPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, System.class);
-        r.register0("currentTimeMillis", new ForeignCallPlugin(foreignCalls, JAVA_TIME_MILLIS));
-        r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
+        r.register0("currentTimeMillis", new ForeignCallPlugin(foreignCalls, HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS));
+        r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {

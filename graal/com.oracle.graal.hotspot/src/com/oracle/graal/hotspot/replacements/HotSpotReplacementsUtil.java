@@ -23,11 +23,8 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 
@@ -893,21 +890,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int layoutHelperElementTypePrimitiveInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.layoutHelperElementTypePrimitiveInPlace();
-    }
-
-    static int computeHashCode(Object x) {
-        Word mark = loadWordFromObject(x, markOffset(INJECTED_VMCONFIG));
-
-        // this code is independent from biased locking (although it does not look that way)
-        final Word biasedLock = mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG));
-        if (probability(FAST_PATH_PROBABILITY, biasedLock.equal(Word.unsigned(unlockedMask(INJECTED_VMCONFIG))))) {
-            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift(INJECTED_VMCONFIG)).rawValue();
-            if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue(INJECTED_VMCONFIG))) {
-                return hash;
-            }
-        }
-
-        return identityHashCode(IDENTITY_HASHCODE, x);
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
