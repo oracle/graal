@@ -459,7 +459,7 @@ public final class LLVMNodeGenerator {
         return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeHelper.toBaseType(constant.getType()).getType());
     }
 
-    private LLVMExpressionNode resolveMetadataConstant(MetadataConstant constant) {
+    private static LLVMExpressionNode resolveMetadataConstant(MetadataConstant constant) {
         // TODO: point to Metadata
         return new LLVMSimpleLiteralNode.LLVMI64LiteralNode(constant.getValue());
     }
