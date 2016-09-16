@@ -55,7 +55,7 @@ public class AMD64Call {
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
-        @Temp protected Value[] temps;
+        @Temp({REG, STACK}) protected Value[] temps;
         @State protected LIRFrameState state;
 
         protected CallOp(LIRInstructionClass<? extends CallOp> c, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
@@ -63,7 +63,7 @@ public class AMD64Call {
             this.result = result;
             this.parameters = parameters;
             this.state = state;
-            this.temps = temps;
+            this.temps = addStackSlotsToTemporaries(parameters, temps);
             assert temps != null;
         }
 

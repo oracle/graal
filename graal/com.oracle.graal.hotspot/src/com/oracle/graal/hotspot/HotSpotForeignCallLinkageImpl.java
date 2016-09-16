@@ -23,11 +23,8 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-import java.util.Arrays;
 import java.util.Set;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -118,7 +115,6 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
-        linkage.addStackSlotsToTemporaries();
         return linkage;
     }
 
@@ -232,29 +228,6 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return address == 0L || stub != null;
     }
 
-    /**
-     * Ensure that outgoing stack slots appear to be killed by the call.
-     */
-    private void addStackSlotsToTemporaries() {
-        int extraTemps = 0;
-        AllocatableValue[] arguments = getOutgoingCallingConvention().getArguments();
-        for (Value p : arguments) {
-            if (isStackSlot(p)) {
-                extraTemps++;
-            }
-            assert !isVirtualStackSlot(p) : "only real stack slots in calling convention";
-        }
-        if (extraTemps != 0) {
-            int index = temporaries.length;
-            temporaries = Arrays.copyOf(temporaries, temporaries.length + extraTemps);
-            for (Value p : arguments) {
-                if (isStackSlot(p)) {
-                    temporaries[index++] = p;
-                }
-            }
-        }
-    }
-
     @Override
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
@@ -270,7 +243,6 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
                 }
                 temporaries = temporaryLocations;
             }
-            addStackSlotsToTemporaries();
             address = code.getStart();
         }
     }

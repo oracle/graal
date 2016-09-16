@@ -49,7 +49,7 @@ public class SPARCCall {
     public abstract static class CallOp extends SPARCLIRInstruction {
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
-        @Temp protected Value[] temps;
+        @Temp({REG, STACK}) protected Value[] temps;
         @State protected LIRFrameState state;
 
         protected CallOp(LIRInstructionClass<? extends CallOp> c, SizeEstimate size, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
@@ -57,7 +57,7 @@ public class SPARCCall {
             this.result = result;
             this.parameters = parameters;
             this.state = state;
-            this.temps = temps;
+            this.temps = addStackSlotsToTemporaries(parameters, temps);
             assert temps != null;
         }
 
