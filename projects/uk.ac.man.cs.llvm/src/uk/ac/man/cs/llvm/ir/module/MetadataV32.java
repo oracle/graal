@@ -32,6 +32,7 @@ package uk.ac.man.cs.llvm.ir.module;
 import java.util.List;
 
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
@@ -202,7 +203,12 @@ public class MetadataV32 extends Metadata {
         MetadataNode node = new MetadataNode();
 
         while (args.hasNext()) {
-            node.add(metadata.getReference(args.next()));
+            Type next = args.next();
+            if (next instanceof MetadataConstantType) {
+                node.add(metadata.getReference(next));
+            } else {
+                node.add(MetadataBlock.voidRef); // TODO: implement
+            }
         }
 
         metadata.add(node);

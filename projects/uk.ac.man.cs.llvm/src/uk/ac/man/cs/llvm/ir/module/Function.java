@@ -84,6 +84,9 @@ public class Function implements ParserListener {
             case METADATA:
                 return version.createMetadata(types, symbols);
 
+            case METADATA_ATTACHMENT:
+                return ParserListener.DEFAULT; // TODO
+
             default:
                 System.out.printf("ENTER #12-FUNCTION-BLOCK: %s%n", block);
                 return ParserListener.DEFAULT;
