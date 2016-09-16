@@ -94,7 +94,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     public static LLVMParserResult getMain(Source source, LLVMContext context, LLVMOptimizationConfiguration configuration) {
         Model model = new Model();
 
-        new LLVMParser(model).parse(ModuleVersion.LLVM_3_2, source.getPath());
+        ModuleVersion llvmVersion = ModuleVersion.getModuleVersion(LLVMBaseOptionFacade.getLLVMVersion());
+        new LLVMParser(model).parse(llvmVersion, source.getPath());
 
         LLVMPhiManager phis = LLVMPhiManager.generate(model);
 
