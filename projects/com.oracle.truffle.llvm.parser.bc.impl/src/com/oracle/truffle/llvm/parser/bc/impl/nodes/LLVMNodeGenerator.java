@@ -83,6 +83,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.InlineAsmConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.MetadataConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
@@ -277,6 +278,9 @@ public final class LLVMNodeGenerator {
         } else if (symbol instanceof VectorConstant) {
             return resolveVectorConstant((VectorConstant) symbol);
 
+        } else if (symbol instanceof MetadataConstant) {
+            return resolveMetadataConstant((MetadataConstant) symbol);
+
         } else {
             throw new AssertionError("Cannot resolve symbol: " + symbol);
         }
@@ -453,5 +457,10 @@ public final class LLVMNodeGenerator {
                         method.getStackSlot());
 
         return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeHelper.toBaseType(constant.getType()).getType());
+    }
+
+    private LLVMExpressionNode resolveMetadataConstant(MetadataConstant constant) {
+        // TODO: point to Metadata
+        return new LLVMSimpleLiteralNode.LLVMI64LiteralNode(constant.getValue());
     }
 }
