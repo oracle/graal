@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions.OptionParser;
 public enum LLVMBaseOption implements LLVMOption {
 
     DEBUG("Debug", "Turns debugging on/off", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
+    VERBOSE("Verbose", "Enables verbose printing of debugging information", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PRINT_PERFORMANCE_WARNINGS("PrintPerformanceWarnings", "Prints performance warnings", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PERFORMANCE_WARNING_ARE_FATAL("PerformanceWarningsAreFatal", "Terminates the program after a performance issue is encountered", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
     PRINT_FUNCTION_ASTS("PrintASTs", "Prints the Truffle ASTs for the parsed functions", false, LLVMOptions::parseBoolean, PropertyCategory.DEBUG),
@@ -70,6 +71,7 @@ public enum LLVMBaseOption implements LLVMOption {
                     LLVMOptions::parseString,
                     PropertyCategory.TESTS),
     TEST_BINARY_PARSER("TestBinaryParser", "Run the testsuite using the binary parser.", false, LLVMOptions::parseBoolean, PropertyCategory.TESTS),
+    LLVM_VERSION("LLVM", "Version of the used LLVM File Format 3.2/3.8", "3.2", LLVMOptions::parseString, PropertyCategory.GENERAL),
     NODE_CONFIGURATION("NodeConfiguration", "The node configuration (node factory) to be used in Sulong.", "default", LLVMOptions::parseString, PropertyCategory.GENERAL),
     STACK_SIZE_KB("StackSizeKB", "The stack size in KB.", 81920L, LLVMOptions::parseLong, PropertyCategory.GENERAL),
     DYN_LIBRARY_PATHS(

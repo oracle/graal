@@ -30,6 +30,9 @@
 package uk.ac.man.cs.llvm.ir.module;
 
 import java.util.List;
+
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
+
 import uk.ac.man.cs.llvm.ir.ConstantGenerator;
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
@@ -78,6 +81,17 @@ public enum ModuleVersion {
         this.function = function;
         this.constants = constants;
         this.metadata = metadata;
+    }
+
+    public static ModuleVersion getModuleVersion(String versionStr) {
+        if (versionStr.contains("3.2")) {
+            return LLVM_3_2;
+        } else if (versionStr.contains("3.8")) {
+            return LLVM_3_8;
+        } else {
+            LLVMLogger.unconditionalInfo("Couldn't parse LLVM Version, use default one");
+            return DEFAULT;
+        }
     }
 
     public Metadata createMetadata(Types types, List<Type> symbols) {

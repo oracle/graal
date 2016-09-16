@@ -38,6 +38,10 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.DEBUG);
     }
 
+    public static boolean verboseEnabled() {
+        return debugEnabled() && (boolean) LLVMOptions.getParsedProperty(LLVMBaseOption.VERBOSE);
+    }
+
     public static boolean printFunctionASTs() {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.PRINT_FUNCTION_ASTS);
     }
@@ -139,6 +143,10 @@ public final class LLVMBaseOptionFacade {
 
     public static long getStackSizeKB() {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.STACK_SIZE_KB);
+    }
+
+    public static String getLLVMVersion() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.LLVM_VERSION);
     }
 
     public static String getNodeConfiguration() {
