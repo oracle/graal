@@ -244,9 +244,11 @@ public class GraphUtil {
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
         if (fixed instanceof StateSplit) {
             FrameState stateAfter = ((StateSplit) fixed).stateAfter();
-            ((StateSplit) fixed).setStateAfter(null);
-            if (stateAfter.hasNoUsages()) {
-                killWithUnusedFloatingInputs(stateAfter);
+            if (stateAfter != null) {
+                ((StateSplit) fixed).setStateAfter(null);
+                if (stateAfter.hasNoUsages()) {
+                    killWithUnusedFloatingInputs(stateAfter);
+                }
             }
         }
         unlinkFixedNode(fixed);
