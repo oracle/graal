@@ -33,11 +33,14 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static com.oracle.graal.lir.LIRInstruction.OperandMode.ALIVE;
 import static com.oracle.graal.lir.LIRInstruction.OperandMode.DEF;
 import static com.oracle.graal.lir.LIRInstruction.OperandMode.TEMP;
+import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 
@@ -344,6 +347,33 @@ public abstract class LIRInstruction {
     @SuppressWarnings("unused")
     public final Value forEachRegisterHint(Value value, OperandMode mode, ValueProcedure proc) {
         return instructionClass.forEachRegisterHint(this, mode, proc);
+    }
+
+    /**
+     * Utility method to add stack arguments to a list of temporaries. Useful for modeling calling
+     * conventions that kill outgoing argument space.
+     *
+     * @return additional temporaries
+     */
+    protected static Value[] addStackSlotsToTemporaries(Value[] parameters, Value[] temporaries) {
+        int extraTemps = 0;
+        for (Value p : parameters) {
+            if (isStackSlot(p)) {
+                extraTemps++;
+            }
+            assert !isVirtualStackSlot(p) : "only real stack slots in calling convention";
+        }
+        if (extraTemps != 0) {
+            int index = temporaries.length;
+            Value[] newTemporaries = Arrays.copyOf(temporaries, temporaries.length + extraTemps);
+            for (Value p : parameters) {
+                if (isStackSlot(p)) {
+                    newTemporaries[index++] = p;
+                }
+            }
+            return newTemporaries;
+        }
+        return temporaries;
     }
 
     public void verify() {
