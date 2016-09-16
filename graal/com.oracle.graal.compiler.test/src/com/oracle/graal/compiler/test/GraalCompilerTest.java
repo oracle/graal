@@ -825,11 +825,25 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+        return compile(installedCodeOwner, graph, new CompilationResult());
+    }
+
+    /**
+     * Compiles a given method.
+     *
+     * @param installedCodeOwner the method the compiled code will be associated with when installed
+     * @param graph the graph to be compiled for {@code installedCodeOwner}. If null, a graph will
+     *            be obtained from {@code installedCodeOwner} via
+     *            {@link #parseForCompile(ResolvedJavaMethod)}.
+     * @param compilationResult
+     */
+    @SuppressWarnings("try")
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
         try (Scope s = Debug.scope("Compile", graphToCompile)) {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                            graphToCompile.getProfilingInfo(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+                            graphToCompile.getProfilingInfo(), getSuites(), getLIRSuites(), compilationResult, CompilationResultBuilderFactory.Default);
             return GraalCompiler.compile(request);
         } catch (Throwable e) {
             throw Debug.handle(e);
