@@ -38,6 +38,10 @@ public final class LLVMBaseOptionFacade {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.DEBUG);
     }
 
+    public static boolean verboseEnabled() {
+        return LLVMOptions.getParsedProperty(LLVMBaseOption.VERBOSE);
+    }
+
     public static boolean printFunctionASTs() {
         return LLVMOptions.getParsedProperty(LLVMBaseOption.PRINT_FUNCTION_ASTS);
     }

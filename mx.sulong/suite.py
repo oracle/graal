@@ -215,6 +215,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.llvm.runtime",
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
