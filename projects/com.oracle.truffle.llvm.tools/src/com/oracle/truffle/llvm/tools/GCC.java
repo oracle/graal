@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.tools;
 
 import java.io.File;
+import java.io.IOException;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
@@ -62,10 +63,15 @@ public final class GCC extends CompilerBase {
         }
 
         String destinationLLFileName = destinationFile.getAbsolutePath();
-        String interimLLFileName = "/tmp/interim.ll";
+        File interimFile;
+        try {
+            interimFile = File.createTempFile("interim", ".ll");
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
 
         if (destinationFile.getName().endsWith(".bc")) {
-            destinationLLFileName = interimLLFileName;
+            destinationLLFileName = interimFile.getAbsolutePath();
         }
 
         String[] llFileGenerationCommand = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(),
@@ -74,7 +80,7 @@ public final class GCC extends CompilerBase {
 
         // Converting interim .ll file to .bc file
         if (destinationFile.getName().endsWith(".bc")) {
-            LLVMAssembler.assembleToBitcodeFile(new File(interimLLFileName), destinationFile);
+            LLVMAssembler.assembleToBitcodeFile(interimFile, destinationFile);
         }
     }
 
