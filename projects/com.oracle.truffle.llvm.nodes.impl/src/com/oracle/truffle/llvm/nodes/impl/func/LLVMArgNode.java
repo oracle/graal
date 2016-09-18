@@ -186,9 +186,13 @@ public class LLVMArgNode {
 
         public abstract int getIndex();
 
-        @Specialization(rewriteOn = ClassCastException.class)
+        @Specialization(guards = "isAddress(frame)")
         public Object executePointee(VirtualFrame frame) {
             return ((LLVMAddress) frame.getArguments()[getIndex()]).copy();
+        }
+
+        public boolean isAddress(VirtualFrame frame) {
+            return frame.getArguments()[getIndex()] instanceof LLVMAddress;
         }
 
         @Specialization
