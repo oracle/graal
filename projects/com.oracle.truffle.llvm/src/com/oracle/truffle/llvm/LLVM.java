@@ -241,17 +241,13 @@ public class LLVM {
 
             @Override
             public void disposeContext(LLVMContext context) {
-                // the PolyglotEngine calls this method for every mime type supported by the
-                // language
-                if (!context.getStack().isFreed()) {
-                    for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
-                        destructorFunction.call(destructorFunction);
-                    }
-                    for (RootCallTarget destructor : context.getGlobalVarDeallocs()) {
-                        destructor.call();
-                    }
-                    context.getStack().free();
+                for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
+                    destructorFunction.call(destructorFunction);
                 }
+                for (RootCallTarget destructor : context.getGlobalVarDeallocs()) {
+                    destructor.call();
+                }
+                context.getStack().free();
             }
         };
     }
