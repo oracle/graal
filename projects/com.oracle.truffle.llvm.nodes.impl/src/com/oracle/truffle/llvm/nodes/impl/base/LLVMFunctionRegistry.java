@@ -41,7 +41,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -76,9 +75,9 @@ public class LLVMFunctionRegistry {
      */
     @CompilationFinal private LLVMFunctionDescriptor[] functionDescriptors = new LLVMFunctionDescriptor[REAL_FUNCTION_START_INDEX];
 
-    public LLVMFunctionRegistry(LLVMOptimizationConfiguration optimizationConfig, NodeFactoryFacade facade) {
+    public LLVMFunctionRegistry(NodeFactoryFacade facade) {
         this.facade = facade;
-        this.intrinsics = facade.getFunctionSubstitutionFactories(optimizationConfig);
+        this.intrinsics = facade.getFunctionSubstitutionFactories();
         functionPtrCallTargetMap = new RootCallTarget[REAL_FUNCTION_START_INDEX + intrinsics.size() + 1];
         functionDescriptors[0] = LLVMFunctionDescriptor.create(ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false, 0);
         registerIntrinsics();

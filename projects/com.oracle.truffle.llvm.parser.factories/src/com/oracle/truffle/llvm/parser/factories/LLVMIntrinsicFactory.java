@@ -83,9 +83,9 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVACop
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public final class LLVMIntrinsicFactory {
 
@@ -139,10 +139,10 @@ public final class LLVMIntrinsicFactory {
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
     public static LLVMNode create(String functionName, Object[] argNodes, FunctionDef functionDef, LLVMParserRuntime runtime) {
         int argCount = functionDef.getHeader().getParameters().getParameters().size();
-        return create(functionName, argNodes, argCount, runtime.getStackPointerSlot(), runtime.getOptimizationConfiguration());
+        return create(functionName, argNodes, argCount, runtime.getStackPointerSlot());
     }
 
-    public static LLVMNode create(String functionName, Object[] argNodes, int argCount, FrameSlot stack, LLVMOptimizationConfiguration configuration) {
+    public static LLVMNode create(String functionName, Object[] argNodes, int argCount, FrameSlot stack) {
         NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
         LLVMAddressNode readStackPointerNode = (LLVMAddressNode) argNodes[0];
@@ -168,7 +168,7 @@ public final class LLVMIntrinsicFactory {
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
                 return LLVMI64ObjectSizeNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMI1Node) realArgNodes[1]);
             } else if (functionName.startsWith("@llvm.expect")) {
-                return getExpect(realArgNodes, functionName, configuration);
+                return getExpect(realArgNodes, functionName);
             } else if (functionName.startsWith("@llvm.dbg.declare")) {
                 return new LLVMNode() {
 
@@ -187,11 +187,11 @@ public final class LLVMIntrinsicFactory {
 
     }
 
-    private static LLVMNode getExpect(Object[] argNodes, String functionName, LLVMOptimizationConfiguration optimizationConfig) {
+    private static LLVMNode getExpect(Object[] argNodes, String functionName) {
         if (functionName.startsWith("@llvm.expect.i1")) {
             boolean expectedValue = ((LLVMI1Node) argNodes[1]).executeI1(null);
             LLVMI1Node actualValueNode = (LLVMI1Node) argNodes[0];
-            if (optimizationConfig.specializeForExpectIntrinsic()) {
+            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
                 return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
             } else {
                 return LLVMDisabledExpectI1NodeGen.create(actualValueNode);
@@ -199,7 +199,7 @@ public final class LLVMIntrinsicFactory {
         } else if (functionName.startsWith("@llvm.expect.i32")) {
             int expectedValue = ((LLVMI32Node) argNodes[1]).executeI32(null);
             LLVMI32Node actualValueNode = (LLVMI32Node) argNodes[0];
-            if (optimizationConfig.specializeForExpectIntrinsic()) {
+            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
                 return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
             } else {
                 return LLVMDisabledExpectI32NodeGen.create(actualValueNode);
@@ -207,7 +207,7 @@ public final class LLVMIntrinsicFactory {
         } else if (functionName.startsWith("@llvm.expect.i64")) {
             long expectedValue = ((LLVMI64Node) argNodes[1]).executeI64(null);
             LLVMI64Node actualValueNode = (LLVMI64Node) argNodes[0];
-            if (optimizationConfig.specializeForExpectIntrinsic()) {
+            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
                 return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
             } else {
                 return LLVMDisabledExpectI64NodeGen.create(actualValueNode);

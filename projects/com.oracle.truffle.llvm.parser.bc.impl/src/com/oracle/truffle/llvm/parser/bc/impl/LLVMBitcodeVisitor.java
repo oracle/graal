@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser.bc.impl;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -57,19 +57,18 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.factories.LLVMBlockFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import uk.ac.man.cs.llvm.ir.LLVMParser;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
@@ -91,7 +90,7 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class LLVMBitcodeVisitor implements ModelVisitor {
 
-    public static LLVMParserResult getMain(Source source, LLVMContext context, LLVMOptimizationConfiguration configuration) {
+    public static LLVMParserResult getMain(Source source, LLVMContext context) {
         Model model = new Model();
 
         ModuleVersion llvmVersion = ModuleVersion.getModuleVersion(LLVMBaseOptionFacade.getLLVMVersion());
@@ -103,7 +102,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(context, configuration, lifetimes, labels, phis, ((ModelModule) model.createModule()).getTargetDataLayout());
+        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(context, lifetimes, labels, phis, ((ModelModule) model.createModule()).getTargetDataLayout());
 
         model.accept(module);
 
@@ -135,8 +134,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final LLVMContext context;
 
-    private final LLVMOptimizationConfiguration optimizationConfiguration;
-
     private final LLVMFrameDescriptors frames;
 
     private final LLVMLabelList labels;
@@ -155,10 +152,9 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final LLVMBitcodeTypeHelper typeHelper;
 
-    public LLVMBitcodeVisitor(LLVMContext context, LLVMOptimizationConfiguration optimizationConfiguration, LLVMFrameDescriptors frames, LLVMLabelList labels, LLVMPhiManager phis,
+    public LLVMBitcodeVisitor(LLVMContext context, LLVMFrameDescriptors frames, LLVMLabelList labels, LLVMPhiManager phis,
                     TargetDataLayout layout) {
         this.context = context;
-        this.optimizationConfiguration = optimizationConfiguration;
         this.frames = frames;
         this.labels = labels;
         this.phis = phis;
@@ -292,10 +288,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         } else {
             return LLVMBitcodeHelper.toConstantNode(g, 0, this::getGlobalVariable, context, null, labels);
         }
-    }
-
-    public LLVMOptimizationConfiguration getOptimizationConfiguration() {
-        return optimizationConfiguration;
     }
 
     public List<LLVMNode> getGobalVariables(FrameSlot stack) {

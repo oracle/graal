@@ -38,22 +38,21 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 
-import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 
 public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
@@ -195,9 +194,4 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         }
         return nodes;
     }
-
-    public LLVMOptimizationConfiguration getOptimizationConfiguration() {
-        return module.getOptimizationConfiguration();
-    }
-
 }

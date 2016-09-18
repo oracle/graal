@@ -68,15 +68,12 @@ import com.oracle.truffle.llvm.parser.NodeFactoryFacadeProvider;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMPropertyOptimizationConfiguration;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This is the main LLVM execution class.
  */
 public class LLVM {
-
-    static final LLVMPropertyOptimizationConfiguration OPTIMIZATION_CONFIGURATION = new LLVMPropertyOptimizationConfiguration();
 
     static {
         LLVMLanguage.provider = getProvider();
@@ -218,8 +215,8 @@ public class LLVM {
             @Override
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacade facade = getNodeFactoryFacade();
-                LLVMContext context = new LLVMContext(facade, OPTIMIZATION_CONFIGURATION);
-                LLVMVisitor runtime = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile());
+                LLVMContext context = new LLVMContext(facade);
+                LLVMVisitor runtime = new LLVMVisitor(context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile());
                 facade.setUpFacade(runtime);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
@@ -278,7 +275,7 @@ public class LLVM {
 
     public static LLVMParserResult parseString(Source source, LLVMContext context) throws IOException {
         Model model = getModelFromString(source);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(context.getMainArguments(), source, context.getMainSourceFile());
         LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
         return parserResult;
     }
@@ -305,7 +302,7 @@ public class LLVM {
             throw new IllegalStateException("empty file?");
         }
         Model model = getModelFromSource(source);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(OPTIMIZATION_CONFIGURATION, context.getMainArguments(), source, context.getMainSourceFile());
+        LLVMVisitor llvmVisitor = new LLVMVisitor(context.getMainArguments(), source, context.getMainSourceFile());
         LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
         resource.unload();
         return parserResult;
@@ -320,7 +317,7 @@ public class LLVM {
     }
 
     public static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
-        return LLVMBitcodeVisitor.getMain(source, context, OPTIMIZATION_CONFIGURATION);
+        return LLVMBitcodeVisitor.getMain(source, context);
     }
 
     public static int executeMain(File file, Object... args) {
