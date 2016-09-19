@@ -646,18 +646,20 @@ public class Util {
      */
     public static void printInlining(final ResolvedJavaMethod method, final int bci, final int inliningDepth, final boolean success, final String msg, final Object... args) {
         if (HotSpotPrintInlining.getValue()) {
+            StringBuilder sb = new StringBuilder();
             // 1234567
-            TTY.print("        ");     // print timestamp
+            sb.append("        ");     // print timestamp
             // 1234
-            TTY.print("     ");        // print compilation number
+            sb.append("     ");        // print compilation number
             // % s ! b n
-            TTY.printf("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' ');
-            TTY.print("     ");        // more indent
-            TTY.print("    ");         // initial inlining indent
+            sb.append(String.format("%c%c%c%c%c ", ' ', method.isSynchronized() ? 's' : ' ', ' ', ' ', method.isNative() ? 'n' : ' '));
+            sb.append("     ");        // more indent
+            sb.append("    ");         // initial inlining indent
             for (int i = 0; i < inliningDepth; i++) {
-                TTY.print("  ");
+                sb.append("  ");
             }
-            TTY.println(String.format("@ %d  %s   %s%s", bci, methodName(method), success ? "" : "not inlining ", String.format(msg, args)));
+            sb.append(String.format("@ %d  %s   %s%s", bci, methodName(method), success ? "" : "not inlining ", String.format(msg, args)));
+            TTY.println(sb.toString());
         }
     }
 
