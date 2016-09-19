@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.9.0",
+  "mxversion" : "5.43.0",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -39,7 +39,7 @@ suite = {
       }
     },
   },
-
+  "snippetsPattern" : ".*Snippets.*",
   "projects" : {
 
     # ------------- Truffle -------------
@@ -47,6 +47,12 @@ suite = {
     "com.oracle.truffle.api" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "uses" : ["com.oracle.truffle.api.TruffleRuntimeAccess"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -56,8 +62,13 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
       ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
     },
@@ -72,9 +83,25 @@ suite = {
         "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
+      "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.api.benchmark" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api",
+        "mx:JMH",
+      ],
+      "imports" : ["jdk.internal.loader"],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "annotationProcessors" : ["mx:JMH"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
     },
@@ -83,6 +110,10 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+        "com.oracle.truffle.api.dsl.internal", # Exported for com.oracle.truffle.sl.nodes.SLTypes
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle,Codegen",
@@ -114,6 +145,13 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
+      "imports" : [
+        "com.sun.tools.javac.processing",
+        "com.sun.tools.javac.model",
+        "com.sun.tools.javac.util",
+        "com.sun.tools.javac.tree",
+        "com.sun.tools.javac.file",
+      ],
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -121,6 +159,9 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -130,6 +171,9 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -139,7 +183,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.tools",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
@@ -154,6 +198,9 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.vm"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "javaCompliance" : "1.7",
@@ -167,10 +214,11 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.instrumentation.test",
         "com.oracle.truffle.api.dsl.test",
+        "com.oracle.truffle.tck",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
 
@@ -180,6 +228,9 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.dsl"
+      ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
@@ -204,15 +255,61 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.interop"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.object.dsl" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["com.oracle.truffle.api.object"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.object.dsl.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.object",
+        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object.dsl.processor",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.object.dsl.processor",
+      "javaCompliance" : "1.7",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Codegen,Test",
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.object.dsl.processor" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.object.dsl",
+        "com.oracle.truffle.dsl.processor"
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "workingSets" : "Truffle,Codegen",
     },
 
     "com.oracle.truffle.api.profiles" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -236,6 +333,18 @@ suite = {
       "workingSets" : "Truffle",
     },
 
+    "com.oracle.truffle.object.basic.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.object.basic",
+        "mx:JUNIT"
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "1.7",
+      "workingSets" : "Truffle",
+    },
+
     "com.oracle.truffle.tck" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -253,8 +362,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-                        "com.oracle.truffle.api.profiles",
-                        "com.oracle.truffle.api.instrumentation"],
+                        "com.oracle.truffle.api.vm"],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -279,12 +387,12 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-                        "com.oracle.truffle.tools",
-                        "com.oracle.truffle.api.debug",
-                        "JLINE"
-                        ],
+        "com.oracle.truffle.api.debug",
+        "JLINE"
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,Tools",
     },
 
@@ -306,27 +414,14 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
+        "mx:JMH",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
+      "annotationProcessors" : ["mx:JMH"],
       "license" : "UPL",
     },
-
-    "com.oracle.truffle.sl.tools" : {
-       "subDir" : "truffle",
-       "sourceDirs" : ["src"],
-       "dependencies" : [
-                        "com.oracle.truffle.tools.debug.shell",
-                        ],
-       "generatedDependencies" : [
-                        "com.oracle.truffle.sl",
-                        ],
-       "checkstyle" : "com.oracle.truffle.sl",
-       "javaCompliance" : "1.7",
-       "workingSets" : "Truffle,SimpleLanguage,Tools",
-       "license" : "UPL",
-     },
    },
 
   "licenses" : {
@@ -341,6 +436,8 @@ suite = {
     # ------------- Distributions -------------
 
     "TRUFFLE_API" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_api",
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
       "dependencies" : [
@@ -350,6 +447,7 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.api.object.dsl",
       ],
       "distDependencies" : [
       ],
@@ -368,23 +466,25 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recent requirements of the Truffle infrastructure and tooling.""",
+      "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
       "internal" : True,
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
-      "dependencies" : ["com.oracle.truffle.dsl.processor"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : [],
-      "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+      "maven" : False,
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "truffle",
       "javaCompliance" : "1.7",
-      "dependencies" : ["com.oracle.truffle.dsl.processor"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+      "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_SL" : {
@@ -392,7 +492,9 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.sl",
-        "com.oracle.truffle.sl.test"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -401,6 +503,27 @@ suite = {
       ],
       "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
+      "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_SL_TEST" : {
+      "subDir" : "truffle",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.sl.test"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+        "mx:JMH"
+      ],
+      "distDependencies" : [
+          "TRUFFLE_API",
+          "TRUFFLE_TCK",
+          "TRUFFLE_DSL_PROCESSOR",
+          "TRUFFLE_SL"
+      ],
+      "license" : "UPL",
+      "maven" : False
     },
 
      "TRUFFLE_DEBUG" : {
@@ -416,6 +539,30 @@ suite = {
       ],
       "description" : "Experimental REPL server to build your debugger console for your language.",
       "allowsJavadocWarnings": True,
-     }
+     },
+
+     "TRUFFLE_TEST" : {
+       "subDir" : "truffle",
+       "javaCompliance" : "1.8",
+       "dependencies" : [
+         "com.oracle.truffle.api.test",
+         "com.oracle.truffle.api.benchmark",
+         "com.oracle.truffle.api.dsl.test",
+         "com.oracle.truffle.api.instrumentation.test",
+         "com.oracle.truffle.api.debug.test",
+         "com.oracle.truffle.api.interop.java.test",
+         "com.oracle.truffle.api.object.dsl.test",
+         "com.oracle.truffle.object.basic.test",
+         "com.oracle.truffle.tools.test",
+       ],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH"],
+       "distDependencies" : [
+         "TRUFFLE_API",
+         "TRUFFLE_DSL_PROCESSOR",
+         "TRUFFLE_DEBUG",
+         "TRUFFLE_TCK",
+      ],
+      "maven" : False,
+     },
   },
 }

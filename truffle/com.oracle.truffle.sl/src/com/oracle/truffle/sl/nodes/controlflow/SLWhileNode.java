@@ -53,9 +53,15 @@ public final class SLWhileNode extends SLStatementNode {
 
     @Child private LoopNode loopNode;
 
-    public SLWhileNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        super(src);
-        this.loopNode = Truffle.getRuntime().createLoopNode(new SLRepeatingNode(src, conditionNode, bodyNode));
+    public SLWhileNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        this.loopNode = Truffle.getRuntime().createLoopNode(new SLWhileRepeatingNode(conditionNode, bodyNode));
+    }
+
+    @Override
+    public void setSourceSection(SourceSection section) {
+        super.setSourceSection(section);
+        /* Propagate the SourceSection also to the repeated loop body node. */
+        ((SLWhileRepeatingNode) loopNode.getRepeatingNode()).setSourceSection(section);
     }
 
     @Override

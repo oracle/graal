@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -36,10 +37,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.vm.PolyglotEngine.PolyglotRootNode;
 
-final class SymbolInvokerImpl {
+abstract class SymbolInvokerImpl {
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) {
+    static CallTarget createExecuteSymbol(TruffleLanguage<?> lang, PolyglotEngine engine, Object symbol) {
         Class<? extends TruffleLanguage<?>> type;
         if (lang != null) {
             type = (Class) lang.getClass();
@@ -50,54 +55,85 @@ final class SymbolInvokerImpl {
         if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
             symbolNode = RootNode.createConstantNode(symbol);
         } else {
-            Node executeMain = Message.createExecute(arr.length).createNode();
-            symbolNode = createTemporaryRoot(type, executeMain, (TruffleObject) symbol, arr.length);
+            symbolNode = new ForeignExecuteRoot(type, engine, (TruffleObject) symbol);
         }
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
 
     @SuppressWarnings("rawtypes")
-    public static RootNode createTemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
-        return new TemporaryRoot(lang, foreignAccess, function, argumentLength);
+    public static RootNode createTemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
+        return new TemporaryRoot(lang, foreignAccess, function);
     }
 
     static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
-        private final int argumentLength;
         private final TruffleObject function;
+        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
         @SuppressWarnings("rawtypes")
-        public TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();
             this.function = function;
-            this.argumentLength = argumentLength;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            if (args.length != argumentLength) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new ArgumentsMishmashException();
-            }
             try {
                 Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
-                return convert.convert(frame, tmp);
+                return convert.convert(frame, typeProfile.profile(tmp));
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             }
         }
+    }
+
+    static final class ForeignExecuteRoot extends PolyglotRootNode {
+        private final TruffleObject function;
+
+        @Child private ConvertNode convert;
+        @Child private Node foreignAccess;
+
+        @SuppressWarnings("rawtypes")
+        ForeignExecuteRoot(Class<? extends TruffleLanguage> language, PolyglotEngine engine, TruffleObject function) {
+            super(language, engine);
+            this.function = function;
+            this.convert = new ConvertNode();
+        }
+
+        @Override
+        protected Object executeImpl(VirtualFrame frame) {
+            final Object[] args = frame.getArguments();
+            try {
+                if (foreignAccess == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignAccess = insert(Message.createExecute(args.length).createNode());
+                }
+                Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
+                return convert.convert(frame, tmp);
+            } catch (ArityException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignAccess = insert(Message.createExecute(args.length).createNode());
+                return execute(frame);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw e.raise();
+            }
+        }
+
     }
 
     private static final class ConvertNode extends Node {
         @Child private Node isNull;
         @Child private Node isBoxed;
         @Child private Node unbox;
+        private final ConditionProfile isBoxedProfile = ConditionProfile.createBinaryProfile();
 
-        public ConvertNode() {
+        ConvertNode() {
             this.isNull = Message.IS_NULL.createNode();
             this.isBoxed = Message.IS_BOXED.createNode();
             this.unbox = Message.UNBOX.createNode();
@@ -112,17 +148,16 @@ final class SymbolInvokerImpl {
         }
 
         private Object convert(VirtualFrame frame, TruffleObject obj) {
-            Object isBoxedResult;
-            isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
-            if (Boolean.TRUE.equals(isBoxedResult)) {
+            boolean isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
+            if (isBoxedProfile.profile(isBoxedResult)) {
                 try {
                     return ForeignAccess.sendUnbox(unbox, frame, obj);
                 } catch (UnsupportedMessageException e) {
                     return null;
                 }
             } else {
-                Object isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
-                if (Boolean.TRUE.equals(isNullResult)) {
+                boolean isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
+                if (isNullResult) {
                     return null;
                 }
             }

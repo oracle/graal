@@ -26,7 +26,7 @@ package com.oracle.truffle.api.object;
 
 /**
  * A location that can store a value of a particular type.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface TypedLocation {
@@ -79,7 +79,7 @@ public interface TypedLocation {
 
     /**
      * The type of this location.
-     * 
+     *
      * @since 0.8 or earlier
      */
     Class<?> getType();

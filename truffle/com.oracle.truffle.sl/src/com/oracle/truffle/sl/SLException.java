@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.sl;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -48,8 +52,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLRootNode;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
@@ -62,11 +64,14 @@ public class SLException extends RuntimeException {
 
     public SLException(String message) {
         super(message);
+        CompilerAsserts.neverPartOfCompilation();
         initCause(new Throwable("Java stack trace"));
     }
 
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
+        CompilerAsserts.neverPartOfCompilation();
         return fillInSLStackTrace(this);
     }
 
@@ -75,7 +80,7 @@ public class SLException extends RuntimeException {
      * {@link StackTraceElement} elements based on the source sections of the call nodes on the
      * stack.
      */
-    static Throwable fillInSLStackTrace(Throwable t) {
+    public static Throwable fillInSLStackTrace(Throwable t) {
         final List<StackTraceElement> stackTrace = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
             public Void visitFrame(FrameInstance frame) {

@@ -75,6 +75,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
@@ -349,14 +350,22 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private List<? extends Element> importPublicStaticMembers(TypeElement importGuardClass, boolean includeConstructors) {
+    @SuppressWarnings("unchecked")
+    private List<Element> importPublicStaticMembers(TypeElement importGuardClass, boolean includeConstructors) {
         // hack to reload type is necessary for incremental compiling in eclipse.
         // otherwise methods inside of import guard types are just not found.
         TypeElement typeElement = ElementUtils.fromTypeMirror(context.reloadType(importGuardClass.asType()));
 
         List<Element> members = new ArrayList<>();
+        List<Element> typeElementMembers = (List<Element>) processingEnv.getElementUtils().getAllMembers(typeElement);
 
-        for (Element importElement : processingEnv.getElementUtils().getAllMembers(typeElement)) {
+        // add default constructor
+        if (typeElement.getModifiers().contains(Modifier.PUBLIC) && ElementFilter.constructorsIn(typeElementMembers).isEmpty()) {
+            typeElementMembers = new ArrayList<>(typeElementMembers);
+            typeElementMembers.add(new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), typeElement.asType(), null));
+        }
+
+        for (Element importElement : typeElementMembers) {
             if (!importElement.getModifiers().contains(Modifier.PUBLIC)) {
                 continue;
             }
@@ -767,8 +776,8 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         // no generic executes
         if (!genericFound) {
-            node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the "
-                            + "signature 'public abstract {Type} execute(VirtualFrame)' and must not throw any checked exceptions.");
+            node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the " +
+                            "signature 'public abstract {Type} execute(VirtualFrame)' and must not throw any checked exceptions.");
         }
 
         int nodeChildDeclarations = 0;
@@ -790,8 +799,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (!requireNodeChildDeclarations.isEmpty()) {
-            node.addError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. "
-                            + "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
+            node.addError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
+                            "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
         }
 
         if (nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {
@@ -1170,6 +1179,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             initializeLimit(specialization, resolver);
             initializeAssumptions(specialization, resolver);
         }
+
     }
 
     private void initializeAssumptions(SpecializationData specialization, DSLExpressionResolver resolver) {

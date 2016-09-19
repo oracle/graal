@@ -44,29 +44,29 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * <pre>
  * <code>
  * public class WhileNode extends GuestLanguageNode {
- * 
+ *
  *     &#064;{@link Node.Child} private {@link LoopNode} loop;
- * 
+ *
  *     public WhileNode(GuestLanguageNode conditionNode, GuestLanguageNode bodyNode) {
  *         loop = Truffle.getRuntime().createLoopNode(new WhileRepeatingNode(conditionNode, bodyNode));
  *     }
- * 
+ *
  *     &#064;Override
  *     public Object execute({@link VirtualFrame} frame) {
  *         loop.executeLoop(frame);
  *         return null;
  *     }
- * 
+ *
  *     private static class WhileRepeatingNode extends {@link Node} implements {@link RepeatingNode} {
- * 
+ *
  *         &#064;{@link Node.Child} private GuestLanguageNode conditionNode;
  *         &#064;{@link Node.Child} private GuestLanguageNode bodyNode;
- * 
+ *
  *         public WhileRepeatingNode(GuestLanguageNode conditionNode, GuestLanguageNode bodyNode) {
  *             this.conditionNode = conditionNode;
  *             this.bodyNode = bodyNode;
  *         }
- * 
+ *
  *         public boolean executeRepeating({@link VirtualFrame} frame) {
  *             if ((boolean) conditionNode.execute(frame)) {
  *                 try {
@@ -85,14 +85,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *             }
  *         }
  *     }
- * 
+ *
  * }
- * 
+ *
  * // substitute with a guest language node type
  * public abstract class GuestLanguageNode extends {@link Node} {
- * 
+ *
  *     public abstract Object execute({@link VirtualFrame} frame);
- * 
+ *
  * }
  * // thrown by guest language continue statements
  * public final class ContinueException extends {@link ControlFlowException} {}
@@ -109,7 +109,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public abstract class LoopNode extends Node {
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected LoopNode() {
@@ -129,7 +129,7 @@ public abstract class LoopNode extends Node {
 
     /**
      * Returns the repeating node the loop node was created with.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract RepeatingNode getRepeatingNode();
@@ -156,7 +156,7 @@ public abstract class LoopNode extends Node {
      *         LoopNode.reportLoopCount(data.length);
      *     }
      * }
-     * 
+     *
      * </pre>
      * </code>
      * </p>
@@ -167,7 +167,7 @@ public abstract class LoopNode extends Node {
      */
     public static void reportLoopCount(Node source, int iterations) {
         if (CompilerDirectives.inInterpreter()) {
-            ACCESSOR.onLoopCount(source, iterations);
+            Node.ACCESSOR.onLoopCount(source, iterations);
         }
     }
 

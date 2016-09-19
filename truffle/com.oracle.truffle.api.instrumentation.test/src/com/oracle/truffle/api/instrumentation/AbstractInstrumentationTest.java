@@ -77,7 +77,15 @@ public abstract class AbstractInstrumentationTest {
     }
 
     protected void assertEvalOut(String source, String output) throws IOException {
-        String actual = run(lines(source));
+        assertEvalOut(lines(source), output);
+    }
+
+    protected void assertEvalOut(Source source, String output) throws IOException {
+        String actual = run(source);
+        String error = getErr();
+        if (!error.isEmpty()) {
+            throw new AssertionError("Unexpected error printed: %s" + error);
+        }
         if (!actual.equals(output)) {
             Assert.assertEquals(output, actual);
         }
@@ -97,7 +105,7 @@ public abstract class AbstractInstrumentationTest {
             b.append(line);
             b.append("\n");
         }
-        return Source.fromText(b.toString(), null).withMimeType(InstrumentationTestLanguage.MIME_TYPE);
+        return Source.newBuilder(b.toString()).name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
     }
 
     @After

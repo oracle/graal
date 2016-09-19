@@ -46,8 +46,6 @@ import javax.lang.model.type.TypeMirror;
 
 class NodeFactoryFactory {
 
-    static final String EMPTY_CLASS_ARRAY = "EMPTY_CLASS_ARRAY";
-
     private final ProcessorContext context;
     private final NodeData node;
     private final CodeTypeElement createdFactoryElement;
@@ -95,15 +93,11 @@ class NodeFactoryFactory {
 
         // execution signature
         builder.startGroup();
-        if (node.getChildExecutions().isEmpty()) {
-            builder.staticReference(context.getTruffleTypes().getDslMetadata(), EMPTY_CLASS_ARRAY);
-        } else {
-            builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
-            for (NodeExecutionData execution : node.getChildExecutions()) {
-                builder.typeLiteral(execution.getNodeType());
-            }
-            builder.end();
+        builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
+        for (NodeExecutionData execution : node.getChildExecutions()) {
+            builder.typeLiteral(execution.getNodeType());
         }
+        builder.end();
         builder.end();
 
         // node signatures
@@ -112,15 +106,11 @@ class NodeFactoryFactory {
         List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
             builder.startGroup();
-            if (constructor.getParameters().isEmpty()) {
-                builder.staticReference(context.getTruffleTypes().getDslMetadata(), EMPTY_CLASS_ARRAY);
-            } else {
-                builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
-                for (VariableElement var : constructor.getParameters()) {
-                    builder.typeLiteral(var.asType());
-                }
-                builder.end();
+            builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
+            for (VariableElement var : constructor.getParameters()) {
+                builder.typeLiteral(var.asType());
             }
+            builder.end();
             builder.end();
         }
         builder.end();
@@ -254,7 +244,7 @@ class NodeFactoryFactory {
         if (node.getSpecializations().isEmpty()) {
             body.nullLiteral();
         } else {
-            body.startNew(NodeGenFactory.nodeType(node));
+            body.startNew(NodeCodeGenerator.nodeType(node));
             for (VariableElement var : method.getParameters()) {
                 body.string(var.getSimpleName().toString());
             }

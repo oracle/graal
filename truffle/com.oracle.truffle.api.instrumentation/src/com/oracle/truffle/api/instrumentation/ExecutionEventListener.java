@@ -28,8 +28,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
- * to listen to instrumentation events.
- * 
+ * to listen to execution events.
+ *
  * @since 0.12
  */
 public interface ExecutionEventListener {
@@ -47,7 +47,7 @@ public interface ExecutionEventListener {
     void onEnter(EventContext context, VirtualFrame frame);
 
     /**
-     * Invoked immediatly after an {@link EventContext#getInstrumentedNode() instrumented node} is
+     * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is
      * successfully executed. The order in which multiple event listeners are notified matches the
      * order they are
      * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.

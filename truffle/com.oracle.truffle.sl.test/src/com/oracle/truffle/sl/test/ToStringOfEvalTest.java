@@ -40,21 +40,35 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
+
 public class ToStringOfEvalTest {
+    PolyglotEngine engine;
+
+    @Before
+    public void initialize() {
+        engine = PolyglotEngine.newBuilder().build();
+    }
+
+    @After
+    public void dispose() {
+        engine.dispose();
+    }
 
     @Test
-    public void checkToStringOnAFunction() throws IOException {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        PolyglotEngine.Language sl = engine.getLanguages().get("application/x-sl");
-        sl.eval(Source.fromText("function checkName() {}", "defineFn"));
+    public void checkToStringOnAFunction() {
+        PolyglotEngine.Language sl = engine.getLanguages().get(SLLanguage.MIME_TYPE);
+        sl.eval(Source.newBuilder("function checkName() {}").name("defineFn").mimeType("content/unknown").build());
         PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");
         PolyglotEngine.Value value2 = engine.findGlobalSymbol("checkName");
 

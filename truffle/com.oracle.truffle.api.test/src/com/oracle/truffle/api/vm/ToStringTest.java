@@ -27,15 +27,25 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import org.junit.After;
 
 public class ToStringTest {
+    private PolyglotEngine engine;
+
+    @After
+    public void dispose() {
+        if (engine != null) {
+            engine.dispose();
+        }
+    }
+
     @Test
     public void valueToStringValueWith1() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
-        language2.eval(Source.fromText("explicit.value=42", "define 42"));
-        PolyglotEngine.Value value = language1.eval(Source.fromText("return=value", "42.value"));
+        language2.eval(Source.newBuilder("explicit.value=42").name("define 42").mimeType("content/unknown").build());
+        PolyglotEngine.Value value = language1.eval(Source.newBuilder("return=value").name("42.value").mimeType("content/unknown").build());
         assertEquals("It's fourtytwo", "42", value.get());
 
         String textual = value.as(String.class);
@@ -44,11 +54,11 @@ public class ToStringTest {
 
     @Test
     public void valueToStringValueWith2() throws Exception {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language1 = engine.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = engine.getLanguages().get("application/x-test-import-export-2");
-        language1.eval(Source.fromText("explicit.value=42", "define 42"));
-        PolyglotEngine.Value value = language2.eval(Source.fromText("return=value", "42.value"));
+        language1.eval(Source.newBuilder("explicit.value=42").name("define 42").mimeType("content/unknown").build());
+        PolyglotEngine.Value value = language2.eval(Source.newBuilder("return=value").name("42.value").mimeType("content/unknown").build());
         assertEquals("It's fourtytwo", "42", value.get());
 
         String textual = value.as(String.class);

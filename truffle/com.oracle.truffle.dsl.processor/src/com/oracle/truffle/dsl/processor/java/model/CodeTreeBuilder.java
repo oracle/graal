@@ -462,6 +462,10 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    public CodeTreeBuilder lineComment(String text) {
+        return string("// ").string(text).newLine();
+    }
+
     public CodeTreeBuilder startNew(TypeMirror uninializedNodeClass) {
         return startGroup().string("new ").type(uninializedNodeClass).startParanthesesCommaGroup().endAfter();
     }
@@ -519,6 +523,14 @@ public class CodeTreeBuilder {
         });
         endAfter();
         return this;
+    }
+
+    public CodeTreeBuilder startSynchronized(String object) {
+        return startSynchronized(singleString(object));
+    }
+
+    public CodeTreeBuilder startSynchronized(CodeTree object) {
+        return string("synchronized").startParantheses().tree(object).end().startBlock();
     }
 
     private void registerCallBack(EndCallback callback) {

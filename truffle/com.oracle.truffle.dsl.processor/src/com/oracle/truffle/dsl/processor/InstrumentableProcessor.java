@@ -99,6 +99,9 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             ProcessorContext.setThreadLocalInstance(context);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(Instrumentable.class)) {
+                if (!element.getKind().isClass() && !element.getKind().isInterface()) {
+                    continue;
+                }
                 try {
                     if (element.getKind() != ElementKind.CLASS) {
                         emitError(element, String.format("Only classes can be annotated with %s.", Instrumentable.class.getSimpleName()));
@@ -178,9 +181,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         TypeMirror factoryType = context.reloadType(context.getType(InstrumentableFactory.class));
         factory.getImplements().add(new CodeTypeMirror.DeclaredCodeTypeMirror(ElementUtils.fromTypeMirror(factoryType), Arrays.asList(sourceType.asType())));
 
-        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) context.getType(GeneratedBy.class));
-        generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(sourceType.asType()));
-        factory.addAnnotationMirror(generatedByAnnotation);
+        addGeneratedBy(context, factory, sourceType);
 
         TypeMirror returnType = context.getType(WrapperNode.class);
         CodeExecutableElement createMethod = new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), returnType, "createWrapper");
@@ -293,9 +294,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         wrapperType.setSuperClass(resolvedSuperType);
         wrapperType.getImplements().add(context.getType(WrapperNode.class));
 
-        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) context.getType(GeneratedBy.class));
-        generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(sourceType.asType()));
-        wrapperType.addAnnotationMirror(generatedByAnnotation);
+        addGeneratedBy(context, wrapperType, sourceType);
 
         wrapperType.add(createNodeChild(context, sourceType.asType(), FIELD_DELEGATE));
         wrapperType.add(createNodeChild(context, context.getType(ProbeNode.class), FIELD_PROBE));
@@ -399,6 +398,16 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
 
         return wrapperType;
+    }
+
+    private static void addGeneratedBy(ProcessorContext context, CodeTypeElement generatedType, TypeElement generatedByType) {
+        DeclaredType generatedBy = (DeclaredType) context.getType(GeneratedBy.class);
+        // only do this if generatedBy is on the classpath.
+        if (generatedBy != null) {
+            CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror(generatedBy);
+            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(generatedByType.asType()));
+            generatedType.addAnnotationMirror(generatedByAnnotation);
+        }
     }
 
     private static boolean isOverrideableOrUndeclared(TypeElement sourceType, String methodName) {

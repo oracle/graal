@@ -106,6 +106,10 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
         for (Element element : roundEnv.getElementsAnnotatedWith(TruffleBoundary.class)) {
             scope = element;
             try {
+                if (element.getKind() != ElementKind.CONSTRUCTOR &&
+                                element.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
                 ExecutableElement method = (ExecutableElement) element;
 
                 for (VariableElement parameter : method.getParameters()) {
@@ -144,8 +148,8 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
     }
 
     /**
-     * Determines if a given exception is (most likely) caused by <a
-     * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
+     * Determines if a given exception is (most likely) caused by
+     * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
      */
     public static boolean isBug367599(Throwable t) {
         if (t instanceof FilerException) {

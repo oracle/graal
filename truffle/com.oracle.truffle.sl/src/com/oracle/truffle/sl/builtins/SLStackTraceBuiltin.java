@@ -53,8 +53,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Returns a string representation of the current stack. This includes the {@link CallTarget}s and
@@ -63,10 +61,6 @@ import com.oracle.truffle.sl.SLLanguage;
  */
 @NodeInfo(shortName = "stacktrace")
 public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
-
-    public SLStackTraceBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "stacktrace"));
-    }
 
     @Specialization
     public String trace() {
@@ -89,7 +83,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 CallTarget callTarget = frameInstance.getCallTarget();
                 Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY, true);
                 RootNode rn = ((RootCallTarget) callTarget).getRootNode();
-                if (rn.getClass().getName().contains("SLFunctionForeignAccess")) {
+                if (rn.getClass().getName().contains("SLForeignFunctionExecute")) {
                     return 1;
                 }
                 if (str.length() > 0) {

@@ -26,8 +26,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LayoutImpl;
 import com.oracle.truffle.object.LayoutStrategy;
 import com.oracle.truffle.object.LocationImpl;
@@ -62,46 +60,12 @@ class DefaultStrategy extends LayoutStrategy {
     }
 
     @Override
-    public boolean isAutoExtArray() {
-        return false;
-    }
-
-    @Override
-    public ShapeAndProperty generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
-        Location oldLocation = oldProperty.getLocation();
-        Location newLocation = ((BasicAllocator) currentShape.allocator()).locationForValueUpcast(value, oldLocation);
-        Property newProperty = oldProperty.relocate(newLocation);
-        Shape newShape = nextShape.replaceProperty(oldProperty, newProperty);
-        return new ShapeAndProperty(newShape, newProperty);
-    }
-
-    @Override
     public BaseAllocator createAllocator(ShapeImpl shape) {
-        return new DefaultAllocatorImpl(shape);
+        return new BasicAllocator(shape);
     }
 
     @Override
     public BaseAllocator createAllocator(LayoutImpl layout) {
-        return new DefaultAllocatorImpl(layout);
-    }
-
-    static class DefaultAllocatorImpl extends BasicAllocator {
-        protected DefaultAllocatorImpl(LayoutImpl layout) {
-            super(layout);
-        }
-
-        protected DefaultAllocatorImpl(ShapeImpl shape) {
-            super(shape);
-        }
-
-        @Override
-        public Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
-            return super.newDualLocationForValue(value);
-        }
-
-        @Override
-        public Location declaredLocation(Object value) {
-            return super.newDeclaredDualLocation(value);
-        }
+        return new BasicAllocator(layout);
     }
 }

@@ -32,16 +32,22 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BlockNode;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.DefineNode;
+import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -77,21 +83,25 @@ import com.oracle.truffle.api.source.SourceSection;
  * )
  * </code>
  */
-@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "Test language for instrumentation", version = "1.0")
+@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
+@ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
 
-    public static final String MIME_TYPE = "instrumentation-test-language";
+    public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
+    public static final String FILENAME_EXTENSION = ".titl";
     public static final InstrumentationTestLanguage INSTANCE = new InstrumentationTestLanguage();
 
-    public static final String EXPRESSION = "EXPRESSION";
-    public static final String DEFINE = "DEFINE";
-    public static final String LOOP = "LOOP";
-    public static final String STATEMENT = "STATEMENT";
-    public static final String CALL = "CALL";
-    public static final String ROOT = "ROOT";
-    public static final String BLOCK = "BLOCK";
+    public static final Class<?> EXPRESSION = ExpressionNode.class;
+    public static final Class<?> DEFINE = DefineNode.class;
+    public static final Class<?> LOOP = LoopNode.class;
+    public static final Class<?> STATEMENT = StandardTags.StatementTag.class;
+    public static final Class<?> CALL = StandardTags.CallTag.class;
+    public static final Class<?> ROOT = StandardTags.RootTag.class;
+    public static final Class<?> BLOCK = BlockNode.class;
 
-    public static final String[] TAGS = new String[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
+    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE"};
 
     @Override
     protected Map<String, CallTarget> createContext(TruffleLanguage.Env env) {
@@ -108,8 +118,129 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     @Override
     protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        SourceSection outer = code.createSection(null, 0, code.getLength());
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(outer, parse(code)));
+        SourceSection outer = code.createSection(0, code.getLength());
+        BaseNode node;
+        try {
+            node = parse(code);
+        } catch (LanguageError e) {
+            throw new IOException(e);
+        }
+        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode("", outer, node));
+    }
+
+    @Override
+    protected Object evalInContext(Source code, Node context, final MaterializedFrame mFrame) throws IOException {
+        BaseNode node;
+        try {
+            node = parse(code);
+        } catch (LanguageError e) {
+            throw new IOException(e);
+        }
+
+        // TODO find a better way to convert from materialized frame to virtual frame.
+        // maybe we should always use Frame everywhere?
+        return node.execute(new VirtualFrame() {
+
+            public void setObject(FrameSlot slot, Object value) {
+                mFrame.setObject(slot, value);
+            }
+
+            public void setLong(FrameSlot slot, long value) {
+                mFrame.setLong(slot, value);
+            }
+
+            public void setInt(FrameSlot slot, int value) {
+                mFrame.setInt(slot, value);
+            }
+
+            public void setFloat(FrameSlot slot, float value) {
+                mFrame.setFloat(slot, value);
+            }
+
+            public void setDouble(FrameSlot slot, double value) {
+                mFrame.setDouble(slot, value);
+            }
+
+            public void setByte(FrameSlot slot, byte value) {
+                mFrame.setByte(slot, value);
+            }
+
+            public void setBoolean(FrameSlot slot, boolean value) {
+                mFrame.setBoolean(slot, value);
+            }
+
+            public MaterializedFrame materialize() {
+                return mFrame;
+            }
+
+            public boolean isObject(FrameSlot slot) {
+                return mFrame.isObject(slot);
+            }
+
+            public boolean isLong(FrameSlot slot) {
+                return mFrame.isLong(slot);
+            }
+
+            public boolean isInt(FrameSlot slot) {
+                return mFrame.isInt(slot);
+            }
+
+            public boolean isFloat(FrameSlot slot) {
+                return mFrame.isFloat(slot);
+            }
+
+            public boolean isDouble(FrameSlot slot) {
+                return mFrame.isDouble(slot);
+            }
+
+            public boolean isByte(FrameSlot slot) {
+                return mFrame.isByte(slot);
+            }
+
+            public boolean isBoolean(FrameSlot slot) {
+                return mFrame.isBoolean(slot);
+            }
+
+            public Object getValue(FrameSlot slot) {
+                return mFrame.getValue(slot);
+            }
+
+            public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getObject(slot);
+            }
+
+            public long getLong(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getLong(slot);
+            }
+
+            public int getInt(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getInt(slot);
+            }
+
+            public FrameDescriptor getFrameDescriptor() {
+                return mFrame.getFrameDescriptor();
+            }
+
+            public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getFloat(slot);
+            }
+
+            public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getDouble(slot);
+            }
+
+            public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getByte(slot);
+            }
+
+            public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
+                return mFrame.getBoolean(slot);
+            }
+
+            public Object[] getArguments() {
+                return mFrame.getArguments();
+            }
+        });
     }
 
     public static BaseNode parse(Source code) {
@@ -131,7 +262,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         public BaseNode parse() {
             BaseNode statement = statement();
-            if (current() != EOF) {
+            if (follows() != EOF) {
                 error("eof expected");
             }
             return statement;
@@ -149,56 +280,63 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             skipWhiteSpace();
             String tag = ident().trim().intern();
             if (!isValidTag(tag)) {
-                throw new RuntimeException(String.format("Illegal tag %s.", tag));
+                throw new LanguageError(String.format("Illegal tag \"%s\".", tag));
             }
 
-            skipWhiteSpace();
-
-            boolean isFirstParameterIdent = false;
-            if (tag == DEFINE || tag == CALL || tag == LOOP) {
-                isFirstParameterIdent = true;
+            int numberOfIdents = 0;
+            if (tag.equals("DEFINE") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT")) {
+                numberOfIdents = 1;
+            } else if (tag.equals("VARIABLE")) {
+                numberOfIdents = 2;
             }
-
-            String firstParameterIdent = null;
+            String[] idents = new String[numberOfIdents];
             List<BaseNode> children = new ArrayList<>();
-            if (current() == '(') {
-                next();
+
+            if (follows() == '(') {
+
                 skipWhiteSpace();
-                int argIndex = 0;
-                while (current() != ')') {
-                    if (argIndex == 0 && isFirstParameterIdent) {
-                        firstParameterIdent = ident();
-                    } else {
-                        children.add(statement());
-                    }
+
+                if (current() == '(') {
+                    next();
                     skipWhiteSpace();
-                    if (current() != ',') {
-                        break;
+                    int argIndex = 0;
+                    while (current() != ')') {
+                        if (argIndex < numberOfIdents) {
+                            skipWhiteSpace();
+                            idents[argIndex] = ident();
+                        } else {
+                            children.add(statement());
+                        }
+                        skipWhiteSpace();
+                        if (current() != ',') {
+                            break;
+                        }
+                        next();
+                        argIndex++;
+                    }
+                    if (current() != ')') {
+                        error("missing closing bracket");
                     }
                     next();
-                    argIndex++;
+                    skipWhiteSpace();
                 }
-                if (current() != ')') {
-                    error("missing closing bracket");
+
+            }
+            for (String ident : idents) {
+                if (ident == null) {
+                    throw new LanguageError(numberOfIdents + " non-child parameters required for " + tag);
                 }
-                next();
-                skipWhiteSpace();
             }
-
-            if (isFirstParameterIdent && firstParameterIdent == null) {
-                throw new RuntimeException("parameter required for " + tag);
-            }
-
-            SourceSection sourceSection = source.createSection(null, startIndex, current - startIndex, tag);
+            SourceSection sourceSection = source.createSection(startIndex, current - startIndex);
             BaseNode[] childArray = children.toArray(new BaseNode[children.size()]);
-            BaseNode node = createNode(tag, firstParameterIdent, sourceSection, childArray);
+            BaseNode node = createNode(tag, idents, sourceSection, childArray);
             node.setSourceSection(sourceSection);
             return node;
         }
 
         private static boolean isValidTag(String tag) {
-            for (int i = 0; i < TAGS.length; i++) {
-                String allowedTag = TAGS[i];
+            for (int i = 0; i < TAG_NAMES.length; i++) {
+                String allowedTag = TAG_NAMES[i];
                 if (tag == allowedTag) {
                     return true;
                 }
@@ -206,29 +344,33 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             return false;
         }
 
-        private static BaseNode createNode(String tag, String firstParameterIdent, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
+        private static BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
             switch (tag) {
-                case DEFINE:
-                    return new DefineNode(firstParameterIdent, sourceSection, childArray);
-                case CALL:
-                    return new CallNode(firstParameterIdent, childArray);
-                case LOOP:
-                    return new LoopNode(Integer.parseInt(firstParameterIdent), childArray);
-                case BLOCK:
+                case "DEFINE":
+                    return new DefineNode(idents[0], sourceSection, childArray);
+                case "CALL":
+                    return new CallNode(idents[0], childArray);
+                case "LOOP":
+                    return new LoopNode(parseIdent(idents[0]), childArray);
+                case "BLOCK":
                     return new BlockNode(childArray);
-                case EXPRESSION:
+                case "EXPRESSION":
                     return new ExpressionNode(childArray);
-                case ROOT:
+                case "ROOT":
                     return new InstrumentableRootNode(childArray);
-                case STATEMENT:
+                case "STATEMENT":
                     return new StatementNode(childArray);
+                case "CONSTANT":
+                    return new ConstantNode(idents[0], childArray);
+                case "VARIABLE":
+                    return new VariableNode(idents[0], idents[1], childArray);
                 default:
                     throw new AssertionError();
             }
         }
 
         private void error(String message) {
-            throw new RuntimeException(String.format("error at %s. char %s: %s", current, current(), message));
+            throw new LanguageError(String.format("error at %s. char %s: %s", current, current(), message));
         }
 
         private String ident() {
@@ -250,6 +392,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             }
         }
 
+        private char follows() {
+            for (int i = current; i < code.length(); i++) {
+                if (!Character.isWhitespace(code.charAt(i))) {
+                    return code.charAt(i);
+                }
+            }
+            return EOF;
+        }
+
         private void next() {
             current++;
         }
@@ -265,10 +416,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     private static class InstrumentationTestRootNode extends RootNode {
 
+        private final String name;
         @Children private final BaseNode[] expressions;
 
-        protected InstrumentationTestRootNode(SourceSection sourceSection, BaseNode... expressions) {
+        protected InstrumentationTestRootNode(String name, SourceSection sourceSection, BaseNode... expressions) {
             super(InstrumentationTestLanguage.class, sourceSection, null);
+            this.name = name;
             this.expressions = expressions;
         }
 
@@ -280,13 +433,19 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
+            Object returnValue = null;
             for (int i = 0; i < expressions.length; i++) {
                 BaseNode baseNode = expressions[i];
                 if (baseNode != null) {
-                    baseNode.execute(frame);
+                    returnValue = baseNode.execute(frame);
                 }
             }
-            return null;
+            return returnValue;
+        }
+
+        @Override
+        public String getName() {
+            return name;
         }
 
         @Override
@@ -295,11 +454,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
-    private static final class ExpressionNode extends InstrumentedNode {
+    static final class ExpressionNode extends InstrumentedNode {
 
         ExpressionNode(BaseNode[] children) {
             super(children);
         }
+
     }
 
     @Instrumentable(factory = InstrumentedNodeWrapper.class)
@@ -318,19 +478,33 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
+            Object returnValue = null;
             for (BaseNode child : children) {
-                child.execute(frame);
+                returnValue = child.execute(frame);
             }
-            return null;
+            return returnValue;
+        }
+
+        @Override
+        protected final boolean isTaggedWith(Class<?> tag) {
+            if (tag == StandardTags.RootTag.class) {
+                return this instanceof InstrumentableRootNode;
+            } else if (tag == StandardTags.CallTag.class) {
+                return this instanceof CallNode;
+            } else if (tag == StandardTags.StatementTag.class) {
+                return this instanceof StatementNode;
+            }
+            return getClass() == tag;
         }
 
     }
 
-    private static final class BlockNode extends InstrumentedNode {
+    static final class BlockNode extends InstrumentedNode {
 
         BlockNode(BaseNode[] children) {
             super(children);
         }
+
     }
 
     private static final class InstrumentableRootNode extends InstrumentedNode {
@@ -338,6 +512,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         InstrumentableRootNode(BaseNode[] children) {
             super(children);
         }
+
     }
 
     private static final class StatementNode extends InstrumentedNode {
@@ -350,14 +525,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     static class DefineNode extends BaseNode {
 
         private final String identifier;
-
         private final CallTarget target;
 
         @Child private Node contextNode;
 
         DefineNode(String identifier, SourceSection source, BaseNode[] children) {
             this.identifier = identifier;
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(source, children));
+            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(identifier, source, children));
             this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
         }
 
@@ -403,27 +577,91 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             }
             return callNode.call(frame, new Object[0]);
         }
+    }
+
+    private static class ConstantNode extends InstrumentedNode {
+
+        private final Object constant;
+
+        ConstantNode(String identifier, BaseNode[] children) {
+            super(children);
+            this.constant = parseIdent(identifier);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return constant;
+        }
 
     }
 
-    private static class LoopNode extends InstrumentedNode {
+    private static Object parseIdent(String identifier) {
+        if (identifier.equals("infinity")) {
+            return Double.POSITIVE_INFINITY;
+        }
+        if (identifier.equals("true")) {
+            return true;
+        } else if (identifier.equals("false")) {
+            return false;
+        }
+        return Integer.parseInt(identifier);
+    }
+
+    private static class VariableNode extends InstrumentedNode {
+
+        private final String name;
+        private final Object value;
+
+        @CompilationFinal private FrameSlot slot;
+
+        VariableNode(String name, String value, BaseNode[] children) {
+            super(children);
+            this.name = name;
+            this.value = parseIdent(value);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (slot == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slot = frame.getFrameDescriptor().findOrAddFrameSlot(name);
+            }
+            frame.setObject(slot, value);
+            super.execute(frame);
+            return value;
+        }
+
+    }
+
+    static class LoopNode extends InstrumentedNode {
 
         private final int loopCount;
+        private final boolean infinite;
 
-        LoopNode(int loopCount, BaseNode[] children) {
+        LoopNode(Object loopCount, BaseNode[] children) {
             super(children);
-            this.loopCount = loopCount;
+            boolean inf = false;
+            if (loopCount instanceof Double) {
+                if (((Double) loopCount).isInfinite()) {
+                    inf = true;
+                }
+                this.loopCount = ((Double) loopCount).intValue();
+            } else if (loopCount instanceof Integer) {
+                this.loopCount = (int) loopCount;
+            } else {
+                throw new LanguageError("Invalid loop count " + loopCount);
+            }
+            this.infinite = inf;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object returnValue = null;
-            for (int i = 0; i < loopCount; i++) {
+            for (int i = 0; infinite || i < loopCount; i++) {
                 returnValue = super.execute(frame);
             }
             return returnValue;
         }
-
     }
 
     public abstract static class BaseNode extends Node {
@@ -443,9 +681,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
     }
 
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        return null;
+    @SuppressWarnings("serial")
+    private static class LanguageError extends RuntimeException {
+
+        LanguageError(String format) {
+            super(format);
+        }
     }
 
     @Override
@@ -461,24 +702,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Visualizer getVisualizer() {
-        return null;
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        // old API
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        // old API
-        throw new UnsupportedOperationException();
     }
 
 }

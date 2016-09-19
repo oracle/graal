@@ -42,17 +42,19 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import static org.junit.Assert.assertFalse;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -70,43 +72,54 @@ public class ImplicitExplicitExportTest {
     @After
     public void cleanThread() {
         mainThread = null;
+        if (vm != null) {
+            vm.dispose();
+        }
     }
 
     @Test
-    public void explicitExportFound() throws IOException {
+    public void explicitExportFound() {
         // @formatter:off
-        vm.eval(Source.fromText("explicit.ahoj=42", "Fourty two").withMimeType(L1));
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        vm.eval(Source.newBuilder("explicit.ahoj=42").name("Fourty two").mimeType(L1).build());
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("42", ret);
     }
 
     @Test
-    public void implicitExportFound() throws IOException {
+    public void implicitExportFound() {
         // @formatter:off
-        vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("42", ret);
     }
 
     @Test
-    public void explicitExportPreferred2() throws IOException {
+    public void implicitExportFoundDirect() throws Exception {
         // @formatter:off
         vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
+            Source.newBuilder("implicit.ahoj=42").
+                name("Fourty two").
+                mimeType(L1).
+                build()
         );
-        vm.eval(
-            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L2)
+        Object ret = vm.findGlobalSymbol("ahoj").get();
+        // @formatter:on
+        assertEquals("42", ret);
+    }
+
+    @Test
+    public void explicitExportPreferred2() throws Exception {
+        // @formatter:off
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build()
+        );
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
@@ -114,16 +127,24 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferred1() throws IOException {
+    public void explicitExportPreferredDirect() throws Exception {
         // @formatter:off
-        vm.eval(
-            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L1)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build());
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build());
+        Object ret = vm.findGlobalSymbol("ahoj").get();
+        // @formatter:on
+        assertEquals("Explicit import from L2 is used", "43", ret);
+        assertEquals("Global symbol is also 43", "43", vm.findGlobalSymbol("ahoj").get());
+    }
+
+    @Test
+    public void explicitExportPreferred1() throws Exception {
+        // @formatter:off
+        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L1).build()
         );
-        vm.eval(
-            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L2)
+        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L2).build()
         );
-        Object ret = vm.eval(
-            Source.fromText("return=ahoj", "Return").withMimeType(L3)
+        Object ret = vm.eval(Source.newBuilder("return=ahoj").name("Return").mimeType(L3).build()
         ).get();
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
@@ -142,6 +163,7 @@ public class ImplicitExplicitExportTest {
         }
 
         void dispose() {
+            assertFalse("No prior dispose", disposed.contains(this));
             disposed.add(this);
         }
 
@@ -171,12 +193,12 @@ public class ImplicitExplicitExportTest {
             if (code.getCode().startsWith("parse=")) {
                 throw new IOException(code.getCode().substring(6));
             }
-            return new ValueCallTarget(code, this);
+            return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
 
         @Override
         protected Object findExportedSymbol(Ctx context, String globalName, boolean onlyExplicit) {
-            if (context.explicit.containsKey(globalName)) {
+            if (onlyExplicit && context.explicit.containsKey(globalName)) {
                 return context.explicit.get(globalName);
             }
             if (!onlyExplicit && context.implicit.containsKey(globalName)) {
@@ -195,27 +217,12 @@ public class ImplicitExplicitExportTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
-        protected Visualizer getVisualizer() {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @Override
-        protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-            return null;
-        }
-
+        @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
             final Node node = createFindContextNode();
@@ -240,28 +247,28 @@ public class ImplicitExplicitExportTest {
                     if (k.equals("return")) {
                         return ctx.env.importSymbol(p.getProperty(k));
                     }
+                    if (k.equals("throwInteropException")) {
+                        throw UnsupportedTypeException.raise(new Object[0]);
+                    }
+
                 }
             }
             return null;
         }
     }
 
-    private static final class ValueCallTarget implements RootCallTarget {
+    private static final class ValueRootNode extends RootNode {
         private final Source code;
         private final AbstractExportImportLanguage language;
 
-        private ValueCallTarget(Source code, AbstractExportImportLanguage language) {
+        private ValueRootNode(Source code, AbstractExportImportLanguage language) {
+            super(language.getClass(), null, null);
             this.code = code;
             this.language = language;
         }
 
         @Override
-        public RootNode getRootNode() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Object call(Object... arguments) {
+        public Object execute(VirtualFrame frame) {
             return language.importExport(code);
         }
     }
@@ -276,16 +283,6 @@ public class ImplicitExplicitExportTest {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
         public ExportImportLanguage1() {
-        }
-
-        @SuppressWarnings("unused")
-        // BEGIN: config.read
-        @Override
-        protected Ctx createContext(Env env) {
-            String[] args = (String[]) env.getConfig().get("CMD_ARGS");
-            // FINISH: config.read
-
-            return super.createContext(env);
         }
 
         @Override
@@ -323,7 +320,7 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = L3, name = "ImportExport3", version = "0")
+    @TruffleLanguage.Registration(mimeType = {L3, L3 + "alt"}, name = "ImportExport3", version = "0")
     public static final class ExportImportLanguage3 extends AbstractExportImportLanguage {
         public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage3();
 

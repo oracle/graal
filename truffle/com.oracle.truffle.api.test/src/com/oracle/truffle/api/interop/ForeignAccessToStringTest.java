@@ -117,9 +117,5 @@ public class ForeignAccessToStringTest {
             return null;
         }
 
-        @Override
-        public CallTarget accessProperties() {
-            return null;
-        }
     }
 }

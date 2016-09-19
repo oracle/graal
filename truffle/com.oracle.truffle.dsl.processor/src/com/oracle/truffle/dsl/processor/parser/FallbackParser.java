@@ -22,6 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import java.lang.annotation.Annotation;
+import java.util.Arrays;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
@@ -31,9 +37,6 @@ import com.oracle.truffle.dsl.processor.model.ParameterSpec;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
-import java.lang.annotation.Annotation;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.ExecutableElement;
 
 public class FallbackParser extends NodeMethodParser<SpecializationData> {
 
@@ -48,9 +51,10 @@ public class FallbackParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     protected ParameterSpec createValueParameterSpec(NodeExecutionData execution) {
-        ParameterSpec parameterSpec = super.createValueParameterSpec(execution);
-        parameterSpec.setAllowSubclasses(false);
-        return parameterSpec;
+        ParameterSpec spec = new ParameterSpec(execution.getName(), Arrays.asList(getNode().getGenericType(execution)));
+        spec.setExecution(execution);
+        spec.setAllowSubclasses(false);
+        return spec;
     }
 
     @Override

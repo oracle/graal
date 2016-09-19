@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
-import java.math.BigInteger;
 
 /**
  * This class is similar to the extensively documented {@link SLAddNode}. The only difference: the
@@ -54,13 +53,6 @@ import java.math.BigInteger;
  */
 @NodeInfo(shortName = "<")
 public abstract class SLLessThanNode extends SLBinaryNode {
-
-    public SLLessThanNode(SourceSection src) {
-        super(src);
-    }
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     @Specialization
     protected boolean lessThan(long left, long right) {

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -331,14 +332,22 @@ public class AssumptionsTest {
         RemoveSpecializationTest node = getNode(root);
 
         assertEquals(true, root.call(true));
-        SpecializationNode start0 = ((SpecializedNode) node).getSpecializationNode();
-        assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+        if (node instanceof SpecializedNode) {
+            SpecializationNode start0 = ((SpecializedNode) node).getSpecializationNode();
+            assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+        } else {
+            // TODO for flat layout
+        }
 
         node.assumption.invalidate();
         // The specialization should be removed on the next call, even if the guard does not pass
         assertEquals(false, root.call(false));
-        SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
-        assertEquals("InvalidatedNode_", start1.getClass().getSimpleName());
+        if (node instanceof SpecializedNode) {
+            SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
+            assertEquals("InvalidatedNode_", start1.getClass().getSimpleName());
+        } else {
+            // TODO for flat layout
+        }
     }
 
     @NodeChild
@@ -364,19 +373,28 @@ public class AssumptionsTest {
         CallTarget root = createCallTarget(RemoveAndCacheSpecializationTestFactory.getInstance());
         RemoveAndCacheSpecializationTest node = getNode(root);
 
-        assertEquals(1, root.call(1));
-        SpecializationNode start0 = ((SpecializedNode) node).getSpecializationNode();
-        assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+        assertEquals(1, root.call(1, 1));
+        SpecializationNode start0 = null;
+        if (node instanceof SpecializedNode) {
+            start0 = ((SpecializedNode) node).getSpecializationNode();
+            assertEquals("ValidAssumptionNode_", start0.getClass().getSimpleName());
+        } else {
+            // TODO for flat layout
+        }
 
         node.assumption1.invalidate();
         // The specialization should be removed, and a new cached entry be inserted
-        assertEquals(2, root.call(2));
-        SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
-        assertNotSame(start0, start1);
-        assertEquals("ValidAssumptionNode_", start1.getClass().getSimpleName());
+        assertEquals(1, root.call(1, 2));
+        if (node instanceof SpecializedNode) {
+            SpecializationNode start1 = ((SpecializedNode) node).getSpecializationNode();
+            assertNotSame(start0, start1);
+            assertEquals("ValidAssumptionNode_", start1.getClass().getSimpleName());
+        } else {
+            // TODO for flat layout
+        }
     }
 
-    @NodeChild
+    @NodeChildren({@NodeChild, @NodeChild})
     @SuppressWarnings("unused")
     static class RemoveAndCacheSpecializationTest extends ValueNode {
 
@@ -387,13 +405,13 @@ public class AssumptionsTest {
             return value == 1 ? assumption1 : assumption2;
         }
 
-        @Specialization(guards = "value == cachedValue", assumptions = "assumptionForValue(cachedValue)", limit = "1")
-        int validAssumption(int value, @Cached("value") int cachedValue) {
+        @Specialization(guards = "value1 == cachedValue", assumptions = "assumptionForValue(cachedValue2)", limit = "1")
+        int validAssumption(int value1, int value2, @Cached("value1") int cachedValue, @Cached("value2") int cachedValue2) {
             return cachedValue;
         }
 
         @Specialization
-        int uncached(int value) {
+        int uncached(int value1, int value2) {
             return -1;
         }
 

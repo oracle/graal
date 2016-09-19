@@ -32,6 +32,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+// Workaround for Eclipse formatter behaving different when running on JDK 9.
+// @formatter:off
 /**
  * <p>
  * A parameter annotated with {@link Cached} in a {@link Specialization} refers to a <b>cached</b>
@@ -52,11 +54,11 @@ import java.lang.annotation.Target;
  * </p>
  * <p>
  * The initializer expression of a cached parameter is defined using a subset of Java. This subset
- * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=,
- * >, >=) and integer literals. The return type of the initializer expression must be assignable to
- * the parameter type. If the annotated parameter type is derived from {@link Node} then the
- * {@link Node} instance is allowed to use the {@link Node#replace(Node)} method to replace itself.
- * Bound elements without receivers are resolved using the following order:
+ * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=,
+ * <, <=, >, >=) and integer literals. The return type of the initializer expression must be
+ * assignable to the parameter type. If the annotated parameter type is derived from {@link Node}
+ * then the {@link Node} instance is allowed to use the {@link Node#replace(Node)} method to replace
+ * itself. Bound elements without receivers are resolved using the following order:
  * <ol>
  * <li>Dynamic and cached parameters of the enclosing specialization.</li>
  * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
@@ -81,10 +83,9 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * <ol>
- * <li>
- * This example defines one dynamic and one cached parameter. The operand parameter is representing
- * the dynamic value of the operand while the cachedOperand is initialized once at first execution
- * of the specialization (specialization instantiation time).
+ * <li>This example defines one dynamic and one cached parameter. The operand parameter is
+ * representing the dynamic value of the operand while the cachedOperand is initialized once at
+ * first execution of the specialization (specialization instantiation time).
  *
  * <pre>
  *  &#064;Specialization
@@ -92,7 +93,7 @@ import java.lang.annotation.Target;
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
- * 
+ *
  *  Example executions:
  *  execute(1) => doCached(1, 1) // new instantiation, localOperand is bound to 1
  *  execute(0) => doCached(0, 1)
@@ -101,11 +102,10 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * </li>
- * <li>
- * We extend the previous example by a guard for the cachedOperand value to be equal to the dynamic
- * operand value. This specifies that the specialization is instantiated for each individual operand
- * value that is provided. There are a lot of individual <code>int</code> values and for each
- * individual <code>int</code> value a new specialization would get instantiated. The
+ * <li>We extend the previous example by a guard for the cachedOperand value to be equal to the
+ * dynamic operand value. This specifies that the specialization is instantiated for each individual
+ * operand value that is provided. There are a lot of individual <code>int</code> values and for
+ * each individual <code>int</code> value a new specialization would get instantiated. The
  * {@link Specialization#limit()} property defines a limit for the number of specializations that
  * can get instantiated. If the specialization instantiation limit is reached then no further
  * specializations are instantiated. Like for other specializations if there are no more
@@ -118,7 +118,7 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- * 
+ *
  * Example executions:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -129,8 +129,7 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * </li>
- * <li>
- * To handle the limit overflow we extend our example by an additional specialization named
+ * <li>To handle the limit overflow we extend our example by an additional specialization named
  * <code>doNormal</code>. This specialization has the same type restrictions but does not have local
  * state nor the operand identity guard. It is also declared after <code>doCached</code> therefore
  * it is only instantiated if the limit of the <code>doCached</code> specialization has been
@@ -146,10 +145,10 @@ import java.lang.annotation.Target;
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- * 
+ *
  * &#064;Specialization(contains = &quot;doCached&quot;)
  * void doNormal(int operand) {...}
- * 
+ *
  * Example executions with contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -157,7 +156,7 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow; doCached gets removed.
  * execute(1) => doNormal(1)
- * 
+ *
  * Example executions without contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -165,37 +164,36 @@ import java.lang.annotation.Target;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
- * 
+ *
  * </code>
  *
  * </li>
- * <li>
- * This next example shows how methods from the enclosing node can be used to initialize cached
+ * <li>This next example shows how methods from the enclosing node can be used to initialize cached
  * parameters. Please note that the visibility of transformLocal must not be <code>private</code>.
  *
  * <pre>
  * &#064;Specialization
  * void s(int operand, {@code @Cached}(&quot;transformLocal(operand)&quot;) int cachedOperand) {
  * }
- * 
+ *
  * int transformLocal(int operand) {
  *     return operand & 0x42;
  * }
  *
  * </li>
  * </pre>
- * <li>
- * The <code>new</code> keyword can be used to initialize a cached parameter using a constructor of
- * the parameter type.
+ *
+ * <li>The <code>new</code> keyword can be used to initialize a cached parameter using a constructor
+ * of the parameter type.
  *
  * <pre>
  * &#064;Specialization
  * void s(Object operand, {@code @Cached}(&quot;new()&quot;) OtherNode someNode) {
  *     someNode.execute(operand);
  * }
- * 
+ *
  * static class OtherNode extends Node {
- * 
+ *
  *     public String execute(Object value) {
  *         throw new UnsupportedOperationException();
  *     }
@@ -204,8 +202,7 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * </li>
- * <li>
- * Java types without public constructor but with a static factory methods can be initialized by
+ * <li>Java types without public constructor but with a static factory methods can be initialized by
  * just referencing its static factory method and its parameters. In this case
  * {@link com.oracle.truffle.api.profiles.BranchProfile#create()} is used to instantiate the
  * {@link com.oracle.truffle.api.profiles.BranchProfile} instance.
@@ -225,6 +222,7 @@ import java.lang.annotation.Target;
  * @see ImportStatic
  * @since 0.8 or earlier
  */
+// @formatter:on
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 public @interface Cached {

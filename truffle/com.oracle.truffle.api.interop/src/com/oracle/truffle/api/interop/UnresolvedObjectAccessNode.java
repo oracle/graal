@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 final class UnresolvedObjectAccessNode extends ObjectAccessNode {
@@ -50,15 +51,25 @@ final class UnresolvedObjectAccessNode extends ObjectAccessNode {
 
     private static CachedObjectAccessNode createCachedAccess(TruffleObject receiver, Message accessTree, ObjectAccessNode next) {
         ForeignAccess fa = receiver.getForeignAccess();
+        if (fa == null) {
+            throw nullAccess(receiver);
+        }
         final CallTarget ct = fa.access(accessTree);
         if (ct == null) {
             throw UnsupportedMessageException.raise(accessTree);
         }
-        return new CachedObjectAccessNode(Truffle.getRuntime().createDirectCallNode(ct), next, fa);
+        DirectCallNode access = Truffle.getRuntime().createDirectCallNode(ct);
+        DirectCallNode languageCheck = fa.checkLanguage() == null ? null : Truffle.getRuntime().createDirectCallNode(fa.checkLanguage());
+        return new CachedObjectAccessNode(access, next, fa, languageCheck);
     }
 
     private static GenericObjectAccessNode createGenericAccess(Message access) {
         return new GenericObjectAccessNode(access);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static NullPointerException nullAccess(TruffleObject receiver) {
+        throw new NullPointerException("Null getForeignAccess() for " + receiver);
     }
 
 }

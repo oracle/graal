@@ -33,11 +33,13 @@ import java.util.Set;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.TVMCI;
 
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
  * descriptor.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class FrameDescriptor implements Cloneable {
@@ -48,11 +50,20 @@ public final class FrameDescriptor implements Cloneable {
     private Assumption version;
     private HashMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
 
+    /**
+     * Flag that can be used by the runtime to track that {@link Frame#materialize()} was called on
+     * a frame that has this descriptor. Since the flag is not public API, access is encapsulated
+     * via {@link TVMCI}.
+     *
+     * @since 0.14
+     */
+    boolean materializeCalled;
+
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "interpreter-only. includes hashmap operations.";
 
     /**
      * Constructs empty descriptor. The {@link #getDefaultValue()} is <code>null</code>.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public FrameDescriptor() {
@@ -380,5 +391,31 @@ public final class FrameDescriptor implements Cloneable {
         }
         sb.append("}");
         return sb.toString();
+    }
+
+    /** @since 0.14 */
+    static final class AccessorFrames extends Accessor {
+        @Override
+        protected Frames framesSupport() {
+            return new FramesImpl();
+        }
+
+        static final class FramesImpl extends Frames {
+            @Override
+            protected void markMaterializeCalled(FrameDescriptor descriptor) {
+                descriptor.materializeCalled = true;
+            }
+
+            @Override
+            protected boolean getMaterializeCalled(FrameDescriptor descriptor) {
+                return descriptor.materializeCalled;
+            }
+        }
+    }
+
+    static {
+        // registers into Accessor.FRAMES
+        @SuppressWarnings("unused")
+        AccessorFrames unused = new AccessorFrames();
     }
 }

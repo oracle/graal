@@ -38,24 +38,22 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.StandardSyntaxTag;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.tools.debug.shell.REPLMessage;
 import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
@@ -64,7 +62,10 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
  * The server side of a simple message-based protocol for a possibly remote language
  * Read-Eval-Print-Loop.
  */
+@SuppressWarnings("deprecation")
 public final class REPLServer {
+
+    private static final String REPL_SERVER_INSTRUMENT = "REPLServer";
 
     private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
     private static final String TRACE_PREFIX = "REPLSrv: ";
@@ -76,26 +77,19 @@ public final class REPLServer {
         }
     }
 
-    private static String describeObject(Object obj) {
-        if (obj == null) {
-            return "null";
-        }
-        String name = obj.toString();
-        return name.substring(name.lastIndexOf('.') + 1);
-    }
-
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
     private final PolyglotEngine engine;
-    private Debugger db;
-    private Context currentServerContext;
-    private SimpleREPLClient replClient = null;
-    private String statusPrefix;
+    private final Debugger db;
+    private final SimpleREPLClient replClient;
+    private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
-    private ASTPrinter astPrinter = new InstrumentationUtils.ASTPrinter();
-    private LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
-    private Visualizer visualizer = new Visualizer();
+    private final ASTPrinter astPrinter;
+    private final LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
+    private final REPLVisualizer visualizer = new REPLVisualizer();
+
+    private Context currentServerContext;
 
     /** Languages sorted by name. */
     private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
@@ -105,60 +99,54 @@ public final class REPLServer {
         }
     });
 
-    /** MAP: language name => Language. */
+    /** MAP: language name => Language (case insensitive). */
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     // TODO (mlvdv) Language-specific
-    private PolyglotEngine.Language defaultLanguage;
+    private final PolyglotEngine.Language defaultLanguage = null;
 
-    private Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
+    private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
-    public REPLServer(String defaultMIMEType) {
+    public REPLServer(SimpleREPLClient client) {
+        this.replClient = client;
         this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
+        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
+
         this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
-        if (engineLanguages.size() == 0) {
-            throw new RuntimeException("No language implementations installed");
-        }
-        for (Language language : engineLanguages) {
-            nameToLanguage.put(language.getName(), language);
-        }
 
-        if (defaultMIMEType == null) {
-            defaultLanguage = engineLanguages.iterator().next();
-        } else {
-            this.defaultLanguage = engine.getLanguages().get(defaultMIMEType);
-            if (defaultLanguage == null) {
-                throw new RuntimeException("Implementation not found for \"" + defaultMIMEType + "\"");
-            }
+        for (Language language : engineLanguages) {
+            nameToLanguage.put(language.getName().toLowerCase(), language);
         }
-        statusPrefix = languageName(defaultLanguage);
+        astPrinter = new REPLASTPrinter(engine);
+        statusPrefix = "";
     }
 
-    private final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent> onHalted = new com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
         @Override
         protected void on(SuspendedEvent ev) {
             if (TRACE) {
-                trace(" on %s", describeObject(ev));
+                trace("BEGIN onSuspendedEvent()");
             }
             REPLServer.this.haltedAt(ev);
             if (TRACE) {
-                trace("END on %s", describeObject(ev));
+                trace("END onSuspendedEvent()");
             }
         }
     };
 
-    private final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent> onExec = new com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent>(
+                    com.oracle.truffle.api.debug.ExecutionEvent.class) {
         @Override
-        protected void on(ExecutionEvent event) {
+        protected void on(com.oracle.truffle.api.debug.ExecutionEvent event) {
             if (TRACE) {
-                trace("BEGIN on %s debugger=%s", describeObject(event), describeObject(db));
+                trace("BEGIN onExecutionEvent()");
             }
             if (currentServerContext.steppingInto) {
                 event.prepareStepInto();
             }
             if (TRACE) {
-                trace("END on %s debugger=%s", describeObject(event), describeObject(db));
+                trace("END onExecutionEvent()");
             }
         }
     };
@@ -168,7 +156,7 @@ public final class REPLServer {
     }
 
     /**
-     * Starts up a server; status returned in a message.
+     * Start sever: load commands, generate initial context.
      */
     public void start() {
 
@@ -188,7 +176,6 @@ public final class REPLServer {
         add(REPLHandler.INFO_HANDLER);
         add(REPLHandler.KILL_HANDLER);
         add(REPLHandler.LOAD_HANDLER);
-        add(REPLHandler.QUIT_HANDLER);
         add(REPLHandler.SET_BREAK_CONDITION_HANDLER);
         add(REPLHandler.SET_LANGUAGE_HANDLER);
         add(REPLHandler.STEP_INTO_HANDLER);
@@ -197,14 +184,13 @@ public final class REPLServer {
         add(REPLHandler.TRUFFLE_HANDLER);
         add(REPLHandler.TRUFFLE_NODE_HANDLER);
         add(REPLHandler.UNSET_BREAK_CONDITION_HANDLER);
-        this.replClient = new SimpleREPLClient(this);
+
         this.currentServerContext = new Context(null, null, defaultLanguage);
-        replClient.start();
     }
 
     @SuppressWarnings("static-method")
     public String getWelcome() {
-        return "GraalVM MultiLanguage Debugger 0.9\n" + "Copyright (c) 2013-5, Oracle and/or its affiliates";
+        return "GraalVM Polyglot Debugger 0.9\n" + "Copyright (c) 2013-6, Oracle and/or its affiliates";
     }
 
     public ASTPrinter getASTPrinter() {
@@ -217,18 +203,18 @@ public final class REPLServer {
 
     void haltedAt(SuspendedEvent event) {
         // Message the client that execution is halted and is in a new debugging context
-        final REPLMessage message = new REPLMessage();
-        message.put(REPLMessage.OP, REPLMessage.STOPPED);
+        final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.STOPPED);
 
         // Identify language execution where halted; default to previous context
         Language haltedLanguage = currentServerContext.currentLanguage;
         final String mimeType = findMime(event.getNode());
         if (mimeType == null) {
-            message.put(REPLMessage.WARNINGS, "unable to detect language at halt");
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, "unable to detect language at halt");
         } else {
             final Language language = engine.getLanguages().get(mimeType);
             if (language == null) {
-                message.put(REPLMessage.WARNINGS, "no language installed for MIME type \"" + mimeType + "\"");
+                message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, "no language installed for MIME type \"" + mimeType + "\"");
             } else {
                 haltedLanguage = language;
             }
@@ -237,34 +223,34 @@ public final class REPLServer {
         // Create and push a new debug context where execution is halted
         currentServerContext = new Context(currentServerContext, event, haltedLanguage);
 
-        message.put(REPLMessage.LANG_NAME, haltedLanguage.getName());
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LANG_NAME, haltedLanguage.getName());
         final SourceSection src = event.getNode().getSourceSection();
         final Source source = src.getSource();
-        message.put(REPLMessage.SOURCE_NAME, source.getName());
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, source.getName());
         final String path = source.getPath();
         if (path == null) {
-            message.put(REPLMessage.SOURCE_TEXT, source.getCode());
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_TEXT, source.getCode());
         } else {
-            message.put(REPLMessage.FILE_PATH, path);
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, path);
         }
-        message.put(REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
 
-        message.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
-        message.put(REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
+        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
         List<String> warnings = event.getRecentWarnings();
         if (!warnings.isEmpty()) {
             final StringBuilder sb = new StringBuilder();
             for (String warning : warnings) {
                 sb.append(warning + "\n");
             }
-            message.put(REPLMessage.WARNINGS, sb.toString());
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, sb.toString());
         }
         try {
             // Cheat with synchrony: call client directly about entering a nested debugging
             // context.
             replClient.halted(message);
         } finally {
-            // Returns when "continue" or "kill" is called in the new debugging context
+            // Returns when "kill" is called in the new debugging context
 
             // Pop the debug context, and return so that the old context will continue
             currentServerContext = currentServerContext.predecessor;
@@ -296,7 +282,6 @@ public final class REPLServer {
         private boolean steppingInto = false;  // Only true during a "stepInto" engine call
 
         Context(Context predecessor, SuspendedEvent event, Language language) {
-            assert language != null;
             this.level = predecessor == null ? 0 : predecessor.getLevel() + 1;
             this.predecessor = predecessor;
             this.event = event;
@@ -320,7 +305,7 @@ public final class REPLServer {
         /**
          * Get access to display methods appropriate to the language at halted node.
          */
-        Visualizer getVisualizer() {
+        REPLVisualizer getVisualizer() {
             return visualizer;
         }
 
@@ -347,7 +332,7 @@ public final class REPLServer {
             }
         }
 
-        void eval(Source source, boolean stepInto) throws IOException {
+        void eval(Source source, boolean stepInto) {
             this.steppingInto = stepInto;
             try {
                 engine.eval(source);
@@ -371,10 +356,13 @@ public final class REPLServer {
                 if (frameNumber != null) {
                     throw new IllegalStateException("Frame number requires a halted execution");
                 }
+                if (currentLanguage == null) {
+                    throw new IOException("No language set");
+                }
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
-                    return engine.eval(Source.fromText(code, "eval(\"" + code + "\")").withMimeType(mimeType)).get();
+                    return engine.eval(Source.newBuilder(code).name("eval(\"" + code + "\")").mimeType(mimeType).build()).get();
                 } finally {
                     this.steppingInto = false;
                 }
@@ -386,13 +374,23 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber - 1);
-                    final Object result = event.eval(code, frame);
+                    FrameInstance frameInstance = frameNumber == 0 ? null : event.getStack().get(frameNumber);
+                    final Object result = event.eval(code, frameInstance);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
                     event.prepareContinue();
                 }
             }
+        }
+
+        public String displayValue(Integer frameNumber, Object value, int trim) {
+            if (frameNumber == null) {
+                throw new IllegalStateException("displayValue in halted context requires a frame number");
+            }
+            if (value == null) {
+                return "<empty>";
+            }
+            return trim(event.toString(value, event.getStack().get(frameNumber)), trim);
         }
 
         /**
@@ -405,16 +403,16 @@ public final class REPLServer {
         /**
          * Dispatches a REPL request to the appropriate handler.
          */
-        REPLMessage[] receive(REPLMessage request) {
-            final String command = request.get(REPLMessage.OP);
+        com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request) {
+            final String command = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.OP);
             final REPLHandler handler = handlerMap.get(command);
 
             if (handler == null) {
-                final REPLMessage message = new REPLMessage();
-                message.put(REPLMessage.OP, command);
-                message.put(REPLMessage.STATUS, REPLMessage.FAILED);
-                message.put(REPLMessage.DISPLAY_MSG, statusPrefix + " op \"" + command + "\" not supported");
-                final REPLMessage[] reply = new REPLMessage[]{message};
+                final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+                message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, command);
+                message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED);
+                message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, statusPrefix + " op \"" + command + "\" not supported");
+                final com.oracle.truffle.tools.debug.shell.REPLMessage[] reply = new com.oracle.truffle.tools.debug.shell.REPLMessage[]{message};
                 return reply;
             }
             return handler.receive(request, REPLServer.this);
@@ -435,7 +433,7 @@ public final class REPLServer {
         }
 
         /**
-         * Provides access to the execution stack, not counting the node/frame where halted.
+         * Access to the execution stack.
          *
          * @return immutable list of stack elements
          */
@@ -444,7 +442,7 @@ public final class REPLServer {
         }
 
         public String getLanguageName() {
-            return currentLanguage.getName();
+            return currentLanguage == null ? null : currentLanguage.getName();
         }
 
         /**
@@ -454,9 +452,9 @@ public final class REPLServer {
          */
         String setLanguage(String name) throws IOException {
             assert name != null;
-            final Language language = nameToLanguage.get(name);
+            final Language language = nameToLanguage.get(name.toLowerCase());
             if (language == null) {
-                throw new IOException("Language \" + name + \" not supported");
+                throw new IOException("Language \"" + name + "\" not supported");
             }
             if (language == currentLanguage) {
                 return currentLanguage.getName();
@@ -484,6 +482,10 @@ public final class REPLServer {
             event.prepareContinue();
         }
 
+        void kill() {
+            event.prepareKill();
+        }
+
     }
 
     /**
@@ -491,12 +493,12 @@ public final class REPLServer {
      * operation where the protocol has possibly multiple messages being returned asynchronously in
      * response to each request.
      */
-    public REPLMessage[] receive(REPLMessage request) {
+    public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request) {
         if (currentServerContext == null) {
-            final REPLMessage message = new REPLMessage();
-            message.put(REPLMessage.STATUS, REPLMessage.FAILED);
-            message.put(REPLMessage.DISPLAY_MSG, "server not started");
-            final REPLMessage[] reply = new REPLMessage[]{message};
+            final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage();
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.FAILED);
+            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DISPLAY_MSG, "server not started");
+            final com.oracle.truffle.tools.debug.shell.REPLMessage[] reply = new com.oracle.truffle.tools.debug.shell.REPLMessage[]{message};
             return reply;
         }
         return currentServerContext.receive(request);
@@ -535,13 +537,6 @@ public final class REPLServer {
         return info;
     }
 
-    @Deprecated
-    BreakpointInfo setTagBreakpoint(int ignoreCount, StandardSyntaxTag tag, boolean oneShot) throws IOException {
-        final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
-        info.activate();
-        return info;
-    }
-
     synchronized BreakpointInfo findBreakpoint(int id) {
         return breakpoints.get(id);
     }
@@ -552,6 +547,15 @@ public final class REPLServer {
     Collection<BreakpointInfo> getBreakpoints() {
         // TODO (mlvdv) check if each is currently resolved
         return new ArrayList<>(breakpoints.values());
+    }
+
+    @Registration(id = "REPLServer")
+    public static final class REPLServerInstrument extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
     }
 
     final class LineBreakpointInfo extends BreakpointInfo {
@@ -580,39 +584,13 @@ public final class REPLServer {
 
     }
 
-    final class TagBreakpointInfo extends BreakpointInfo {
-        private final StandardSyntaxTag tag;
-
-        private TagBreakpointInfo(StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
-            super(ignoreCount, oneShot);
-            this.tag = tag;
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        protected void activate() throws IOException {
-            breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
-            // TODO (mlvdv) check if resolved
-            breakpoints.put(uid, this);
-
-        }
-
-        @Override
-        String describeLocation() {
-            if (breakpoint == null) {
-                return "Tag: " + tag;
-            }
-            return breakpoint.getLocationDescription();
-        }
-    }
-
     abstract class BreakpointInfo {
 
         protected final int uid;
         protected final boolean oneShot;
         protected final int ignoreCount;
 
-        protected State state = State.ENABLED_UNRESOLVED;
+        protected Breakpoint.State state = Breakpoint.State.ENABLED_UNRESOLVED;
         protected Breakpoint breakpoint;
         protected Source conditionSource;
 
@@ -639,12 +617,12 @@ public final class REPLServer {
                 switch (state) {
                     case ENABLED_UNRESOLVED:
                         if (!enabled) {
-                            state = State.DISABLED_UNRESOLVED;
+                            state = Breakpoint.State.DISABLED_UNRESOLVED;
                         }
                         break;
                     case DISABLED_UNRESOLVED:
                         if (enabled) {
-                            state = State.ENABLED_UNRESOLVED;
+                            state = Breakpoint.State.ENABLED_UNRESOLVED;
                         }
                         break;
                     case DISPOSED:
@@ -658,12 +636,12 @@ public final class REPLServer {
         }
 
         boolean isEnabled() {
-            return breakpoint == null ? (state == State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
+            return breakpoint == null ? (state == Breakpoint.State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
         }
 
         void setCondition(String expr) throws IOException {
             if (breakpoint == null) {
-                conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
+                conditionSource = expr == null ? null : Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("content/unknown").build();
             } else {
                 breakpoint.setCondition(expr);
             }
@@ -684,14 +662,14 @@ public final class REPLServer {
 
         void dispose() {
             if (breakpoint == null) {
-                if (state == State.DISPOSED) {
+                if (state == Breakpoint.State.DISPOSED) {
                     throw new IllegalStateException("Breakpoint already disposed");
                 }
             } else {
                 breakpoint.dispose();
                 breakpoint = null;
             }
-            state = State.DISPOSED;
+            state = Breakpoint.State.DISPOSED;
             breakpoints.remove(uid);
             conditionSource = null;
         }
@@ -705,7 +683,7 @@ public final class REPLServer {
         }
     }
 
-    static class Visualizer {
+    static class REPLVisualizer {
 
         /**
          * A short description of a source location in terms of source + line number.
@@ -734,10 +712,10 @@ public final class REPLServer {
                 return null;
             }
             RootNode root = node.getRootNode();
-            if (root == null) {
-                return "unknown";
+            if (root != null && root.getName() != null) {
+                return root.getName();
             }
-            return root.getCallTarget().toString();
+            return "??";
         }
 
         /**
@@ -766,28 +744,56 @@ public final class REPLServer {
         String displayIdentifier(FrameSlot slot) {
             return slot.getIdentifier().toString();
         }
+    }
 
-        /**
-         * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first
-         * line of test. Identity if {@code trim <= 0}.
-         */
-        protected String trim(String text, int trim) {
-            if (trim == 0) {
-                return text;
-            }
-            final String[] lines = text.split("\n");
-            String result = lines[0];
-            if (lines.length == 1) {
-                if (result.length() <= trim) {
-                    return result;
-                }
-                if (trim <= 3) {
-                    return result.substring(0, Math.min(result.length() - 1, trim - 1));
-                } else {
-                    return result.substring(0, trim - 4) + "...";
-                }
-            }
-            return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
+    private static class REPLASTPrinter extends InstrumentationUtils.ASTPrinter {
+
+        private final Instrumenter instrumenter;
+
+        REPLASTPrinter(PolyglotEngine engine) {
+            this.instrumenter = engine.getInstruments().get(REPL_SERVER_INSTRUMENT).lookup(Instrumenter.class);
         }
+
+        @Override
+        protected String displayTags(final Object objectNode) {
+            if (objectNode instanceof Node) {
+                Node node = (Node) objectNode;
+                final SourceSection sourceSection = node.getSourceSection();
+                if (sourceSection != null) {
+                    final StringBuilder sb = new StringBuilder("[");
+                    String sep = "";
+                    for (Class<?> tag : instrumenter.queryTags(node)) {
+                        sb.append(sep).append(tag.getSimpleName());
+                        sep = ",";
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            }
+            return "";
+        }
+    }
+
+    /**
+     * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first line
+     * of test. Identity if {@code trim <= 0}.
+     */
+    protected static String trim(String text, int trim) {
+        if (trim == 0) {
+            return text;
+        }
+        final String[] lines = text.split("\n");
+        String result = lines[0];
+        if (lines.length == 1) {
+            if (result.length() <= trim) {
+                return result;
+            }
+            if (trim <= 3) {
+                return result.substring(0, Math.min(result.length() - 1, trim - 1));
+            } else {
+                return result.substring(0, trim - 4) + "...";
+            }
+        }
+        return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
     }
 }

@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.lang.reflect.Modifier;
 
 /**
  * Helper methods to simplify access to objects of {@link TruffleLanguage Truffle languages} from
@@ -68,7 +69,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <li>If the {@link Message#createInvoke(int) previous message} isn't handled, a
  * {@link Message#READ} is sent to your {@link TruffleObject object} (e.g.
  * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
- * equal to the name of the interface method. If the read returns a primitive type, it is returned.</li>
+ * equal to the name of the interface method. If the read returns a primitive type, it is returned.
+ * </li>
  * <li>If the read value is another {@link TruffleObject}, it is inspected whether it handles
  * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
  * of the interface method and its parameters is sent to the object. The result is returned to the
@@ -187,11 +189,13 @@ public final class JavaInterop {
 
     /**
      * Takes executable object from a {@link TruffleLanguage} and converts it into an instance of a
-     * <b>Java</b> <em>functional interface</em>.
+     * <b>Java</b> <em>functional interface</em>. If the <code>functionalType</code> method is using
+     * {@link Method#isVarArgs() variable arguments}, then the arguments are unwrapped and passed
+     * into the <code>function</code> as indivual arguments.
      *
      * @param <T> requested and returned type
-     * @param functionalType interface with a single defined method - so called
-     *            <em>functional interface</em>
+     * @param functionalType interface with a single defined method - so called <em>functional
+     *            interface</em>
      * @param function <em>Truffle</em> that responds to {@link Message#IS_EXECUTABLE} and can be
      *            invoked
      * @return instance of interface that wraps the provided <code>function</code>
@@ -215,8 +219,8 @@ public final class JavaInterop {
      * </pre>
      *
      * @param <T> requested interface and implementation
-     * @param functionalType interface with a single defined method - so called
-     *            <em>functional interface</em>
+     * @param functionalType interface with a single defined method - so called <em>functional
+     *            interface</em>
      * @param implementation implementation of the interface, or directly a lambda expression
      *            defining the required behavior
      * @return an {@link Message#IS_EXECUTABLE executable} {@link TruffleObject} ready to be used in
@@ -224,11 +228,38 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
-        final Method[] arr = functionalType.getDeclaredMethods();
-        if (!functionalType.isInterface() || arr.length != 1) {
+        final Method method = functionalInterfaceMethod(functionalType);
+        if (method == null) {
             throw new IllegalArgumentException();
         }
-        return new JavaFunctionObject(arr[0], implementation);
+        return new JavaFunctionObject(method, implementation);
+    }
+
+    private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
+        if (!functionalType.isInterface()) {
+            return null;
+        }
+        final Method[] arr = functionalType.getMethods();
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        Method found = null;
+        for (Method m : arr) {
+            if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
+                continue;
+            }
+            try {
+                Object.class.getMethod(m.getName(), m.getParameterTypes());
+                continue;
+            } catch (NoSuchMethodException ex) {
+                // OK, not an object method
+            }
+            if (found != null) {
+                return null;
+            }
+            found = m;
+        }
+        return found;
     }
 
     private static class TemporaryConvertRoot extends RootNode {

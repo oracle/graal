@@ -37,4 +37,3 @@
  * heap for later access when the actual stack is elsewhere.
  */
 package com.oracle.truffle.api.frame;
-

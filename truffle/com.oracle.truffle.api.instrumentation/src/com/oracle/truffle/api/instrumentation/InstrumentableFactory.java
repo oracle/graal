@@ -27,49 +27,74 @@ package com.oracle.truffle.api.instrumentation;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Factory capable to create instance of a wrapper node for provided node. Usually there is no need
- * to implement this factory manually - use {@link Instrumentable} annotation and it will generate
- * the factory for you.
- * 
- * @param <T> the type of node this factory operates on
+ * Factory for creating <em>wrapper nodes</em>. The instrumentation framework inserts a wrapper
+ * between an {@link Instrumentable} guest language node (called the <em>delegate</em>) and its
+ * parent for the purpose of interposing on execution events at the delegate and reporting those
+ * events to the instrumentation framework.
+ * </p>
+ * <p>
+ * Wrapper implementations can be generated automatically: see the {@link Instrumentable}
+ * annotation.
+ *
+ * @param <T> the type of delegate node this factory operates on
  * @since 0.12
  */
 public interface InstrumentableFactory<T extends Node> {
 
     /**
+     * Returns a new, never adopted, unshared {@link WrapperNode wrapper} node implementation for a
+     * particular {@link Instrumentable} node of the guest language AST called its <em>delegate</em>
+     * . The returned wrapper implementation must extend the same type that is annotated with
+     * {@link Instrumentable}.
+     * </p>
      * <p>
-     * Returns a new, never adopted, unshared instrumentable {@link WrapperNode wrapper} node
-     * implementation for a particular node of the guest language AST. The returned wrapper
-     * implementation must extend the same type that is annotated with {@link Instrumentable} and
-     * forward all events to the given {@link ProbeNode probe}.
+     * A wrapper forwards the following events concerning the delegate to the given {@link ProbeNode
+     * probe} for propagation through the instrumentation framework, e.g. to
+     * {@linkplain ExecutionEventListener event listeners} bound to this guest language program
+     * location:
+     * <ul>
+     * <li>{@linkplain ProbeNode#onEnter(com.oracle.truffle.api.frame.VirtualFrame) onEnter(Frame)}:
+     * an <em>execute</em> method on the delegate is ready to be called;</li>
+     * <li>{@linkplain ProbeNode#onReturnValue(com.oracle.truffle.api.frame.VirtualFrame, Object)
+     * onReturnValue(Frame,Object)}: an <em>execute</em> method on the delegate has just returned a
+     * (possibly <code>null</code>) value;</li>
+     * <li>
+     * {@linkplain ProbeNode#onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame, Throwable)
+     * onReturnExceptional(Frame,Throwable)}: an <em>execute</em> method on the delegate has just
+     * thrown an exception.</li>
+     * </ul>
      * </p>
      *
-     * @param probe the {@link ProbeNode probe} that should get adopted by the wrapper node.
+     * @param node the {@link Instrumentable} <em>delegate</em> to be adopted by the wrapper
+     * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
+     *            wrapper
      * @return a {@link WrapperNode wrapper} implementation
      * @since 0.12
      */
     WrapperNode createWrapper(T node, ProbeNode probe);
 
     /**
-     * Interface for instrumentation wrapper nodes Abstract class provided by
-     * {@link InstrumentableFactory#createWrapper(Node, ProbeNode)} to notify the instrumentation
-     * API about execution events.
+     * Nodes that the instrumentation framework inserts into guest language ASTs (between
+     * {@link Instrumentable} guest language nodes and their parents) for the purpose of interposing
+     * on execution events and reporting them via the instrumentation framework.
      *
+     * @see #createWrapper(Node, ProbeNode)
      * @since 0.12
      */
     public interface WrapperNode {
 
         /**
-         * Returns the original node that this node delegates to.
-         * 
+         * The {@link Instrumentable} guest language node, adopted as a child, whose execution
+         * events the wrapper reports to the instrumentation framework.
+         *
          * @since 0.12
          */
         Node getDelegateNode();
 
         /**
-         * Returns the probe that was returned by
-         * {@link InstrumentableFactory#createWrapper(Node, ProbeNode)}.
-         * 
+         * A child of the wrapper, through which the wrapper reports execution events related to the
+         * guest language <em>delegate</em> node.
+         *
          * @since 0.12
          */
         ProbeNode getProbeNode();

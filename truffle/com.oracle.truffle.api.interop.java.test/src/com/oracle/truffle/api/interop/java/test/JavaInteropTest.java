@@ -31,13 +31,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -79,12 +79,6 @@ public class JavaInteropTest {
         data = new Data();
         obj = JavaInterop.asTruffleObject(data);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
     }
 
     @Test
@@ -186,6 +180,25 @@ public class JavaInteropTest {
     public void integerCanBeConvertedFromAnObjectField() {
         data.value = 42;
         assertEquals((Integer) 42, xyp.value());
+    }
+
+    @Test
+    public void indexJavaArrayWithNumberTypes() throws Exception {
+        int[] a = new int[]{1, 2, 3};
+        TruffleObject truffleObject = JavaInterop.asTruffleObject(a);
+
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L, 42);
+
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+
     }
 
     public interface XYPlus {

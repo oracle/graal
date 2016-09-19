@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,7 +41,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.InstrumentationTestMode;
 
 /**
  * <h3>Accessing the Truffle Runtime</h3>
@@ -65,13 +63,7 @@ public class TruffleRuntimeTest {
 
     @Before
     public void before() {
-        InstrumentationTestMode.set(true);
         this.runtime = Truffle.getRuntime();
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
     }
 
     private static RootNode createTestRootNode(SourceSection sourceSection) {
@@ -107,6 +99,7 @@ public class TruffleRuntimeTest {
         assertSame(rootNode, target.getRootNode());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testGetCallTargets1() {
         RootNode rootNode = createTestRootNode(null);
@@ -114,6 +107,7 @@ public class TruffleRuntimeTest {
         assertTrue(runtime.getCallTargets().contains(target));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testGetCallTargets2() {
         RootNode rootNode = createTestRootNode(null);
@@ -130,9 +124,9 @@ public class TruffleRuntimeTest {
      */
     @Test
     public void testGetCallTargets3() {
-        Source source1 = Source.fromText("a\nb\n", "");
-        SourceSection sourceSection1 = source1.createSection("foo", 1);
-        SourceSection sourceSection2 = source1.createSection("bar", 2);
+        Source source1 = Source.newBuilder("a\nb\n").name("").mimeType("content/unknown").build();
+        SourceSection sourceSection1 = source1.createSection(1);
+        SourceSection sourceSection2 = source1.createSection(2);
 
         RootNode rootNode1 = createTestRootNode(sourceSection1);
         RootNode rootNode2 = createTestRootNode(sourceSection2);
@@ -157,6 +151,7 @@ public class TruffleRuntimeTest {
         assertTrue(target2 == targets2.get(1) ^ target2Copy == targets2.get(1));
     }
 
+    @SuppressWarnings("deprecation")
     private static Map<SourceSection, List<RootCallTarget>> groupUniqueCallTargets() {
         Map<SourceSection, List<RootCallTarget>> groupedTargets = new HashMap<>();
         for (RootCallTarget target : Truffle.getRuntime().getCallTargets()) {

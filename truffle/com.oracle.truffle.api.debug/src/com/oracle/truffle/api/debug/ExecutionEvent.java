@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.vm.PolyglotEngine;
+
 /**
  * This event is delivered to all
  * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
@@ -36,15 +38,18 @@ package com.oracle.truffle.api.debug;
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
  * keep it to further manipulate with debugging capabilities of the
  * {@link com.oracle.truffle.api.vm.PolyglotEngine} when it is running.
- * 
+ *
+ * @deprecated Use {@link Debugger#startSession(SuspendedCallback)} instead to step into the next
+ *             execution.
  * @since 0.9
  */
 @SuppressWarnings("javadoc")
+@Deprecated
 public final class ExecutionEvent {
-    private final Debugger debugger;
+    private final PolyglotEngine engine;
 
-    ExecutionEvent(Debugger prepares) {
-        this.debugger = prepares;
+    ExecutionEvent(PolyglotEngine engine) {
+        this.engine = engine;
     }
 
     /**
@@ -57,7 +62,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
-        return debugger;
+        return Debugger.find(engine);
     }
 
     /**
@@ -71,11 +76,11 @@ public final class ExecutionEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
-     * 
+     *
      * @since 0.9
      */
     public void prepareContinue() {
-        debugger.prepareContinue(-1);
+        getDebugger().getLegacySession().resumeAll();
     }
 
     /**
@@ -85,9 +90,7 @@ public final class ExecutionEvent {
      * <li>User breakpoints are disabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at a node with the tag
-     * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATMENT},
-     * <strong>or:</strong></li>
+     * <li>execution arrives at a node with the tag representing halt <strong>or:</strong></li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),
@@ -98,6 +101,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareStepInto() {
-        debugger.prepareStepInto(1);
+        getDebugger().getLegacySession().suspendNextExecution();
     }
+
 }

@@ -31,13 +31,12 @@ import java.util.ArrayList;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A language-agnostic for printing out various pieces of a Truffle AST.
  */
+@SuppressWarnings("deprecation")
 final class InstrumentationUtils {
 
     private InstrumentationUtils() {
@@ -96,15 +95,12 @@ final class InstrumentationUtils {
             final StringBuilder sb = new StringBuilder();
             sb.append(displayNodeName(node));
             sb.append("(");
-            sb.append(displaySourceInfo(node));
             sb.append(displayTags(node));
-            sb.append(")");
-            final Node parent = node.getParent();
-            if (parent instanceof WrapperNode) {
-                final WrapperNode wrapper = (WrapperNode) parent;
-                sb.append(" Probed");
-                sb.append(displayTags(wrapper));
+            if (node.getParent() instanceof WrapperNode) {
+                sb.append(",Probed");
             }
+            sb.append(") ");
+            sb.append(displaySourceInfo(node));
             return sb.toString();
         }
 
@@ -128,50 +124,31 @@ final class InstrumentationUtils {
                 p.print("null");
                 return;
             }
-
-            p.print(displayNodeName(node));
-
-            p.print("(");
-
-            if (!(node instanceof WrapperNode)) {
-                p.print(displaySourceInfo(node));
-                p.print(displayTags(node));
+            if (node instanceof WrapperNode) {
+                p.print("WRAPPER(" + node.getClass().getSimpleName() + ")");
+            } else {
+                p.print(displayNodeWithInstrumentation(node));
             }
-
-            ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
-
-            for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
-                if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
-                    childFields.add(field);
-                } else if (field.getKind() == NodeFieldKind.DATA) {
-                    // p.print(sep);
-                    // sep = ", ";
-                    //
-                    // final String fieldName = field.getName();
-                    // switch (fieldName) {
-                    //
-                    // }
-                    // p.print(fieldName);
-                    // p.print(" = ");
-                    // p.print(field.loadValue(node));
-                }
-            }
-            p.print(")");
-
             if (level <= maxDepth) {
-
+                ArrayList<com.oracle.truffle.api.nodes.NodeFieldAccessor> childFields = new ArrayList<>();
+                for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : NodeClass.get(node).getFields()) {
+                    if (field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD ||
+                                    field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN) {
+                        childFields.add(field);
+                    }
+                }
                 if (childFields.size() != 0) {
                     p.print(" {");
-                    for (NodeFieldAccessor field : childFields) {
+                    for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : childFields) {
 
                         Object value = field.loadValue(node);
                         if (value == null) {
                             printNewLine(p, level);
                             p.print(field.getName());
                             p.print(" = null ");
-                        } else if (field.getKind() == NodeFieldKind.CHILD) {
+                        } else if (field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD) {
                             printChild(p, maxDepth, markNode, level, field, value);
-                        } else if (field.getKind() == NodeFieldKind.CHILDREN) {
+                        } else if (field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN) {
                             printChildren(p, maxDepth, markNode, level, field, value);
                         } else {
                             printNewLine(p, level);
@@ -184,7 +161,7 @@ final class InstrumentationUtils {
             }
         }
 
-        protected void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
+        protected void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Object value) {
             printNewLine(p, level);
             p.print(field.getName());
             Node[] children = (Node[]) value;
@@ -198,7 +175,7 @@ final class InstrumentationUtils {
             p.print("]");
         }
 
-        protected void printChild(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
+        protected void printChild(PrintWriter p, int maxDepth, Node markNode, int level, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Object value) {
             final Node valueNode = (Node) value;
             printNewLine(p, level, valueNode == markNode);
             p.print(field.getName());
@@ -255,7 +232,7 @@ final class InstrumentationUtils {
                 estimated = true;
             }
             if (section == null) {
-                return "<error: source location>";
+                return "<unknown source location>";
             }
             return section.getShortDescription() + (estimated ? "~" : "");
         }

@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
@@ -21,7 +45,7 @@ final class InstrumentCache {
     static final boolean PRELOAD;
     private static final List<InstrumentCache> CACHE;
 
-    private Class<?> instrumentationClass;
+    private Class<?> instrumentClass;
     private final String className;
     private final String id;
     private final String name;
@@ -40,9 +64,14 @@ final class InstrumentCache {
     }
 
     private static ClassLoader loader() {
-        ClassLoader l = PolyglotEngine.class.getClassLoader();
-        if (l == null) {
-            l = ClassLoader.getSystemClassLoader();
+        ClassLoader l;
+        if (PolyglotEngine.JDK8OrEarlier) {
+            l = PolyglotEngine.class.getClassLoader();
+            if (l == null) {
+                l = ClassLoader.getSystemClassLoader();
+            }
+        } else {
+            l = ModuleResourceLocator.createLoader();
         }
         return l;
     }
@@ -69,9 +98,9 @@ final class InstrumentCache {
         Set<String> classNamesUsed = new HashSet<>();
         Enumeration<URL> en;
         try {
-            en = loader.getResources("META-INF/truffle/instrumentation");
+            en = loader.getResources("META-INF/truffle/instrument");
         } catch (IOException ex) {
-            throw new IllegalStateException("Cannot read list of Truffle instrumentations", ex);
+            throw new IllegalStateException("Cannot read list of Truffle instruments", ex);
         }
         while (en.hasMoreElements()) {
             URL u = en.nextElement();
@@ -86,12 +115,12 @@ final class InstrumentCache {
                 continue;
             }
             for (int cnt = 1;; cnt++) {
-                String prefix = "instrumentation" + cnt + ".";
+                String prefix = "instrument" + cnt + ".";
                 String className = p.getProperty(prefix + "className");
                 if (className == null) {
                     break;
                 }
-                // we don't want multiple instrumentations with the same class name
+                // we don't want multiple instruments with the same class name
                 if (!classNamesUsed.contains(className)) {
                     classNamesUsed.add(className);
                     list.add(new InstrumentCache(prefix, p));
@@ -119,17 +148,17 @@ final class InstrumentCache {
     }
 
     Class<?> getInstrumentationClass() {
-        if (!PRELOAD && instrumentationClass == null) {
+        if (!PRELOAD && instrumentClass == null) {
             loadClass();
         }
-        return instrumentationClass;
+        return instrumentClass;
     }
 
     private void loadClass() {
         try {
-            instrumentationClass = Class.forName(className, true, loader());
+            instrumentClass = Class.forName(className, true, loader());
         } catch (Exception ex) {
-            throw new IllegalStateException("Cannot initialize " + getName() + " instrumentation with implementation " + className, ex);
+            throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);
         }
     }
 

@@ -26,7 +26,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.model.AnnotatedParameterSpec;
+import com.oracle.truffle.dsl.processor.model.CachedParameterSpec;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -53,7 +53,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
-        spec.getAnnotations().add(new AnnotatedParameterSpec(getContext().getDeclaredType(Cached.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(Cached.class)));
         return spec;
     }
 
@@ -85,8 +85,8 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
 
             for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
                 if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
-                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. "
-                                    + "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
+                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. " +
+                                    "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
                                     ElementUtils.getQualifiedName(typeMirror));
                 }
             }

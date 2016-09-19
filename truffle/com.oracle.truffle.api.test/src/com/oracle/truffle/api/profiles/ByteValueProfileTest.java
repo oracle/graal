@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.profiles;
 
-import com.oracle.truffle.api.nodes.Node;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -113,15 +112,4 @@ public class ByteValueProfileTest {
         p.toString(); // test that it is not crashing
     }
 
-    // BEGIN: ByteValueProfileSample
-    class SampleNode extends Node {
-        final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
-
-        byte execute(byte input) {
-            byte profiledValue = profile.profile(input);
-            // compiler may know now more about profiledValue
-            return profiledValue;
-        }
-    }
-    // END: ByteValueProfileSample
 }

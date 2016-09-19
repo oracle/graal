@@ -37,7 +37,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * </p>
  *
  * <p>
- * <b> Usage example: </b> {@codesnippet ByteValueProfileSample}
+ * <b> Usage example: </b>
+ * {@link com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile}
  *
  * {@inheritDoc}
  *
@@ -142,4 +143,22 @@ public abstract class ByteValueProfile extends Profile {
 
     }
 
+}
+
+class ByteProfileSnippets {
+    class Node {
+    }
+
+    // BEGIN: com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile
+    class ByteProfileNode extends Node {
+
+        final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
+
+        byte execute(byte input) {
+            byte profiledValue = profile.profile(input);
+            // compiler may know now more about profiledValue
+            return profiledValue;
+        }
+    }
+    // END: com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile
 }

@@ -47,12 +47,17 @@ import com.oracle.truffle.api.object.ObjectType;
 
 public final class SLObjectType extends ObjectType {
 
+    public static final ObjectType SINGLETON = new SLObjectType();
+
+    private SLObjectType() {
+    }
+
     public static boolean isInstance(TruffleObject obj) {
         return SLContext.isSLObject(obj);
     }
 
     @Override
     public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
-        return SLObjectTypeForeign.ACCESS;
+        return SLObjectMessageResolutionForeign.createAccess();
     }
 }

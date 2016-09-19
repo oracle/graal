@@ -40,23 +40,19 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
-import java.math.BigInteger;
 
 /**
  * This class is similar to the extensively documented {@link SLAddNode}.
  */
 @NodeInfo(shortName = "-")
 public abstract class SLSubNode extends SLBinaryNode {
-
-    public SLSubNode(SourceSection src) {
-        super(src);
-    }
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected long sub(long left, long right) {

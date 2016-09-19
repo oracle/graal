@@ -125,11 +125,6 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
         return Truffle.getRuntime().createCallTarget(node);
     }
 
-    @Override
-    public CallTarget accessProperties() {
-        return null;
-    }
-
     private final class IndexNode extends RootNode {
         IndexNode() {
             super(TruffleLanguage.class, null, null);

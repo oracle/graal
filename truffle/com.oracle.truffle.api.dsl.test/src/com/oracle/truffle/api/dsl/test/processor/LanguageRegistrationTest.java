@@ -28,8 +28,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -77,24 +75,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
-        protected Visualizer getVisualizer() {
-            return null;
-        }
-
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @Override
-        protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
@@ -132,24 +114,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
-        protected Visualizer getVisualizer() {
-            return null;
-        }
-
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @Override
-        protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
@@ -183,24 +149,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
-        protected Visualizer getVisualizer() {
-            return null;
-        }
-
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @Override
-        protected WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 

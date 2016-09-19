@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 /**
  * An exception thrown if a foreign function or method invocation provides the wrong number of
  * arguments.
- * 
+ *
  * @since 0.11
  */
 public final class ArityException extends InteropException {
@@ -76,6 +78,7 @@ public final class ArityException extends InteropException {
      * @since 0.11
      */
     public static RuntimeException raise(int expectedArity, int actualArity) {
+        CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new ArityException(expectedArity, actualArity));
     }
 

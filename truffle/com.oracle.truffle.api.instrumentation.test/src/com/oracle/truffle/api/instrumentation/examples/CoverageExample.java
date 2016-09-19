@@ -41,12 +41,12 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Example for simple and optimize able version of an expression coverage instrumentation. Parts
- * that are already covered or have never been instrumented can be optimized without peak
- * performance overhead.
+ * Example for simple and optimize able version of an expression coverage instrument. Parts that are
+ * already covered or have never been instrumented can be optimized without peak performance
+ * overhead.
  *
- * Covered statements are printed to the instrumentation stream which should demonstrate an
- * alternate way of communication from the instrumentation to the user.
+ * Covered statements are printed to the instrument stream which should demonstrate an alternate way
+ * of communication from the instrument to the user.
  */
 @Registration(id = CoverageExample.ID)
 public final class CoverageExample extends TruffleInstrument {

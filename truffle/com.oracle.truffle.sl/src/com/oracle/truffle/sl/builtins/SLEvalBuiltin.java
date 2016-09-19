@@ -48,9 +48,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
-import java.io.IOException;
 
 /**
  * Builtin function to evaluate source code in any supported language.
@@ -60,15 +57,13 @@ import java.io.IOException;
  * possibly inlined.
  */
 @NodeInfo(shortName = "eval")
+@SuppressWarnings("unused")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
-    public SLEvalBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "eval"));
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"stringsEqual(mimeType, cachedMimeType)", "stringsEqual(code, cachedCode)"})
-    public Object evalCached(VirtualFrame frame, String mimeType, String code, @Cached("mimeType") String cachedMimeType, @Cached("code") String cachedCode,
+    @Specialization(guards = {"stringsEqual(cachedMimeType, mimeType)", "stringsEqual(cachedCode, code)"})
+    public Object evalCached(VirtualFrame frame, String mimeType, String code,
+                    @Cached("mimeType") String cachedMimeType,
+                    @Cached("code") String cachedCode,
                     @Cached("create(parse(mimeType, code))") DirectCallNode callNode) {
         return callNode.call(frame, new Object[]{});
     }
@@ -80,17 +75,17 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
     }
 
     protected CallTarget parse(String mimeType, String code) {
-        final Source source = Source.fromText(code, "(eval)").withMimeType(mimeType);
+        final Source source = Source.newBuilder(code).name("(eval)").mimeType(mimeType).build();
 
         try {
             return getContext().parse(source);
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             throw new IllegalArgumentException(ex);
         }
     }
 
-    protected boolean stringsEqual(String a, String b) {
+    /* Work around findbugs warning in generate code. */
+    protected static boolean stringsEqual(String a, String b) {
         return a.equals(b);
     }
-
 }

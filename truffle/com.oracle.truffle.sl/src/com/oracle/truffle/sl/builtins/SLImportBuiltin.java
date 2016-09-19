@@ -40,24 +40,31 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Built-in function that goes through the other registered languages to find an exported global
  * symbol of the specified name. See <link>SLContext#import(String)</link>.
  */
 @NodeInfo(shortName = "import")
+@SuppressWarnings("unused")
 public abstract class SLImportBuiltin extends SLBuiltinNode {
 
-    public SLImportBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "import"));
+    @Specialization(guards = "stringsEqual(cachedName, name)")
+    public Object importSymbol(String name,
+                    @Cached("name") String cachedName,
+                    @Cached("doImport(name)") Object symbol) {
+        return symbol;
     }
 
-    @Specialization
-    public Object importSymbol(String name) {
+    protected Object doImport(String name) {
         return getContext().importSymbol(name);
+    }
+
+    /* Work around findbugs warning in generate code. */
+    protected static boolean stringsEqual(String a, String b) {
+        return a.equals(b);
     }
 }

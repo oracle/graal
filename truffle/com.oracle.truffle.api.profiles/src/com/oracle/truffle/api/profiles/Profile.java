@@ -74,17 +74,18 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <p>
  * Profile subclasses:
  * <ul>
- * <li> {@link BranchProfile} to profile on unlikely branches like errors.</li>
- * <li> {@link ConditionProfile} to profile on conditionals or boolean values.</li>
- * <li> {@link LoopConditionProfile} to profile on conditionals of loops with special support for
+ * <li>{@link BranchProfile} to profile on unlikely branches like errors.</li>
+ * <li>{@link ConditionProfile} to profile on conditionals or boolean values.</li>
+ * <li>{@link LoopConditionProfile} to profile on conditionals of loops with special support for
  * counted loops.</li>
- * <li> {@link ValueProfile} to profile on properties like type and identity of values.</li>
- * <li> {@link ByteValueProfile} to profile on <code>byte</code> values.</li>
- * <li> {@link IntValueProfile} to profile on <code>int</code> values.</li>
- * <li> {@link LongValueProfile} to profile on <code>long</code> values.</li>
- * <li> {@link FloatValueProfile} to profile on <code>float</code> values.</li>
- * <li> {@link DoubleValueProfile} to profile on <code>double</code> values.</li>
- * <li> {@link PrimitiveValueProfile} to profile on objects by identity and on primitives by value.</li>
+ * <li>{@link ValueProfile} to profile on properties like type and identity of values.</li>
+ * <li>{@link ByteValueProfile} to profile on <code>byte</code> values.</li>
+ * <li>{@link IntValueProfile} to profile on <code>int</code> values.</li>
+ * <li>{@link LongValueProfile} to profile on <code>long</code> values.</li>
+ * <li>{@link FloatValueProfile} to profile on <code>float</code> values.</li>
+ * <li>{@link DoubleValueProfile} to profile on <code>double</code> values.</li>
+ * <li>{@link PrimitiveValueProfile} to profile on objects by identity and on primitives by value.
+ * </li>
  * </ul>
  * </p>
  *

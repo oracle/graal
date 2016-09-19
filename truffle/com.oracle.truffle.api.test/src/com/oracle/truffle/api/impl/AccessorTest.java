@@ -40,10 +40,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.junit.After;
 
 public class AccessorTest {
     private static Method find;
     private static Field instrumenthandler;
+    private PolyglotEngine engine;
 
     /**
      * Reflection access to package-private members.
@@ -59,17 +61,24 @@ public class AccessorTest {
         instrumenthandler.setAccessible(true);
     }
 
+    @After
+    public void dispose() {
+        if (engine != null) {
+            engine.dispose();
+        }
+    }
+
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        PolyglotEngine vm = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor()).build();
-        PolyglotEngine.Language language = vm.getLanguages().get(L1);
+        engine = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor()).build();
+        PolyglotEngine.Language language = engine.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
-        Source s = Source.fromText("return nothing", "nothing");
+        Source s = Source.newBuilder("return nothing").name("nothing").mimeType("content/unknown").build();
         Object ret = language.eval(s).get();
         assertNull("nothing is returned", ret);
 
-        ExportImportLanguage1 afterInitialization = (ExportImportLanguage1) find.invoke(null, vm, ExportImportLanguage1.class);
+        ExportImportLanguage1 afterInitialization = (ExportImportLanguage1) find.invoke(null, engine, ExportImportLanguage1.class);
         assertNotNull("Language found", afterInitialization);
     }
 
@@ -79,7 +88,7 @@ public class AccessorTest {
      */
     @Test
     public void testAccessorInstrumentationHandlerNotInitialized() throws IllegalAccessException {
-        Accessor savedAccessor = (Accessor) instrumenthandler.get(null);
+        Object savedAccessor = instrumenthandler.get(null);
         instrumenthandler.set(null, null);
         try {
             CallTarget testCallTarget = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));

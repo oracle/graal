@@ -26,18 +26,23 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
+/** @since 0.17 or earlier */
 public abstract class DebugCounter {
     private DebugCounter() {
     }
 
+    /** @since 0.17 or earlier */
     public abstract long get();
 
+    /** @since 0.17 or earlier */
     public abstract void inc();
 
+    /** @since 0.17 or earlier */
     public static DebugCounter create(String name) {
         return ObjectStorageOptions.DebugCounters ? DebugCounterImpl.createImpl(name) : Dummy.INSTANCE;
     }
 
+    /** @since 0.17 or earlier */
     public static void dumpCounters() {
         if (ObjectStorageOptions.DebugCounters) {
             DebugCounterImpl.dumpCounters(System.out);
@@ -78,6 +83,17 @@ public abstract class DebugCounter {
         private static void dumpCounters(PrintStream out) {
             for (DebugCounter counter : allCounters) {
                 out.println(counter);
+            }
+        }
+
+        static {
+            assert ObjectStorageOptions.DebugCounters;
+            if (ObjectStorageOptions.DumpDebugCounters) {
+                Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                    public void run() {
+                        dumpCounters(System.out);
+                    }
+                }));
             }
         }
     }

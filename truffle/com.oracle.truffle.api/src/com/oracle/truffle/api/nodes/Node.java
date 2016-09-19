@@ -40,23 +40,26 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.JSONHelper;
 
 /**
  * Abstract base class for all Truffle nodes.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Node implements NodeInterface, Cloneable {
+
     private final NodeClass nodeClass;
     @CompilationFinal private Node parent;
-    @CompilationFinal private SourceSection sourceSection;
 
     /**
      * Marks array fields that are children of this node.
-     * 
+     *
+     * This annotation implies the semantics of @{@link CompilationFinal}(dimensions = 1).
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -66,7 +69,9 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Marks fields that represent child nodes of this node.
-     * 
+     *
+     * This annotation implies the semantics of {@link CompilationFinal}.
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -83,40 +88,12 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
     }
 
-    /**
-     * @deprecated if your node provides source section, override {@link #getSourceSection()} to
-     *             return it - this constructor will be removed
-     * @param sourceSection
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    protected Node(SourceSection sourceSection) {
-        this();
-        this.sourceSection = sourceSection;
-    }
-
-    /**
-     * @deprecated if your node provides source section, override {@link #getSourceSection()} to
-     *             return it - this method will be removed
-     *
-     * @param section the object representing a section in guest language source code
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public void assignSourceSection(SourceSection section) {
-        if (sourceSection != null) {
-            // Patch this test during the transition to constructor-based
-            // source attribution, which would otherwise trigger this
-            // exception. This method will eventually be deprecated.
-            if (getSourceSection() != section) {
-                throw new IllegalStateException("Source section is already assigned. Old: " + getSourceSection() + ", new: " + section);
-            }
-        }
-        this.sourceSection = section;
-    }
-
     NodeClass getNodeClass() {
         return nodeClass;
+    }
+
+    void setParent(Node parent) {
+        this.parent = parent;
     }
 
     /**
@@ -126,7 +103,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
      * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
      * default value.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public NodeCost getCost() {
@@ -138,18 +115,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * @deprecated if your node provides source section, override {@link #getSourceSection()} to
-     *             return it - this method will be removed
-     *
-     *             Clears any previously assigned guest language source code from this node.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public void clearSourceSection() {
-        this.sourceSection = null;
-    }
-
-    /**
      * Retrieves the segment of guest language source code that is represented by this Node. The
      * default implementation of this method returns <code>null</code>. If your node represents a
      * segment of the source code, override this method and return a <code>final</code> or
@@ -158,18 +123,18 @@ public abstract class Node implements NodeInterface, Cloneable {
      * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
      * construction use:
      *
-     * {@codesnippet NodeWithFixedSourceSection}
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
      *
      * To create a node which can associate and change the {@link SourceSection} later at any point
      * of time use:
      *
-     * {@codesnippet MutableSourceSectionNode}
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
      */
     public SourceSection getSourceSection() {
-        return sourceSection;
+        return null;
     }
 
     /**
@@ -227,10 +192,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        adoptHelper();
+        NodeUtil.adoptChildrenHelper(this);
     }
 
-    void adoptHelper(final Node newChild) {
+    final void adoptHelper(final Node newChild) {
         assert newChild != null;
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
@@ -239,18 +204,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (TruffleOptions.TraceASTJSON) {
             JSONHelper.dumpNewChild(this, newChild);
         }
-        newChild.adoptHelper();
-    }
-
-    private void adoptHelper() {
-        NodeUtil.forEachChild(this, new NodeVisitor() {
-            public boolean visit(Node child) {
-                if (child != null && child.getParent() != Node.this) {
-                    Node.this.adoptHelper(child);
-                }
-                return true;
-            }
-        });
+        NodeUtil.adoptChildrenHelper(newChild);
     }
 
     private void adoptUnadoptedHelper(final Node newChild) {
@@ -259,14 +213,10 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         newChild.parent = this;
-        newChild.adoptUnadoptedHelper();
-    }
-
-    private void adoptUnadoptedHelper() {
-        NodeUtil.forEachChild(this, new NodeVisitor() {
+        NodeUtil.forEachChild(newChild, new NodeVisitor() {
             public boolean visit(Node child) {
                 if (child != null && child.getParent() == null) {
-                    Node.this.adoptUnadoptedHelper(child);
+                    newChild.adoptUnadoptedHelper(child);
                 }
                 return true;
             }
@@ -332,10 +282,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
-        if (sourceSection != null && newNode.getSourceSection() == null) {
-            // Pass on the source section to the new node.
-            newNode.assignSourceSection(sourceSection);
-        }
         // (aw) need to set parent *before* replace, so that (unsynchronized) getRootNode()
         // will always find the root node
         newNode.parent = this.parent;
@@ -348,7 +294,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Checks if this node can be replaced by another node: tree structure & type.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public final boolean isSafelyReplaceableBy(Node newNode) {
@@ -465,7 +411,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Converts this node to a textual representation useful for debugging.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Override
@@ -487,11 +433,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /** @since 0.8 or earlier */
     public final void atomic(Runnable closure) {
-        RootNode rootNode = getRootNode();
-        // Major Assumption: parent is never null after a node got adopted
-        // it is never reset to null, and thus, rootNode is always reachable.
-        // GIL: used for nodes that are replace in ASTs that are not yet adopted
-        synchronized (rootNode != null ? rootNode : GIL) {
+        synchronized (getAtomicLock()) {
             assert enterAtomic();
             try {
                 closure.run();
@@ -504,11 +446,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final <T> T atomic(Callable<T> closure) {
         try {
-            RootNode rootNode = getRootNode();
-            // Major Assumption: parent is never null after a node got adopted
-            // it is never reset to null, and thus, rootNode is always reachable.
-            // GIL: used for nodes that are replace in ASTs that are not yet adopted
-            synchronized (rootNode != null ? rootNode : GIL) {
+            synchronized (getAtomicLock()) {
                 assert enterAtomic();
                 try {
                     return closure.call();
@@ -524,9 +462,65 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
+     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
+     * manually.
+     *
+     * @since 0.17
+     */
+    protected final Object getAtomicLock() {
+        // Major Assumption: parent is never null after a node got adopted
+        // it is never reset to null, and thus, rootNode is always reachable.
+        // GIL: used for nodes that are replace in ASTs that are not yet adopted
+        RootNode root = getRootNode();
+        return root == null ? GIL : root;
+    }
+
+    /**
+     * Returns <code>true</code> if this node should be considered tagged by a given tag else
+     * <code>false</code>. The method is only invoked for tags which are explicitly declared as
+     * {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by the
+     * {@link TruffleLanguage language}. If the {@link #getSourceSection() source section} of the
+     * node returns <code>null</code> then this node is considered to be not tagged by any tag.
+     * <p>
+     * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
+     * certain category of nodes. For example a debugger
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a
+     * guest language to tag all nodes as halt locations that should be considered as such.
+     * <p>
+     * The node implementor may decide how to implement tagging for nodes. The simplest way to
+     * implement tagging using Java types is by overriding the {@link #isTaggedWith(Class)} method.
+     * This example shows how to tag a node subclass and all its subclasses as expression and
+     * statement:
+     *
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode}
+     *
+     * <p>
+     * Often it is impossible to just rely on the node's Java type to implement tagging. This
+     * example shows how to use local state to implement tagging for a node.
+     *
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt}
+     *
+     * <p>
+     * The implementation of isTaggedWith method must ensure that its result is stable after the
+     * parent {@link RootNode root node} was wrapped in a {@link CallTarget} using
+     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
+     * calling this method for a particular tag remains always the same.
+     *
+     * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
+     *            the {@link TruffleLanguage language}
+     * @return <code>true</code> if the node should be considered tagged by a tag else
+     *         <code>false</code>.
+     * @since 0.12
+     */
+    protected boolean isTaggedWith(Class<?> tag) {
+        return false;
+    }
+
+    /**
      * Returns a user-readable description of the purpose of the Node, or "" if no description is
      * available.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public String getDescription() {
@@ -540,7 +534,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Returns a string representing the language this node has been implemented for. If the
      * language is unknown, returns "".
-     * 
+     *
      * @since 0.8 or earlier
      */
     public String getLanguage() {
@@ -579,35 +573,111 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     static final class AccessorNodes extends Accessor {
 
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-            return n.language;
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Class<? extends TruffleLanguage> findLanguage(Node n) {
-            return n.getRootNode().language;
-        }
-
-        @Override
-        protected boolean isInstrumentable(RootNode rootNode) {
-            return rootNode.isInstrumentable();
-        }
-
-        @Override
-        protected void probeAST(RootNode rootNode) {
-            super.probeAST(rootNode);
-        }
-
         @Override
         protected void onLoopCount(Node source, int iterations) {
             super.onLoopCount(source, iterations);
         }
 
+        @Override
+        protected Accessor.Nodes nodes() {
+            return new AccessNodes();
+        }
+
+        static final class AccessNodes extends Accessor.Nodes {
+            @SuppressWarnings("rawtypes")
+            @Override
+            public Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+                return n.language;
+            }
+
+            @Override
+            public boolean isInstrumentable(RootNode rootNode) {
+                return rootNode.isInstrumentable();
+            }
+
+            @Override
+            public boolean isTaggedWith(Node node, Class<?> tag) {
+                return node.isTaggedWith(tag);
+            }
+        }
     }
 
     // registers into Accessor.NODES
     static final AccessorNodes ACCESSOR = new AccessorNodes();
+
+}
+
+class NodeSnippets {
+    static class NodeWithFixedSourceSection extends Node {
+        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
+        private final SourceSection section;
+
+        NodeWithFixedSourceSection(SourceSection section) {
+            this.section = section;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
+        }
+        // END: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
+    }
+
+    static class MutableSourceSectionNode extends Node {
+        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
+        @CompilerDirectives.CompilationFinal private SourceSection section;
+
+        final void changeSourceSection(SourceSection sourceSection) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.section = sourceSection;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
+        }
+        // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
+    }
+
+    private static final class Debugger {
+        static class HaltTag {
+        }
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+    class StatementNode extends Node {
+        private boolean isDebuggerHalt;
+
+        public void setDebuggerHalt(boolean isDebuggerHalt) {
+            this.isDebuggerHalt = isDebuggerHalt;
+        }
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == Debugger.HaltTag.class) {
+                return isDebuggerHalt;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+
+    static class ExpressionTag {
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+    class ExpressionNode extends Node {
+
+        @Override
+        protected boolean isTaggedWith(Class<?> tag) {
+            if (tag == ExpressionTag.class) {
+                return true;
+            }
+            return super.isTaggedWith(tag);
+        }
+    }
+
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+
 }

@@ -2,7 +2,7 @@
 #Version 
 
 CLSS public abstract com.oracle.truffle.api.nodes.NodeCloneable
-cons public init()
+cons protected init()
 intf java.lang.Cloneable
 meth protected java.lang.Object clone()
 supr java.lang.Object

@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.util.concurrent.Executor;
 
 abstract class ComputeInExecutor<R> implements Runnable {
@@ -39,9 +37,9 @@ abstract class ComputeInExecutor<R> implements Runnable {
         this.executor = executor;
     }
 
-    protected abstract R compute() throws IOException;
+    protected abstract R compute();
 
-    public final R get() throws IOException {
+    public final R get() {
         perform();
         if (executor != null) {
             waitForDone();
@@ -50,22 +48,18 @@ abstract class ComputeInExecutor<R> implements Runnable {
         return result;
     }
 
-    private void waitForDone() throws InterruptedIOException {
+    private void waitForDone() {
         synchronized (this) {
             while (!done) {
                 try {
                     wait();
                 } catch (InterruptedException ex) {
-                    throw new InterruptedIOException(ex.getMessage());
                 }
             }
         }
     }
 
-    private void exceptionCheck() throws IOException, RuntimeException {
-        if (exception instanceof IOException) {
-            throw (IOException) exception;
-        }
+    private void exceptionCheck() throws RuntimeException {
         if (exception instanceof RuntimeException) {
             throw (RuntimeException) exception;
         }
@@ -74,7 +68,7 @@ abstract class ComputeInExecutor<R> implements Runnable {
         }
     }
 
-    public final void perform() throws IOException {
+    public final void perform() {
         if (started) {
             return;
         }
@@ -92,7 +86,11 @@ abstract class ComputeInExecutor<R> implements Runnable {
         try {
             result = compute();
         } catch (Exception ex) {
-            exception = ex;
+            if (ex.getClass() == RuntimeException.class && ex.getCause() != null) {
+                exception = ex.getCause();
+            } else {
+                exception = ex;
+            }
         } finally {
             if (executor != null) {
                 synchronized (this) {

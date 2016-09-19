@@ -27,13 +27,14 @@ package com.oracle.truffle.api.object;
 import java.util.EnumSet;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
  *
  * An object may change its shape but only to shapes of the same layout.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Layout {
@@ -44,7 +45,7 @@ public abstract class Layout {
 
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected Layout() {
@@ -52,7 +53,7 @@ public abstract class Layout {
 
     /**
      * Specifies the allowed implicit casts between primitive types without losing type information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public enum ImplicitCast {
@@ -64,7 +65,7 @@ public abstract class Layout {
 
     /**
      * Creates a new {@link Builder}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static Builder newLayout() {
@@ -73,7 +74,7 @@ public abstract class Layout {
 
     /**
      * Equivalent to {@code Layout.newLayout().build()}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static Layout createLayout() {
@@ -116,7 +117,7 @@ public abstract class Layout {
 
     /**
      * Create an allocator for static property creation. Reserves all array extension slots.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract Allocator createAllocator();
@@ -143,13 +144,16 @@ public abstract class Layout {
                 throw new AssertionError(e);
             }
         } else {
-            ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
-            for (LayoutFactory currentLayoutFactory : serviceLoader) {
-                if (bestLayoutFactory == null) {
-                    bestLayoutFactory = currentLayoutFactory;
-                } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                    assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                    bestLayoutFactory = currentLayoutFactory;
+            bestLayoutFactory = Truffle.getRuntime().getCapability(LayoutFactory.class);
+            if (bestLayoutFactory == null) {
+                ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
+                for (LayoutFactory currentLayoutFactory : serviceLoader) {
+                    if (bestLayoutFactory == null) {
+                        bestLayoutFactory = currentLayoutFactory;
+                    } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
+                        assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
+                        bestLayoutFactory = currentLayoutFactory;
+                    }
                 }
             }
         }
@@ -179,7 +183,7 @@ public abstract class Layout {
 
         /**
          * Build {@link Layout} from the configuration in this builder.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public Layout build() {
@@ -210,7 +214,7 @@ public abstract class Layout {
 
         /**
          * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
-         * 
+         *
          * @since 0.8 or earlier
          */
         public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {

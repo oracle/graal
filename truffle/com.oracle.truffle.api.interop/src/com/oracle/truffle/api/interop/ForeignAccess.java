@@ -28,26 +28,35 @@ import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Encapsulates types of access to {@link TruffleObject}. If you want to expose your own objects to
  * foreign language implementations, you need to implement {@link TruffleObject} and its
  * {@link TruffleObject#getForeignAccess()} method. To create instance of <code>ForeignAccess</code>
  * , use one of the factory methods available in this class.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class ForeignAccess {
     private final Factory factory;
     private final Thread initThread;
+    private final RootNode languageCheck;
 
     private ForeignAccess(Factory faf) {
+        this(null, faf);
+    }
+
+    private ForeignAccess(RootNode languageCheck, Factory faf) {
         this.factory = faf;
         this.initThread = Thread.currentThread();
+        this.languageCheck = languageCheck;
         CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
 
@@ -68,6 +77,19 @@ public final class ForeignAccess {
             assert f != null;
         }
         return new ForeignAccess(new DelegatingFactory(baseClass, factory));
+    }
+
+    /**
+     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
+     *
+     * @param factory the factory that handles access requests to {@link Message}s known as of
+     *            version 1.0
+     * @param languageCheck a {@link RootNode} that performs the language check on receiver objects
+     * @return new instance wrapping <code>factory</code>
+     * @since 0.13
+     */
+    public static ForeignAccess create(final Factory10 factory, final RootNode languageCheck) {
+        return new ForeignAccess(languageCheck, new DelegatingFactory(null, factory));
     }
 
     /**
@@ -247,8 +269,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, arguments);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception catched.", e);
         }
     }
@@ -477,6 +501,14 @@ public final class ForeignAccess {
         return factory.accessMessage(message);
     }
 
+    CallTarget checkLanguage() {
+        if (languageCheck != null) {
+            return Truffle.getRuntime().createCallTarget((RootNode) languageCheck.deepCopy());
+        } else {
+            return null;
+        }
+    }
+
     boolean canHandle(TruffleObject receiver) {
         checkThread();
         return factory.canHandle(receiver);
@@ -490,7 +522,7 @@ public final class ForeignAccess {
      * that provides an AST snippet for a given {@link Message}. Rather than using this generic
      * {@code Factory}, consider implementing {@link Factory10} interface that captures the set of
      * messages each language should implement as of Truffle version 1.0.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public interface Factory {
@@ -634,8 +666,6 @@ public final class ForeignAccess {
          * @since 0.8 or earlier
          */
         CallTarget accessMessage(Message unknown);
-
-        CallTarget accessProperties();
     }
 
     private static class DelegatingFactory implements Factory {
@@ -657,6 +687,10 @@ public final class ForeignAccess {
 
         @Override
         public CallTarget accessMessage(Message msg) {
+            return accessMessage(factory, msg);
+        }
+
+        private static CallTarget accessMessage(Factory10 factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
                     case Execute.EXECUTE:
@@ -681,12 +715,9 @@ public final class ForeignAccess {
                         return factory.accessUnbox();
                     case Write.HASH:
                         return factory.accessWrite();
-                    case Properties.HASH:
-                        return factory.accessProperties();
                 }
             }
             return factory.accessMessage(msg);
         }
     }
-
 }

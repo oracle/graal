@@ -30,33 +30,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
- * Annotation to put on your node to simplify handling of incoming inter-operability {@link Message
- * messages}.
- *
- * This node needs to be a final class. It extends a base class which will be automatically
- * generated. The generated class defines an abstract <code>accept</code> method that needs to be
- * overwritten. The first argument of <code>accept</code> needs to be a {@link VirtualFrame}. The
- * second argument of <code>accept</code> needs to be a the receiver, i.e., a {@link TruffleObject}.
- * Afterwards, the arguments of the message follow. For example:
- *
- * {@codesnippet AcceptMessageExample}
- *
- * The receiver object needs to implement a static method <code>isInstance</code>, which checks if a
- * given foreign object is an instance of the given receiver type and can therefore be accessed by
- * this node. For example:
- *
- * {@codesnippet isInstanceCheck}
- *
- * Besides the abstract base class, a {@link ForeignAccess} will be generated. The receiver object
- * can then return a singleton instance of this access. For example: <br>
- *
- * {@codesnippet getForeignAccessMethod}
+ * @deprecated use {@link MessageResolution} and {@link Resolve} instead.
  *
  * @since 0.11
  */
+@Deprecated
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface AcceptMessage {

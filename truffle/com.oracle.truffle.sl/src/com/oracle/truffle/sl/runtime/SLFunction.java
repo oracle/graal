@@ -42,9 +42,11 @@ package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a
@@ -60,7 +62,8 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
  * <p>
  * The {@link #callTarget} can be {@code null}. To ensure that only one {@link SLFunction} instance
  * per name exists, the {@link SLFunctionRegistry} creates an instance also when performing name
- * lookup. A function that has been looked up, i.e., used, but not defined, has no call target.
+ * lookup. A function that has been looked up, i.e., used, but not defined, has a call target that
+ * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 public final class SLFunction implements TruffleObject {
 
@@ -79,6 +82,7 @@ public final class SLFunction implements TruffleObject {
 
     protected SLFunction(String name) {
         this.name = name;
+        this.callTarget = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(name));
         this.callTargetStable = new CyclicAssumption(name);
     }
 
@@ -114,11 +118,11 @@ public final class SLFunction implements TruffleObject {
 
     /**
      * In case you want some of your objects to co-operate with other languages, you need to make
-     * them implement {@link TruffleObject} and provide additional {@link SLFunctionForeignAccess
-     * foreign access implementation}.
+     * them implement {@link TruffleObject} and provide additional
+     * {@link SLFunctionMessageResolution foreign access implementation}.
      */
     @Override
     public ForeignAccess getForeignAccess() {
-        return SLFunctionForeignAccess.create();
+        return SLFunctionMessageResolutionForeign.createAccess();
     }
 }

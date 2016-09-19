@@ -24,17 +24,16 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import org.junit.After;
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 
 public class PrimitiveArrayInteropTest {
     public Object[] stringArr;
@@ -74,12 +73,6 @@ public class PrimitiveArrayInteropTest {
     public void initObjects() {
         obj = JavaInterop.asTruffleObject(this);
         interop = JavaInterop.asJavaObject(ExactMatchInterop.class, obj);
-        InstrumentationTestMode.set(true);
-    }
-
-    @After
-    public void after() {
-        InstrumentationTestMode.set(false);
     }
 
     @Test

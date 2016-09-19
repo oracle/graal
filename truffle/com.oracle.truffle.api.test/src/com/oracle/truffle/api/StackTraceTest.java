@@ -49,6 +49,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class StackTraceTest {
 
     @Test
+    public void testFirstFrameIsCurrentFrame() {
+        CallTarget callTarget = createCallTarget(new ReturnStackTraceNode());
+        StackTrace stack = (StackTrace) callTarget.call();
+        Assert.assertEquals(1, stack.frames.size());
+        assertFrameEquals(stack.currentFrame, stack.frames.get(0));
+    }
+
+    @Test
     public void testNoStackTrace() {
         StackTrace stack = new StackTrace();
         Assert.assertNull(stack.callerFrame);

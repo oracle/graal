@@ -40,18 +40,29 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import org.junit.After;
 import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import java.io.IOException;
-import static org.junit.Assert.assertNotNull;
+import com.oracle.truffle.sl.SLLanguage;
 
 public class SLPolyglotTest {
+    private PolyglotEngine vm;
+
+    @After
+    public void dispose() {
+        if (vm != null) {
+            vm.dispose();
+        }
+    }
+
     @Test
-    public void accessGlobalObject() throws IOException {
-        PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        Language lang = vm.getLanguages().get("application/x-sl");
+    public void accessGlobalObject() {
+        vm = PolyglotEngine.newBuilder().build();
+        Language lang = vm.getLanguages().get(SLLanguage.MIME_TYPE);
         PolyglotEngine.Value global = lang.getGlobalObject();
         Object globalValue = global.get();
         assertNotNull("There is global context in SL", globalValue);

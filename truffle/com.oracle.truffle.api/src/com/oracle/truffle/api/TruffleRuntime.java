@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Interface representing a Truffle runtime object. The runtime is responsible for creating call
  * targets and performing optimizations for them.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface TruffleRuntime {
@@ -147,8 +147,7 @@ public interface TruffleRuntime {
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
-     * {@link CallTarget}s. Iteration starts at the caller frame, i.e., it does not include the
-     * current frame.
+     * {@link CallTarget}s. Iteration starts at the current frame.
      *
      * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
@@ -164,7 +163,7 @@ public interface TruffleRuntime {
     /**
      * Accesses the caller frame. This is a convenience method that returns the first frame that is
      * passed to the visitor of {@link #iterateFrames}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     FrameInstance getCallerFrame();
@@ -172,7 +171,7 @@ public interface TruffleRuntime {
     /**
      * Accesses the current frame, i.e., the frame of the closest {@link CallTarget}. It is
      * important to note that this {@link FrameInstance} supports only slow path access.
-     * 
+     *
      * @since 0.8 or earlier
      */
     FrameInstance getCurrentFrame();
@@ -189,14 +188,17 @@ public interface TruffleRuntime {
     /**
      * Returns a list of all still referenced {@link RootCallTarget} instances that were created
      * using {@link #createCallTarget(RootNode)}.
-     * 
+     *
      * @since 0.8 or earlier
+     * @deprecated Loaded sources and source sections can be accessed using the Truffle
+     *             instrumentation framework. Deprecated in Truffle 0.15.
      */
+    @Deprecated
     Collection<RootCallTarget> getCallTargets();
 
     /**
      * Internal API method. Do not use.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void notifyTransferToInterpreter();
@@ -207,7 +209,7 @@ public interface TruffleRuntime {
      * profiles in the {@link com.oracle.truffle.api.utilities} package are returning void
      * implementations. If it returns <code>true</code> then all implementations gather profilinig
      * information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     boolean isProfilingEnabled();

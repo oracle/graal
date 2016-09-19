@@ -22,15 +22,14 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrument.Visualizer;
-import com.oracle.truffle.api.instrument.WrapperNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-mime-type-supported", version = "1.0")
@@ -44,16 +43,14 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(final Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(final Source code, Node context, String... argumentNames) {
         final String mimeType = code.getCode();
-
-        return new CallTarget() {
-
-            public Object call(Object... arguments) {
+        return Truffle.getRuntime().createCallTarget(new RootNode(IsMimeTypeSupportedTestLanguage.class, null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
                 return findContext(createFindContextNode()).isMimeTypeSupported(mimeType);
             }
-
-        };
+        });
     }
 
     @Override
@@ -71,24 +68,8 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
         throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    protected Visualizer getVisualizer() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected boolean isInstrumentable(Node node) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected WrapperNode createWrapperNode(Node node) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
         throw new UnsupportedOperationException();
     }
 

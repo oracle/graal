@@ -30,12 +30,9 @@
  */
 
 /**
- * {@link com.oracle.truffle.api.dsl.NodeChild Domain specific language}
- * for creating
- * {@link com.oracle.truffle.api.nodes nodes AST nodes}.
- * Rather than building {@link com.oracle.truffle.api.nodes.Node nodes}
- * from scratch, consider using
- * the {@link com.oracle.truffle.api.dsl.NodeChild DSL}.
+ * {@link com.oracle.truffle.api.dsl.NodeChild Domain specific language} for creating
+ * {@link com.oracle.truffle.api.nodes nodes AST nodes}. Rather than building
+ * {@link com.oracle.truffle.api.nodes.Node nodes} from scratch, consider using the
+ * {@link com.oracle.truffle.api.dsl.NodeChild DSL}.
  */
 package com.oracle.truffle.api.dsl;
-

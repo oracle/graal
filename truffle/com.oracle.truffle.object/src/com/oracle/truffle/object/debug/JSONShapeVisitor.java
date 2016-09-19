@@ -61,7 +61,7 @@ public class JSONShapeVisitor extends DebugShapeVisitor<JSONObjectBuilder> {
     }
 
     public JSONObjectBuilder dumpTransition(Transition transition) {
-        JSONObjectBuilder sb = JSONHelper.object().add("type", transition.getShortName());
+        JSONObjectBuilder sb = JSONHelper.object().add("type", transition.toString());
         if (transition instanceof PropertyTransition) {
             sb.add("property", dumpProperty(((PropertyTransition) transition).getProperty()));
         }

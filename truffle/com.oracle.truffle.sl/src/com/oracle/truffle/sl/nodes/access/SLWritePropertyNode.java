@@ -40,64 +40,37 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * The node for setting a property of an object. When executed, this node first evaluates the value
- * expression on the right hand side of the equals operator, followed by the object expression on
- * the left side of the dot operator, and then sets the named property of this object to the new
- * value if the property already exists or adds a new property. Finally, it returns the new value.
+ * The node for writing a property of an object. When executed, this node:
+ * <ol>
+ * <li>evaluates the object expression on the left hand side of the object access operator</li>
+ * <li>evaluates the property name</li>
+ * <li>evaluates the value expression on the right hand side of the assignment operator</li>
+ * <li>writes the named property</li>
+ * <li>returns the written value</li>
+ * </ol>
  */
 @NodeInfo(shortName = ".=")
-@NodeChildren({@NodeChild(value = "receiver", type = SLExpressionNode.class), @NodeChild(value = "value", type = SLExpressionNode.class)})
+@NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode"), @NodeChild("valueNode")})
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 
-    @Child protected SLExpressionNode receiverNode;
-    protected final String propertyName;
-    @Child protected SLExpressionNode valueNode;
-    @Child protected SLWritePropertyCacheNode cacheNode;
-
-    SLWritePropertyNode(SourceSection src, String propertyName) {
-        super(src);
-        this.propertyName = propertyName;
-        this.cacheNode = SLWritePropertyCacheNodeGen.create(propertyName);
-    }
-
-    @Specialization(guards = "isSLObject(object)")
-    public Object doSLObject(DynamicObject object, Object value) {
-        cacheNode.executeObject(SLContext.castSLObject(object), value);
-        return value;
-    }
-
-    @Child private Node foreignWrite;
+    /**
+     * The polymorphic cache node that performs the actual write. This is a separate node so that it
+     * can be re-used in cases where the receiver, name, and value are not nodes but already
+     * evaluated values.
+     */
+    @Child private SLWritePropertyCacheNode writeNode = SLWritePropertyCacheNodeGen.create();
 
     @Specialization
-    public Object doForeignObject(VirtualFrame frame, TruffleObject object, Object value) {
-        if (foreignWrite == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.foreignWrite = insert(Message.WRITE.createNode());
-        }
-        try {
-            return ForeignAccess.sendWrite(foreignWrite, frame, object, propertyName, value);
-        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-            return SLNull.SINGLETON;
-        }
+    protected Object write(VirtualFrame frame, Object receiver, Object name, Object value) {
+        writeNode.executeWrite(frame, receiver, name, value);
+        return value;
     }
 }

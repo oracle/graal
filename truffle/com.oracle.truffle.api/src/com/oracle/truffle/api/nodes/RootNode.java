@@ -40,7 +40,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
  * root node can be used to create a call target using
  * {@link TruffleRuntime#createCallTarget(RootNode)}.
- * 
+ *
  * @since 0.8 or earlier
  */
 @SuppressWarnings("rawtypes")
@@ -48,6 +48,7 @@ public abstract class RootNode extends Node {
     final Class<? extends TruffleLanguage> language;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
+    private final SourceSection sourceSection;
 
     /**
      * Creates new root node. Each {@link RootNode} is associated with a particular language - if
@@ -67,14 +68,14 @@ public abstract class RootNode extends Node {
         this(language, sourceSection, frameDescriptor, true);
     }
 
-    @SuppressWarnings("deprecation")
     private RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor, boolean checkLanguage) {
-        super(sourceSection);
+        super();
         if (checkLanguage) {
             if (!TruffleLanguage.class.isAssignableFrom(language)) {
                 throw new IllegalStateException();
             }
         }
+        this.sourceSection = sourceSection;
         this.language = language;
         if (frameDescriptor == null) {
             this.frameDescriptor = new FrameDescriptor();
@@ -89,6 +90,44 @@ public abstract class RootNode extends Node {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
         return root;
+    }
+
+    /**
+     * Returns source section specified when
+     * {@link #RootNode(java.lang.Class, com.oracle.truffle.api.source.SourceSection, com.oracle.truffle.api.frame.FrameDescriptor)
+     * constructing the node}.
+     *
+     * @return source section passed into the constructor
+     * @since 0.13
+     */
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    /**
+     * A description of the AST (expected to be a method or procedure name in most languages) that
+     * identifies the AST for the benefit of guest language programmers using tools; it might
+     * appear, for example in the context of a stack dump or trace and is not expected to be called
+     * often.
+     * <p>
+     * In some languages AST "compilation units" may have no intrinsic names. When no information is
+     * available, language implementations might simply use the first few characters of the code,
+     * followed by "{@code ...}". Language implementations should assign a more helpful name
+     * whenever it becomes possible, for example when a functional value is assigned. This means
+     * that the name might not be stable over time.
+     * <p>
+     * Language execution semantics should not depend on either this name or the way that it is
+     * formatted. The name should be presented in the way expected to be most useful for
+     * programmers.
+     *
+     * @return a name that helps guest language programmers identify code corresponding to the AST,
+     *         possibly {@code null} if the language implementation is unable to provide any useful
+     *         information.
+     * @since 0.15
+     */
+    public String getName() {
+        return null;
     }
 
     /**
@@ -145,16 +184,8 @@ public abstract class RootNode extends Node {
      * so also for a {@link RootCallTarget} and a {@link FrameInstance} obtained from the call
      * stack) without prior knowledge of the language it has come from.
      *
-     * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
-     * <code>
-     * <pre>
-     * rootNode.getExecutionContext().getLanguageShortName();
-     * </pre>
-     * </code>
-     *
      * Returns <code>null</code> by default.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public ExecutionContext getExecutionContext() {
@@ -163,7 +194,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Get compiler options specific to this <code>RootNode</code>.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public CompilerOptions getCompilerOptions() {
@@ -176,16 +207,9 @@ public abstract class RootNode extends Node {
         }
     }
 
-    /** @since 0.8 or earlier */
-    public final void applyInstrumentation() {
-        if (isInstrumentable()) {
-            Node.ACCESSOR.probeAST(this);
-        }
-    }
-
     /**
      * Does this contain AST content that it is possible to instrument.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected boolean isInstrumentable() {

@@ -1,28 +1,64 @@
 #Signature file v4.1
 #Version 
 
+CLSS public final com.oracle.truffle.tck.DebuggerTester
+cons public init()
+intf java.lang.AutoCloseable
+meth public com.oracle.truffle.api.debug.DebuggerSession startSession()
+meth public java.lang.String expectDone()
+meth public java.lang.String getErr()
+meth public java.lang.String getOut()
+meth public java.lang.Thread getEvalThread()
+meth public java.lang.Throwable expectThrowable()
+meth public void close()
+meth public void expectKilled()
+meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
+meth public void startEval(com.oracle.truffle.api.source.Source)
+supr java.lang.Object
+hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,handler,initialized,newEvent,out,source
+hcls ExecutingLoop,ExecutingSource
+
 CLSS public abstract com.oracle.truffle.tck.TruffleTCK
 cons protected init()
-meth protected abstract com.oracle.truffle.api.vm.PolyglotEngine prepareVM() throws java.lang.Exception
 meth protected abstract java.lang.String applyNumbers()
 meth protected abstract java.lang.String countInvocations()
 meth protected abstract java.lang.String fourtyTwo()
 meth protected abstract java.lang.String invalidCode()
 meth protected abstract java.lang.String mimeType()
 meth protected abstract java.lang.String returnsNull()
+meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM() throws java.lang.Exception
+meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM(com.oracle.truffle.api.vm.PolyglotEngine$Builder) throws java.lang.Exception
+meth protected java.lang.String addToArray()
+meth protected java.lang.String callFunction()
+meth protected java.lang.String callMethod()
 meth protected java.lang.String complexAdd()
 meth protected java.lang.String complexAddWithMethod()
 meth protected java.lang.String complexCopy()
 meth protected java.lang.String complexSumReal()
 meth protected java.lang.String compoundObject()
+meth protected java.lang.String countUpWhile()
 meth protected java.lang.String evaluateSource()
+meth protected java.lang.String functionAddNumbers()
+meth protected java.lang.String getSizeOfForeign()
 meth protected java.lang.String globalObject()
+meth protected java.lang.String hasSizeOfForeign()
 meth protected java.lang.String identity()
+meth protected java.lang.String isExecutableOfForeign()
+meth protected java.lang.String isNullForeign()
 meth protected java.lang.String multiplyCode(java.lang.String,java.lang.String)
+meth protected java.lang.String objectWithElement()
+meth protected java.lang.String objectWithValueAndAddProperty()
+meth protected java.lang.String objectWithValueProperty()
 meth protected java.lang.String plus(java.lang.Class<?>,java.lang.Class<?>)
 meth protected java.lang.String plusInt()
+meth protected java.lang.String readElementFromForeign()
+meth protected java.lang.String readValueFromForeign()
 meth protected java.lang.String valuesObject()
+meth protected java.lang.String writeElementToForeign()
+meth protected java.lang.String writeValueToForeign()
 meth protected void assertDouble(java.lang.String,double,double)
+meth public final static void disposePreviousVM()
+meth public void addOneToAnArrayElement() throws java.lang.Exception
 meth public void multiplyTwoVariables() throws java.lang.Exception
 meth public void readWriteBooleanValue() throws java.lang.Exception
 meth public void readWriteByteValue() throws java.lang.Exception
@@ -33,6 +69,8 @@ meth public void readWriteIntValue() throws java.lang.Exception
 meth public void readWriteShortValue() throws java.lang.Exception
 meth public void testAddComplexNumbers() throws java.lang.Exception
 meth public void testAddComplexNumbersWithMethod() throws java.lang.Exception
+meth public void testCallFunction() throws java.lang.Exception
+meth public void testCallMethod() throws java.lang.Exception
 meth public void testCoExistanceOfMultipleLanguageInstances() throws java.lang.Exception
 meth public void testCopyComplexNumbersA() throws java.lang.Exception
 meth public void testCopyComplexNumbersB() throws java.lang.Exception
@@ -40,13 +78,23 @@ meth public void testCopyStructuredComplexToComplexNumbersA() throws java.lang.E
 meth public void testEvaluateSource() throws java.lang.Exception
 meth public void testFortyTwo() throws java.lang.Exception
 meth public void testFortyTwoWithCompoundObject() throws java.lang.Exception
+meth public void testFunctionAddNumbers() throws java.lang.Exception
+meth public void testGetSize() throws java.lang.Exception
+meth public void testGetSizeOfForeign() throws java.lang.Exception
 meth public void testGlobalObjectIsAccessible() throws java.lang.Exception
+meth public void testHasSize() throws java.lang.Exception
+meth public void testHasSizeOfForeign() throws java.lang.Exception
 meth public void testInvalidTestMethod() throws java.lang.Exception
+meth public void testIsExecutable() throws java.lang.Exception
+meth public void testIsExecutableOfForeign() throws java.lang.Exception
+meth public void testIsNotNull() throws java.lang.Exception
+meth public void testIsNullOfForeign() throws java.lang.Exception
 meth public void testMaxOrMinValue() throws java.lang.Exception
 meth public void testMaxOrMinValue2() throws java.lang.Exception
 meth public void testNull() throws java.lang.Exception
 meth public void testNullCanBeCastToAnything() throws java.lang.Exception
 meth public void testNullInCompoundObject() throws java.lang.Exception
+meth public void testObjectWithValueAndAddProperty() throws java.lang.Exception
 meth public void testPlusWithBytes() throws java.lang.Exception
 meth public void testPlusWithDouble() throws java.lang.Exception
 meth public void testPlusWithDoubleFloatSameAsInt() throws java.lang.Exception
@@ -89,13 +137,26 @@ meth public void testPrimitiveidentityInt() throws java.lang.Exception
 meth public void testPrimitiveidentityLong() throws java.lang.Exception
 meth public void testPrimitiveidentityShort() throws java.lang.Exception
 meth public void testPrimitiveidentityString() throws java.lang.Exception
+meth public void testReadElementFromForeign() throws java.lang.Exception
+meth public void testReadFromObjectWithElement() throws java.lang.Exception
+meth public void testReadFromObjectWithValueProperty() throws java.lang.Exception
+meth public void testReadValueFromForeign() throws java.lang.Exception
+meth public void testRootNodeName() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersA() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersB() throws java.lang.Exception
+meth public void testWriteElementOfForeign() throws java.lang.Exception
+meth public void testWriteToObjectWithElement() throws java.lang.Exception
+meth public void testWriteToObjectWithValueProperty() throws java.lang.Exception
+meth public void testWriteValueToForeign() throws java.lang.Exception
+meth public void timeOutTest() throws java.lang.Exception
 supr java.lang.Object
-hfds RANDOM,tckVM
-hcls CompoundObject,ValuesObject
+hfds RANDOM,previousVMReference,tckVM
+hcls CompoundObject,FunctionFooInterface,MessageInterface,ObjectWithValueInterface,ValuesObject
+
+CLSS public abstract interface java.lang.AutoCloseable
+meth public abstract void close() throws java.lang.Exception
 
 CLSS public java.lang.Object
 cons public init()

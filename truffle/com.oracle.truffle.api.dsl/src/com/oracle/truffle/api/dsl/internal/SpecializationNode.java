@@ -524,7 +524,11 @@ public abstract class SpecializationNode extends Node {
             while (current != null && current.index < generated.index) {
                 current = current.next;
             }
-            return insertAt(current, generated, message);
+            if (current != null) {
+                return insertAt(current, generated, message);
+            } else {
+                return start;
+            }
         } else {
             // existing node
             return start;

@@ -30,19 +30,21 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 final class CachedObjectAccessNode extends ObjectAccessNode {
     @Child private DirectCallNode callTarget;
     @Child private ObjectAccessNode next;
+
+    @Child private DirectCallNode languageCheckAsNode;
     private final ForeignAccess languageCheck;
 
     @Child private ForeignAccessArguments accessArguments = new ForeignAccessArguments();
 
-    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck) {
+    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck, DirectCallNode languageCheckAsNode) {
         this.callTarget = callTarget;
         this.next = next;
         this.languageCheck = languageCheck;
+        this.languageCheckAsNode = languageCheckAsNode;
+        if (this.languageCheckAsNode != null) {
+            this.languageCheckAsNode.forceInlining();
+        }
         this.callTarget.forceInlining();
-    }
-
-    protected CachedObjectAccessNode(CachedObjectAccessNode prev) {
-        this(prev.callTarget, prev.next, prev.languageCheck);
     }
 
     @Override
@@ -51,10 +53,20 @@ final class CachedObjectAccessNode extends ObjectAccessNode {
     }
 
     private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if (languageCheck.canHandle(receiver)) {
+        if (accept(frame, receiver)) {
             return callTarget.call(frame, accessArguments.executeCreate(receiver, arguments));
         } else {
             return doNext(frame, receiver, arguments);
+        }
+    }
+
+    private boolean accept(VirtualFrame frame, TruffleObject receiver) {
+        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(frame, new Object[]{receiver}))) {
+            return true;
+        } else if (languageCheckAsNode == null && languageCheck.canHandle(receiver)) {
+            return true;
+        } else {
+            return false;
         }
     }
 
