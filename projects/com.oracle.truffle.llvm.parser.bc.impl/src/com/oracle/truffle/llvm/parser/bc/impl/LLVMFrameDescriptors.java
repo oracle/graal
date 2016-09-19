@@ -43,6 +43,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMControlFlowAnalysis.LLVMControlFlow;
 
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
@@ -153,9 +154,9 @@ public final class LLVMFrameDescriptors {
         public void visit(FunctionDefinition method) {
             FrameDescriptor frame = new FrameDescriptor();
             if (method.getReturnType() != MetaType.VOID) {
-                frame.addFrameSlot(LLVMBitcodeHelper.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+                frame.addFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
             }
-            frame.addFrameSlot(LLVMBitcodeHelper.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
+            frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : method.getParameters()) {
                 frame.addFrameSlot(parameter.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(parameter.getType()));

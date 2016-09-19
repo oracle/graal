@@ -492,7 +492,7 @@ public class LLVMBitcodeTypeHelper {
         return largestAlignment;
     }
 
-    public LLVMBaseType getLLVMBaseType(Type type) {
+    public static LLVMBaseType getLLVMBaseType(Type type) {
         return toBaseType(type).getType();
     }
 
