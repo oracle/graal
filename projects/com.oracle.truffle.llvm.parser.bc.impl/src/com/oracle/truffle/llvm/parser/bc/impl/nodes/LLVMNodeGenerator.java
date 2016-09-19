@@ -253,7 +253,7 @@ public final class LLVMNodeGenerator {
     public LLVMExpressionNode resolve(Symbol symbol) {
         if (symbol instanceof ValueInstruction || symbol instanceof FunctionParameter) {
             final FrameSlot slot = method.getFrame().findFrameSlot(((ValueSymbol) symbol).getName());
-            return LLVMFrameReadWriteFactory.createFrameRead(LLVMBitcodeHelper.toBaseType(symbol.getType()).getType(), slot);
+            return LLVMFrameReadWriteFactory.createFrameRead(typeHelper.getLLVMBaseType(symbol.getType()), slot);
 
         } else if (symbol instanceof GlobalValueSymbol) {
             return method.global((GlobalValueSymbol) symbol);
@@ -405,7 +405,7 @@ public final class LLVMNodeGenerator {
     private LLVMExpressionNode resolveBinaryOperationConstant(BinaryOperationConstant constant) {
         final LLVMExpressionNode lhs = resolve(constant.getLHS());
         final LLVMExpressionNode rhs = resolve(constant.getRHS());
-        final LLVMBaseType type = LLVMBitcodeHelper.toBaseType(constant.getType()).getType();
+        final LLVMBaseType type = typeHelper.getLLVMBaseType(constant.getType());
         return generateBinaryOperatorNode(constant.getOperator(), type, lhs, rhs);
     }
 
@@ -417,8 +417,8 @@ public final class LLVMNodeGenerator {
     private LLVMExpressionNode resolveCastConstant(CastConstant constant) {
         final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(constant.getOperator());
         final LLVMExpressionNode fromNode = resolve(constant.getValue());
-        final LLVMBaseType from = LLVMBitcodeHelper.toBaseType(constant.getValue().getType()).getType();
-        final LLVMBaseType to = LLVMBitcodeHelper.toBaseType(constant.getType()).getType();
+        final LLVMBaseType from = typeHelper.getLLVMBaseType(constant.getValue().getType());
+        final LLVMBaseType to = typeHelper.getLLVMBaseType(constant.getType());
         return LLVMCastsFactory.cast(fromNode, to, from, type);
     }
 
@@ -475,7 +475,7 @@ public final class LLVMNodeGenerator {
                         method.getContext(),
                         method.getStackSlot());
 
-        return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeHelper.toBaseType(constant.getType()).getType());
+        return LLVMLiteralFactory.createVectorLiteralNode(values, target, typeHelper.getLLVMBaseType(constant.getType()));
     }
 
     private static LLVMExpressionNode resolveMetadataConstant(MetadataConstant constant) {
