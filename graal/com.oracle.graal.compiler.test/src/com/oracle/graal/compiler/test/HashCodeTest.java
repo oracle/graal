@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.phases.HighTier;
@@ -39,6 +40,9 @@ public class HashCodeTest extends GraalCompilerTest {
         public int hashCode() {
             return 42;
         }
+    }
+
+    static final class DontOverrideHashCode {
     }
 
     public static final Object NonOverridingConstant = new Object();
@@ -66,6 +70,10 @@ public class HashCodeTest extends GraalCompilerTest {
 
     public static final int identityHashCodeFoldOverridingSnippet01() {
         return System.identityHashCode(OverridingConstant);
+    }
+
+    public static final int dontOverrideHashCodeFinalClass(DontOverrideHashCode o) {
+        return o.hashCode();
     }
 
     @Test
@@ -99,6 +107,13 @@ public class HashCodeTest extends GraalCompilerTest {
     @Test
     public void test06() {
         StructuredGraph g = buildGraphAfterMidTier("identityHashCodeFoldOverridingSnippet01");
+        Assert.assertEquals(0, g.getNodes().filter(InvokeNode.class).count());
+    }
+
+    @Test
+    @Ignore
+    public void test07() {
+        StructuredGraph g = buildGraphAfterMidTier("dontOverrideHashCodeFinalClass");
         Assert.assertEquals(0, g.getNodes().filter(InvokeNode.class).count());
     }
 
