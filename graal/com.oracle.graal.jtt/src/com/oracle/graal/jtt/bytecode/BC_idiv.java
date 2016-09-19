@@ -54,4 +54,13 @@ public class BC_idiv extends JTTTest {
         runTest("test", 135, 7);
     }
 
+    public static int testStrictlyPositive(int b) {
+        return 64 / ((b & 7) + 1);
+    }
+
+    @Test
+    public void run4() throws Throwable {
+        runTest("testStrictlyPositive", 6);
+    }
+
 }
