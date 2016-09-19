@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
@@ -40,6 +41,9 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast4NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -280,9 +284,16 @@ public class ImplicitCastTest {
         }
     }
 
+    @Test
+    public void testStringEquals1() {
+        StringEquals1Node node = StringEquals1NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo", "foo"));
+        Assert.assertFalse(node.executeBoolean("foo", "bar"));
+    }
+
     @TypeSystemReference(ImplicitCast2Types.class)
-    abstract static class StringEqualsNode extends Node {
-        protected abstract boolean executeBoolean(VirtualFrame frame, String arg1, String arg2);
+    abstract static class StringEquals1Node extends Node {
+        protected abstract boolean executeBoolean(String arg1, String arg2);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedArg1.equals(arg1)", "cachedArg2.equals(arg2)"}, limit = "1")
@@ -297,5 +308,56 @@ public class ImplicitCastTest {
         protected static boolean doUncached(String arg1, String arg2) {
             return arg1.equals(arg2);
         }
+    }
+
+    @Test
+    public void testStringEquals2() {
+        StringEquals2Node node = StringEquals2NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo", "foo"));
+        Assert.assertFalse(node.executeBoolean("foo", "bar"));
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEquals2Node extends Node {
+        protected abstract boolean executeBoolean(CharSequence arg1, CharSequence arg2);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)", "cachedArg2.equals(arg2)"}, limit = "2")
+        protected static boolean doCached(String arg1, String arg2,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg2") String cachedArg2,
+                        @Cached("arg1.equals(arg2)") boolean result) {
+            return result;
+        }
+
+        @Specialization
+        protected static boolean doUncached(String arg1, String arg2) {
+            return arg1.equals(arg2);
+        }
+    }
+
+    @Test
+    public void testStringEquals3() {
+        StringEquals3Node node = StringEquals3NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo"));
+        try {
+            Assert.assertTrue(node.executeBoolean("bar"));
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEquals3Node extends Node {
+        protected abstract boolean executeBoolean(CharSequence arg1);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)"}, limit = "1")
+        protected static boolean doCached(String arg1,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg1.equals(arg1)") boolean result) {
+            return result;
+        }
+
     }
 }
