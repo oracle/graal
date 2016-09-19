@@ -185,6 +185,30 @@ public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompil
         }
     }
 
+    public int testLoadFinalTwiceNoReadEliminationInstanceOf(E e) {
+        if (e.o == CONST_C) {
+            /*
+             * we cannot eliminate the second read of e.o although it is a final field. the call to
+             * System.gc (or any other memory checkpoint killing ANY_LOCATION) will prohibit the
+             * elimination of the second load, thus we have two different load nodes, we know that
+             * that first load field is a constant but we do not know for the second one, assuming
+             * e.o is final, as it might have been written in between
+             *
+             * this prohibits us to remove the if (fold through all loads to final fields) and the
+             * instance of e.o
+             */
+            System.gc();
+            C c = (C) e.o;
+            if (c.b.a == 10) {
+                intSideEffect = 1;
+            } else {
+                intSideEffect = 10;
+            }
+        }
+        return 0;
+
+    }
+
     private static final C1 C1_CONST = new C1(0);
     private static final C2 C2_CONST = new C2(C1_CONST);
     private static final C1 C1_AFTER_READ_CONST = new C1(10);
@@ -234,6 +258,11 @@ public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompil
     @Test
     public void test04() {
         checkGraph("testLoadFinalTwiceInstanceOf", 1);
+    }
+
+    @Test
+    public void test05() {
+        checkGraph("testLoadFinalTwiceNoReadEliminationInstanceOf", 2);
     }
 
     @Test(expected = AssertionError.class)
