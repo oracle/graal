@@ -36,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
-public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory10 {
+public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
     public interface ExactMatchInterop {
         String stringValue();
 
@@ -125,6 +125,10 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory10 {
 
     @Override
     public CallTarget accessMessage(Message unknown) {
+        return null;
+    }
+
+    public CallTarget accessProperties() {
         return null;
     }
 

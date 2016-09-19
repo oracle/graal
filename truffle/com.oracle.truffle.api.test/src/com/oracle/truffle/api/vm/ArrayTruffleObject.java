@@ -35,7 +35,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10 {
+final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory18 {
     private final ForeignAccess access;
     private final Object[] values;
     private final Thread forbiddenDupl;
@@ -113,6 +113,11 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory10
 
     @Override
     public CallTarget accessNew(int argumentsLength) {
+        return null;
+    }
+
+    @Override
+    public CallTarget accessProperties() {
         return null;
     }
 

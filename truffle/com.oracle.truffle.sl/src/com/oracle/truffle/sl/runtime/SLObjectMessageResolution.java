@@ -126,7 +126,7 @@ public class SLObjectMessageResolution {
 
     @Resolve(message = "PROPERTIES")
     public abstract static class SLForeignPropertiesNode extends Node {
-        public Object access(VirtualFrame frame, DynamicObject receiver) {
+        public Object access(DynamicObject receiver) {
             Object[] keys = receiver.getShape().getKeyList().toArray();
             return JavaInterop.asTruffleObject(keys);
         }

@@ -70,7 +70,8 @@ public final class ForeignAccess {
      *            version 0.10
      * @return new instance wrapping <code>factory</code>
      * @since 0.8 or earlier
-     * @deprecated Use {@link Factory18}
+     * @deprecated Use {@link Factory18} and
+     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory18)}
      */
     @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory10 factory) {
@@ -79,6 +80,25 @@ public final class ForeignAccess {
             assert f != null;
         }
         return new ForeignAccess(new DelegatingFactory10(baseClass, factory));
+    }
+
+    /**
+     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
+     *
+     * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
+     *            <code>null</code> than the second interface also needs to implement
+     *            {@link Factory})
+     * @param factory the factory that handles access requests to {@link Message}s known as of
+     *            version 0.18
+     * @return new instance wrapping <code>factory</code>
+     * @since 0.18
+     */
+    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory18 factory) {
+        if (baseClass == null) {
+            Factory f = (Factory) factory;
+            assert f != null;
+        }
+        return new ForeignAccess(new DelegatingFactory18(baseClass, factory));
     }
 
     /**
@@ -509,7 +529,9 @@ public final class ForeignAccess {
     @Override
     public String toString() {
         Object f;
-        if (factory instanceof DelegatingFactory10) {
+        if (factory instanceof DelegatingFactory18) {
+            f = ((DelegatingFactory18) factory).factory;
+        } else if (factory instanceof DelegatingFactory10) {
             f = ((DelegatingFactory10) factory).factory;
         } else {
             f = factory;

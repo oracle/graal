@@ -37,7 +37,7 @@ public class ForeignAccessToStringTest {
 
     @Test
     public void check10Factory() {
-        ForeignAccess fa = ForeignAccess.create(TruffleObject.class, new Simple10TestingFactory());
+        ForeignAccess fa = ForeignAccess.create(new Simple10TestingFactory(), null);
         assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$Simple10TestingFactory]", fa.toString());
     }
 
@@ -56,7 +56,7 @@ public class ForeignAccessToStringTest {
         }
     }
 
-    private static class Simple10TestingFactory implements ForeignAccess.Factory10 {
+    private static class Simple10TestingFactory implements ForeignAccess.Factory18, ForeignAccess.Factory {
         @Override
         public CallTarget accessIsNull() {
             return null;
@@ -117,5 +117,14 @@ public class ForeignAccessToStringTest {
             return null;
         }
 
+        @Override
+        public CallTarget accessProperties() {
+            return null;
+        }
+
+        @Override
+        public boolean canHandle(TruffleObject obj) {
+            return true;
+        }
     }
 }
