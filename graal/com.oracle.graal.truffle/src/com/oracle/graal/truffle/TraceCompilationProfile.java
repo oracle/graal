@@ -22,22 +22,22 @@
  */
 package com.oracle.graal.truffle;
 
-public class TraceCompilationProfile extends DefaultCompilationProfile {
+public class TraceCompilationProfile extends OptimizedCompilationProfile {
 
     private int directCallCount;
     private int indirectCallCount;
     private int inlinedCallCount;
 
     @Override
-    public void profileDirectCall(OptimizedCallTarget callTarget, Object[] args) {
+    public void profileDirectCall(Object[] args) {
         directCallCount++;
-        super.profileDirectCall(callTarget, args);
+        super.profileDirectCall(args);
     }
 
     @Override
-    public void profileIndirectCall(OptimizedCallTarget callTarget) {
+    public void profileIndirectCall() {
         indirectCallCount++;
-        super.profileIndirectCall(callTarget);
+        super.profileIndirectCall();
     }
 
     @Override
@@ -63,7 +63,7 @@ public class TraceCompilationProfile extends DefaultCompilationProfile {
     }
 
     /* Lazy class loading factory method. */
-    public static AbstractCompilationProfile create() {
+    public static OptimizedCompilationProfile create() {
         return new TraceCompilationProfile();
     }
 
