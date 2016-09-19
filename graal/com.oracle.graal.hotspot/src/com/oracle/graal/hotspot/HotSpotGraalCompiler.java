@@ -93,9 +93,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             @Option(help = "Kill a Compiler Thread and Exit VM if N last stack traces are the same", type = OptionType.Debug)
             public static final OptionValue<Boolean> StaleCompilerThreadsAreFatal = new StableOptionValue<>(true);
             @Option(help = "Number of equal stack traces for the compiler thread until it is killed", type = OptionType.Debug)
-            public static final OptionValue<Integer> FatalNumberOfCompilerThreadStackTraces = new StableOptionValue<>(8);
+            public static final OptionValue<Integer> FatalNumberOfCompilerThreadStackTraces = new StableOptionValue<>(16);
             @Option(help = "Start monitoring after 2 minutes", type = OptionType.Debug)
-            public static final OptionValue<Integer> WatchDogStartMonitoringTimeout = new StableOptionValue<>(30 * 1000);
+            public static final OptionValue<Integer> WatchDogStartMonitoringTimeout = new StableOptionValue<>(60 * 1000);
             @Option(help = "Take Stack Trace Every 30s", type = OptionType.Debug)
             public static final OptionValue<Integer> WatchDogStackTraceTimeout = new StableOptionValue<>(5 * 1000);
             // @formatter:on
@@ -311,7 +311,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                                             ellapsedWatchingTime = 0;
                                             if (Options.StaleCompilerThreadsAreFatal.getValue()) {
                                                 if (nrOfStackTraces > Options.FatalNumberOfCompilerThreadStackTraces.getValue()) {
-                                                    TTY.println("%s took N stack traces, which is considered fatal, we quit now", getTracePrefix());
+                                                    TTY.println("%s took N stack traces, which is considered fatal, we quit now [compiling method %s]", getTracePrefix(), lastSet);
                                                     TTY.println("======================= STACK TRACE =======================");
                                                     for (StackTraceElement e : lastStackTrace) {
                                                         TTY.println(e.toString());
