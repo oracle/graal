@@ -261,4 +261,17 @@ public abstract class Transition {
             return true;
         }
     }
+
+    /** @since 0.18 */
+    public static final class ShareShapeTransition extends Transition {
+        /** @since 0.18 */
+        public ShareShapeTransition() {
+        }
+
+        /** @since 0.18 */
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+    }
 }

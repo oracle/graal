@@ -161,7 +161,7 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
         } else if (oldLocation instanceof ConstantLocation) {
             return constantLocation(value);
         } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
-            if (((TypedLocation) oldLocation).getType() == int.class) {
+            if (!shared && ((TypedLocation) oldLocation).getType() == int.class) {
                 InternalLongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLocation();
                 if (layout.isAllowedIntToLong() && value instanceof Long) {
                     return new LongLocationDecorator(primLocation, true);

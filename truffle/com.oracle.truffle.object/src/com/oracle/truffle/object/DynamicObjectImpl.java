@@ -77,6 +77,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     public final void setShapeAndResize(Shape oldShape, Shape newShape) {
         assert getShape() == oldShape : "wrong old shape";
+        assert !oldShape.isShared();
         if (oldShape != newShape) {
             setShape(newShape);
             resizeStore(oldShape, newShape);
@@ -177,6 +178,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         assert toShape.isRelated(ancestor);
         assert toShape.isValid();
         assert ancestor.isValid();
+        assert !fromShape.isShared();
         PropertyMap ancestorMap = ((ShapeImpl) ancestor).getPropertyMap();
         PropertyMap fromMap = fromShape.getPropertyMap();
         for (PropertyMap toMap = toShape.getPropertyMap(); !toMap.isEmpty() && toMap != ancestorMap; toMap = toMap.getParentMap()) {

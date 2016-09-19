@@ -333,6 +333,26 @@ public abstract class Shape {
     public abstract Shape tryMerge(Shape other);
 
     /**
+     * Whether this shape is {@link Shape#makeSharedShape() shared}.
+     *
+     * @since 0.18
+     */
+    public boolean isShared() {
+        return false;
+    }
+
+    /**
+     * Make a shared variant of this shape, to allow safe usage of this object between threads.
+     * Shared shapes will not reuse storage locations for other fields. In combination with careful
+     * synchronization on writes, this can prevent reading out-of-thin-air values.
+     *
+     * @since 0.18
+     */
+    public Shape makeSharedShape() {
+        return null;
+    }
+
+    /**
      * Utility class to allocate locations in an object layout.
      *
      * @since 0.8 or earlier
