@@ -150,7 +150,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     /**
      * Check whether the extension arrays are in accordance with the description in the shape.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected abstract boolean checkExtensionArrayInvariants(Shape newShape);
@@ -272,7 +272,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public void define(Object key, Object value, int flags) {
-        define(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
+        define(key, value, flags, getShape().getLayout().getStrategy().getDefaultLocationFactory());
     }
 
     /** @since 0.17 or earlier */

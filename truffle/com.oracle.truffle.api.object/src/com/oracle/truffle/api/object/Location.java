@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * Property location.
@@ -187,7 +189,7 @@ public abstract class Location {
     }
 
     /**
-     * Returns {@code true} if this is an immutable constant location.
+     * Returns {@code true} if this is a constant value location.
      *
      * @since 0.8 or earlier
      */
@@ -210,6 +212,46 @@ public abstract class Location {
      */
     @Override
     public abstract boolean equals(Object obj);
+
+    /**
+     * Returns {@code true} if this is a declared value location.
+     *
+     * @since 0.18
+     */
+    public boolean isDeclared() {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if this is a value location.
+     *
+     * @see #isConstant()
+     * @see #isDeclared()
+     * @since 0.18
+     */
+    public boolean isValue() {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if this location is assumed to be final.
+     *
+     * @see #getFinalAssumption()
+     * @since 0.18
+     */
+    public boolean isAssumedFinal() {
+        return false;
+    }
+
+    /**
+     * Returns the assumption that this location is final.
+     *
+     * @see #isAssumedFinal()
+     * @since 0.18
+     */
+    public Assumption getFinalAssumption() {
+        return NeverValidAssumption.INSTANCE;
+    }
 
     /**
      * Equivalent to {@link Shape#check(DynamicObject)}.

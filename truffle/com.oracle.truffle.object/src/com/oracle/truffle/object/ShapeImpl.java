@@ -400,7 +400,7 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int flags) {
-        return defineProperty(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
+        return defineProperty(key, value, flags, layout.getStrategy().getDefaultLocationFactory());
     }
 
     /** @since 0.17 or earlier */
