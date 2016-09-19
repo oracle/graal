@@ -57,7 +57,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -297,17 +296,15 @@ public interface NodeFactoryFacade {
      * Gets factories that provide substitutions for (standard library) functions. The substitutions
      * are installed when a function is called the first time.
      *
-     * @param optimizationConfig
      * @return a map of function names that map to node factories
      */
-    Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optimizationConfig);
+    Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories();
 
     /**
      * Creates a function substitution root node from an already existing function substitution
      * node.
      *
-     * @param intrinsicNode the existing function substitution node, created from
-     *            {@link #getFunctionSubstitutionFactories(LLVMOptimizationConfiguration)}
+     * @param intrinsicNode the existing function substitution node
      * @return the root node for the intrinsic
      */
     RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode);

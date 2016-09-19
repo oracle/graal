@@ -111,28 +111,26 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFac
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteIdxPFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteLFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWritePFactory;
-import com.oracle.truffle.llvm.runtime.LLVMOptimizationConfiguration;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This class creates intrinsic functions and is designed to be inherited.
  */
 public class LLVMRuntimeIntrinsicFactory {
 
-    public static Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories(LLVMOptimizationConfiguration optConfig) {
-        return new LLVMRuntimeIntrinsicFactory(optConfig).getFactories();
+    public static Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories() {
+        return new LLVMRuntimeIntrinsicFactory().getFactories();
     }
 
     protected final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
-    protected final LLVMOptimizationConfiguration optConfig;
 
-    protected LLVMRuntimeIntrinsicFactory(LLVMOptimizationConfiguration optConfig) {
+    protected LLVMRuntimeIntrinsicFactory() {
         intrinsics = new HashMap<>();
-        this.optConfig = optConfig;
     }
 
     protected Map<String, NodeFactory<? extends LLVMNode>> getFactories() {
         intrinsifyAbortIntrinsics();
-        if (optConfig.intrinsifyCLibraryFunctions()) {
+        if (LLVMBaseOptionFacade.intrinsifyCLibraryFunctions()) {
             intrinsifyMathFunctions();
         }
         intrinsifyInteropIntrinsics();

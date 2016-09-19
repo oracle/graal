@@ -39,13 +39,13 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
@@ -80,10 +80,10 @@ import com.oracle.truffle.llvm.parser.factories.LLVMVectorFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
-import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
+
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
+import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
@@ -249,8 +249,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Symbol target = call.getCallTarget();
         LLVMExpressionNode result;
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
-            result = (LLVMExpressionNode) LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), argNodes, call.getCallType().getArgumentTypes().length, method.getStackSlot(),
-                            method.getOptimizationConfiguration());
+            result = (LLVMExpressionNode) LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), argNodes, call.getCallType().getArgumentTypes().length, method.getStackSlot());
 
         } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
             method.addInstruction(LLVMTruffleIntrinsicFactory.create(((ValueSymbol) target).getName(), argNodes));
@@ -459,7 +458,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                             ? ((IntegerType) load.getType()).getBitCount()
                             : 0;
 
-            result = LLVMMemoryReadWriteFactory.createLoad(resultType, source, method.getOptimizationConfiguration(), bits);
+            result = LLVMMemoryReadWriteFactory.createLoad(resultType, source, bits);
         }
 
         LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(typeHelper.getLLVMBaseType(load.getType()), result, method.getSlot(load.getName()));
@@ -645,7 +644,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final LLVMNode node;
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
-            node = LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, call.getCallType().getArgumentTypes().length, method.getStackSlot(), method.getOptimizationConfiguration());
+            node = LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, call.getCallType().getArgumentTypes().length, method.getStackSlot());
 
         } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
             node = LLVMTruffleIntrinsicFactory.create(((ValueSymbol) target).getName(), args);
