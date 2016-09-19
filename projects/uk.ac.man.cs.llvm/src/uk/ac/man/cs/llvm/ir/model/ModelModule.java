@@ -67,6 +67,8 @@ public final class ModelModule implements ModuleGenerator {
 
     private final Symbols symbols = new Symbols();
 
+    private final MetadataBlock metadata = new MetadataBlock();
+
     private int currentFunction = -1;
 
     private TargetDataLayout targetDataLayout = null;
@@ -224,6 +226,11 @@ public final class ModelModule implements ModuleGenerator {
             }
         }
         throw new RuntimeException("Trying to generate undefined function");
+    }
+
+    @Override
+    public MetadataBlock getMetadata() {
+        return metadata;
     }
 
     @Override

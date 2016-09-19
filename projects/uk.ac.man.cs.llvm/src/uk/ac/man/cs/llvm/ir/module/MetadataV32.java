@@ -33,6 +33,7 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
+import uk.ac.man.cs.llvm.ir.ModuleGenerator;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
@@ -53,11 +54,10 @@ import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataV32 extends Metadata {
-    public MetadataV32(Types types, List<Type> symbols) {
-        super(types, symbols);
+    public MetadataV32(Types types, List<Type> symbols, ModuleGenerator generator) {
+        super(types, symbols, generator);
         // it seem's like there is a different offset of the id in LLVM 3.2 and LLVM 3.8
         metadata.setStartIndex(0);
-        idx = 0; // TODO: remove
     }
 
     protected boolean asInt1(Type t) {
@@ -97,8 +97,6 @@ public class MetadataV32 extends Metadata {
         if (LLVMBaseOptionFacade.verboseEnabled()) {
             printMetadataDebugMsg();
         }
-
-        idx++;
     }
 
     protected void createOldNode(long[] args) {
@@ -189,12 +187,14 @@ public class MetadataV32 extends Metadata {
                     break;
 
                 default:
-                    System.out.println("!" + idx + " - TODO: #" + record);
+                    metadata.add(null);
+                    System.out.println("! - TODO: #" + record);
                     break;
             }
         } else {
             parsedArgs.rewind();
-            System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + ": " + parsedArgs);
+            metadata.add(null);
+            System.out.println("! - " + MetadataRecord.OLD_NODE + ": " + parsedArgs);
         }
     }
 
