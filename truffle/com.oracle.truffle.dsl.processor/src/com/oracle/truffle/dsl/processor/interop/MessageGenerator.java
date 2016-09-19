@@ -188,7 +188,8 @@ public abstract class MessageGenerator {
                 return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                             Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName)) {
+                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                            Message.PROPERTIES.toString().equalsIgnoreCase(messageName)) {
                 return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                             Message.createNew(0).toString().equalsIgnoreCase(messageName)) {

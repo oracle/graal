@@ -44,6 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.SLLanguage;
@@ -120,6 +121,14 @@ public class SLObjectMessageResolution {
             } else {
                 throw UnknownIdentifierException.raise(name);
             }
+        }
+    }
+
+    @Resolve(message = "PROPERTIES")
+    public abstract static class SLForeignPropertiesNode extends Node {
+        public Object access(VirtualFrame frame, DynamicObject receiver) {
+            Object[] keys = receiver.getShape().getKeyList().toArray();
+            return JavaInterop.asTruffleObject(keys);
         }
     }
 

@@ -408,6 +408,13 @@ public abstract class Message {
      */
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
+    /**
+     * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
+     * objects} and obtains list of its property names. Those names can then be used in
+     * {@link #READ} and {@link #WRITE} messages to obtain/assign the real values.
+     *
+     * @since 0.18
+     */
     public static final Message PROPERTIES = Properties.INSTANCE;
 
     /**

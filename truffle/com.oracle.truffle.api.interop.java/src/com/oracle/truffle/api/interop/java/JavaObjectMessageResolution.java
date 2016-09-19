@@ -213,4 +213,16 @@ class JavaObjectMessageResolution {
 
     }
 
+    @Resolve(message = "PROPERTIES")
+    abstract static class PropertiesNode extends Node {
+        public Object access(JavaObject receiver) {
+            final Field[] fields = receiver.clazz.getFields();
+            final String[] names = new String[fields.length];
+            for (int i = 0; i < fields.length; i++) {
+                names[i] = fields[i].getName();
+            }
+            return JavaInterop.asTruffleObject(names);
+        }
+    }
+
 }
