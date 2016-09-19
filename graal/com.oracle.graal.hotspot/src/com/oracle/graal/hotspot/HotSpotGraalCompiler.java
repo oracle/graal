@@ -84,30 +84,33 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             // @formatter:off
             @Option(help = "Enable Compilation counters. Compilation counters count the number of compilations for each method.", type = OptionType.Debug)
             public static final OptionValue<Boolean> EnableCompilationCounters = new StableOptionValue<>(true);
-            @Option(help = "", type = OptionType.Debug)
-            public static final OptionValue<Integer> CompilationCountersUpperBound = new StableOptionValue<>(64);
-            @Option(help = "", type = OptionType.Debug)
+            @Option(help = "An upper bound for the number of compilations of a method to fail.", type = OptionType.Debug)
+            public static final OptionValue<Integer> CompilationCountersUpperBound = new StableOptionValue<>(256);
+            @Option(help = "Reaching the upper bound for the number of compilations of a method is considered fatal and will exit the VM.", type = OptionType.Debug)
             public static final OptionValue<Boolean> CompilationCountersExceededIsFatal = new StableOptionValue<>(true);
-            @Option(help = "", type = OptionType.Debug)
+            @Option(help = "Enable a watchdog thread for each compiler thread. " +
+                           "A watchdog threads reports long running compilations and kills the VM if a certain time bound is reached.", type = OptionType.Debug)
             public static final OptionValue<Boolean> MonitorCompilerThreads = new StableOptionValue<>(true);
-            @Option(help = "Kill a Compiler Thread and Exit VM if N last stack traces are the same", type = OptionType.Debug)
+            @Option(help = "Kill a Compiler Thread and exit the VM if the FatalNumberOfCompilerThreadStackTraces last stack traces are the equal.", type = OptionType.Debug)
             public static final OptionValue<Boolean> StaleCompilerThreadsAreFatal = new StableOptionValue<>(true);
             @Option(help = "Number of equal stack traces for the compiler thread until it is killed", type = OptionType.Debug)
-            public static final OptionValue<Integer> FatalNumberOfCompilerThreadStackTraces = new StableOptionValue<>(16);
-            @Option(help = "Start monitoring after 2 minutes", type = OptionType.Debug)
-            public static final OptionValue<Integer> WatchDogStartMonitoringTimeout = new StableOptionValue<>(60 * 1000);
-            @Option(help = "Take Stack Trace Every 30s", type = OptionType.Debug)
-            public static final OptionValue<Integer> WatchDogStackTraceTimeout = new StableOptionValue<>(5 * 1000);
+            public static final OptionValue<Integer> FatalNumberOfCompilerThreadStackTraces = new StableOptionValue<>(8);
+            @Option(help = "Start monitoring after X seconds.", type = OptionType.Debug)
+            public static final OptionValue<Integer> WatchDogStartMonitoringTimeout = new StableOptionValue<>(30 * 1000);
+            @Option(help = "Take Stack Trace Every X seconds & report the compilation that is currently monitored.", type = OptionType.Debug)
+            public static final OptionValue<Integer> WatchDogStackTraceTimeout = new StableOptionValue<>(30 * 1000);
+            @Option(help = "Watch dog threads dumps information about the context to TTY.", type = OptionType.Debug)
+            public static final OptionValue<Boolean> TraceWatchDogThreads = new StableOptionValue<>(false);
             // @formatter:on
         }
 
-        private static final ReentrantReadWriteLock RW_LOCK;
+        private static final ReentrantReadWriteLock RW_LOCK_COUNTERS;
 
         static {
             if (Options.EnableCompilationCounters.getValue()) {
-                RW_LOCK = new ReentrantReadWriteLock();
+                RW_LOCK_COUNTERS = new ReentrantReadWriteLock();
             } else {
-                RW_LOCK = null;
+                RW_LOCK_COUNTERS = null;
             }
         }
 
@@ -118,17 +121,17 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                 final ResolvedJavaMethod method = request.getMethod();
                 Integer val = null;
                 try {
-                    RW_LOCK.readLock().lock();
+                    RW_LOCK_COUNTERS.readLock().lock();
                     val = counters.get(method);
                 } finally {
-                    RW_LOCK.readLock().unlock();
+                    RW_LOCK_COUNTERS.readLock().unlock();
                 }
                 val = val != null ? val + 1 : 1;
                 try {
-                    RW_LOCK.writeLock().lock();
+                    RW_LOCK_COUNTERS.writeLock().lock();
                     counters.put(method, val);
                 } finally {
-                    RW_LOCK.writeLock().unlock();
+                    RW_LOCK_COUNTERS.writeLock().unlock();
                 }
 
                 if (val > Options.CompilationCountersUpperBound.getValue()) {
@@ -138,12 +141,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
             void dumpCounters(PrintStream s) {
                 try {
-                    RW_LOCK.readLock().lock();
+                    RW_LOCK_COUNTERS.readLock().lock();
                     for (Map.Entry<ResolvedJavaMethod, Integer> entry : counters.entrySet()) {
                         s.printf("Method %s compiled %d times.%s", entry.getKey(), entry.getValue(), System.lineSeparator());
                     }
                 } finally {
-                    RW_LOCK.readLock().unlock();
+                    RW_LOCK_COUNTERS.readLock().unlock();
                 }
             }
         }
@@ -187,9 +190,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
              * should change its internal state to monitoring as the same method is compiled enough
              * to be interesting.
              */
-            private static final int SPIN_TIMEOUT = 500/* ms */;
-
-            private static final boolean TRACE_WATCHDOG = true;
+            private static final int SPIN_TIMEOUT = 100/* ms */;
 
             private final Thread compilerThread;
 
@@ -204,12 +205,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             private ResolvedJavaMethod lastWatched;
 
             public void startCompilation(ResolvedJavaMethod newMethod) {
-                TTY.println("%s is notified that compilation started for method %s", getTracePrefix(), newMethod);
+                traceWatchDog("%s is notified that compilation started for method %s", getTracePrefix(), newMethod);
                 this.lastSet = newMethod;
             }
 
             public void stopCompilation() {
-                TTY.println("%s notified that compilation is finished", getTracePrefix());
+                traceWatchDog("%s notified that compilation is finished", getTracePrefix());
                 this.lastSet = null;
             }
 
@@ -250,7 +251,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
 
             private static void traceWatchDog(String s, Object... args) {
-                if (TRACE_WATCHDOG) {
+                if (Options.TraceWatchDogThreads.getValue()) {
                     TTY.println(String.format(s, args));
                 }
             }
@@ -279,7 +280,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                                     break;
                                 case WATCHING_NO_STACK_INSPECTION:
                                     if (currentlyCompiled == lastWatched) {
-                                        if (ellapesWatchingNoStackTime > Options.WatchDogStartMonitoringTimeout.getValue()) {
+                                        if (ellapesWatchingNoStackTime >= Options.WatchDogStartMonitoringTimeout.getValue()) {
                                             // we looked at the same thread for a certain time and
                                             // it still compiles one method, now we start to take
                                             // stake traces
@@ -300,7 +301,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                                     break;
                                 case WATCHING_STACK_INSPECTION:
                                     if (currentlyCompiled == lastWatched) {
-                                        if (ellapsedWatchingTime > Options.WatchDogStackTraceTimeout.getValue()) {
+                                        if (ellapsedWatchingTime == 0 || ellapsedWatchingTime >= Options.WatchDogStackTraceTimeout.getValue()) {
                                             traceWatchDog("%s took a stack trace", getTracePrefix());
                                             boolean newStackTrace = recordStackTrace(compilerThread.getStackTrace());
                                             traceWatchDog("%s:Last stack trace was %b equal?, took %d equal stack traces", getTracePrefix(), newStackTrace, nrOfStackTraces);
@@ -311,13 +312,18 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                                             ellapsedWatchingTime = 0;
                                             if (Options.StaleCompilerThreadsAreFatal.getValue()) {
                                                 if (nrOfStackTraces > Options.FatalNumberOfCompilerThreadStackTraces.getValue()) {
-                                                    TTY.println("%s took N stack traces, which is considered fatal, we quit now [compiling method %s]", getTracePrefix(), lastSet);
-                                                    TTY.println("======================= STACK TRACE =======================");
-                                                    for (StackTraceElement e : lastStackTrace) {
-                                                        TTY.println(e.toString());
-                                                    }
+                                                    TTY.println("%s took N stack traces, which is considered fatal, we quit now [compiling method %s]. Printing Stack Trace...", getTracePrefix(),
+                                                                    lastSet);
+                                                    printStackTraceTTY();
                                                     System.exit(-1);
+                                                } else if (nrOfStackTraces == 1) {
+                                                    TTY.println("%s detected a long running compilation (%dms). Currently compiled method is  %s. Printing Stack Trace...", getTracePrefix(),
+                                                                    (ellapesWatchingNoStackTime + ellapsedWatchingTime), lastSet);
+                                                    printStackTraceTTY();
                                                 }
+                                            }
+                                            if (ellapsedWatchingTime == 0) {
+                                                ellapsedWatchingTime += SPIN_TIMEOUT;
                                             }
                                         } else {
                                             // we still compile the same method watch until the
@@ -337,31 +343,35 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                         }
                         Thread.sleep(SPIN_TIMEOUT);
                     }
-                } catch (
-
-                Throwable t) {
+                } catch (Throwable t) {
                     TTY.println("Watch dog thread encountered an exception. Shutting down.");
                     t.printStackTrace(TTY.out);
                     System.exit(-1);
                 }
             }
-        }
 
+            private void printStackTraceTTY() {
+                TTY.println("======================= STACK TRACE =======================");
+                for (StackTraceElement e : lastStackTrace) {
+                    TTY.println(e.toString());
+                }
+            }
+        }
     }
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationMonitoring.CompilationCounters compilationCounters;
-    private static final IdentityHashMap<Thread, CompilationMonitoring.CompilationWatchDogThread> watchdogs = CompilationMonitoring.Options.MonitorCompilerThreads.getValue() ? new IdentityHashMap<>()
-                    : null;
+    private static final ThreadLocal<CompilationMonitoring.CompilationWatchDogThread> watchdogs = CompilationMonitoring.Options.MonitorCompilerThreads.getValue() ? new ThreadLocal<>() : null;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime) {
         this.jvmciRuntime = jvmciRuntime;
         this.graalRuntime = graalRuntime;
         /*
-         * It is sufficient to have one compilation counter object per graal compiler.
+         * It is sufficient to have one compilation counter object per Graal compiler object.
          */
         if (CompilationMonitoring.Options.EnableCompilationCounters.getValue()) {
+            TTY.println("Warning: Compilation counters enabled, exceesive recompilation of a method will cause a failure!");
             compilationCounters = new CompilationMonitoring.CompilationCounters();
         } else {
             compilationCounters = null;
@@ -381,15 +391,15 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             /*
              * lazily get a watch dog thread for the current compiler thread
              */
-            CompilationMonitoring.CompilationWatchDogThread watchDog = watchdogs.get(Thread.currentThread());
+            CompilationMonitoring.CompilationWatchDogThread watchDog = watchdogs.get();
             if (watchDog == null) {
                 watchDog = new CompilationMonitoring.CompilationWatchDogThread(Thread.currentThread());
-                watchdogs.put(Thread.currentThread(), watchDog);
+                TTY.printf("Warning: Compiler thread watchdog enabled. Creating watchdog thread %s for compiler thread %s!\n", watchDog, Thread.currentThread());
+                watchdogs.set(watchDog);
                 watchDog.start();
             }
             watchDog.startCompilation(request.getMethod());
         }
-
         if (CompilationMonitoring.Options.EnableCompilationCounters.getValue()) {
             assert compilationCounters != null;
             try {
@@ -423,7 +433,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             r = task.runCompilation();
         }
         if (CompilationMonitoring.Options.MonitorCompilerThreads.getValue()) {
-            watchdogs.get(Thread.currentThread()).stopCompilation();
+            assert watchdogs != null;
+            CompilationMonitoring.CompilationWatchDogThread watchdog = watchdogs.get();
+            assert watchdog != null;
+            watchdog.stopCompilation();
         }
         return r;
     }

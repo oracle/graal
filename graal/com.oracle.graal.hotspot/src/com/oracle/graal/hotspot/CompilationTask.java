@@ -31,6 +31,9 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
 import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -186,7 +189,7 @@ public class CompilationTask {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(getMethodDescription() + "...");
+                TTY.println(getMethodDescription() + "... started at " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
             }
 
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
