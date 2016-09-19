@@ -40,7 +40,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -81,7 +80,7 @@ public final class LegacyBreakpointCreationTest {
         assertEquals("no breakpoints at start", 0, db.getBreakpoints().size());
 
         // Create breakpoint at line 1
-        final LineLocation line1 = testSource.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation line1 = testSource.createLineLocation(1);
         final Breakpoint b1 = db.setLineBreakpoint(0, line1, false);
         assertEquals("one breakpoint created so far", 1, db.getBreakpoints().size());
         assertSame("same as one created", b1, db.getBreakpoints().iterator().next());
@@ -107,7 +106,7 @@ public final class LegacyBreakpointCreationTest {
         assertEquals("same code", condExpr, b1.getCondition().getCode());
 
         // Create breakpoint at line 2
-        final LineLocation line2 = testSource.createLineLocation(2);
+        final com.oracle.truffle.api.source.LineLocation line2 = testSource.createLineLocation(2);
         final Breakpoint b2 = db.setLineBreakpoint(0, line2, false);
         assertEquals("two breakpoint created so far", 2, db.getBreakpoints().size());
 
@@ -129,7 +128,7 @@ public final class LegacyBreakpointCreationTest {
 
     @Test(expected = IOException.class)
     public void duplicateLocation() throws IOException {
-        final LineLocation line1 = testSource.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation line1 = testSource.createLineLocation(1);
         db.setLineBreakpoint(0, line1, false);
         db.setLineBreakpoint(0, line1, false);
     }

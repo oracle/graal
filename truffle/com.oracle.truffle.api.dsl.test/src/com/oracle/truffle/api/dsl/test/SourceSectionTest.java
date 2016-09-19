@@ -22,10 +22,12 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRootPrefix;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.junit.Assert.assertThat;
 
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
@@ -33,6 +35,7 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,11 +45,8 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 
 @RunWith(Theories.class)
 public class SourceSectionTest {
@@ -56,7 +56,7 @@ public class SourceSectionTest {
     @Theory
     public void testSourceSections(int value0, int value1, int value2) {
         TestRootNode<MutableSourceSectionNode> root = createRoot(SourceSectionTestFactory.MutableSourceSectionNodeFactory.getInstance());
-        SourceSection section = SourceSection.createUnavailable("a", "b");
+        SourceSection section = Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
         root.getNode().changeSourceSection(section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, value0), is(value0));
@@ -119,8 +119,7 @@ public class SourceSectionTest {
 
     @Test
     public void testCreateCast() {
-        SourceSection section = SourceSection.createUnavailable("a", "b");
-        assertNull(section.getSource());
+        SourceSection section = Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
         TestRootNode<NodeWithFixedSourceSection> root = createRootPrefix(SourceSectionTestFactory.NodeWithFixedSourceSectionFactory.getInstance(), true, section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, 1), is(1));

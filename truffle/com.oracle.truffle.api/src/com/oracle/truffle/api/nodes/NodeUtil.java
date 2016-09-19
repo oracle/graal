@@ -800,20 +800,22 @@ public final class NodeUtil {
 
     private static String displaySourceAttribution(Node node) {
         final SourceSection section = node.getSourceSection();
-        if (section != null && section.getSource() == null) {
-            return "source: " + section.getShortDescription();
+        if (section == null) {
+            return "";
         }
-        if (section != null) {
-            final String srcText = section.getCode();
-            final StringBuilder sb = new StringBuilder();
-            sb.append("source:");
-            sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
-            sb.append(" line=" + section.getLineLocation().getLineNumber());
-            sb.append(" len=" + srcText.length());
-            sb.append(" text=\"" + srcText + "\"");
-            return sb.toString();
+        if (section.getSource() == null) {
+            // TODO we can remove this block if SourceSection#createUnavailable was removed, because
+            // then source cannot become null anymore.
+            return "source: <unknown>";
         }
-        return "";
+        final String srcText = section.getCode();
+        final StringBuilder sb = new StringBuilder();
+        sb.append("source:");
+        sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
+        sb.append(" line=" + section.getStartLine());
+        sb.append(" len=" + srcText.length());
+        sb.append(" text=\"" + srcText + "\"");
+        return sb.toString();
     }
 
     /** @since 0.8 or earlier */
@@ -857,8 +859,23 @@ public final class NodeUtil {
         final SourceSection reportedSourceSection = oldNode.getEncapsulatingSourceSection();
 
         PrintStream out = System.out;
-        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s%s%n", oldNode.toString(), formatNodeInfo(oldNode), formatNodeInfo(newNode),
-                        reason != null && reason.length() > 0 ? reason : "unknown", reportedSourceSection != null ? " at " + reportedSourceSection.getShortDescription() : "");
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s %s%n", oldNode.toString(), formatNodeInfo(oldNode), formatNodeInfo(newNode),
+                        reason != null && reason.length() > 0 ? reason : "unknown", formatLocation(reportedSourceSection));
+    }
+
+    private static String formatLocation(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return "";
+        }
+
+        if (sourceSection.getSource() == null) {
+            // TODO we can remove this block if SourceSection#createUnavailable was removed, because
+            // then source cannot become null anymore.
+            return "at <Unknown>";
+        } else {
+            return "at " + String.format("%s:%d", sourceSection.getSource().getName(),
+                            sourceSection.getStartLine());
+        }
     }
 
     private static String formatNodeInfo(Node node) {
