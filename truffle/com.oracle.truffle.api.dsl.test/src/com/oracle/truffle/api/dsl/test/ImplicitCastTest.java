@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -37,6 +38,7 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast4NodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -199,6 +201,51 @@ public class ImplicitCastTest {
         charSequenceCast = 0;
         node.executeEvaluated(seq1, seq2);
         Assert.assertEquals(2, charSequenceCast);
+    }
+
+    @NodeChild
+    abstract static class ImplicitCast4Node extends ValueNode {
+
+        @Specialization(guards = "value != 1")
+        public int doInt(int value) {
+            return value;
+        }
+
+        @Specialization(guards = "value != 42")
+        public long doLong(long value) {
+            return -value;
+        }
+
+        public abstract Object executeEvaluated(Object value);
+
+    }
+
+    static class Test4Input extends ValueNode {
+
+        int n = 0;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            n++;
+            if (n == 1) {
+                return 1;
+            } else if (n == 2) {
+                return 42;
+            } else {
+                throw new AssertionError();
+            }
+        }
+
+    }
+
+    @Ignore
+    @Test
+    public void testDSLPassesOriginalAndNotCastedValueWhenSpecializationFails() {
+        ImplicitCast4Node node = ImplicitCast4NodeFactory.create(new Test4Input());
+        TestRootNode<ImplicitCast4Node> root = new TestRootNode<>(node);
+        root.adoptChildren();
+        Assert.assertEquals(-1L, node.execute(null));
+        Assert.assertEquals(42, node.execute(null));
     }
 
     @TypeSystem({String.class, boolean.class})
