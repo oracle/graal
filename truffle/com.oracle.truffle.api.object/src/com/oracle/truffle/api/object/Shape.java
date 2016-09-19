@@ -337,7 +337,9 @@ public abstract class Shape {
      *
      * @since 0.18
      */
-    public abstract boolean isShared();
+    public boolean isShared() {
+        return false;
+    }
 
     /**
      * Make a shared variant of this shape, to allow safe usage of this object between threads.
@@ -346,7 +348,9 @@ public abstract class Shape {
      *
      * @since 0.18
      */
-    public abstract Shape makeSharedShape();
+    public Shape makeSharedShape() {
+        return null;
+    }
 
     /**
      * Utility class to allocate locations in an object layout.
