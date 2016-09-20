@@ -157,7 +157,12 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
         final int size = typeHelper.getByteSize(type);
-        int alignment = typeHelper.getAlignment(type);
+        int alignment = 0;
+        if (allocate.getAlign() == 0) {
+            typeHelper.getAlignment(type);
+        } else {
+            alignment = 1 << (allocate.getAlign() - 1);
+        }
         if (alignment == 0) {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }

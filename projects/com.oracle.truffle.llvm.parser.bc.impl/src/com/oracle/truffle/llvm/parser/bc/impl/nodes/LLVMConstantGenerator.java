@@ -400,9 +400,6 @@ public final class LLVMConstantGenerator {
     }
 
     private static LLVMExpressionNode toArrayZeroNode(ArrayType type, LLVMContext context, FrameSlot stack, LLVMBitcodeTypeHelper typeHelper) {
-        // return
-        // LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(type),
-        // typeHelper.getAlignment(type), context, stack);
         final int size = typeHelper.getByteSize(type);
         if (size == 0) {
             throw new AssertionError("Zero-Size Arrays are not allowed per C/C++ standards!");
