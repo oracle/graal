@@ -175,7 +175,7 @@ public final class ModelModule implements ModuleGenerator {
             symbols.addSymbol(function);
             declares.add(function);
         } else {
-            FunctionDefinition method = new FunctionDefinition(type);
+            FunctionDefinition method = new FunctionDefinition(type, metadata);
             symbols.addSymbol(method);
             defines.add(method);
         }

@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import uk.ac.man.cs.llvm.ir.ConstantGenerator;
 import uk.ac.man.cs.llvm.ir.FunctionGenerator;
 import uk.ac.man.cs.llvm.ir.ModuleGenerator;
+import uk.ac.man.cs.llvm.ir.SymbolGenerator;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public enum ModuleVersion {
@@ -47,7 +48,7 @@ public enum ModuleVersion {
     @FunctionalInterface
     private interface MetadataParser {
 
-        Metadata instantiate(Types types, List<Type> symbols, ModuleGenerator generator);
+        Metadata instantiate(Types types, List<Type> symbols, SymbolGenerator generator);
     }
 
     @FunctionalInterface
@@ -94,7 +95,7 @@ public enum ModuleVersion {
         }
     }
 
-    public Metadata createMetadata(Types types, List<Type> symbols, ModuleGenerator generator) {
+    public Metadata createMetadata(Types types, List<Type> symbols, SymbolGenerator generator) {
         return metadata.instantiate(types, symbols, generator);
     }
 

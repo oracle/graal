@@ -66,6 +66,7 @@ import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFnNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -136,14 +137,16 @@ public final class LLVMMetadata implements ModelVisitor {
         }
 
         /*
-         * TODO: symbols seems to be misalign by 6 (probably because of the KIND Metadata nodes)
+         * TODO: metadata seems to be misalign by 8
          *
-         * I don't know why, but adding the metadata kinds to the symbols table creates currently
-         * more problems than it would probably solve. Either we miss some symbols in the symbol
-         * table and there is currently a workaround for the specific location calculation, or this
-         * misalign has some other causes.
+         * I don't know why, but there is a little misalign between calculted and real metadata id.
+         * This has to be solved in the future!
+         *
+         * Possible issues could probably arrive when there are changes in the number of MDKinds or
+         * when using multiple functions (because it look like we should create an copy of Metadata
+         * for every function block)
          */
-        private static final int SYMBOL_MISALIGN = -6;
+        private static final int SYMBOL_MISALIGN = 8;
 
         @Override
         public void visit(VoidCallInstruction call) {
@@ -152,7 +155,8 @@ public final class LLVMMetadata implements ModelVisitor {
             if (callTarget instanceof FunctionDeclaration) {
                 if (((FunctionDeclaration) (callTarget)).getName().equals("@llvm.dbg.declare")) {
 
-                    int symbolId = (int) ((MetadataConstant) call.getArgument(0)).getValue() + SYMBOL_MISALIGN;
+                    int symbolMetadataId = (int) ((MetadataConstant) call.getArgument(0)).getValue() + SYMBOL_MISALIGN;
+                    int symbolId = ((MetadataFnNode) metadata.get(symbolMetadataId)).getValue();
                     long metadataId = ((MetadataConstant) call.getArgument(1)).getValue();
 
                     Symbol referencedSymbol = currentBlock.getFunctionSymbols().getSymbol(symbolId);

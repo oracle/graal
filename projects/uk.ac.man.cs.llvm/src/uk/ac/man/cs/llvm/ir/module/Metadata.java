@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 import uk.ac.man.cs.llvm.bc.ParserListener;
-import uk.ac.man.cs.llvm.ir.ModuleGenerator;
+import uk.ac.man.cs.llvm.ir.SymbolGenerator;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
@@ -67,7 +67,7 @@ public class Metadata implements ParserListener {
 
     protected final MetadataBlock metadata;
 
-    public Metadata(Types types, List<Type> symbols, ModuleGenerator generator) {
+    public Metadata(Types types, List<Type> symbols, SymbolGenerator generator) {
         this.types = types;
         this.symbols = symbols;
         metadata = generator.getMetadata();
