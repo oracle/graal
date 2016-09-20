@@ -62,8 +62,6 @@ import static com.oracle.graal.hotspot.replacements.MonitorSnippets.MONITOREXIT;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.DYNAMIC_NEW_ARRAY;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.DYNAMIC_NEW_INSTANCE;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
-import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_MILLIS;
-import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.JAVA_TIME_NANOS;
 import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.THREAD_IS_INTERRUPTED;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPOSTCALL;
 import static com.oracle.graal.hotspot.replacements.WriteBarrierSnippets.G1WBPRECALL;
@@ -122,6 +120,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl {
+
+    public static final ForeignCallDescriptor JAVA_TIME_MILLIS = new ForeignCallDescriptor("javaTimeMillis", long.class);
+    public static final ForeignCallDescriptor JAVA_TIME_NANOS = new ForeignCallDescriptor("javaTimeNanos", long.class);
 
     public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
                     WordTypes wordTypes) {

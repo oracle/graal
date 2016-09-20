@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.computeHashCode;
-
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
 
@@ -37,6 +35,6 @@ public class ObjectSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
-        return computeHashCode(thisObj);
+        return IdentityHashCodeNode.identityHashCode(thisObj);
     }
 }
