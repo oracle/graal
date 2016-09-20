@@ -22,7 +22,7 @@ FOSDEM'16 (LLVM Toolchain devroom), January 31, 2016, Brussels, Belgium<br>
 [Download slides](https://fosdem.org/2016/schedule/event/llvm_sulong/attachments/slides/1205/export/events/attachments/llvm_sulong/slides/1205/Sulong.pdf)
 * Sulong: Execution of LLVM-Based Languages on the JVM<br>
 ICOOOLPS'16 (LLVM Toolchain devroom), July 18, 2016, Rome, Italy<br>
-[Download slides](https://speakerdeck.com/mrigger/sulong-execution-of-llvm-based-languages-on-the-jvm)
+[Download slides](https://speakerdeck.com/mrigger/icooolps-16-sulong-execution-of-llvm-based-languages-on-the-jvm)
 * C, C++, and Fortran on the JVM via Sulong<br>
 VMM'16, September 2, 2016, Lugano, Switzerland<br>
-[Download slides](https://speakerdeck.com/mrigger/c-c-plus-plus-and-fortran-on-the-jvm-via-sulong)
+[Download slides](https://speakerdeck.com/mrigger/vmm-16-c-c-plus-plus-and-fortran-on-the-jvm-via-sulong)
