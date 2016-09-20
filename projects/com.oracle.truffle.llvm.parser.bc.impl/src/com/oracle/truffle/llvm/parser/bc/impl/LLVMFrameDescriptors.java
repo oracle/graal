@@ -42,6 +42,8 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMControlFlowAnalysis.LLVMControlFlow;
 
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
@@ -76,6 +78,7 @@ import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
+import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class LLVMFrameDescriptors {
@@ -150,11 +153,13 @@ public final class LLVMFrameDescriptors {
         @Override
         public void visit(FunctionDefinition method) {
             FrameDescriptor frame = new FrameDescriptor();
-            frame.addFrameSlot(LLVMBitcodeHelper.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
-            frame.addFrameSlot(LLVMBitcodeHelper.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
+            if (method.getReturnType() != MetaType.VOID) {
+                frame.addFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+            }
+            frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : method.getParameters()) {
-                frame.addFrameSlot(parameter.getName(), LLVMBitcodeHelper.toFrameSlotKind(parameter.getType()));
+                frame.addFrameSlot(parameter.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(parameter.getType()));
             }
 
             LLVMFrameDescriptorsFunctionVisitor visitor = new LLVMFrameDescriptorsFunctionVisitor(frame, cfg.dependencies(method.getName()));
@@ -253,12 +258,12 @@ public final class LLVMFrameDescriptors {
 
         @Override
         public void visit(AllocateInstruction allocate) {
-            frame.findOrAddFrameSlot(allocate.getName(), LLVMBitcodeHelper.toFrameSlotKind(allocate.getType()));
+            frame.findOrAddFrameSlot(allocate.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(allocate.getType()));
         }
 
         @Override
         public void visit(BinaryOperationInstruction operation) {
-            frame.findOrAddFrameSlot(operation.getName(), LLVMBitcodeHelper.toFrameSlotKind(operation.getType()));
+            frame.findOrAddFrameSlot(operation.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(operation.getType()));
         }
 
         @Override
@@ -267,17 +272,17 @@ public final class LLVMFrameDescriptors {
 
         @Override
         public void visit(CallInstruction call) {
-            frame.findOrAddFrameSlot(call.getName(), LLVMBitcodeHelper.toFrameSlotKind(call.getType()));
+            frame.findOrAddFrameSlot(call.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(call.getType()));
         }
 
         @Override
         public void visit(CastInstruction cast) {
-            frame.findOrAddFrameSlot(cast.getName(), LLVMBitcodeHelper.toFrameSlotKind(cast.getType()));
+            frame.findOrAddFrameSlot(cast.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(cast.getType()));
         }
 
         @Override
         public void visit(CompareInstruction compare) {
-            frame.findOrAddFrameSlot(compare.getName(), LLVMBitcodeHelper.toFrameSlotKind(compare.getType()));
+            frame.findOrAddFrameSlot(compare.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(compare.getType()));
         }
 
         @Override
@@ -286,17 +291,17 @@ public final class LLVMFrameDescriptors {
 
         @Override
         public void visit(ExtractElementInstruction extract) {
-            frame.findOrAddFrameSlot(extract.getName(), LLVMBitcodeHelper.toFrameSlotKind(extract.getType()));
+            frame.findOrAddFrameSlot(extract.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(extract.getType()));
         }
 
         @Override
         public void visit(ExtractValueInstruction extract) {
-            frame.findOrAddFrameSlot(extract.getName(), LLVMBitcodeHelper.toFrameSlotKind(extract.getType()));
+            frame.findOrAddFrameSlot(extract.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(extract.getType()));
         }
 
         @Override
         public void visit(GetElementPointerInstruction gep) {
-            frame.findOrAddFrameSlot(gep.getName(), LLVMBitcodeHelper.toFrameSlotKind(gep.getType()));
+            frame.findOrAddFrameSlot(gep.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(gep.getType()));
         }
 
         @Override
@@ -305,22 +310,22 @@ public final class LLVMFrameDescriptors {
 
         @Override
         public void visit(InsertElementInstruction insert) {
-            frame.findOrAddFrameSlot(insert.getName(), LLVMBitcodeHelper.toFrameSlotKind(insert.getType()));
+            frame.findOrAddFrameSlot(insert.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(insert.getType()));
         }
 
         @Override
         public void visit(InsertValueInstruction insert) {
-            frame.findOrAddFrameSlot(insert.getName(), LLVMBitcodeHelper.toFrameSlotKind(insert.getType()));
+            frame.findOrAddFrameSlot(insert.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(insert.getType()));
         }
 
         @Override
         public void visit(LoadInstruction load) {
-            frame.findOrAddFrameSlot(load.getName(), LLVMBitcodeHelper.toFrameSlotKind(load.getType()));
+            frame.findOrAddFrameSlot(load.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(load.getType()));
         }
 
         @Override
         public void visit(PhiInstruction phi) {
-            frame.findOrAddFrameSlot(phi.getName(), LLVMBitcodeHelper.toFrameSlotKind(phi.getType()));
+            frame.findOrAddFrameSlot(phi.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(phi.getType()));
         }
 
         @Override
@@ -329,12 +334,12 @@ public final class LLVMFrameDescriptors {
 
         @Override
         public void visit(SelectInstruction select) {
-            frame.findOrAddFrameSlot(select.getName(), LLVMBitcodeHelper.toFrameSlotKind(select.getType()));
+            frame.findOrAddFrameSlot(select.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(select.getType()));
         }
 
         @Override
         public void visit(ShuffleVectorInstruction shuffle) {
-            frame.findOrAddFrameSlot(shuffle.getName(), LLVMBitcodeHelper.toFrameSlotKind(shuffle.getType()));
+            frame.findOrAddFrameSlot(shuffle.getName(), LLVMBitcodeTypeHelper.toFrameSlotKind(shuffle.getType()));
         }
 
         @Override

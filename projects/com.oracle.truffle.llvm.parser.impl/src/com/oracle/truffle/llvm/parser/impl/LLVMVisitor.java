@@ -295,6 +295,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
         this.factoryFacade = facade;
         this.nativeLookup = new NativeLookup(facade);
+        this.nativeLookup = new NativeLookup(facade);
         List<EObject> objects = model.eContents();
         List<LLVMFunctionDescriptor> functions = new ArrayList<>();
         globalNodes = new ArrayList<>();

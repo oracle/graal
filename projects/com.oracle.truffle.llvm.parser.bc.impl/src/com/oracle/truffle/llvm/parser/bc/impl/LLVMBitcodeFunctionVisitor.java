@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
@@ -118,7 +119,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     }
 
     public FrameSlot getReturnSlot() {
-        return getSlot(LLVMBitcodeHelper.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+        return getSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
     }
 
     public FrameSlot getSlot(String name) {
@@ -126,7 +127,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     }
 
     public FrameSlot getStackSlot() {
-        return getSlot(LLVMBitcodeHelper.STACK_ADDRESS_FRAME_SLOT_ID);
+        return getSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
     }
 
     public LLVMNodeGenerator getSymbolResolver() {

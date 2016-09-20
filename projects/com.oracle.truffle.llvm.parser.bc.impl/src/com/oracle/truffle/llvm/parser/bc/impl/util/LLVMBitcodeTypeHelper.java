@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl.util;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -51,6 +53,8 @@ import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 import uk.ac.man.cs.llvm.ir.types.VectorType;
+
+import java.util.List;
 
 public class LLVMBitcodeTypeHelper {
 
@@ -174,8 +178,9 @@ public class LLVMBitcodeTypeHelper {
 
     public static LLVMConversionType toConversionType(CastOperator operator) {
         switch (operator) {
-            case ZERO_EXTEND:
             case FP_TO_UNSIGNED_INT:
+                return LLVMConversionType.FLOAT_TO_UINT;
+            case ZERO_EXTEND:
             case UNSIGNED_INT_TO_FP:
             case INT_TO_PTR:
                 return LLVMConversionType.ZERO_EXTENSION;
@@ -194,6 +199,39 @@ public class LLVMBitcodeTypeHelper {
             default:
                 return null;
         }
+    }
+
+    public static FrameSlotKind toFrameSlotKind(Type type) {
+        if (type == MetaType.VOID) {
+            throw new LLVMUnsupportedException(LLVMUnsupportedException.UnsupportedReason.PARSER_ERROR_VOID_SLOT);
+
+        } else if (type instanceof IntegerType) {
+            switch (((IntegerType) type).getBitCount()) {
+                case 1:
+                    return FrameSlotKind.Boolean;
+                case Byte.SIZE:
+                    return FrameSlotKind.Byte;
+                case Short.SIZE:
+                case Integer.SIZE:
+                    return FrameSlotKind.Int;
+                case Long.SIZE:
+                    return FrameSlotKind.Long;
+                default:
+                    break;
+            }
+
+        } else if (type instanceof FloatingPointType) {
+            switch (((FloatingPointType) type)) {
+                case FLOAT:
+                    return FrameSlotKind.Float;
+                case DOUBLE:
+                    return FrameSlotKind.Double;
+                default:
+                    break;
+            }
+        }
+
+        return FrameSlotKind.Object;
     }
 
     public static LLVMLogicalInstructionType toLogicalInstructionType(BinaryOperator operator) {
@@ -330,6 +368,14 @@ public class LLVMBitcodeTypeHelper {
         return llvmtypes;
     }
 
+    public static LLVMFunctionDescriptor.LLVMRuntimeType[] toRuntimeTypes(List<? extends Type> types) {
+        final LLVMFunctionDescriptor.LLVMRuntimeType[] llvmtypes = new LLVMFunctionDescriptor.LLVMRuntimeType[types.size()];
+        for (int i = 0; i < types.size(); i++) {
+            llvmtypes[i] = toRuntimeType(types.get(i).getType());
+        }
+        return llvmtypes;
+    }
+
     public int getPadding(int offset, int alignment) {
         if (alignment == 0) {
             throw new AssertionError();
@@ -446,7 +492,7 @@ public class LLVMBitcodeTypeHelper {
         return largestAlignment;
     }
 
-    public LLVMBaseType getLLVMBaseType(Type type) {
+    public static LLVMBaseType getLLVMBaseType(Type type) {
         return toBaseType(type).getType();
     }
 
