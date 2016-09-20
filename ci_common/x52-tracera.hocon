@@ -7,8 +7,10 @@ x52.tracera: ${x52.default} {
 builds += [
   ${x52.tracera} ${bench-dacapo}              { name: "bench-dacapo-linux-x52-tracera" }
   ${x52.tracera} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera} ${bench-dacapo-move-profiling} { name: "bench-dacapo-move-profiling-linux-x52-tracera" }
   ${x52.tracera} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52-tracera" }
   ${x52.tracera} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera} ${bench-scala-dacapo-move-profiling} { name: "bench-scala-dacapo-move-profiling-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52-tracera" }
