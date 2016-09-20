@@ -29,6 +29,8 @@
  */
 package uk.ac.man.cs.llvm.ir.types;
 
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 import uk.ac.man.cs.llvm.ir.model.ValueSymbol;
 
 public final class StructureType implements AggregateType, ValueSymbol {
@@ -38,6 +40,8 @@ public final class StructureType implements AggregateType, ValueSymbol {
     private final boolean isPacked;
 
     private final Type[] types;
+
+    private MetadataReference metadata = MetadataBlock.voidRef;
 
     public StructureType(boolean isPacked, Type[] types) {
         this.isPacked = isPacked;
@@ -140,5 +144,15 @@ public final class StructureType implements AggregateType, ValueSymbol {
         }
         int mask = alignment - 1;
         return (alignment - (address & mask)) & mask;
+    }
+
+    @Override
+    public void setMetadataReference(MetadataReference metadata) {
+        this.metadata = metadata;
+    }
+
+    @Override
+    public MetadataReference getMetadataReference() {
+        return metadata;
     }
 }

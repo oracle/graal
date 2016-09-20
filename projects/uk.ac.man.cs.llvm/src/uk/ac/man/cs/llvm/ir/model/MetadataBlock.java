@@ -158,8 +158,42 @@ public class MetadataBlock {
         }
 
         @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + getOuterType().hashCode();
+            result = prime * result + index;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Reference other = (Reference) obj;
+            if (!getOuterType().equals(other.getOuterType())) {
+                return false;
+            }
+            if (index != other.index) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "!" + index;
+        }
+
+        private MetadataBlock getOuterType() {
+            return MetadataBlock.this;
         }
     }
 

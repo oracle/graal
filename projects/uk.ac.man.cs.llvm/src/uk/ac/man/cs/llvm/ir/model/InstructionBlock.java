@@ -229,6 +229,10 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
         return instructions.get(index);
     }
 
+    public Symbols getFunctionSymbols() {
+        return function.getSymbols();
+    }
+
     public int getInstructionCount() {
         return instructions.size();
     }

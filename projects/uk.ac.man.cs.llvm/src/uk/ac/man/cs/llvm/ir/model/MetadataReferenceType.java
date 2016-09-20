@@ -27,13 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.types;
+package uk.ac.man.cs.llvm.ir.model;
 
-import uk.ac.man.cs.llvm.ir.model.MetadataReferenceType;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public interface AggregateType extends Type, MetadataReferenceType {
+public interface MetadataReferenceType {
+    MetadataReference getMetadataReference();
 
-    int getElementCount();
+    void setMetadataReference(MetadataReference metadata);
 
-    Type getElementType(int index);
+    /**
+     * Checks if a MetadataReference was already set, and if yes checks if it equals with the new
+     * one.
+     *
+     * When this check fails it gives an AssertionError, otherwise it behaves like
+     * setMetadataReference. This is required to spot contradictory type definitions (which
+     * shouldn't happen)
+     *
+     * @param metadata MetadataReference where this type was defined
+     *
+     * @throws AssertionError("contradictory type informations given")
+     */
+    default void setValidatedMetadataReference(MetadataReference metadata) {
+        // the only valid writing would happen when the reference was empty before
+        if (getMetadataReference() == MetadataBlock.voidRef) {
+            setMetadataReference(metadata);
+        }
+
+        if (!getMetadataReference().equals(metadata)) {
+            throw new AssertionError("contradictory type informations given");
+        }
+    }
 }
