@@ -222,6 +222,15 @@ class MoveProfilingBenchmarkMixin(object):
     def get_csv_filename(self, benchmarks, bmSuiteArgs):
         return MoveProfilingBenchmarkMixin.benchmark_counters_file
 
+    def shorten_flags(self, args):
+        def _shorten(x):
+            if any(p in x for p in ["DynamicCounter", "BenchmarkCounter"]):
+                return "..."
+            return x
+
+        arg_str = " ".join((_shorten(x) for x in args))
+        return mx_benchmark.Rule.crop_back("...")(arg_str)
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.CSVFixedFileRule(
@@ -232,6 +241,7 @@ class MoveProfilingBenchmarkMixin(object):
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": self.shorten_flags(self.vmArgs(bmSuiteArgs)),
               "extra.value.name": ("<name>", str),
               "metric.name": ("dynamic-moves", str),
               "metric.value": ("<value>", int),
