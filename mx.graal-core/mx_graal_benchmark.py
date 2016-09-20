@@ -197,18 +197,29 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
 
 
 class MoveProfilingBenchmarkMixin(object):
+    """Benchmark-mixin for measuring the number of dynamically executed move instructions.
+
+    See com.oracle.graal.lir.profiling.MoveProfilingPhase for more details.
+    """
     benchmark_counters_file = 'benchmark-counters.csv'
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = [
-                  '-XX:+BootstrapJVMCI',
+                  self.get_dynamic_counters_argument(),
                   '-XX:JVMCICounterSize=10',
-                  '-Dgraal.BenchmarkDynamicCounters=err, starting ====, PASSED in ',
                   '-Dgraal.LIRProfileMoves=true',
                   '-Dgraal.DynamicCountersHumanReadable=false',
                   '-Dgraal.DynamicCountersPrintGroupSeparator=false',
                   '-Dgraal.BenchmarkCountersFile=' + MoveProfilingBenchmarkMixin.benchmark_counters_file] + super(MoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
+
+    def get_dynamic_counters_argument(self):
+        """ The argument to select the desired dynamic counters mode. Possible values are
+        `-Dgraal.GenericDynamicCounters=...`, `-Dgraal.TimedDynamicCounters=...` or
+        `-Dgraal.BenchmarkDynamicCounters=...`. See com.oracle.graal.hotspot.debug.BenchmarkCounters
+        for more information.
+        """
+        raise NotImplementedError()
 
     def getBechmarkName(self):
         raise NotImplementedError()
@@ -257,6 +268,15 @@ class MoveProfilingBenchmarkMixin(object):
 
 
 class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
+
+    def vmArgs(self, bmSuiteArgs):
+        # we need to boostrap to eagerly initialize Graal otherwise we cannot intercept
+        # stdio since it is rerouted by the dacapo harness
+        return ['-XX:+BootstrapJVMCI'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+
+    def get_dynamic_counters_argument(self):
+        # we only count the moves executed during the last (the measurement) iteration
+        return '-Dgraal.BenchmarkDynamicCounters=err, starting ====, PASSED in '
 
     def postprocessRunArgs(self, benchname, runArgs):
         self.currentBenchname = benchname
