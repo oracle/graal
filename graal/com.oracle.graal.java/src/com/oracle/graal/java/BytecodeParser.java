@@ -1600,14 +1600,17 @@ public class BytecodeParser implements GraphBuilderContext {
                 // assignment, the deopt node will get its stateBefore
                 // from the start node of the intrinsic
                 append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
+                printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
                 return true;
             } else {
                 // Otherwise inline the original method. Any frame state created
                 // during the inlining will exclude frame(s) in the
                 // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
                 if (intrinsic.getOriginalMethod().isNative()) {
+                    printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
                     return false;
                 }
+                printInlining(targetMethod, inlinedMethod, true, "inline intrinsic (bytecode parsing)");
                 parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                 return true;
             }
@@ -1620,15 +1623,27 @@ public class BytecodeParser implements GraphBuilderContext {
                 for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
                     plugin.notifyBeforeInline(inlinedMethod);
                 }
+                printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
                 parseAndInlineCallee(inlinedMethod, args, intrinsic);
                 for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
                     plugin.notifyAfterInline(inlinedMethod);
                 }
             } else {
+                printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
                 return false;
             }
         }
         return true;
+    }
+
+    private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
+        if (GraalOptions.HotSpotPrintInlining.getValue()) {
+            if (targetMethod.equals(inlinedMethod)) {
+                Util.printInlining(inlinedMethod, bci(), getDepth(), success, "%s", msg);
+            } else {
+                Util.printInlining(inlinedMethod, bci(), getDepth(), success, "%s intrinsic for %s", msg, targetMethod.format("%h.%n(%p)"));
+            }
+        }
     }
 
     /**
