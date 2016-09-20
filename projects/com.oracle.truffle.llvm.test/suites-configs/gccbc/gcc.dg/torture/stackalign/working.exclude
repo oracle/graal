@@ -1,4 +1,3 @@
 gcc.dg/torture/stackalign/alloca-2.c
 gcc.dg/torture/stackalign/alloca-3.c
-gcc.dg/torture/stackalign/push-1.c
 
