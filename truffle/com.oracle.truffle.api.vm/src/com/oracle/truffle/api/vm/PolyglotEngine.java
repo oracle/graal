@@ -354,6 +354,14 @@ public class PolyglotEngine {
          * {@link TruffleLanguage#findExportedSymbol symbols exported by languages itself}. Repeated
          * use of <code>globalSymbol</code> is possible; later definition of the same name overrides
          * the previous one.
+         * <p>
+         * In case one wants to interoperate with Java, one can export any Java classes or objects
+         * when creating the {@link PolyglotEngine} as shown in the following snippet:
+         *
+         * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop}
+         *
+         * The <b>mul</b> and <b>compose</b> objects are then available to any
+         * {@link TruffleLanguage language} implementation.
          *
          * @param name name of the symbol to register
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
@@ -1401,4 +1409,30 @@ class PolyglotEngineSnippets {
         // @formatter:on
         return vm;
     }
+
+    // @formatter:off
+    // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop
+    public static final class Multiplier {
+        public static int mul(int x, int y) {
+            return x * y;
+        }
+    }
+
+    public interface Multiply {
+        int mul(int x, int y);
+    }
+
+    public static PolyglotEngine configureJavaInterop(Multiply multiply) {
+        TruffleObject staticAccess = JavaInterop.asTruffleObject(Multiplier.class);
+        TruffleObject instanceAccess = JavaInterop.asTruffleObject(multiply);
+
+        PolyglotEngine engine = PolyglotEngine.newBuilder().
+            globalSymbol("mul", staticAccess).
+            globalSymbol("compose", instanceAccess).
+            build();
+
+        return engine;
+    }
+    // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop
+    // @formatter:on
 }
