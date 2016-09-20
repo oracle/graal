@@ -186,9 +186,18 @@ public class LLVMArgNode {
 
         public abstract int getIndex();
 
-        @Specialization(rewriteOn = ClassCastException.class)
+        @Specialization(guards = "isAddress(frame)")
         public Object executePointee(VirtualFrame frame) {
+            /*
+             * Copying the address objects prevents that otherwise virtualized objects that are used
+             * in a phi together with a materialized passed address object also have to be
+             * materialized.
+             */
             return ((LLVMAddress) frame.getArguments()[getIndex()]).copy();
+        }
+
+        public boolean isAddress(VirtualFrame frame) {
+            return frame.getArguments()[getIndex()] instanceof LLVMAddress;
         }
 
         @Specialization
