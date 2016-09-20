@@ -835,11 +835,22 @@ public class FlatNodeGenFactory {
                     break;
                 }
             }
+
+            if (!canExecuteChild) {
+                break;
+            }
+            for (TypeGuard checkedGuard : originalGroup.getTypeGuards()) {
+                // we cannot pull out guards that use optimized implicit source types
+                if (resolveOptimizedImplicitSourceTypes(execution, checkedGuard.getType()).size() > 1) {
+                    canExecuteChild = false;
+                    break;
+                }
+            }
             if (!canExecuteChild) {
                 break;
             }
 
-            builder.tree(createFastPathExecuteChild(builder, frameState, currentType, originalGroup, execution));
+            builder.tree(createFastPathExecuteChild(builder, frameState.copy(), frameState, currentType, originalGroup, execution));
             sharedExecutes++;
         }
 
@@ -850,6 +861,7 @@ public class FlatNodeGenFactory {
             addExplodeLoop(builder, originalGroup);
         } else {
             FrameState originalFrameState = frameState.copy();
+
             boolean elseIf = false;
             for (BoxingSplit split : boxingSplits) {
                 elseIf = builder.startIf(elseIf);
@@ -907,15 +919,16 @@ public class FlatNodeGenFactory {
     private CodeTree executeFastPathGroup(final CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData currentType, SpecializationGroup group, int sharedExecutes,
                     List<SpecializationData> allowedSpecializations) {
         CodeTreeBuilder builder = parent.create();
+        FrameState originalFrameState = frameState.copy();
+
         for (NodeExecutionData execution : node.getChildExecutions()) {
             if (execution.getIndex() < sharedExecutes) {
                 // skip shared executes
                 continue;
             }
-            builder.tree(createFastPathExecuteChild(builder, frameState, currentType, group, execution));
+            builder.tree(createFastPathExecuteChild(builder, originalFrameState, frameState, currentType, group, execution));
         }
 
-        FrameState originalFrameState = frameState.copy();
         builder.tree(visitSpecializationGroup(builder, group, currentType, frameState, allowedSpecializations, NodeExecutionMode.FAST_PATH));
         if (group.hasFallthrough()) {
             builder.tree(createTransferToInterpreterAndInvalidate());
@@ -928,7 +941,7 @@ public class FlatNodeGenFactory {
      * It duplicates a group into small subgroups of specializations that don't need boxing when
      * executing the children.
      */
-    private List<BoxingSplit> parameterBoxingElimination(SpecializationGroup group, int sharedExecutes) {
+    private List<BoxingSplit> parameterBoxingElimination(SpecializationGroup group, int evaluatedcount) {
         if (!boxingEliminationEnabled) {
             return Collections.emptyList();
         }
@@ -944,13 +957,15 @@ public class FlatNodeGenFactory {
                 index++;
                 if (!ElementUtils.isPrimitive(p.getType())) {
                     continue;
-                } else if (index < sharedExecutes) {
+                } else if (index < evaluatedcount) {
                     continue;
-                } else if (p.getSpecification().getExecution().getChild().findExecutableType(p.getType()) == null) {
-                    // type cannot be executed so it cannot be eliminated
-                    continue;
+                } else {
+                    NodeChildData child = p.getSpecification().getExecution().getChild();
+                    if (child != null && child.findExecutableType(p.getType()) == null) {
+                        // type cannot be executed so it cannot be eliminated
+                        continue;
+                    }
                 }
-
                 guards.add(new TypeGuard(p.getType(), index));
             }
             if (!guards.isEmpty()) {
@@ -1000,7 +1015,7 @@ public class FlatNodeGenFactory {
         return groups;
     }
 
-    private CodeTree createFastPathExecuteChild(final CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData currentType, SpecializationGroup group,
+    private CodeTree createFastPathExecuteChild(final CodeTreeBuilder parent, FrameState originalFrameState, FrameState frameState, final ExecutableTypeData currentType, SpecializationGroup group,
                     NodeExecutionData execution) {
         CodeTreeBuilder builder = parent.create();
 
@@ -1034,46 +1049,89 @@ public class FlatNodeGenFactory {
             }
             LocalVariable shortCircuit = resolveShortCircuit(null, execution, frameState);
             var = frameState.createValue(execution, targetType).nextName();
-            builder.tree(createAssignExecuteChild(frameState, builder, execution, currentType, var, shortCircuit));
+
+            LocalVariable fallbackVar;
+            List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, targetType);
+            if (sourceTypes.size() > 1) {
+                TypeGuard typeGuard = new TypeGuard(targetType, execution.getIndex());
+                TypeMirror generic = node.getPolymorphicSpecialization().findParameterOrDie(execution).getType();
+                fallbackVar = originalFrameState.createValue(execution, generic);
+
+                // we want to create the check tree in reverse order
+                Collections.reverse(sourceTypes);
+                CodeTree access = var.createReference();
+                int sourceTypeIndex = 0;
+                for (TypeMirror sType : sourceTypes) {
+                    if (ElementUtils.typeEquals(sType, targetType)) {
+                        continue;
+                    }
+                    String localName = createSourceTypeLocalName(var, sType);
+                    builder.declaration(sType, localName, CodeTreeBuilder.createBuilder().defaultValue(sType).build());
+
+                    CodeTreeBuilder accessBuilder = builder.create();
+                    accessBuilder.startParantheses();
+                    accessBuilder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
+                    accessBuilder.string(" ? ");
+                    accessBuilder.string(localName);
+                    accessBuilder.string(" : ");
+                    accessBuilder.tree(access);
+                    accessBuilder.end();
+                    access = accessBuilder.build();
+                    sourceTypeIndex++;
+                }
+                fallbackVar = fallbackVar.accessWith(access);
+            } else {
+                fallbackVar = var;
+            }
+
+            builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, currentType, var, shortCircuit));
             frameState.setValue(execution, var);
+            originalFrameState.setValue(execution, fallbackVar);
         }
         return builder.build();
     }
 
-    private CodeTree createAssignExecuteChild(FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData sourceType, LocalVariable targetValue,
+    private CodeTree createAssignExecuteChild(FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
+                    LocalVariable targetValue,
                     LocalVariable shortCircuit) {
         CodeTreeBuilder builder = parent.create();
-        ChildExecutionResult executeChild = createExecuteChild(builder, frameState, execution, targetValue);
+
+        ChildExecutionResult executeChild = createExecuteChild(builder, originalFrameState, frameState, execution, targetValue);
         builder.tree(createTryExecuteChild(targetValue, executeChild.code, shortCircuit == null, executeChild.throwsUnexpectedResult));
 
         if (shortCircuit != null) {
             frameState.setShortCircuitValue(execution, shortCircuit.accessWith(null));
+            originalFrameState.setShortCircuitValue(execution, shortCircuit.accessWith(null));
         }
 
         builder.end();
         if (executeChild.throwsUnexpectedResult) {
             builder.startCatchBlock(getType(UnexpectedResultException.class), "ex");
-            FrameState slowPathFrameState = frameState.copy();
+            FrameState slowPathFrameState = originalFrameState.copy();
             slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(CodeTreeBuilder.singleString("ex.getResult()")));
 
-            ExecutableTypeData delegateType = node.getGenericExecutableType(sourceType);
+            ExecutableTypeData delegateType = node.getGenericExecutableType(forType);
             boolean found = false;
             for (NodeExecutionData otherExecution : node.getChildExecutions()) {
                 if (found) {
                     LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, genericType);
                     LocalVariable genericShortCircuit = resolveShortCircuit(null, otherExecution, slowPathFrameState);
-                    builder.tree(createAssignExecuteChild(slowPathFrameState, builder, otherExecution, delegateType, childEvaluatedValue, genericShortCircuit));
+                    builder.tree(createAssignExecuteChild(slowPathFrameState.copy(), slowPathFrameState, builder, otherExecution, delegateType, childEvaluatedValue, genericShortCircuit));
                     slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
                 } else {
                     // skip forward already evaluated
                     found = execution == otherExecution;
                 }
             }
-            builder.tree(createCallExecuteAndSpecialize(sourceType, slowPathFrameState));
+            builder.tree(createCallExecuteAndSpecialize(forType, slowPathFrameState));
             builder.end();
         }
 
         return createShortCircuit(targetValue, shortCircuit, builder.build());
+    }
+
+    private static String createSourceTypeLocalName(LocalVariable targetValue, TypeMirror sType) {
+        return targetValue.getName() + ElementUtils.getSimpleName(sType);
     }
 
     private ChildExecutionResult createCallSingleChildExecute(NodeExecutionData execution, LocalVariable target, FrameState frameState, ExecutableTypeData executableType) {
@@ -1084,7 +1142,8 @@ public class FlatNodeGenFactory {
         return new ChildExecutionResult(result, executableType.hasUnexpectedValue(context) || needsCastTo(sourceType, targetType));
     }
 
-    private ChildExecutionResult createExecuteChild(CodeTreeBuilder parent, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
+    private ChildExecutionResult createExecuteChild(CodeTreeBuilder parent, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
+
         ChildExecutionResult result;
         if (!typeSystem.hasImplicitSourceTypes(target.getTypeMirror())) {
             ExecutableTypeData targetExecutable = resolveTargetExecutable(execution, target.typeMirror);
@@ -1094,7 +1153,7 @@ public class FlatNodeGenFactory {
             builder.tree(result.code);
             result.code = builder.build();
         } else {
-            result = createExecuteChildImplicitCast(parent.create(), frameState, execution, target);
+            result = createExecuteChildImplicitCast(parent.create(), originalFrameState, frameState, execution, target);
         }
         return result;
     }
@@ -2368,6 +2427,9 @@ public class FlatNodeGenFactory {
 
     private ExecutableTypeData resolveTargetExecutable(NodeExecutionData execution, TypeMirror target) {
         NodeChildData child = execution.getChild();
+        if (child == null) {
+            return null;
+        }
         ExecutableTypeData targetExecutable = child.findExecutableType(target);
         if (targetExecutable == null) {
             targetExecutable = child.findAnyGenericExecutableType(context);
@@ -2720,40 +2782,60 @@ public class FlatNodeGenFactory {
         return new ExecutableTypeData(node, polymorphicType, "executeAndSpecialize", node.getFrameType(), parameters);
     }
 
-    private ChildExecutionResult createExecuteChildImplicitCast(CodeTreeBuilder parent, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
+    private List<TypeMirror> resolveOptimizedImplicitSourceTypes(NodeExecutionData execution, TypeMirror targetType) {
+        List<TypeMirror> allSourceTypes = typeSystem.lookupSourceTypes(targetType);
+        List<TypeMirror> filteredSourceTypes = new ArrayList<>();
+        for (TypeMirror sourceType : allSourceTypes) {
+
+            ExecutableTypeData executableType = resolveTargetExecutable(execution, sourceType);
+            if (executableType == null) {
+                continue;
+            }
+
+            if (!ElementUtils.isPrimitive(sourceType) || !boxingEliminationEnabled) {
+                // don't optimize non primitives
+                continue;
+            }
+
+            if (!ElementUtils.typeEquals(executableType.getReturnType(), sourceType)) {
+                // no boxing optimization possible
+                continue;
+            }
+
+            filteredSourceTypes.add(sourceType);
+        }
+        return filteredSourceTypes;
+    }
+
+    private ChildExecutionResult createExecuteChildImplicitCast(CodeTreeBuilder parent, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
         CodeTreeBuilder builder = parent.create();
-        List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(target.getTypeMirror());
+        List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, target.getTypeMirror());
         TypeGuard typeGuard = new TypeGuard(target.getTypeMirror(), execution.getIndex());
         boolean throwsUnexpected = false;
         int sourceTypeIndex = 0;
         boolean elseIf = false;
         for (TypeMirror sourceType : sourceTypes) {
             ExecutableTypeData executableType = resolveTargetExecutable(execution, sourceType);
-
-            if (!ElementUtils.isPrimitive(sourceType)) {
-                // don't optimize non primitives
-                continue;
-            }
-
-            if (!ElementUtils.typeEquals(executableType.getReturnType(), sourceType)) {
-                // no boxing optimization required
-                continue;
-            }
-
             elseIf = builder.startIf(elseIf);
             throwsUnexpected |= executableType.hasUnexpectedValue(context);
             builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
             builder.end();
             builder.startBlock();
-            builder.startStatement().string(target.getName()).string(" = ");
-            CodeTree value = expect(executableType.getReturnType(), sourceType, callChildExecuteMethod(execution, executableType, frameState));
+
+            CodeTree value = callChildExecuteMethod(execution, executableType, frameState);
+            value = expect(executableType.getReturnType(), sourceType, value);
+
             throwsUnexpected |= needsCastTo(executableType.getReturnType(), sourceType);
             ImplicitCastData cast = typeSystem.lookupCast(sourceType, target.getTypeMirror());
             if (cast != null) {
-                value = callMethod(null, cast.getMethod(), value);
+                // we need to store the original value to restore it in
+                // case of a deopt
+                String localName = createSourceTypeLocalName(target, sourceType);
+                builder.startStatement().string(localName).string(" = ").tree(value).end();
+                value = callMethod(null, cast.getMethod(), CodeTreeBuilder.singleString(localName));
             }
-            builder.tree(value);
-            builder.end();
+
+            builder.startStatement().string(target.getName()).string(" = ").tree(value).end();
             builder.end();
             sourceTypeIndex++;
         }
@@ -2761,9 +2843,8 @@ public class FlatNodeGenFactory {
         if (elseIf) {
             builder.startElseBlock();
         }
-
         LocalVariable genericValue = target.makeGeneric(context).nextName();
-        builder.tree(createAssignExecuteChild(frameState, builder, execution, node.getGenericExecutableType(null), genericValue, null));
+        builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, node.getGenericExecutableType(null), genericValue, null));
         builder.startStatement().string(target.getName()).string(" = ");
         CodeTree implicitState = state.createExtractInteger(frameState, typeGuard);
         builder.tree(TypeSystemCodeGenerator.implicitExpectFlat(typeSystem, target.getTypeMirror(), genericValue.createReference(), implicitState));

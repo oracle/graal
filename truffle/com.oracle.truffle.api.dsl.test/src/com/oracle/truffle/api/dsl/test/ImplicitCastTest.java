@@ -23,7 +23,6 @@
 package com.oracle.truffle.api.dsl.test;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -41,6 +40,7 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast4NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast5NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
@@ -208,7 +208,24 @@ public class ImplicitCastTest {
         Assert.assertEquals(2, charSequenceCast);
     }
 
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast3Types {
+
+        @ImplicitCast
+        static long castLong(int intValue) {
+            return intValue;
+        }
+
+        @ImplicitCast
+        static long castLong(boolean intValue) {
+            return intValue ? 1 : 0;
+        }
+
+    }
+
     @NodeChild
+    @TypeSystemReference(ImplicitCast3Types.class)
     abstract static class ImplicitCast4Node extends ValueNode {
 
         @Specialization(guards = "value != 1")
@@ -221,7 +238,24 @@ public class ImplicitCastTest {
             return -value;
         }
 
-        public abstract Object executeEvaluated(Object value);
+        protected abstract Object executeEvaluated(Object operand);
+
+    }
+
+    @NodeChildren({@NodeChild, @NodeChild})
+    @TypeSystemReference(ImplicitCast3Types.class)
+    @SuppressWarnings("unused")
+    abstract static class ImplicitCast5Node extends ValueNode {
+
+        @Specialization(guards = "value != 1")
+        public int doInt(int a, int value) {
+            return value;
+        }
+
+        @Specialization(guards = "value != 42")
+        public long doLong(long a, long value) {
+            return -value;
+        }
 
     }
 
@@ -243,12 +277,16 @@ public class ImplicitCastTest {
 
     }
 
-    @Ignore
     @Test
-    public void testDSLPassesOriginalAndNotCastedValueWhenSpecializationFails() {
+    public void testUseUncastedValuesForSlowPath1() {
         ImplicitCast4Node node = ImplicitCast4NodeFactory.create(new Test4Input());
-        TestRootNode<ImplicitCast4Node> root = new TestRootNode<>(node);
-        root.adoptChildren();
+        Assert.assertEquals(-1L, node.execute(null));
+        Assert.assertEquals(42, node.execute(null));
+    }
+
+    @Test
+    public void testUseUncastedValuesForSlowPath2() {
+        ImplicitCast5Node node = ImplicitCast5NodeFactory.create(new Test4Input(), new Test4Input());
         Assert.assertEquals(-1L, node.execute(null));
         Assert.assertEquals(42, node.execute(null));
     }
