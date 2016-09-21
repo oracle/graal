@@ -82,10 +82,11 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public final class LLVMLiteralFactory {
@@ -144,8 +145,8 @@ public final class LLVMLiteralFactory {
                 return new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             case FUNCTION_ADDRESS:
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<undefined function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
-                return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
+                LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<undefined function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
             default:
                 throw new AssertionError(type);
         }
@@ -199,8 +200,8 @@ public final class LLVMLiteralFactory {
             case FUNCTION_ADDRESS:
                 if (stringValue.equals("null")) {
                     LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                    LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
-                    return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
+                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                    return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
                 } else {
                     throw new AssertionError(stringValue);
                 }

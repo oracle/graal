@@ -34,7 +34,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 
 public class LLVMBitcodeParserResult implements LLVMParserResult {
 
@@ -43,12 +43,12 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
     private final RootCallTarget staticDestructors;
     private final List<RootCallTarget> constructorFunctions;
     private final List<RootCallTarget> destructorFunctions;
-    private final Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions;
+    private final Map<LLVMFunction, RootCallTarget> parsedFunctions;
 
     public LLVMBitcodeParserResult(RootCallTarget mainFunction,
                     RootCallTarget staticInits,
                     RootCallTarget staticDestructors,
-                    Map<LLVMFunctionDescriptor, RootCallTarget> parsedFunctions,
+                    Map<LLVMFunction, RootCallTarget> parsedFunctions,
                     List<RootCallTarget> constructorFunctions,
                     List<RootCallTarget> destructorFunctions) {
         this.mainFunction = mainFunction;
@@ -65,7 +65,7 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
     }
 
     @Override
-    public Map<LLVMFunctionDescriptor, RootCallTarget> getParsedFunctions() {
+    public Map<LLVMFunction, RootCallTarget> getParsedFunctions() {
         return parsedFunctions;
     }
 

@@ -83,7 +83,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         public LLVMFunctionDescriptor executeAddress(LLVMAddress addr) {
-            return getFunctionRegistry().createFromIndex(LLVMHeap.getFunctionIndex(addr));
+            return (LLVMFunctionDescriptor) getFunctionRegistry().createFromIndex(LLVMHeap.getFunctionIndex(addr));
         }
     }
 

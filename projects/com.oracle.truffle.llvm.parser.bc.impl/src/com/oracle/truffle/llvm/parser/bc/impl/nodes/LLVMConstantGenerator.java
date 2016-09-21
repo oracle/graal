@@ -114,7 +114,7 @@ public final class LLVMConstantGenerator {
             final LLVMFunctionDescriptor.LLVMRuntimeType[] argTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(type.getArgumentTypes());
 
             final String name = ((ValueSymbol) value).getName();
-            return LLVMFunctionLiteralNodeGen.create(context.getFunctionRegistry().createFunctionDescriptor(name, returnType, argTypes, type.isVarArg()));
+            return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) context.getFunctionRegistry().createFunctionDescriptor(name, returnType, argTypes, type.isVarArg()));
 
         } else if (value instanceof StringConstant) {
             final StringConstant constant = (StringConstant) value;
@@ -409,6 +409,7 @@ public final class LLVMConstantGenerator {
             final LLVMExpressionNode resolvedConstant = toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, typeHelper);
             nodes[i] = createStructWriteNode(resolvedConstant, elementType.getLLVMBaseType(), byteSize);
             currentOffset += byteSize;
+
         }
 
         return new StructLiteralNode(offsets, nodes, allocation);
@@ -470,7 +471,7 @@ public final class LLVMConstantGenerator {
 
         } else if (type instanceof PointerType) {
             if (((PointerType) type).getPointeeType() instanceof FunctionType) {
-                final LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createZeroFunctionDescriptor();
+                final LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) context.getFunctionRegistry().createZeroFunctionDescriptor();
                 return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
             } else {
                 return new LLVMSimpleLiteralNode.LLVMAddressLiteralNode(LLVMAddress.fromLong(0));
@@ -488,7 +489,8 @@ public final class LLVMConstantGenerator {
             return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target, vectorType.getLLVMBaseType());
 
         } else if (type instanceof FunctionType) {
-            final LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMFunctionDescriptor.LLVMRuntimeType.ILLEGAL,
+            final LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) context.getFunctionRegistry().createFunctionDescriptor("<zero function>",
+                            LLVMFunctionDescriptor.LLVMRuntimeType.ILLEGAL,
                             new LLVMFunctionDescriptor.LLVMRuntimeType[0], false);
             return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
 

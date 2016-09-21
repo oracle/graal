@@ -58,7 +58,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 /**
@@ -310,7 +310,7 @@ public interface NodeFactoryFacade {
      */
     RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode);
 
-    LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs);
+    LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs);
 
     Object allocateGlobalVariable(GlobalVariable globalVariable);
 
@@ -324,5 +324,7 @@ public interface NodeFactoryFacade {
     Optional<Boolean> hasStackPointerArgument();
 
     LLVMStackFrameNuller createFrameNuller(String identifier, LLVMType type, FrameSlot slot);
+
+    LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType returnType, boolean varArgs, LLVMRuntimeType[] paramTypes, int functionIndex);
 
 }

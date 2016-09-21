@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMThread;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
@@ -83,7 +84,7 @@ public class LLVMContext extends ExecutionContext {
     }
 
     public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
-        LLVMFunctionDescriptor sameFunction = getFunctionDescriptor(function);
+        LLVMFunction sameFunction = getFunctionDescriptor(function);
         return getNativeLookup().getNativeHandle(sameFunction, args);
     }
 
@@ -96,9 +97,9 @@ public class LLVMContext extends ExecutionContext {
      * needs the return type of the function, we here have to look up the complete function
      * descriptor.
      */
-    private LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionDescriptor incompleteFunctionDescriptor) {
+    private LLVMFunction getFunctionDescriptor(LLVMFunctionDescriptor incompleteFunctionDescriptor) {
         int validFunctionIndex = incompleteFunctionDescriptor.getFunctionIndex();
-        LLVMFunctionDescriptor[] completeFunctionDescriptors = functionRegistry.getFunctionDescriptors();
+        LLVMFunction[] completeFunctionDescriptors = functionRegistry.getFunctionDescriptors();
         return completeFunctionDescriptors[validFunctionIndex];
     }
 
@@ -114,7 +115,7 @@ public class LLVMContext extends ExecutionContext {
         return getNativeLookup().getNativeHandle(functionName);
     }
 
-    public Map<LLVMFunctionDescriptor, Integer> getNativeFunctionLookupStats() {
+    public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
         return getNativeLookup().getNativeFunctionLookupStats();
     }
 

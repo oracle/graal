@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 
 public final class LLVMTruffleOnlyIntrinsics {
 
@@ -58,7 +58,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         protected final NativeFunctionHandle handle;
 
-        public LLVMTruffleOnlyI64Intrinsic(LLVMFunctionDescriptor descriptor) {
+        public LLVMTruffleOnlyI64Intrinsic(LLVMFunction descriptor) {
             handle = NativeLookup.getNFI().getFunctionHandle(descriptor.getName().substring(1), getReturnValueClass(), getParameterClasses());
         }
 
@@ -73,7 +73,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         protected final NativeFunctionHandle handle;
 
-        public LLVMTruffleOnlyI32Intrinsic(LLVMFunctionDescriptor descriptor) {
+        public LLVMTruffleOnlyI32Intrinsic(LLVMFunction descriptor) {
             handle = NativeLookup.getNFI().getFunctionHandle(descriptor.getName().substring(1), getReturnValueClass(), getParameterClasses());
         }
 
@@ -87,7 +87,7 @@ public final class LLVMTruffleOnlyIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMStrlen extends LLVMTruffleOnlyI64Intrinsic {
 
-        public LLVMStrlen(LLVMFunctionDescriptor descriptor) {
+        public LLVMStrlen(LLVMFunction descriptor) {
             super(descriptor);
         }
 
@@ -128,7 +128,7 @@ public final class LLVMTruffleOnlyIntrinsics {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMStrCmp extends LLVMTruffleOnlyI32Intrinsic {
 
-        public LLVMStrCmp(LLVMFunctionDescriptor descriptor) {
+        public LLVMStrCmp(LLVMFunction descriptor) {
             super(descriptor);
         }
 

@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 public class NativeLookup {
@@ -61,9 +61,9 @@ public class NativeLookup {
 
     private List<NativeLibraryHandle> libraryHandles;
 
-    private final Map<LLVMFunctionDescriptor, Integer> nativeFunctionLookupStats;
+    private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
 
-    private final Map<LLVMFunctionDescriptor, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
+    private final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
 
     private final NodeFactoryFacade facade;
 
@@ -153,7 +153,7 @@ public class NativeLookup {
         return lookupSymbol(name.substring(1));
     }
 
-    public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
+    public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMExpressionNode[] args) {
         CompilerAsserts.neverPartOfCompilation();
         if (cachedNativeFunctions.containsKey(function)) {
             return cachedNativeFunctions.get(function);
@@ -167,7 +167,7 @@ public class NativeLookup {
         }
     }
 
-    private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
+    private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunction function, LLVMExpressionNode[] args) {
         Class<?> retType = getJavaClass(function.getReturnType());
         Class<?>[] paramTypes = getJavaClassses(args);
         String functionName = function.getName().substring(1);
@@ -186,7 +186,7 @@ public class NativeLookup {
         return functionHandle;
     }
 
-    private void recordNativeFunctionCallSite(LLVMFunctionDescriptor function) {
+    private void recordNativeFunctionCallSite(LLVMFunction function) {
         CompilerAsserts.neverPartOfCompilation();
         Integer val = nativeFunctionLookupStats.get(function);
         int newVal;
@@ -245,7 +245,7 @@ public class NativeLookup {
         }
     }
 
-    public Map<LLVMFunctionDescriptor, Integer> getNativeFunctionLookupStats() {
+    public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
         return nativeFunctionLookupStats;
     }
 

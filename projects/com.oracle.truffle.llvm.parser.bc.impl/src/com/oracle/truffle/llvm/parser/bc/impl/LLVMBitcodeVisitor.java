@@ -75,7 +75,7 @@ import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
@@ -120,7 +120,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         model.accept(module);
 
-        LLVMFunctionDescriptor mainFunction = module.getFunction("@main");
+        LLVMFunction mainFunction = module.getFunction("@main");
 
         FrameDescriptor frame = new FrameDescriptor();
         FrameSlot stack = frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
@@ -159,7 +159,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final Map<GlobalAlias, Symbol> aliases = new HashMap<>();
 
-    private final Map<LLVMFunctionDescriptor, RootCallTarget> functions = new HashMap<>();
+    private final Map<LLVMFunction, RootCallTarget> functions = new HashMap<>();
 
     private final Map<GlobalValueSymbol, LLVMAddressNode> globals = new HashMap<>();
 
@@ -273,8 +273,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return deallocations.toArray(new LLVMNode[deallocations.size()]);
     }
 
-    public LLVMFunctionDescriptor getFunction(String name) {
-        for (LLVMFunctionDescriptor function : functions.keySet()) {
+    public LLVMFunction getFunction(String name) {
+        for (LLVMFunction function : functions.keySet()) {
             if (function.getName().equals(name)) {
                 return function;
             }
@@ -282,7 +282,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return null;
     }
 
-    public Map<LLVMFunctionDescriptor, RootCallTarget> getFunctions() {
+    public Map<LLVMFunction, RootCallTarget> getFunctions() {
         return functions;
     }
 
@@ -432,7 +432,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMRuntimeType llvmReturnType = LLVMBitcodeTypeHelper.toRuntimeType(method.getReturnType());
         LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(method.getArgumentTypes());
-        LLVMFunctionDescriptor function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
+        LLVMFunction function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         functions.put(function, callTarget);
     }
