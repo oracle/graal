@@ -72,15 +72,16 @@ public class HotSpotConstantFieldProvider implements ConstantFieldProvider {
                 }
             }
         } else {
+            if (isStableField(hotspotField) && config.foldStableValues) {
+                JavaConstant value = tool.readValue();
+                if (isStableInstanceFieldValueConstant(value, tool.getReceiver())) {
+                    return tool.foldStableArray(value, getArrayDimension(hotspotField.getType()), isDefaultStableField(hotspotField));
+                }
+            }
             if (hotspotField.isFinal()) {
                 JavaConstant value = tool.readValue();
                 if (isFinalInstanceFieldValueConstant(value, tool.getReceiver())) {
                     return tool.foldConstant(value);
-                }
-            } else if (hotspotField.isStable() && config.foldStableValues) {
-                JavaConstant value = tool.readValue();
-                if (isStableInstanceFieldValueConstant(value, tool.getReceiver())) {
-                    return tool.foldStableArray(value, getArrayDimension(hotspotField.getType()), isDefaultStableField(hotspotField));
                 }
             }
         }
