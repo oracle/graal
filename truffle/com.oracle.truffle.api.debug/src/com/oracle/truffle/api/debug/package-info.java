@@ -51,6 +51,9 @@
  * step into, step out or step over the next statements. For a usage example please refer to
  * {@link com.oracle.truffle.api.debug.DebuggerSession} and
  * {@link com.oracle.truffle.api.debug.Breakpoint}.
+ * <p>
+ * There is also a <a href="doc-files/faq-using.html">list of FAQs</a> that may provide useful hints
+ * when writing your own Truffle debugger frontend.
  *
  * <h4>Enable Debugging for your Truffle guest language</h4>
  *

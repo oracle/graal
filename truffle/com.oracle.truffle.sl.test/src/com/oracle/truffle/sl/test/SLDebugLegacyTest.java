@@ -69,7 +69,6 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -191,7 +190,7 @@ public class SLDebugLegacyTest {
                 try {
                     assertNull(suspendedEvent);
                     assertNotNull(executionEvent);
-                    LineLocation nMinusOne = factorial.createLineLocation(8);
+                    com.oracle.truffle.api.source.LineLocation nMinusOne = factorial.createLineLocation(8);
                     debugger.setLineBreakpoint(0, nMinusOne, false);
                     executionEvent.prepareContinue();
                 } catch (IOException e) {

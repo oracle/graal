@@ -86,6 +86,16 @@ import java.lang.reflect.Modifier;
  * execute} ones. The real semantic however depends on the actual language one is communicating
  * with.
  * <p>
+ * <h3>Setting the Java Interop Up</h3> When configuring your
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine} you can use
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol} method to create references
+ * to classes with static methods and fields or instance methods or fields as shown in following
+ * example:
+ *
+ * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop}
+ *
+ * After that objects <b>mul</b> and <b>compose</b> are available for import from any
+ * {@link TruffleLanguage Truffe language}.
  * 
  * @since 0.9
  */

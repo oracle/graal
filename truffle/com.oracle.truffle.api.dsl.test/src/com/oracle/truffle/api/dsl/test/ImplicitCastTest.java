@@ -25,18 +25,25 @@ package com.oracle.truffle.api.dsl.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast4NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast5NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -201,6 +208,89 @@ public class ImplicitCastTest {
         Assert.assertEquals(2, charSequenceCast);
     }
 
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast3Types {
+
+        @ImplicitCast
+        static long castLong(int intValue) {
+            return intValue;
+        }
+
+        @ImplicitCast
+        static long castLong(boolean intValue) {
+            return intValue ? 1 : 0;
+        }
+
+    }
+
+    @NodeChild
+    @TypeSystemReference(ImplicitCast3Types.class)
+    abstract static class ImplicitCast4Node extends ValueNode {
+
+        @Specialization(guards = "value != 1")
+        public int doInt(int value) {
+            return value;
+        }
+
+        @Specialization(guards = "value != 42")
+        public long doLong(long value) {
+            return -value;
+        }
+
+        protected abstract Object executeEvaluated(Object operand);
+
+    }
+
+    @NodeChildren({@NodeChild, @NodeChild})
+    @TypeSystemReference(ImplicitCast3Types.class)
+    @SuppressWarnings("unused")
+    abstract static class ImplicitCast5Node extends ValueNode {
+
+        @Specialization(guards = "value != 1")
+        public int doInt(int a, int value) {
+            return value;
+        }
+
+        @Specialization(guards = "value != 42")
+        public long doLong(long a, long value) {
+            return -value;
+        }
+
+    }
+
+    static class Test4Input extends ValueNode {
+
+        int n = 0;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            n++;
+            if (n == 1) {
+                return 1;
+            } else if (n == 2) {
+                return 42;
+            } else {
+                throw new AssertionError();
+            }
+        }
+
+    }
+
+    @Test
+    public void testUseUncastedValuesForSlowPath1() {
+        ImplicitCast4Node node = ImplicitCast4NodeFactory.create(new Test4Input());
+        Assert.assertEquals(-1L, node.execute(null));
+        Assert.assertEquals(42, node.execute(null));
+    }
+
+    @Test
+    public void testUseUncastedValuesForSlowPath2() {
+        ImplicitCast5Node node = ImplicitCast5NodeFactory.create(new Test4Input(), new Test4Input());
+        Assert.assertEquals(-1L, node.execute(null));
+        Assert.assertEquals(42, node.execute(null));
+    }
+
     @TypeSystem({String.class, boolean.class})
     static class ImplicitCastError1 {
 
@@ -223,4 +313,89 @@ public class ImplicitCastTest {
 
     }
 
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast2Types {
+        @ImplicitCast
+        static String castString(CharSequence str) {
+            return str.toString();
+        }
+    }
+
+    @Test
+    public void testStringEquals1() {
+        StringEquals1Node node = StringEquals1NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo", "foo"));
+        Assert.assertFalse(node.executeBoolean("foo", "bar"));
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEquals1Node extends Node {
+        protected abstract boolean executeBoolean(String arg1, String arg2);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)", "cachedArg2.equals(arg2)"}, limit = "1")
+        protected static boolean doCached(String arg1, String arg2,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg2") String cachedArg2,
+                        @Cached("arg1.equals(arg2)") boolean result) {
+            return result;
+        }
+
+        @Specialization
+        protected static boolean doUncached(String arg1, String arg2) {
+            return arg1.equals(arg2);
+        }
+    }
+
+    @Test
+    public void testStringEquals2() {
+        StringEquals2Node node = StringEquals2NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo", "foo"));
+        Assert.assertFalse(node.executeBoolean("foo", "bar"));
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEquals2Node extends Node {
+        protected abstract boolean executeBoolean(CharSequence arg1, CharSequence arg2);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)", "cachedArg2.equals(arg2)"}, limit = "2")
+        protected static boolean doCached(String arg1, String arg2,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg2") String cachedArg2,
+                        @Cached("arg1.equals(arg2)") boolean result) {
+            return result;
+        }
+
+        @Specialization
+        protected static boolean doUncached(String arg1, String arg2) {
+            return arg1.equals(arg2);
+        }
+    }
+
+    @Test
+    public void testStringEquals3() {
+        StringEquals3Node node = StringEquals3NodeGen.create();
+        Assert.assertTrue(node.executeBoolean("foo"));
+        try {
+            Assert.assertTrue(node.executeBoolean("bar"));
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
+    }
+
+    @TypeSystemReference(ImplicitCast2Types.class)
+    abstract static class StringEquals3Node extends Node {
+        protected abstract boolean executeBoolean(CharSequence arg1);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedArg1.equals(arg1)"}, limit = "1")
+        protected static boolean doCached(String arg1,
+                        @Cached("arg1") String cachedArg1,
+                        @Cached("arg1.equals(arg1)") boolean result) {
+            return result;
+        }
+
+    }
 }

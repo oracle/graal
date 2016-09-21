@@ -88,6 +88,8 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
  * context. Therefore, the context is not a singleton.
  */
 public final class SLContext extends ExecutionContext {
+
+    private static final Source BUILTIN_SOURCE = Source.newBuilder("").name("SL builtin").mimeType(SLLanguage.MIME_TYPE).build();
     private static final Layout LAYOUT = Layout.createLayout();
 
     private final BufferedReader input;
@@ -170,7 +172,7 @@ public final class SLContext extends ExecutionContext {
         builtinBodyNode.addRootTag();
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
-        final SourceSection srcSection = SourceSection.createUnavailable("SL builtin", name);
+        final SourceSection srcSection = BUILTIN_SOURCE.createUnavailableSection();
         builtinBodyNode.setSourceSection(srcSection);
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */

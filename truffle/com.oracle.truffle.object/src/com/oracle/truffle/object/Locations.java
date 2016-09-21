@@ -113,6 +113,12 @@ public abstract class Locations {
         @Override
         public final void accept(LocationVisitor locationVisitor) {
         }
+
+        /** @since 0.18 */
+        @Override
+        public final boolean isValue() {
+            return true;
+        }
     }
 
     /** @since 0.17 or earlier */
@@ -136,6 +142,12 @@ public abstract class Locations {
         /** @since 0.17 or earlier */
         public DeclaredLocation(Object value) {
             super(value);
+        }
+
+        /** @since 0.18 */
+        @Override
+        public boolean isDeclared() {
+            return true;
         }
     }
 }

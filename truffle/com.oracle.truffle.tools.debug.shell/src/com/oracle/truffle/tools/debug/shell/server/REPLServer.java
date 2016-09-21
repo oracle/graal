@@ -48,7 +48,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -531,7 +530,7 @@ public final class REPLServer {
         return language.getMimeTypes().iterator().next();
     }
 
-    BreakpointInfo setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
+    BreakpointInfo setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
         final BreakpointInfo info = new LineBreakpointInfo(lineLocation, ignoreCount, oneShot);
         info.activate();
         return info;
@@ -560,9 +559,9 @@ public final class REPLServer {
 
     final class LineBreakpointInfo extends BreakpointInfo {
 
-        private final LineLocation lineLocation;
+        private final com.oracle.truffle.api.source.LineLocation lineLocation;
 
-        private LineBreakpointInfo(LineLocation lineLocation, int ignoreCount, boolean oneShot) {
+        private LineBreakpointInfo(com.oracle.truffle.api.source.LineLocation lineLocation, int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
             this.lineLocation = lineLocation;
         }

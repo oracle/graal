@@ -39,7 +39,7 @@ suite = {
       }
     },
   },
-  "snippetsPattern" : ".*Snippets.*",
+  "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
 
     # ------------- Truffle -------------

@@ -104,7 +104,7 @@ public class SLException extends RuntimeException {
                 String sourceName = source != null ? source.getName() : null;
                 int lineNumber;
                 try {
-                    lineNumber = sourceSection != null ? sourceSection.getLineLocation().getLineNumber() : -1;
+                    lineNumber = sourceSection != null ? sourceSection.getStartLine() : -1;
                 } catch (UnsupportedOperationException e) {
                     /*
                      * SourceSection#getLineLocation() may throw an UnsupportedOperationException.

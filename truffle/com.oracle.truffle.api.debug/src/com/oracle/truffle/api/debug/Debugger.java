@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -209,9 +208,10 @@ public final class Debugger {
      *             instead. You can install a breakpoint with
      *             {@link DebuggerSession#install(Breakpoint)}.
      */
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     @Deprecated
-    public Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
+    public Breakpoint setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
         return setLineBreakpointImpl(ignoreCount, lineLocation.getSource(), lineLocation.getLineNumber(), oneShot);
     }
 

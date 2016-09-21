@@ -103,7 +103,7 @@ public class SLDebugTest {
 
     protected SuspendedEvent checkState(SuspendedEvent suspendedEvent, String name, final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode,
                     final String... expectedFrame) {
-        final int actualLineNumber = suspendedEvent.getSourceSection().getLineLocation().getLineNumber();
+        final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
         final String actualCode = suspendedEvent.getSourceSection().getCode();
         Assert.assertEquals(expectedCode, actualCode);

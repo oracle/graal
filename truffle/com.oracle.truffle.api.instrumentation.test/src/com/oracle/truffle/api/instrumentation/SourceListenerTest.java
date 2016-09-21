@@ -185,12 +185,13 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                 env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(1, 2)).build(), dummySourceListener, true);
             } catch (IllegalArgumentException e) {
             }
+            SourceSection unavailable = Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
             try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().sourceSectionEquals(SourceSection.createUnavailable(null, null)).build(), dummySourceListener, true);
+                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().sourceSectionEquals(unavailable).build(), dummySourceListener, true);
             } catch (IllegalArgumentException e) {
             }
             try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().rootSourceSectionEquals(SourceSection.createUnavailable(null, null)).build(), dummySourceListener,
+                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().rootSourceSectionEquals(unavailable).build(), dummySourceListener,
                                 true);
             } catch (IllegalArgumentException e) {
             }

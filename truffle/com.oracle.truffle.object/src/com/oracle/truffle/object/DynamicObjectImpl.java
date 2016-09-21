@@ -77,6 +77,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     public final void setShapeAndResize(Shape oldShape, Shape newShape) {
         assert getShape() == oldShape : "wrong old shape";
+        assert !oldShape.isShared();
         if (oldShape != newShape) {
             setShape(newShape);
             resizeStore(oldShape, newShape);
@@ -149,7 +150,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     /**
      * Check whether the extension arrays are in accordance with the description in the shape.
-     * 
+     *
      * @since 0.17 or earlier
      */
     protected abstract boolean checkExtensionArrayInvariants(Shape newShape);
@@ -177,6 +178,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         assert toShape.isRelated(ancestor);
         assert toShape.isValid();
         assert ancestor.isValid();
+        assert !fromShape.isShared();
         PropertyMap ancestorMap = ((ShapeImpl) ancestor).getPropertyMap();
         PropertyMap fromMap = fromShape.getPropertyMap();
         for (PropertyMap toMap = toShape.getPropertyMap(); !toMap.isEmpty() && toMap != ancestorMap; toMap = toMap.getParentMap()) {
@@ -270,7 +272,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public void define(Object key, Object value, int flags) {
-        define(key, value, flags, LayoutStrategy.DEFAULT_LAYOUT_FACTORY);
+        define(key, value, flags, getShape().getLayout().getStrategy().getDefaultLocationFactory());
     }
 
     /** @since 0.17 or earlier */
