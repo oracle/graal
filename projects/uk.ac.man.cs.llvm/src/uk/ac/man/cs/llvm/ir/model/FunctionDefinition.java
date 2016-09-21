@@ -68,7 +68,7 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     private String name = ValueSymbol.UNKNOWN;
 
-    private final MetadataBlock metadata;
+    private MetadataBlock metadata;
 
     public FunctionDefinition(FunctionType type, MetadataBlock metadata) {
         super(type.getReturnType(), type.getArgumentTypes(), type.isVarArg());
@@ -83,6 +83,9 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     @Override
     public void allocateBlocks(int count) {
+        // we don't want do add function specific metadata to the global scope
+        metadata = new MetadataBlock(metadata);
+
         blocks = new InstructionBlock[count];
         for (int i = 0; i < count; i++) {
             blocks[i] = new InstructionBlock(this, i);

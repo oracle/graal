@@ -85,17 +85,14 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 public final class LLVMMetadata implements ModelVisitor {
 
     public static LLVMMetadata generate(Model model) {
-        LLVMMetadata visitor = new LLVMMetadata(model.createModule().getMetadata());
+        LLVMMetadata visitor = new LLVMMetadata();
 
         model.accept(visitor);
 
         return visitor;
     }
 
-    private final MetadataBlock metadata;
-
-    private LLVMMetadata(MetadataBlock metadata) {
-        this.metadata = metadata;
+    private LLVMMetadata() {
     }
 
     @Override
@@ -116,7 +113,7 @@ public final class LLVMMetadata implements ModelVisitor {
 
     @Override
     public void visit(FunctionDefinition function) {
-        LLVMMetadataFunctionVisitor visitor = new LLVMMetadataFunctionVisitor(metadata);
+        LLVMMetadataFunctionVisitor visitor = new LLVMMetadataFunctionVisitor(function.getMetadata());
 
         function.accept(visitor);
     }
@@ -147,12 +144,11 @@ public final class LLVMMetadata implements ModelVisitor {
         /*
          * TODO: metadata seems to be misalign by 8
          *
-         * I don't know why, but there is a little misalign between calculted and real metadata id.
+         * I don't know why, but there is a little misalign between calculated and real metadata id.
          * This has to be solved in the future!
          *
-         * Possible issues could probably arrive when there are changes in the number of MDKinds or
-         * when using multiple functions (because it look like we should create an copy of Metadata
-         * for every function block)
+         * Possible issues could probably arrive when there are changes in the number of MDKinds.
+         * This has to be evaluated in the future
          */
         private static final int SYMBOL_MISALIGN = 8;
 
