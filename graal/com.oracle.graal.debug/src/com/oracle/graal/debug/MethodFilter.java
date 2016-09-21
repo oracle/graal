@@ -196,7 +196,34 @@ public class MethodFilter {
             return false;
         }
         if (signature != null) {
-            Signature sig = o.getSignature();
+            return matchSignature(o.getSignature());
+        }
+        return true;
+    }
+
+    private boolean matchSignature(Signature sig) {
+        if (sig.getParameterCount(false) != signature.length) {
+            return false;
+        }
+        for (int i = 0; i < signature.length; i++) {
+            JavaType type = sig.getParameterType(i, null);
+            String javaName = type.toJavaName();
+            if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean matches(String javaClassName, String name, Signature sig) {
+        // check method name first, since MetaUtil.toJavaName is expensive
+        if (methodName != null && !methodName.matcher(name).matches()) {
+            return false;
+        }
+        if (clazz != null && !clazz.matcher(javaClassName).matches()) {
+            return false;
+        }
+        if (signature != null) {
             if (sig.getParameterCount(false) != signature.length) {
                 return false;
             }
