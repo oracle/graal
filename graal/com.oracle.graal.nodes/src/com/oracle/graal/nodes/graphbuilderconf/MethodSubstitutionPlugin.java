@@ -30,6 +30,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.ValueNode;
 
@@ -68,34 +69,24 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
 
     private final boolean originalIsStatic;
 
+    private final BytecodeProvider bytecodeProvider;
+
     /**
      * Creates a method substitution plugin.
      *
+     * @param bytecodeProvider used to get the bytecodes to parse for the substitute method
      * @param declaringClass the class in which the substitute method is declared
      * @param name the name of the substitute method
      * @param parameters the parameter types of the substitute method. If the original method is not
      *            static, then {@code parameters[0]} must be the {@link Class} value denoting
      *            {@link InvocationPlugin.Receiver}
      */
-    public MethodSubstitutionPlugin(Class<?> declaringClass, String name, Type... parameters) {
+    public MethodSubstitutionPlugin(BytecodeProvider bytecodeProvider, Class<?> declaringClass, String name, Type... parameters) {
+        this.bytecodeProvider = bytecodeProvider;
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
         this.originalIsStatic = parameters.length == 0 || parameters[0] != InvocationPlugin.Receiver.class;
-    }
-
-    /**
-     * Creates a method substitution plugin.
-     *
-     * @param declaringClass the class in which the substitute method is declared
-     * @param name the name of the substitute method
-     * @param parameters the parameter types of the substitute method
-     */
-    public MethodSubstitutionPlugin(boolean originalIsStatic, Class<?> declaringClass, String name, Type... parameters) {
-        this.declaringClass = declaringClass;
-        this.name = name;
-        this.parameters = parameters;
-        this.originalIsStatic = originalIsStatic;
     }
 
     @Override
@@ -169,7 +160,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     @Override
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
         ResolvedJavaMethod subst = getSubstitute(b.getMetaAccess());
-        return b.intrinsify(targetMethod, subst, receiver, argsIncludingReceiver);
+        return b.intrinsify(bytecodeProvider, targetMethod, subst, receiver, argsIncludingReceiver);
     }
 
     @Override

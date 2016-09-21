@@ -315,9 +315,11 @@ public class GraphKit implements GraphBuilderTool {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
-        IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.NONE,
-                        initialReplacementContext).apply(calleeGraph);
+        IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
+        GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
+                        OptimisticOptimizations.NONE,
+                        initialReplacementContext);
+        instance.apply(calleeGraph);
 
         // Remove all frame states from inlinee
         calleeGraph.clearAllStateAfter();

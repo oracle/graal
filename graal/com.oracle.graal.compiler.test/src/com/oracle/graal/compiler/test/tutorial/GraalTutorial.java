@@ -25,7 +25,9 @@ package com.oracle.graal.compiler.test.tutorial;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeDisassembler;
+import com.oracle.graal.bytecode.DefaultBytecode;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
@@ -49,11 +51,12 @@ public class GraalTutorial extends InvokeGraal {
     @Test
     public void testPrintBytecodes() {
         ResolvedJavaMethod method = findMethod(String.class, "hashCode");
+        Bytecode bytecode = new DefaultBytecode(method);
 
-        byte[] bytecodes = method.getCode();
+        byte[] bytecodes = bytecode.getCode();
         Assert.assertNotNull(bytecodes);
 
-        System.out.println(new BytecodeDisassembler().disassemble(method));
+        System.out.println(new BytecodeDisassembler().disassemble(bytecode));
     }
 
     /*

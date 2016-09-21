@@ -246,6 +246,7 @@ import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -257,10 +258,13 @@ import java.util.Map;
 
 import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
+import com.oracle.graal.bytecode.BytecodeProvider;
+import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
+import com.oracle.graal.bytecode.DefaultBytecode;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -408,7 +412,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -584,8 +587,10 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private int lastBCI; // BCI of lastInstr. This field is for resolving instrumentation target.
 
-    protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                    IntrinsicContext intrinsicContext) {
+    protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
+                    int entryBCI, IntrinsicContext intrinsicContext) {
+        this.code = intrinsicContext == null ? new DefaultBytecode(method) : intrinsicContext.getBytecodeProvider().getBytecode(method);
+        this.method = code.getMethod();
         this.graphBuilderInstance = graphBuilderInstance;
         this.graph = graph;
         this.graphBuilderConfig = graphBuilderInstance.graphBuilderConfig;
@@ -594,19 +599,18 @@ public class BytecodeParser implements GraphBuilderContext {
         this.stampProvider = graphBuilderInstance.stampProvider;
         this.constantReflection = graphBuilderInstance.constantReflection;
         this.constantFieldProvider = graphBuilderInstance.constantFieldProvider;
-        this.stream = new BytecodeStream(method.getCode());
-        this.profilingInfo = graph.useProfilingInfo() ? method.getProfilingInfo() : null;
-        this.constantPool = method.getConstantPool();
-        this.method = method;
+        this.stream = new BytecodeStream(code.getCode());
+        this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
+        this.constantPool = code.getConstantPool();
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
         this.parent = parent;
         this.lastBCI = -1;
 
-        assert method.getCode() != null : "method must contain bytecodes: " + method;
+        assert code.getCode() != null : "method must contain bytecodes: " + method;
 
         if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
-            lnt = method.getLineNumberTable();
+            lnt = code.getLineNumberTable();
             previousLineNumber = -1;
         }
     }
@@ -633,7 +637,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     @SuppressWarnings("try")
     protected void buildRootMethod() {
-        FrameStateBuilder startFrameState = new FrameStateBuilder(this, method, graph);
+        FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph);
         startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins());
 
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
@@ -654,7 +658,7 @@ public class BytecodeParser implements GraphBuilderContext {
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
             // compute the block map, setup exception handlers and get the entrypoint(s)
-            BciBlockMapping newMapping = BciBlockMapping.create(stream, method);
+            BciBlockMapping newMapping = BciBlockMapping.create(stream, code);
             this.blockMap = newMapping;
             this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
             this.entryStateArray = new FrameStateBuilder[blockMap.getBlockCount()];
@@ -860,7 +864,7 @@ public class BytecodeParser implements GraphBuilderContext {
             int stackSize = 0;
             ValueNode[] locks = {};
             List<MonitorIdNode> monitorIds = Collections.emptyList();
-            stateAfterStart = graph.add(new FrameState(null, original, 0, locals, stack, stackSize, locks, monitorIds, false, false));
+            stateAfterStart = graph.add(new FrameState(null, new DefaultBytecode(original), 0, locals, stack, stackSize, locks, monitorIds, false, false));
         }
         return stateAfterStart;
     }
@@ -1309,6 +1313,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected final BytecodeStream stream;
     protected final GraphBuilderConfiguration graphBuilderConfig;
     protected final ResolvedJavaMethod method;
+    protected final Bytecode code;
     protected final ProfilingInfo profilingInfo;
     protected final OptimisticOptimizations optimisticOpts;
     protected final ConstantPool constantPool;
@@ -1538,7 +1543,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return false;
     }
 
-    private static final InlineInfo SUCCESSFULLY_INLINED = new InlineInfo(null, false);
+    private static final InlineInfo SUCCESSFULLY_INLINED = InlineInfo.createStandardInlineInfo(null);
 
     /**
      * Try to inline a method. If the method was inlined, returns {@link #SUCCESSFULLY_INLINED}.
@@ -1552,7 +1557,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         if (forceInliningEverything) {
-            if (inline(targetMethod, targetMethod, false, args)) {
+            if (inline(targetMethod, targetMethod, null, args)) {
                 return SUCCESSFULLY_INLINED;
             } else {
                 return null;
@@ -1563,7 +1568,7 @@ public class BytecodeParser implements GraphBuilderContext {
             InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args);
             if (inlineInfo != null) {
                 if (inlineInfo.getMethodToInline() != null) {
-                    if (inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.isIntrinsic(), args)) {
+                    if (inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.getIntrinsicBytecodeProvider(), args)) {
                         return SUCCESSFULLY_INLINED;
                     }
                 }
@@ -1575,16 +1580,16 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+    public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         if (receiver != null) {
             receiver.get();
         }
-        boolean res = inline(targetMethod, substitute, true, args);
+        boolean res = inline(targetMethod, substitute, bytecodeProvider, args);
         assert res : "failed to inline " + substitute;
         return res;
     }
 
-    private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isIntrinsic, ValueNode[] args) {
+    private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {
         if (TraceInlineDuringParsing.getValue() || TraceParserPlugins.getValue()) {
             if (targetMethod.equals(inlinedMethod)) {
                 traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
@@ -1615,9 +1620,10 @@ public class BytecodeParser implements GraphBuilderContext {
                 return true;
             }
         } else {
+            boolean isIntrinsic = intrinsicBytecodeProvider != null;
             if (intrinsic == null && isIntrinsic) {
                 assert !inlinedMethod.equals(targetMethod);
-                intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, INLINE_DURING_PARSING);
+                intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING);
             }
             if (inlinedMethod.hasBytecodes()) {
                 for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
@@ -1661,7 +1667,7 @@ public class BytecodeParser implements GraphBuilderContext {
      */
 
     protected void traceWithContext(String format, Object... args) {
-        StackTraceElement where = method.asStackTraceElement(bci());
+        StackTraceElement where = code.asStackTraceElement(bci());
         TTY.println(format("%s%s (%s:%d) %s", nSpaces(getDepth()), method.isConstructor() ? method.format("%h.%n") : method.getName(), where.getFileName(), where.getLineNumber(),
                         format(format, args)));
     }
@@ -1673,7 +1679,7 @@ public class BytecodeParser implements GraphBuilderContext {
         BytecodeParser bp = this;
         BytecodeParserError res = new BytecodeParserError(e);
         while (bp != null) {
-            res.addContext("parsing " + bp.method.asStackTraceElement(bp.bci()));
+            res.addContext("parsing " + bp.code.asStackTraceElement(bp.bci()));
             bp = bp.parent;
         }
         return res;
@@ -1683,8 +1689,8 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
         try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
 
-            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
-            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, targetMethod, graph);
+            BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
+            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph);
             if (!targetMethod.isStatic()) {
                 args[0] = nullCheckedValue(args[0]);
             }
@@ -2708,8 +2714,8 @@ public class BytecodeParser implements GraphBuilderContext {
             if (bp != this) {
                 fmt.format("%n%s", indent);
             }
-            fmt.format("%s [bci: %d, intrinsic: %s]", bp.method.asStackTraceElement(bp.bci()), bp.bci(), bp.parsingIntrinsic());
-            fmt.format("%n%s", new BytecodeDisassembler().disassemble(bp.method, bp.bci(), bp.bci() + 10));
+            fmt.format("%s [bci: %d, intrinsic: %s]", bp.code.asStackTraceElement(bp.bci()), bp.bci(), bp.parsingIntrinsic());
+            fmt.format("%n%s", new BytecodeDisassembler().disassemble(bp.code, bp.bci(), bp.bci() + 10));
             bp = bp.parent;
             indent += " ";
         }
@@ -3446,7 +3452,7 @@ public class BytecodeParser implements GraphBuilderContext {
         double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             assert probability == -1 : "invalid probability";
-            Debug.log("missing probability in %s at bci %d", method, bci());
+            Debug.log("missing probability in %s at bci %d", code, bci());
             probability = 0.5;
         }
 
@@ -3707,6 +3713,11 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public ResolvedJavaMethod getMethod() {
         return method;
+    }
+
+    @Override
+    public Bytecode getCode() {
+        return code;
     }
 
     public FrameStateBuilder getFrameStateBuilder() {

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 
@@ -88,6 +89,11 @@ public interface Replacements {
      * @return true iff there may be a substitution graph available for {@code method}
      */
     boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci);
+
+    /**
+     * Gets the provider for accessing the bytecode of a substitution method.
+     */
+    BytecodeProvider getReplacementBytecodeProvider();
 
     /**
      * Register snippet templates.

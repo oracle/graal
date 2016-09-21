@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.Compilati
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.EncodedGraph;
@@ -72,11 +73,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private EncodedGraph createGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
+    private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         StructuredGraph graph = new StructuredGraph(method, allowAssumptions);
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
-
-            IntrinsicContext initialIntrinsicContext = isIntrinsic ? new IntrinsicContext(method, method, INLINE_AFTER_PARSING) : null;
+            IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null ? new IntrinsicContext(method, method, intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graph);
 
@@ -93,10 +93,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         EncodedGraph result = graphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            result = createGraph(method, isIntrinsic);
+            result = createGraph(method, intrinsicBytecodeProvider);
         }
         return result;
     }

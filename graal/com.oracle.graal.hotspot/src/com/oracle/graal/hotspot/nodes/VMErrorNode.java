@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.VM_ERROR;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
+import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -39,7 +40,6 @@ import com.oracle.graal.replacements.Log;
 import com.oracle.graal.replacements.nodes.CStringConstant;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -68,7 +68,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
             StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
             FrameState fs = stateBefore();
             while (fs != null) {
-                MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
+                Bytecode.appendLocation(sb.append(nl).append("\t"), fs.getCode(), fs.bci);
                 fs = fs.outerFrameState();
             }
             whereString = sb.toString();

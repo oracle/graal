@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.bytecode.Bytecode;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -65,6 +67,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     protected final ConstantFieldProvider constantFieldProvider;
     protected final StampProvider stampProvider;
     protected final StructuredGraph graph;
+    protected final Bytecode code;
     protected final ResolvedJavaMethod method;
     protected final int invokeBci;
     protected FixedWithNextNode lastInstr;
@@ -72,18 +75,19 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     protected ValueNode returnValue;
 
     public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
-                    ResolvedJavaMethod method, int invokeBci) {
-        this(metaAccess, constantReflection, constantFieldProvider, stampProvider, method, invokeBci, AllowAssumptions.YES);
+                    Bytecode code, int invokeBci) {
+        this(metaAccess, constantReflection, constantFieldProvider, stampProvider, code, invokeBci, AllowAssumptions.YES);
     }
 
     protected IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
-                    ResolvedJavaMethod method, int invokeBci, AllowAssumptions allowAssumptions) {
+                    Bytecode code, int invokeBci, AllowAssumptions allowAssumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
         this.stampProvider = stampProvider;
+        this.code = code;
+        this.method = code.getMethod();
         this.graph = new StructuredGraph(method, allowAssumptions);
-        this.method = method;
         this.invokeBci = invokeBci;
         this.lastInstr = graph.start();
 
@@ -206,6 +210,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     @Override
+    public Bytecode getCode() {
+        return code;
+    }
+
+    @Override
     public ResolvedJavaMethod getMethod() {
         return method;
     }
@@ -261,7 +270,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     @Override
-    public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+    public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         throw GraalError.shouldNotReachHere();
     }
 

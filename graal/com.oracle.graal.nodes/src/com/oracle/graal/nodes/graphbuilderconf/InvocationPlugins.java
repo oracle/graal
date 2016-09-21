@@ -39,6 +39,7 @@ import java.util.Set;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitutionRegistry;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -136,6 +137,7 @@ public class InvocationPlugins {
 
         private final InvocationPlugins plugins;
         private final Type declaringType;
+        private final BytecodeProvider methodSubstitutionBytecodeProvider;
         private boolean allowOverwrite;
 
         @Override
@@ -154,6 +156,23 @@ public class InvocationPlugins {
         public Registration(InvocationPlugins plugins, Type declaringType) {
             this.plugins = plugins;
             this.declaringType = declaringType;
+            this.methodSubstitutionBytecodeProvider = null;
+        }
+
+        /**
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
+         *
+         * @param plugins where to register the plugins
+         * @param declaringType the class declaring the methods for which plugins will be registered
+         *            via this object
+         * @param methodSubstitutionBytecodeProvider provider used to get the bytecodes to parse for
+         *            method substitutions
+         */
+        public Registration(InvocationPlugins plugins, Type declaringType, BytecodeProvider methodSubstitutionBytecodeProvider) {
+            this.plugins = plugins;
+            this.declaringType = declaringType;
+            this.methodSubstitutionBytecodeProvider = methodSubstitutionBytecodeProvider;
         }
 
         /**
@@ -163,10 +182,13 @@ public class InvocationPlugins {
          * @param plugins where to register the plugins
          * @param declaringClassName the name of the class class declaring the methods for which
          *            plugins will be registered via this object
+         * @param methodSubstitutionBytecodeProvider provider used to get the bytecodes to parse for
+         *            method substitutions
          */
-        public Registration(InvocationPlugins plugins, String declaringClassName) {
+        public Registration(InvocationPlugins plugins, String declaringClassName, BytecodeProvider methodSubstitutionBytecodeProvider) {
             this.plugins = plugins;
             this.declaringType = new OptionalLazySymbol(declaringClassName);
+            this.methodSubstitutionBytecodeProvider = methodSubstitutionBytecodeProvider;
         }
 
         /**
@@ -315,7 +337,8 @@ public class InvocationPlugins {
          */
         @Override
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
-            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, substituteName, argumentTypes);
+            assert methodSubstitutionBytecodeProvider != null : "Registration used for method subsitutions requires a non-null methodSubstitutionBytecodeProvider";
+            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(methodSubstitutionBytecodeProvider, substituteDeclaringClass, substituteName, argumentTypes);
             plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);
         }
     }

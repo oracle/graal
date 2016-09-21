@@ -71,7 +71,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                 InstrumentationNode instrumentationNode = graph.addWithoutUnique(new InstrumentationNode(begin.getTarget(), begin.isAnchored()));
                 graph.addBeforeFixed(begin, instrumentationNode);
                 FrameState currentState = begin.stateAfter();
-                FrameState newState = graph.addWithoutUnique(new FrameState(currentState.outerFrameState(), currentState.method(), currentState.bci, 0, 0,
+                FrameState newState = graph.addWithoutUnique(new FrameState(currentState.outerFrameState(), currentState.getCode(), currentState.bci, 0, 0,
                                 0, currentState.rethrowException(), currentState.duringCall(), null,
                                 Collections.<EscapeObjectState> emptyList()));
                 instrumentationNode.setStateBefore(newState);

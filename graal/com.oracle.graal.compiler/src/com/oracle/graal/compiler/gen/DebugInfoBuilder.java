@@ -205,7 +205,7 @@ public class DebugInfoBuilder {
             assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
             assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
             assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
-            assert !(state.method().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
+            assert !(state.getMethod().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
                             state.locksSize() > 0;
             assert state.verify();
 
@@ -226,7 +226,15 @@ public class DebugInfoBuilder {
             if (state.outerFrameState() != null) {
                 caller = computeFrameForState(state.outerFrameState());
             }
-            return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, slotKinds, numLocals, numStack, numLocks);
+
+            if (!state.canProduceBytecodeFrame()) {
+                // This typically means a snippet or intrinsic frame state made it to the backend
+                StackTraceElement ste = state.getCode().asStackTraceElement(state.bci);
+                throw new GraalError("Frame state for %s cannot be converted to a BytecodeFrame since the frame state's code is " +
+                                "not the same as the frame state method's code", ste);
+            }
+
+            return new BytecodeFrame(caller, state.getMethod(), state.bci, state.rethrowException(), state.duringCall(), values, slotKinds, numLocals, numStack, numLocks);
         } catch (GraalError e) {
             throw e.addContext("FrameState: ", state);
         }

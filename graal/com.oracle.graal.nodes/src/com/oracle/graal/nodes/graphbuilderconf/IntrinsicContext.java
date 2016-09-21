@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.Invoke;
@@ -48,21 +49,39 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class IntrinsicContext {
 
     /**
-     * Gets the method being intrinsified.
+     * Method being intrinsified.
      */
     final ResolvedJavaMethod method;
 
     /**
-     * Gets the method providing the intrinsic implementation.
+     * Method providing the intrinsic implementation.
      */
     final ResolvedJavaMethod intrinsic;
 
+    /**
+     * Provider of bytecode to be parsed for a method that is part of an intrinsic.
+     */
+    final BytecodeProvider bytecodeProvider;
+
+    /**
+     * Gets the method being intrinsified.
+     */
     public ResolvedJavaMethod getOriginalMethod() {
         return method;
     }
 
+    /**
+     * Gets the method providing the intrinsic implementation.
+     */
     public ResolvedJavaMethod getIntrinsicMethod() {
         return intrinsic;
+    }
+
+    /**
+     * Gets provider of bytecode to be parsed for a method that is part of an intrinsic.
+     */
+    public BytecodeProvider getBytecodeProvider() {
+        return bytecodeProvider;
     }
 
     /**
@@ -76,9 +95,11 @@ public class IntrinsicContext {
 
     final CompilationContext compilationContext;
 
-    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, CompilationContext compilationContext) {
+    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext) {
         this.method = method;
         this.intrinsic = intrinsic;
+        this.bytecodeProvider = bytecodeProvider;
+        assert bytecodeProvider != null;
         this.compilationContext = compilationContext;
         assert !isCompilationRoot() || method.hasBytecodes() : "Cannot root compile intrinsic for native or abstract method " + method.format("%H.%n(%p)");
     }

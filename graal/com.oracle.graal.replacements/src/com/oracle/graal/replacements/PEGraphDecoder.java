@@ -34,6 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.bytecode.Bytecode;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.cfg.CFGVerifier;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -246,7 +248,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+        public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
             return false;
         }
 
@@ -257,6 +259,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public GraphBuilderContext getParent() {
+            throw unimplemented();
+        }
+
+        @Override
+        public Bytecode getCode() {
             throw unimplemented();
         }
 
@@ -382,7 +389,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     public void decode(StructuredGraph targetGraph, ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin) {
-        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, false), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, null), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope);
@@ -565,7 +572,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
-        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.isIntrinsic());
+        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getIntrinsicBytecodeProvider());
         if (graphToInline == null) {
             return null;
         }
@@ -743,7 +750,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, boolean isIntrinsic);
+    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider);
 
     @SuppressWarnings("try")
     @Override

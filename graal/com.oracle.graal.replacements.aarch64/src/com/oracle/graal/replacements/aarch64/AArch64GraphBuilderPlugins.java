@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -36,22 +37,22 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AArch64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, ForeignCallsProvider foreignCalls) {
+    public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, BytecodeProvider bytecodeProvider) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int);
-                registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long);
+                registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
+                registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
                 registerMathPlugins(invocationPlugins, foreignCalls);
             }
         });
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, BytecodeProvider bytecodeProvider) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, declaringClass);
+        Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
         r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {

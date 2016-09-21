@@ -130,8 +130,23 @@ public class BytecodeDisassembler {
         if (method.getCode() == null) {
             return null;
         }
-        ConstantPool cp = method.getConstantPool();
-        BytecodeStream stream = new BytecodeStream(method.getCode());
+        return disassemble(new DefaultBytecode(method), startBci, endBci);
+    }
+
+    /**
+     * Disassembles {@code code} in a {@code javap}-like format.
+     */
+    public String disassemble(Bytecode code) {
+        return disassemble(code, 0, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Disassembles {@code code} in a {@code javap}-like format.
+     */
+    public String disassemble(Bytecode code, int startBci, int endBci) {
+        ResolvedJavaMethod method = code.getMethod();
+        ConstantPool cp = code.getConstantPool();
+        BytecodeStream stream = new BytecodeStream(code.getCode());
         StringBuilder buf = new StringBuilder();
         int opcode = stream.currentBC();
         while (opcode != Bytecodes.END) {
@@ -264,9 +279,9 @@ public class BytecodeDisassembler {
                         break;
                     }
                     case NEWARRAY       : {
-                        int code = stream.readLocalIndex();
+                        int typecode = stream.readLocalIndex();
                         // Checkstyle: stop
-                        switch (code) {
+                        switch (typecode) {
                             case 4:  buf.append("boolean"); break;
                             case 5:  buf.append("char"); break;
                             case 6:  buf.append("float"); break;

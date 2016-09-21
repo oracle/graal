@@ -88,6 +88,7 @@ import java.util.List;
 import java.util.TreeSet;
 
 import com.oracle.graal.bytecode.BytecodeLookupSwitch;
+import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
@@ -98,7 +99,6 @@ import com.oracle.graal.debug.Debug;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph
@@ -425,7 +425,8 @@ public final class BciBlockMapping {
      * The blocks found in this method, in reverse postorder.
      */
     private BciBlock[] blocks;
-    public final ResolvedJavaMethod method;
+    public final Bytecode code;
+    // public final ResolvedJavaMethod method;
     public boolean hasJsrBytecodes;
 
     private final ExceptionHandler[] exceptionHandlers;
@@ -440,13 +441,11 @@ public final class BciBlockMapping {
     private int returnBci;
 
     /**
-     * Creates a new BlockMap instance from bytecode of the given method .
-     *
-     * @param method the compiler interface method containing the code
+     * Creates a new BlockMap instance from {@code code}.
      */
-    private BciBlockMapping(ResolvedJavaMethod method) {
-        this.method = method;
-        this.exceptionHandlers = method.getExceptionHandlers();
+    private BciBlockMapping(Bytecode code) {
+        this.code = code;
+        this.exceptionHandlers = code.getExceptionHandlers();
     }
 
     public BciBlock[] getBlocks() {
@@ -461,7 +460,7 @@ public final class BciBlockMapping {
      * Builds the block map and conservative CFG and numbers blocks.
      */
     public void build(BytecodeStream stream) {
-        int codeSize = method.getCodeSize();
+        int codeSize = code.getCodeSize();
         BciBlock[] blockMap = new BciBlock[codeSize];
         makeExceptionEntries(blockMap);
         iterateOverBytecodes(blockMap, stream);
@@ -851,7 +850,7 @@ public final class BciBlockMapping {
         ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock();
         unwindBlock.startBci = -1;
         unwindBlock.endBci = -1;
-        unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
+        unwindBlock.deoptBci = code.getMethod().isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
         unwindBlock.setId(newBlocks.length - 1);
         newBlocks[newBlocks.length - 1] = unwindBlock;
 
@@ -1042,11 +1041,11 @@ public final class BciBlockMapping {
         return loops;
     }
 
-    public static BciBlockMapping create(BytecodeStream stream, ResolvedJavaMethod method) {
-        BciBlockMapping map = new BciBlockMapping(method);
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code) {
+        BciBlockMapping map = new BciBlockMapping(code);
         map.build(stream);
         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
-            Debug.dump(Debug.INFO_LOG_LEVEL, map, method.format("After block building %f %R %H.%n(%P)"));
+            Debug.dump(Debug.INFO_LOG_LEVEL, map, code.getMethod().format("After block building %f %R %H.%n(%P)"));
         }
 
         return map;

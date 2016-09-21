@@ -201,7 +201,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO);
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
+            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, replacements.getReplacementBytecodeProvider(), ROOT_COMPILATION);
             new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
                             OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
             assert !graph.isFrozen();

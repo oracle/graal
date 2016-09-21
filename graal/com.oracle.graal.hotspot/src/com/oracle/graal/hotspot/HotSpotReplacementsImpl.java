@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.hotspot.word.HotSpotOperation;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.replacements.ReplacementsImpl;
@@ -36,8 +37,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
-    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-        super(providers, snippetReflection, target);
+    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+        super(providers, snippetReflection, bytecodeProvider, target);
     }
 
     @Override
