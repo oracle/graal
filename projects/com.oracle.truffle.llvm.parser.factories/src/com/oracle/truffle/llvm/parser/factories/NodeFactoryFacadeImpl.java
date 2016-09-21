@@ -433,11 +433,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs) {
-        return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().createFunctionDescriptor(name, convertType, convertTypes, varArgs);
-    }
-
-    @Override
     public LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable) {
         String linkage = globalVariable.getLinkage();
         boolean isStatic = "internal".equals(linkage) || "private".equals(linkage);

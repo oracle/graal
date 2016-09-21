@@ -310,8 +310,6 @@ public interface NodeFactoryFacade {
      */
     RootNode createFunctionSubstitutionRootNode(LLVMNode intrinsicNode);
 
-    LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs);
-
     Object allocateGlobalVariable(GlobalVariable globalVariable);
 
     RootNode createStaticInitsRootNode(LLVMNode[] staticInits);

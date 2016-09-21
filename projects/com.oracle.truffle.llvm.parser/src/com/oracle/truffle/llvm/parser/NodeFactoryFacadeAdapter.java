@@ -324,11 +324,6 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType convertType, LLVMRuntimeType[] convertTypes, boolean varArgs) {
-        return null;
-    }
-
-    @Override
     public Object allocateGlobalVariable(GlobalVariable globalVariable) {
         return null;
     }
