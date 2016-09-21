@@ -64,7 +64,7 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
 
     @CompilerDirectives.TruffleBoundary
     private RuntimeException messageNotRecognizedException(final ForeignAccess fa) {
-        throw new IllegalStateException("Message " + access + " not recognized by " + fa);
+        throw UnsupportedMessageException.raise(access);
     }
 
 }

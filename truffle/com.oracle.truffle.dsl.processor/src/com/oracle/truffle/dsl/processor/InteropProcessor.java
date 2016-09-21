@@ -940,7 +940,6 @@ public final class InteropProcessor extends AbstractProcessor {
         }
 
         private static void appendImports(Writer w) throws IOException {
-            w.append("import com.oracle.truffle.api.interop.UnsupportedMessageException;").append("\n");
             w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory18;").append("\n");
             w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
             w.append("import com.oracle.truffle.api.interop.Message;").append("\n");
@@ -1051,7 +1050,7 @@ public final class InteropProcessor extends AbstractProcessor {
 
         private void appendOptionalHandlerBody(Writer w, Message message, String messageObjectAsString) throws IOException {
             if (!messageHandlers.containsKey(message)) {
-                w.append("      throw UnsupportedMessageException.raise(").append(messageObjectAsString).append(");").append("\n");
+                w.append("      return null;\n");
             } else {
                 w.append("      return com.oracle.truffle.api.Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(message)).append(");").append("\n");
             }
@@ -1067,7 +1066,7 @@ public final class InteropProcessor extends AbstractProcessor {
                     w.append("      }").append("\n");
                 }
             }
-            w.append("      throw UnsupportedMessageException.raise(unknown);").append("\n");
+            w.append("      return null;\n");
             w.append("    }").append("\n");
         }
 
