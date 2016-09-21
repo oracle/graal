@@ -134,18 +134,18 @@ public class StubAVXTest extends LIRTest {
 
             // VEX.NDS.256.0F.WIG C2 /r ib(0)
             // VCMPPS tmp, x, y, EQ
-            masm.emitByte(0xC4);                                 // VEX 3-byte
-            masm.emitByte(~getRXB(tmp, y) << 5 | 0x01);          // RXB m-mmmmm (0F)
-            masm.emitByte(((~x.encoding & 0x0f) << 3) | 0b1_00); // W(0) vvvv L(1) pp(0)
+            masm.emitByte(0xC4);                                   // VEX 3-byte
+            masm.emitByte((~getRXB(tmp, y) & 0x7) << 5 | 0x01);    // RXB m-mmmmm (0F)
+            masm.emitByte(((~x.encoding & 0x0f) << 3) | 0b1_00);   // W(0) vvvv L(1) pp(0)
             masm.emitByte(0xC2);
             masm.emitByte(0xC0 | ((tmp.encoding & 0x07) << 3) | (y.encoding & 0x07));
             masm.emitByte(0);
 
             // VEX.256.0F.WIG 50 /r
             // VMOVMSKPS res, tmp
-            masm.emitByte(0xC4);                                 // VEX 3-byte
-            masm.emitByte(~getRXB(res, tmp) << 5 | 0x01);        // RXB m-mmmmm (0F)
-            masm.emitByte(0b0_1111_1_00);                        // W(0) vvvv L(1) pp(0)
+            masm.emitByte(0xC4);                                   // VEX 3-byte
+            masm.emitByte((~getRXB(res, tmp) & 0x7) << 5 | 0x01);  // RXB m-mmmmm (0F)
+            masm.emitByte(0b0_1111_1_00);                          // W(0) vvvv L(1) pp(0)
             masm.emitByte(0x50);
             masm.emitByte(0xC0 | ((res.encoding & 0x07) << 3) | (tmp.encoding & 0x07));
         }
