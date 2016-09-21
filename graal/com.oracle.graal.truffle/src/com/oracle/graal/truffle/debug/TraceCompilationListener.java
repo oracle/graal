@@ -133,7 +133,10 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     }
 
     private static String formatSourceSection(SourceSection sourceSection) {
-        return sourceSection != null ? sourceSection.getShortDescription() : "n/a";
+        if (sourceSection == null || sourceSection.getSource() == null) {
+            return "n/a";
+        }
+        return String.format("%s:%d", sourceSection.getSource().getName(), sourceSection.getStartLine());
     }
 
     @Override
