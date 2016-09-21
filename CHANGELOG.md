@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * Added [Instrumenter](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/Instrumenter.html).querySourceSections(SourceSectionFilter) to get a filtered list of loaded instances.
 * Added [SourceSectionFilter](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html).ANY, which always matches.
+* Added [Message.KEYS](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/interop/Message.html#KEYS) to let languages enumerate properties of its objects
 
 ## Version 0.17
 1-Sep-2016
