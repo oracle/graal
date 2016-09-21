@@ -8,6 +8,8 @@ bench-jvmci : {
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
+  mx-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["dacapo-move-profiling:*"]
+  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:*"]
   mx-specjvm2008-Single: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
@@ -39,6 +41,13 @@ bench-dacapo-timing: ${bench-common-8} {
   ]
 }
 
+bench-dacapo-move-profiling: ${bench-common-8} {
+  targets: [daily]
+  run: [
+    ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
+  ]
+}
+
 # Scala DaCapo-related targets
 
 bench-scala-dacapo: ${bench-common-8} {
@@ -52,6 +61,13 @@ bench-scala-dacapo-timing: ${bench-common-8} {
   targets: [daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-move-profiling: ${bench-common-8} {
+  targets: [daily]
+  run: [
+    ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
   ]
 }
 
