@@ -411,10 +411,10 @@ public abstract class Message {
     /**
      * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
      * objects} and obtains list of its property names. Those names can then be used in
-     * {@link #READ} and {@link #WRITE} messages to obtain/assign the real values.
+     * {@link #READ} and {@link #WRITE} messages to obtain/assign real values.
      * <p>
      * The return value from using this message is another {@link TruffleObject} that responds to
-     * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} contain {@link String} names
+     * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String} names
      * of individual properties.
      *
      * @since 0.18
