@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl;
+package com.oracle.truffle.llvm.parser.base;
 
 import java.util.List;
 import java.util.Map;
@@ -36,27 +36,27 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
-public class LLVMBitcodeParserResult implements LLVMParserResult {
+public class LLVMParserResultImpl implements LLVMParserResult {
 
     private final RootCallTarget mainFunction;
-    private final RootCallTarget staticInits;
-    private final RootCallTarget staticDestructors;
+    private final RootCallTarget globalVarInits;
+    private final RootCallTarget globalVarDeallocs;
     private final List<RootCallTarget> constructorFunctions;
     private final List<RootCallTarget> destructorFunctions;
     private final Map<LLVMFunction, RootCallTarget> parsedFunctions;
 
-    public LLVMBitcodeParserResult(RootCallTarget mainFunction,
-                    RootCallTarget staticInits,
-                    RootCallTarget staticDestructors,
-                    Map<LLVMFunction, RootCallTarget> parsedFunctions,
+    public LLVMParserResultImpl(RootCallTarget mainFunction,
+                    RootCallTarget globalVarInits,
+                    RootCallTarget globalVarDeallocs,
                     List<RootCallTarget> constructorFunctions,
-                    List<RootCallTarget> destructorFunctions) {
+                    List<RootCallTarget> destructorFunctions,
+                    Map<LLVMFunction, RootCallTarget> parsedFunctions) {
         this.mainFunction = mainFunction;
-        this.staticInits = staticInits;
-        this.staticDestructors = staticDestructors;
-        this.parsedFunctions = parsedFunctions;
+        this.globalVarInits = globalVarInits;
+        this.globalVarDeallocs = globalVarDeallocs;
         this.constructorFunctions = constructorFunctions;
         this.destructorFunctions = destructorFunctions;
+        this.parsedFunctions = parsedFunctions;
     }
 
     @Override
@@ -71,12 +71,12 @@ public class LLVMBitcodeParserResult implements LLVMParserResult {
 
     @Override
     public RootCallTarget getGlobalVarInits() {
-        return staticInits;
+        return globalVarInits;
     }
 
     @Override
     public RootCallTarget getGlobalVarDeallocs() {
-        return staticDestructors;
+        return globalVarDeallocs;
     }
 
     @Override
