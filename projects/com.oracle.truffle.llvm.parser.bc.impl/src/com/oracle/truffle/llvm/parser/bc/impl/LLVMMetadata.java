@@ -38,10 +38,12 @@ import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 import uk.ac.man.cs.llvm.ir.model.MetadataReferenceType;
 import uk.ac.man.cs.llvm.ir.model.Model;
 import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.MetadataConstant;
 import uk.ac.man.cs.llvm.ir.model.elements.AllocateInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.BinaryOperationInstruction;
@@ -68,6 +70,12 @@ import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFnNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataDerivedType;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataString;
+import uk.ac.man.cs.llvm.ir.types.PointerType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 /**
@@ -211,6 +219,22 @@ public final class LLVMMetadata implements ModelVisitor {
 
         @Override
         public void visit(GetElementPointerInstruction gep) {
+            Type t1 = ((PointerType) (gep.getBasePointer().getType())).getPointeeType();
+            if (t1 instanceof StructureType) {
+                StructureType thisStruct = (StructureType) t1;
+                // TODO: should always be this type?
+                MetadataCompositeType metaStruct = (MetadataCompositeType) thisStruct.getMetadataReference().get();
+                thisStruct.setName(((MetadataString) metaStruct.getName().get()).getString());
+
+                MetadataNode elements = (MetadataNode) metaStruct.getMemberDescriptors().get();
+
+                Symbol idx = gep.getIndices().get(1);
+                int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
+                MetadataReference element = elements.get(parsedIndex);
+
+                MetadataDerivedType derivedType = (MetadataDerivedType) element.get();
+                gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
+            }
         }
 
         @Override
