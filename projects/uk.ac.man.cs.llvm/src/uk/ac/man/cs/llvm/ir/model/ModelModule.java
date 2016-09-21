@@ -101,8 +101,8 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createAlias(Type type, int aliasedValue) {
-        GlobalAlias alias = new GlobalAlias(type, aliasedValue);
+    public void createAlias(Type type, int aliasedValue, long linkage) {
+        GlobalAlias alias = new GlobalAlias(type, aliasedValue, linkage);
 
         symbols.addSymbol(alias);
         globals.add(alias);
@@ -197,12 +197,12 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createGlobal(Type type, boolean isConstant, int initialiser, int align) {
+    public void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage) {
         final GlobalValueSymbol global;
         if (isConstant) {
-            global = new GlobalConstant(type, initialiser, align);
+            global = new GlobalConstant(type, initialiser, align, linkage);
         } else {
-            global = new GlobalVariable(type, initialiser, align);
+            global = new GlobalVariable(type, initialiser, align, linkage);
         }
         symbols.addSymbol(global);
         globals.add(global);
