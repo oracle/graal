@@ -57,13 +57,13 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
         final ForeignAccess fa = truffleObject.getForeignAccess();
         final CallTarget ct = fa.access(access);
         if (ct == null) {
-            throw messageNotRecognizedException(fa);
+            throw messageNotRecognizedException();
         }
         return ct;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private RuntimeException messageNotRecognizedException(final ForeignAccess fa) {
+    private RuntimeException messageNotRecognizedException() {
         throw UnsupportedMessageException.raise(access);
     }
 
