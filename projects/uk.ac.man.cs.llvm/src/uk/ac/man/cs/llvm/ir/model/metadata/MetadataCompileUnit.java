@@ -31,11 +31,12 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
+import uk.ac.man.cs.llvm.ir.module.records.DwLangNameRecord;
 
 public class MetadataCompileUnit implements MetadataBaseNode {
 
     private long context;
-    private long language;
+    private DwLangNameRecord language;
     private MetadataReference file = MetadataBlock.voidRef;
     private MetadataReference directory = MetadataBlock.voidRef;
     private MetadataReference producer = MetadataBlock.voidRef;
@@ -56,11 +57,11 @@ public class MetadataCompileUnit implements MetadataBaseNode {
         this.context = context;
     }
 
-    public long getLanguage() {
+    public DwLangNameRecord getLanguage() {
         return language;
     }
 
-    public void setLanguage(long language) {
+    public void setLanguage(DwLangNameRecord language) {
         this.language = language;
     }
 
