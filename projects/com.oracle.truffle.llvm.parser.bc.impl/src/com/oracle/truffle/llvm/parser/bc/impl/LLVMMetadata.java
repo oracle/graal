@@ -160,10 +160,10 @@ public final class LLVMMetadata implements ModelVisitor {
                 if (((FunctionDeclaration) (callTarget)).getName().equals("@llvm.dbg.declare")) {
 
                     int symbolMetadataId = (int) ((MetadataConstant) call.getArgument(0)).getValue() + SYMBOL_MISALIGN;
-                    int symbolId = ((MetadataFnNode) metadata.get(symbolMetadataId)).getValue();
+                    int symbolIndex = ((MetadataFnNode) metadata.get(symbolMetadataId)).getPointer().getSymbolIndex();
                     long metadataId = ((MetadataConstant) call.getArgument(1)).getValue();
 
-                    Symbol referencedSymbol = currentBlock.getFunctionSymbols().getSymbol(symbolId);
+                    Symbol referencedSymbol = currentBlock.getFunctionSymbols().getSymbol(symbolIndex);
 
                     // TODO: use visitor pattern
                     // TODO: parse global variables
