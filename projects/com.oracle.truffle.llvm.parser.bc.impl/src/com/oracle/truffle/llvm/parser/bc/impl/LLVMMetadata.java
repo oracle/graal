@@ -219,17 +219,19 @@ public final class LLVMMetadata implements ModelVisitor {
             if (t1 instanceof StructureType) {
                 StructureType thisStruct = (StructureType) t1;
                 // TODO: should always be this type?
-                MetadataCompositeType metaStruct = (MetadataCompositeType) thisStruct.getMetadataReference().get();
-                thisStruct.setName(((MetadataString) metaStruct.getName().get()).getString());
+                if (thisStruct.getMetadataReference().isPresent()) {
+                    MetadataCompositeType metaStruct = (MetadataCompositeType) thisStruct.getMetadataReference().get();
+                    thisStruct.setName(((MetadataString) metaStruct.getName().get()).getString());
 
-                MetadataNode elements = (MetadataNode) metaStruct.getMemberDescriptors().get();
+                    MetadataNode elements = (MetadataNode) metaStruct.getMemberDescriptors().get();
 
-                Symbol idx = gep.getIndices().get(1);
-                int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
-                MetadataReference element = elements.get(parsedIndex);
+                    Symbol idx = gep.getIndices().get(1);
+                    int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
+                    MetadataReference element = elements.get(parsedIndex);
 
-                MetadataDerivedType derivedType = (MetadataDerivedType) element.get();
-                gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
+                    MetadataDerivedType derivedType = (MetadataDerivedType) element.get();
+                    gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
+                }
             }
         }
 
