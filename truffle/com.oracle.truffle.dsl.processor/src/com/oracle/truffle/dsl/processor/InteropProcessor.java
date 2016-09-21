@@ -1002,53 +1002,53 @@ public final class InteropProcessor extends AbstractProcessor {
 
         private void appendFactory18accessGetSize(Writer w) throws IOException {
             w.append("    public CallTarget accessGetSize() {").append("\n");
-            appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
+            appendOptionalHandlerBody(w, Message.GET_SIZE);
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessUnbox(Writer w) throws IOException {
             w.append("    public CallTarget accessUnbox() {").append("\n");
-            appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
+            appendOptionalHandlerBody(w, Message.UNBOX);
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessRead(Writer w) throws IOException {
             w.append("    public CallTarget accessRead() {").append("\n");
-            appendOptionalHandlerBody(w, Message.READ, "Message.READ");
+            appendOptionalHandlerBody(w, Message.READ);
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessWrite(Writer w) throws IOException {
             w.append("    public CallTarget accessWrite() {").append("\n");
-            appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
+            appendOptionalHandlerBody(w, Message.WRITE);
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessExecute(Writer w) throws IOException {
             w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createExecute(0));
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessInvoke(Writer w) throws IOException {
             w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createInvoke(0));
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessNew(Writer w) throws IOException {
             w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createNew(0));
             w.append("    }").append("\n");
         }
 
         private void appendFactory18accessKeys(Writer w) throws IOException {
             w.append("    public CallTarget accessKeys() {").append("\n");
-            appendOptionalHandlerBody(w, Message.KEYS, "Message.KEYS");
+            appendOptionalHandlerBody(w, Message.KEYS);
             w.append("    }").append("\n");
         }
 
-        private void appendOptionalHandlerBody(Writer w, Message message, String messageObjectAsString) throws IOException {
+        private void appendOptionalHandlerBody(Writer w, Message message) throws IOException {
             if (!messageHandlers.containsKey(message)) {
                 w.append("      return null;\n");
             } else {
