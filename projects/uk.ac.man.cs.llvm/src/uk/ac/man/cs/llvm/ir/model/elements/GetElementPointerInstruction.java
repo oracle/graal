@@ -48,6 +48,8 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     private final boolean isInbounds;
 
+    private String referenceName = null;
+
     private GetElementPointerInstruction(Type type, boolean isInbounds) {
         super(type);
         this.indices = new ArrayList<>();
@@ -80,6 +82,14 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     public Symbol getBasePointer() {
         return base;
+    }
+
+    public void setReferenceName(String referenceName) {
+        this.referenceName = referenceName;
+    }
+
+    public String getReferenceName() {
+        return referenceName;
     }
 
     public List<Symbol> getIndices() {

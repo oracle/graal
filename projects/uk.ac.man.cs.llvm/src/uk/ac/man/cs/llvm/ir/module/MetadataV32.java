@@ -33,6 +33,7 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
+import uk.ac.man.cs.llvm.ir.SymbolGenerator;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompileUnit;
@@ -40,6 +41,7 @@ import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataDerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataEnumerator;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFile;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFnNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataGlobalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlock;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLexicalBlockFile;
@@ -53,11 +55,10 @@ import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataV32 extends Metadata {
-    public MetadataV32(Types types, List<Type> symbols) {
-        super(types, symbols);
+    public MetadataV32(Types types, List<Type> symbols, SymbolGenerator generator) {
+        super(types, symbols, generator);
         // it seem's like there is a different offset of the id in LLVM 3.2 and LLVM 3.8
         metadata.setStartIndex(0);
-        idx = 0; // TODO: remove
     }
 
     protected boolean asInt1(Type t) {
@@ -86,7 +87,7 @@ public class MetadataV32 extends Metadata {
                 break;
 
             case OLD_FN_NODE:
-                createOldFnNode(); // TODO: implement
+                createOldFnNode(args);
                 break;
 
             default:
@@ -97,8 +98,6 @@ public class MetadataV32 extends Metadata {
         if (LLVMBaseOptionFacade.verboseEnabled()) {
             printMetadataDebugMsg();
         }
-
-        idx++;
     }
 
     protected void createOldNode(long[] args) {
@@ -189,17 +188,21 @@ public class MetadataV32 extends Metadata {
                     break;
 
                 default:
-                    System.out.println("!" + idx + " - TODO: #" + record);
+                    metadata.add(null);
+                    System.out.println("! - TODO: #" + record);
                     break;
             }
         } else {
             parsedArgs.rewind();
-            System.out.println("!" + idx + " - " + MetadataRecord.OLD_NODE + ": " + parsedArgs);
+            metadata.add(null);
+            System.out.println("! - " + MetadataRecord.OLD_NODE + ": " + parsedArgs);
         }
     }
 
-    protected void createOldFnNode() {
-        // TODO: implement
+    protected void createOldFnNode(long[] args) {
+        MetadataArgumentParser parsedArgs = new MetadataArgumentParser(types, symbols, args);
+
+        metadata.add(new MetadataFnNode(asInt32(parsedArgs.next())));
     }
 
     protected void createDwNode(MetadataArgumentParser args) {
@@ -225,6 +228,7 @@ public class MetadataV32 extends Metadata {
         node.setName(metadata.getReference(args.next()));
         node.setDisplayName(metadata.getReference(args.next()));
         node.setLinkageName(metadata.getReference(args.next()));
+        node.setFile(metadata.getReference(args.next()));
         node.setLine(asInt32(args.next()));
         node.setType(metadata.getReference(args.next()));
         node.setLocalToCompileUnit(asInt1(args.next()));

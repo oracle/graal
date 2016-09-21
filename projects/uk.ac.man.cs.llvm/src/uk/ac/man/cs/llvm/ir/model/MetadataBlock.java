@@ -40,9 +40,18 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class MetadataBlock {
 
-    protected final List<MetadataBaseNode> metadata = new ArrayList<>();
+    protected final List<MetadataBaseNode> metadata;
 
     protected int startIndex = 0;
+
+    public MetadataBlock() {
+        metadata = new ArrayList<>();
+    }
+
+    public MetadataBlock(MetadataBlock orig) {
+        this.metadata = new ArrayList<>(orig.metadata);
+        this.startIndex = orig.startIndex;
+    }
 
     public void setStartIndex(int index) {
         startIndex = index;
@@ -76,6 +85,10 @@ public class MetadataBlock {
         return getReference((int) index);
     }
 
+    public int getCurrentIndex() {
+        return startIndex + metadata.size();
+    }
+
     public MetadataReference getReference(Type t) {
         if (t instanceof MetadataConstantType) {
             int index = (int) ((MetadataConstantType) t).getValue();
@@ -100,6 +113,11 @@ public class MetadataBlock {
         MetadataBaseNode get();
 
         int getIndex();
+    }
+
+    @Override
+    public String toString() {
+        return "MetadataBlock [startIndex=" + startIndex + ", metadata=" + metadata + "]";
     }
 
     public static final VoidReference voidRef = new VoidReference();
@@ -154,8 +172,42 @@ public class MetadataBlock {
         }
 
         @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + getOuterType().hashCode();
+            result = prime * result + index;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Reference other = (Reference) obj;
+            if (!getOuterType().equals(other.getOuterType())) {
+                return false;
+            }
+            if (index != other.index) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "!" + index;
+        }
+
+        private MetadataBlock getOuterType() {
+            return MetadataBlock.this;
         }
     }
 

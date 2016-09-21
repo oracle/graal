@@ -27,13 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.types;
+package uk.ac.man.cs.llvm.ir.model.metadata;
 
-import uk.ac.man.cs.llvm.ir.model.MetadataReferenceType;
+public class MetadataFnNode implements MetadataBaseNode {
 
-public interface AggregateType extends Type, MetadataReferenceType {
+    private final int value;
 
-    int getElementCount();
+    public MetadataFnNode(int value) {
+        this.value = value;
+    }
 
-    Type getElementType(int index);
+    public int getValue() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return "MetadataFnNode [" + value + "]";
+    }
+
 }

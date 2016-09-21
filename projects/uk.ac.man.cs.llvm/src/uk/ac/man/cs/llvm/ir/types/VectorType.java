@@ -31,11 +31,16 @@ package uk.ac.man.cs.llvm.ir.types;
 
 import java.util.Objects;
 
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
+import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
+
 public class VectorType implements AggregateType {
 
     public final Type type;
 
     private final int length;
+
+    private MetadataReference metadata = MetadataBlock.voidRef;
 
     public VectorType(Type type, int length) {
         this.type = type;
@@ -81,5 +86,15 @@ public class VectorType implements AggregateType {
     @Override
     public String toString() {
         return String.format("<%d x %s>", getElementCount(), getElementType());
+    }
+
+    @Override
+    public void setMetadataReference(MetadataReference metadata) {
+        this.metadata = metadata;
+    }
+
+    @Override
+    public MetadataReference getMetadataReference() {
+        return metadata;
     }
 }

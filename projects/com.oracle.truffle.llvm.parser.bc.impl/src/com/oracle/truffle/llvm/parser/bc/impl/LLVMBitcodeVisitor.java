@@ -104,6 +104,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMLabelList labels = LLVMLabelList.generate(model);
 
+        LLVMMetadata.generate(model);
+
         LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(context, lifetimes, labels, phis, ((ModelModule) model.createModule()).getTargetDataLayout());
 
         model.accept(module);
