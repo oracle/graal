@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class TraceTrivialAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
+final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {

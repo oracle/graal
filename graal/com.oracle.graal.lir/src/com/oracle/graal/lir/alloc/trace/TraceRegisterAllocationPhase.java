@@ -71,7 +71,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     }
 
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
-    private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
+    private static final TrivialTraceAllocator TRACE_TRIVIAL_ALLOCATOR = new TrivialTraceAllocator();
 
     private static final DebugCounter trivialTracesCounter = Debug.counter("TraceRA[trivialTraces]");
     private static final DebugCounter tracesCounter = Debug.counter("TraceRA[traces]");
