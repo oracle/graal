@@ -27,25 +27,56 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.model.metadata;
+package uk.ac.man.cs.llvm.ir.module.records;
 
-import uk.ac.man.cs.llvm.ir.types.MetadataConstantPointerType;
+/*
+ * source: https://github.com/llvm-mirror/llvm/blob/release_32/include/llvm/Support/Dwarf.h
+ */
+public enum DwLangNameRecord {
 
-public class MetadataFnNode implements MetadataBaseNode {
+    DW_LANG_UNKNOWN(-1),
 
-    private final MetadataConstantPointerType pointer;
+    // Language names
+    DW_LANG_C89(0x0001),
+    DW_LANG_C(0x0002),
+    DW_LANG_ADA83(0x0003),
+    DW_LANG_C_PLUS_PLUS(0x0004),
+    DW_LANG_COBOL74(0x0005),
+    DW_LANG_COBOL85(0x0006),
+    DW_LANG_FORTRAN77(0x0007),
+    DW_LANG_FORTRAN90(0x0008),
+    DW_LANG_PASCAL83(0x0009),
+    DW_LANG_MODULA2(0x000A),
+    DW_LANG_JAVA(0x000B),
+    DW_LANG_C99(0x000C),
+    DW_LANG_ADA95(0x000D),
+    DW_LANG_FORTRAN95(0x000E),
+    DW_LANG_PLI(0x000F),
+    DW_LANG_OBJC(0x0010),
+    DW_LANG_OJC_PLUS_PLUS(0x0011),
+    DW_LANG_UPC(0x0012),
+    DW_LANG_D(0x0013),
+    DW_LANG_PYTHON(0x0014),
+    DW_LANG_LO_USER(0x8000), // lower boundary for user defined tags
+    DW_LANG_MIPS_ASSEMBLER(0x8001),
+    DW_LANG_HI_USER(0xFFFF); // upper boundary for user defined tags
 
-    public MetadataFnNode(MetadataConstantPointerType pointer) {
-        this.pointer = pointer;
+    public static DwLangNameRecord decode(long code) {
+        for (DwLangNameRecord cc : values()) {
+            if (cc.code() == code) {
+                return cc;
+            }
+        }
+        return DW_LANG_UNKNOWN;
     }
 
-    public MetadataConstantPointerType getPointer() {
-        return pointer;
+    private final int code;
+
+    DwLangNameRecord(int code) {
+        this.code = code;
     }
 
-    @Override
-    public String toString() {
-        return "MetadataFnNode [" + pointer + "]";
+    public long code() {
+        return code;
     }
-
 }

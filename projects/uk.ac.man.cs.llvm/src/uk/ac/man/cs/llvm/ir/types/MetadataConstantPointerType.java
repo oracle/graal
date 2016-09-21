@@ -27,25 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir.model.metadata;
+package uk.ac.man.cs.llvm.ir.types;
 
-import uk.ac.man.cs.llvm.ir.types.MetadataConstantPointerType;
+public class MetadataConstantPointerType implements Type {
+    private final int symbolIndex;
 
-public class MetadataFnNode implements MetadataBaseNode {
-
-    private final MetadataConstantPointerType pointer;
-
-    public MetadataFnNode(MetadataConstantPointerType pointer) {
-        this.pointer = pointer;
+    public MetadataConstantPointerType(int symbolIndex) {
+        this.symbolIndex = symbolIndex;
     }
 
-    public MetadataConstantPointerType getPointer() {
-        return pointer;
+    public int getSymbolIndex() {
+        return symbolIndex;
+    }
+
+    @Override
+    public int sizeof() {
+        return 0;
     }
 
     @Override
     public String toString() {
-        return "MetadataFnNode [" + pointer + "]";
+        return "!!" + symbolIndex;
     }
-
 }

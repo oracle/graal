@@ -37,6 +37,7 @@ import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
 import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.MetadataConstantType;
+import uk.ac.man.cs.llvm.ir.types.MetadataConstantPointerType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
@@ -82,22 +83,19 @@ public class MetadataArgumentParser implements Iterator<Type> {
         Type typeOfArgument = types.get(typeId);
 
         if (typeOfArgument instanceof IntegerConstantType) {
-            return symbols.get((int) val); // TODO: check
+            return symbols.get((int) val);
         } else if (typeOfArgument instanceof BigIntegerConstantType) {
-            return symbols.get((int) val); // TODO: check
+            return symbols.get((int) val);
         } else if (typeOfArgument instanceof IntegerType) {
-            return symbols.get((int) val); // should work
+            return symbols.get((int) val);
         } else if (typeOfArgument instanceof MetaType) {
-            // TODO: return more suited type
-            return new MetadataConstantType(val); // TODO: check
+            return new MetadataConstantType(val);
         } else if (typeOfArgument instanceof PointerType) {
-            // TODO: return more suited type
-            return new IntegerConstantType(IntegerType.INTEGER, val); // TODO: check
+            return new MetadataConstantPointerType((int) val);
         } else {
-
-            System.out.println(typeOfArgument.getClass().getName()); // TODO: get correct type
-            return new IntegerConstantType(IntegerType.SHORT, val);
+            throw new AssertionError("type not suported yet: " + typeOfArgument);
         }
+
     }
 
     protected Type get(int i) {

@@ -46,7 +46,7 @@ public class MetadataSubprogram implements MetadataBaseNode {
     private MetadataReference containingType = MetadataBlock.voidRef;
     private long virtuallity;
     private long virtualIndex;
-    private MetadataReference flags = MetadataBlock.voidRef;
+    private long flags;
     private boolean isOptimized;
     private MetadataReference templateParams = MetadataBlock.voidRef;
     private MetadataReference declaration = MetadataBlock.voidRef;
@@ -148,11 +148,11 @@ public class MetadataSubprogram implements MetadataBaseNode {
         this.virtualIndex = virtualIndex;
     }
 
-    public MetadataReference getFlags() {
+    public long getFlags() {
         return flags;
     }
 
-    public void setFlags(MetadataReference flags) {
+    public void setFlags(long flags) {
         this.flags = flags;
     }
 
