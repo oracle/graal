@@ -19,5 +19,6 @@ builds += [
   ${x52.default} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-linux-x52" }
   ${x52.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52" }
+  ${x52.default} ${bench-renaissance}         { name: "bench-renaissance-linux-x52" }
   ${x52.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-linux-x52" }
 ]

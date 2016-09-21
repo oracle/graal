@@ -14,6 +14,7 @@ bench-jvmci : {
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
   mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
@@ -110,7 +111,6 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} {
   ]
 }
 
-
 # SPECjbb2015-related targets
 
 bench-specjbb2015: ${bench-common-8} {
@@ -131,4 +131,17 @@ bench-micros-graal: ${bench-common-8} {
   run: [
     ${bench-jvmci.mx-micros-graal} ${bench-arguments}
   ]
+}
+
+# Renaissance-related targets
+
+bench-renaissance: ${bench-common-8} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  downloads: {
+    RENAISSANCE: { name: renaissance, version: "0.1" }
+  }
+  timelimit: "3:00:00"
 }

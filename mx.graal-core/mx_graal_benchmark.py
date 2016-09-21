@@ -580,7 +580,7 @@ class ScalaDaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, 
 mx_benchmark.add_bm_suite(ScalaDaCapoMoveProfilingBenchmarkSuite())
 
 
-_allSpecJVM2008Benchs = [
+_allSpecJVM2008Benches = [
     'startup.helloworld',
     'startup.compiler.compiler',
     # 'startup.compiler.sunflow', # disabled until timeout problem in jdk8 is resolved
@@ -667,7 +667,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
 
     def benchmarkList(self, bmSuiteArgs):
-        return _allSpecJVM2008Benchs
+        return _allSpecJVM2008Benches
 
     def successPatterns(self):
         return [
@@ -1033,3 +1033,128 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
+
+
+_allRenaissanceBenches = [
+    "FindNegativeRare",
+    "FindNegative",
+    "CharacterHistogram",
+    "CharacterHistogramRare",
+    "StandardDeviationRare",
+    "FoldLeftSum",
+    "ForeachSum",
+    "FoldLeftSumRare",
+    "StandardDeviation",
+    "ForeachSumRare",
+    "Reduce",
+    "Accumulator",
+    "SimpleScan",
+    "TextSearchRDD",
+    "TextSearchDF",
+    "WordCount",
+    "SortRDD",
+    "CharCount",
+    "ClassificationDecisionTree",
+    "PageRank",
+    "AlternatingLeastSquares",
+    "LogRegression",
+    "KMeansClustering",
+    "MultinomialNaiveBayes"
+]
+
+
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """Renaissance benchmark suite implementation.
+
+    This suite has only a single benchmark, and does not allow setting a specific
+    benchmark in the command line.
+    """
+    def name(self):
+        return "renaissance"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def renaissancePath(self):
+        renaissance = mx.get_env("RENAISSANCE")
+        if renaissance:
+            return renaissance
+        return None
+
+    def validateEnvironment(self):
+        if not self.renaissancePath():
+            raise RuntimeError(
+                "The RENAISSANCE environment variable was not specified.")
+
+    def before(self, bmSuiteArgs):
+        self.workdir = mkdtemp(prefix='renaissance-work.', dir='.')
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return self.workdir
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        benchArg = ""
+        if benchmarks is None:
+            benchArg = "all"
+        elif len(benchmarks) == 0:
+            mx.abort("Must specify at least one benchmark.")
+        else:
+            benchArg = ",".join(benchmarks)
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg]
+
+    def benchmarkList(self, bmSuiteArgs):
+        return _allRenaissanceBenches
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return []
+
+    def flakySuccessPatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+          mx_benchmark.StdOutRule(
+            r"====== (?P<benchmark>[a-zA-Z0-9_]+), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+) ms\) ======",
+            {
+              "benchmark": ("<benchmark>", float),
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "warmup",
+              "metric.value": ("<value>", float),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": ("<iteration>", int)
+            }
+          ),
+          mx_benchmark.StdOutRule(
+            r"====== (?P<benchmark>[a-zA-Z0-9_]+), final iteration completed \((?P<iteration>[0-9]+) ms\) ======",
+            {
+              "benchmark": ("<benchmark>", float),
+              "vm": "jvmci",
+              "config.name": "default",
+              "metric.name": "time",
+              "metric.value": ("<value>", float),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": 0
+            }
+          )
+        ]
+
+
+mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
