@@ -72,7 +72,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     // called once before assignment of register numbers
     @SuppressWarnings("try")
     private static void eliminateSpillMoves(TraceLinearScan allocator, boolean shouldEliminateSpillMoves, TraceBuilderResult traceBuilderResult) {
-        try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves: Trace%d", traceBuilderResult.getTraceForBlock(allocator.blockAt(0)))) {
+        try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves: Trace%d", traceBuilderResult.getTraceForBlock(allocator.blockAt(0)).getId())) {
             allocator.sortIntervalsBySpillPos();
 
             /*

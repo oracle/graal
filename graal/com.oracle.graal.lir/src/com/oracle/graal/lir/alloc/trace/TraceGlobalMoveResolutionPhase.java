@@ -82,8 +82,8 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
                 for (AbstractBlockBase<?> fromBlock : trace.getBlocks()) {
                     for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
                         if (resultTraces.getTraceForBlock(fromBlock) != resultTraces.getTraceForBlock(toBlock)) {
-                            try (Indent indent0 = Debug.logAndIndent("Handle trace edge from %s (Trace%d) to %s (Trace%d)", fromBlock, resultTraces.getTraceForBlock(fromBlock), toBlock,
-                                            resultTraces.getTraceForBlock(toBlock))) {
+                            try (Indent indent0 = Debug.logAndIndent("Handle trace edge from %s (Trace%d) to %s (Trace%d)", fromBlock, resultTraces.getTraceForBlock(fromBlock).getId(), toBlock,
+                                            resultTraces.getTraceForBlock(toBlock).getId())) {
 
                                 final List<LIRInstruction> instructions;
                                 final int insertIdx;
