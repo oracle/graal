@@ -1081,7 +1081,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def renaissancePath(self):
         renaissance = mx.get_env("RENAISSANCE")
         if renaissance:
-            return renaissance
+            return join(renaissance, "jars")
         return None
 
     def validateEnvironment(self):
@@ -1108,7 +1108,10 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             benchArg = ",".join(benchmarks)
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
-        return vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg]
+        mainClass = "org.scala.RenaissanceSuite"
+        return (
+            vmArgs + ["-cp", self.renaissancePath() + "/*"] + [mainClass] +
+            runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
         return _allRenaissanceBenches
