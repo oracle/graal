@@ -128,7 +128,7 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
         return null;
     }
 
-    public CallTarget accessProperties() {
+    public CallTarget accessKeys() {
         return null;
     }
 

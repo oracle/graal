@@ -118,7 +118,7 @@ public class ForeignAccessToStringTest {
         }
 
         @Override
-        public CallTarget accessProperties() {
+        public CallTarget accessKeys() {
             return null;
         }
 

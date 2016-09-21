@@ -619,7 +619,7 @@ public class SLDebugLegacyTest {
         }
 
         @Override
-        public CallTarget accessProperties() {
+        public CallTarget accessKeys() {
             return null;
         }
 

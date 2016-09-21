@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.interop;
 
-final class Properties extends UnaryMessage {
+final class Keys extends UnaryMessage {
     static final int HASH = 423439;
-    static Message INSTANCE = new Properties();
+    static Message INSTANCE = new Keys();
 
     @Override
     public int hashCode() {

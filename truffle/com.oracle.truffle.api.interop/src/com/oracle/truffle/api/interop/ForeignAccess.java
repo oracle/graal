@@ -715,7 +715,7 @@ public final class ForeignAccess {
          *         supported
          * @since 0.18
          */
-        CallTarget accessProperties();
+        CallTarget accessKeys();
 
         /**
          * Handles request for access to a message not known in version 0.18.
@@ -951,8 +951,8 @@ public final class ForeignAccess {
                         return factory.accessUnbox();
                     case Write.HASH:
                         return factory.accessWrite();
-                    case Properties.HASH:
-                        return factory.accessProperties();
+                    case Keys.HASH:
+                        return factory.accessKeys();
                 }
             }
             return factory.accessMessage(msg);

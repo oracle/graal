@@ -125,7 +125,7 @@ public class SLObjectMessageResolution {
         }
     }
 
-    @Resolve(message = "PROPERTIES")
+    @Resolve(message = "KEYS")
     public abstract static class SLForeignPropertiesNode extends Node {
         public Object access(DynamicObject receiver) {
             return obtainKeys(receiver);

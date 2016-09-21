@@ -93,7 +93,7 @@ public final class ForeignAccessFactoryGenerator {
         appendFactoryAccessExecute(w);
         appendFactoryAccessInvoke(w);
         appendFactoryAccessNew(w);
-        appendFactoryAccessProperties(w);
+        appendFactoryAccessKeys(w);
         appendFactoryAccessMessage(w);
 
         w.append("}\n");
@@ -193,10 +193,10 @@ public final class ForeignAccessFactoryGenerator {
         w.append("    }").append("\n");
     }
 
-    private void appendFactoryAccessProperties(Writer w) throws IOException {
+    private void appendFactoryAccessKeys(Writer w) throws IOException {
         w.append("    @Override").append("\n");
-        w.append("    public CallTarget accessProperties() {").append("\n");
-        appendOptionalHandlerBody(w, Message.PROPERTIES, "Message.PROPERTIES");
+        w.append("    public CallTarget accessKeys() {").append("\n");
+        appendOptionalHandlerBody(w, Message.KEYS, "Message.KEYS");
         w.append("    }").append("\n");
     }
 

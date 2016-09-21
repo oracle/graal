@@ -412,10 +412,14 @@ public abstract class Message {
      * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
      * objects} and obtains list of its property names. Those names can then be used in
      * {@link #READ} and {@link #WRITE} messages to obtain/assign the real values.
+     * <p>
+     * The return value from using this message is another {@link TruffleObject} that responds to
+     * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} contain {@link String} names
+     * of individual properties.
      *
      * @since 0.18
      */
-    public static final Message PROPERTIES = Properties.INSTANCE;
+    public static final Message KEYS = Keys.INSTANCE;
 
     /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
@@ -487,8 +491,8 @@ public abstract class Message {
         if (Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
         }
-        if (Message.PROPERTIES == message) {
-            return "PROPERTIES"; // NOI18N
+        if (Message.KEYS == message) {
+            return "KEYS"; // NOI18N
         }
         if (message instanceof Execute) {
             return ((Execute) message).name();

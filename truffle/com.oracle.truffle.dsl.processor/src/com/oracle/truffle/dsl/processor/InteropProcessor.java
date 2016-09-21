@@ -64,7 +64,7 @@ public final class InteropProcessor extends AbstractProcessor {
 
     private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{
                     Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
-                    Message.GET_SIZE, Message.UNBOX, Message.PROPERTIES, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
+                    Message.GET_SIZE, Message.UNBOX, Message.KEYS, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
     private final Map<String, FactoryGenerator> factoryGenerators = new HashMap<>();
 
     @Override
@@ -142,7 +142,7 @@ public final class InteropProcessor extends AbstractProcessor {
                 } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                                 Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
                                 Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
-                                Message.PROPERTIES.toString().equalsIgnoreCase(messageName)) {
+                                Message.KEYS.toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new UnaryGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                                 Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
@@ -929,7 +929,7 @@ public final class InteropProcessor extends AbstractProcessor {
                 appendFactory18accessExecute(w);
                 appendFactory18accessInvoke(w);
                 appendFactory18accessNew(w);
-                appendFactory18accessProperties(w);
+                appendFactory18accessKeys(w);
                 appendFactoryAccessMessage(w);
 
                 w.append("}\n");
@@ -1043,9 +1043,9 @@ public final class InteropProcessor extends AbstractProcessor {
             w.append("    }").append("\n");
         }
 
-        private void appendFactory18accessProperties(Writer w) throws IOException {
-            w.append("    public CallTarget accessProperties() {").append("\n");
-            appendOptionalHandlerBody(w, Message.PROPERTIES, "Message.PROPERTIES");
+        private void appendFactory18accessKeys(Writer w) throws IOException {
+            w.append("    public CallTarget accessKeys() {").append("\n");
+            appendOptionalHandlerBody(w, Message.KEYS, "Message.KEYS");
             w.append("    }").append("\n");
         }
 
