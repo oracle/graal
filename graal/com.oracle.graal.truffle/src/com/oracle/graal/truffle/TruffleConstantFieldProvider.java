@@ -54,15 +54,21 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
                 } else if (!field.isStatic() && field.getAnnotation(Children.class) != null) {
                     int stableDimensions = field.getType().isArray() ? 1 : 0;
                     return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
-                } else if (!field.isStatic() && (field.isFinal() || field.getAnnotation(Child.class) != null)) {
+                } else if (!field.isStatic() && field.getAnnotation(Child.class) != null) {
                     return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
                 }
-            } else if (field.isFinal() || (field.getAnnotation(CompilationFinal.class)) != null) {
+            } else if (field.getAnnotation(CompilationFinal.class) != null) {
                 return tool.foldConstant(tool.readValue());
             }
         }
 
-        return graalConstantFieldProvider.readConstantField(field, tool);
+        T ret = graalConstantFieldProvider.readConstantField(field, tool);
+        if (ret == null) {
+            if (field.isFinal() && (field.isStatic() || receiver.isNonNull())) {
+                return tool.foldConstant(tool.readValue());
+            }
+        }
+        return ret;
     }
 
     private static int actualStableDimensions(ResolvedJavaField field, int dimensions) {
