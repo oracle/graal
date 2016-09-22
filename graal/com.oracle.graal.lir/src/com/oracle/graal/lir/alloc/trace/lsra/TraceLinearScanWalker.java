@@ -45,6 +45,7 @@ import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.OutOfRegistersException;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -570,7 +571,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
      * @param spillPos position of the spill
      */
     private void changeSpillState(TraceInterval interval, int spillPos) {
-        if (TraceLinearScan.Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
+        if (TraceLinearScanPhase.Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
             switch (interval.spillState()) {
                 case NoSpillStore:
                     final int minSpillPos = interval.spillDefinitionPos();

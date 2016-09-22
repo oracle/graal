@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
@@ -36,7 +35,7 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
@@ -92,6 +91,8 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
+        TraceLinearScanPhase linarScanAllocator = null;
+
         // currently this is not supported
         boolean neverSpillConstant = false;
 
@@ -103,14 +104,14 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
                     if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
                         trivialTracesCounter.increment();
                     }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
                     if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
                         TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, trace, traceContext, false);
                     } else {
-                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, neverSpillConstant, cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig);
+                        if (linarScanAllocator == null) {
+                            linarScanAllocator = new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, neverSpillConstant, cachedStackSlots);
+                        }
+                        linarScanAllocator.apply(target, lirGenRes, trace, traceContext);
                     }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
                 }
             }
         } catch (Throwable e) {

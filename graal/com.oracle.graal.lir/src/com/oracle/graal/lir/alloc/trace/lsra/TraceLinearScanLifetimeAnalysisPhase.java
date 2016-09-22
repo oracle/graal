@@ -29,7 +29,7 @@ import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Opti
 import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAuseInterTraceHints;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
-import static com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan.isVariableOrRegister;
+import static com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.isVariableOrRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -62,6 +62,7 @@ import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIUtil;
@@ -141,7 +142,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private final InstructionValueConsumer outputConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                if (isVariableOrRegister(operand)) {
                     addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op));
                     addRegisterHint(op, operand, mode, flags, true);
                 }
@@ -151,7 +152,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private final InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                if (isVariableOrRegister(operand)) {
                     addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister);
                     addRegisterHint(op, operand, mode, flags, false);
                 }
@@ -160,7 +161,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private final InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                if (isVariableOrRegister(operand)) {
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
                     int opId = op.id();
                     int blockFrom = 0;
@@ -173,7 +174,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private final InstructionValueConsumer inputConsumer = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                if (isVariableOrRegister(operand)) {
                     int opId = op.id();
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
                     int blockFrom = 0;
@@ -187,7 +188,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private final InstructionValueConsumer stateProc = new InstructionValueConsumer() {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (TraceLinearScan.isVariableOrRegister(operand)) {
+                if (isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = 0;
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None);
@@ -380,12 +381,12 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         }
 
         private void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
-            if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
+            if (flags.contains(OperandFlag.HINT) && isVariableOrRegister(targetValue)) {
 
                 ValueProcedure registerHintProc = new ValueProcedure() {
                     @Override
                     public Value doValue(Value registerHint, OperandMode valueMode, EnumSet<OperandFlag> valueFlags) {
-                        if (TraceLinearScan.isVariableOrRegister(registerHint)) {
+                        if (isVariableOrRegister(registerHint)) {
                             /*
                              * TODO (je): clean up
                              */
