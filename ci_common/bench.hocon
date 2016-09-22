@@ -143,5 +143,5 @@ bench-renaissance: ${bench-common-8} {
   downloads: {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
-  timelimit: "3:00:00"
+  timelimit: "1:30:00"
 }
