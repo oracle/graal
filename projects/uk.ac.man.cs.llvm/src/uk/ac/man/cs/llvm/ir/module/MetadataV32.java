@@ -49,6 +49,7 @@ import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubprogram;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataSubrange;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataTemplateTypeParameter;
 import uk.ac.man.cs.llvm.ir.module.records.DwLangNameRecord;
 import uk.ac.man.cs.llvm.ir.module.records.DwTagRecord;
 import uk.ac.man.cs.llvm.ir.types.IntegerConstantType;
@@ -143,6 +144,7 @@ public class MetadataV32 extends Metadata {
                 case DW_TAG_VECTOR_TYPE:
                 case DW_TAG_SUBROUTINE_TYPE:
                 case DW_TAG_INHERITANCE:
+                case DW_TAG_CLASS_TYPE: // TODO: correct?
                     createDwCompositeType(parsedArgs);
                     break;
 
@@ -178,6 +180,11 @@ public class MetadataV32 extends Metadata {
                 case DW_TAG_LEXICAL_BLOCK:
                     createDwTagLexicalBlock(parsedArgs);
                     break;
+
+                case DW_TAG_TEMPLATE_TYPE_PARAMETER:
+                    createDwTagTemplateTypeParameter(parsedArgs);
+                    break;
+
                 case DW_TAG_UNKNOWN:
                     parsedArgs.rewind();
                     createDwNode(parsedArgs); // TODO: we need to know the type of the node
@@ -443,4 +450,15 @@ public class MetadataV32 extends Metadata {
         metadata.add(node);
     }
 
+    private void createDwTagTemplateTypeParameter(MetadataArgumentParser args) {
+        MetadataTemplateTypeParameter node = new MetadataTemplateTypeParameter();
+
+        metadata.getReference(args.next()); // Context?
+        node.setName(metadata.getReference(args.next()));
+        node.setBaseType(metadata.getReference(args.next()));
+        args.next(); // TODO: Unknown
+        args.next(); // TODO: Unknown
+
+        metadata.add(node);
+    }
 }

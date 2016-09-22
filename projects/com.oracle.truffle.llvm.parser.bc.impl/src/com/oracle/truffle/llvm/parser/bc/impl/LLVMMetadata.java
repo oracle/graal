@@ -274,11 +274,25 @@ public final class LLVMMetadata implements ModelVisitor {
                                     int elementOffset = parsedIndex * cast.getType().sizeof();
 
                                     for (int i = 0; i < elements.size(); i++) {
-                                        MetadataReference element = elements.get(i);
-                                        MetadataDerivedType derivedType = (MetadataDerivedType) element.get();
-                                        if (derivedType.getOffset() == elementOffset) {
-                                            gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
-                                            break;
+                                        MetadataBaseNode element = elements.get(i).get();
+                                        if (element instanceof MetadataDerivedType) {
+                                            MetadataDerivedType derivedType = (MetadataDerivedType) element;
+                                            if (derivedType.getOffset() == elementOffset) {
+                                                if (derivedType.getName().isPresent()) {
+                                                    gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
+                                                }
+                                                break;
+                                            }
+                                        } else if (element instanceof MetadataCompositeType) {
+                                            MetadataCompositeType compositeType = (MetadataCompositeType) element;
+                                            if (compositeType.getOffset() == elementOffset) {
+                                                if (compositeType.getName().isPresent()) {
+                                                    gep.setReferenceName(((MetadataString) compositeType.getName().get()).getString());
+                                                }
+                                                break;
+                                            }
+                                        } else {
+                                            throw new AssertionError("element type not supported yet: " + element);
                                         }
                                     }
 
