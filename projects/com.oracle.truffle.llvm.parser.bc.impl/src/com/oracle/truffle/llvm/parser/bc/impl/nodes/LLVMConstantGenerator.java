@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
 import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
 import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
@@ -71,6 +72,8 @@ import uk.ac.man.cs.llvm.ir.model.constants.BinaryOperationConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.BlockAddressConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CastConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.CompareConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.DoubleConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.FloatConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.FloatingPointConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.GetElementPointerConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.IntegerConstant;
@@ -78,6 +81,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.X86FP80Constant;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
@@ -182,15 +186,7 @@ public final class LLVMConstantGenerator {
             }
 
         } else if (value instanceof FloatingPointConstant) {
-            final FloatingPointConstant constant = (FloatingPointConstant) value;
-            switch (((FloatingPointType) constant.getType())) {
-                case FLOAT:
-                    return new LLVMSimpleLiteralNode.LLVMFloatLiteralNode(constant.toFloat());
-                case DOUBLE:
-                    return new LLVMSimpleLiteralNode.LLVMDoubleLiteralNode(constant.toDouble());
-                default:
-                    throw new UnsupportedOperationException("Unsupported Floating Point Type: " + constant.getType());
-            }
+            return toFloatingPointConstant((FloatingPointConstant) value);
 
         } else if (value instanceof BlockAddressConstant) {
             return toBlockAddressConstant((BlockAddressConstant) value, labels);
@@ -292,6 +288,18 @@ public final class LLVMConstantGenerator {
         }
 
         throw new AssertionError("Could not find Block: " + blockAddressConstant.getBlock());
+    }
+
+    static LLVMExpressionNode toFloatingPointConstant(FloatingPointConstant constant) {
+        if (constant instanceof FloatConstant) {
+            return new LLVMSimpleLiteralNode.LLVMFloatLiteralNode(((FloatConstant) constant).getFloat());
+        } else if (constant instanceof DoubleConstant) {
+            return new LLVMSimpleLiteralNode.LLVMDoubleLiteralNode(((DoubleConstant) constant).getValue());
+        } else if (constant instanceof X86FP80Constant) {
+            return new LLVMSimpleLiteralNode.LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromBytes(((X86FP80Constant) constant).getValue()));
+        } else {
+            throw new UnsupportedOperationException("Unsupported Floating Point Type: " + constant.getType());
+        }
     }
 
     private static LLVMExpressionNode toGetElementPointerConstant(GetElementPointerConstant constant, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context,
@@ -435,6 +443,8 @@ public final class LLVMConstantGenerator {
                     return new LLVMSimpleLiteralNode.LLVMFloatLiteralNode(0.0f);
                 case DOUBLE:
                     return new LLVMSimpleLiteralNode.LLVMDoubleLiteralNode(0.0);
+                case X86_FP80:
+                    return new LLVMSimpleLiteralNode.LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromInt(0));
                 default:
                     throw new UnsupportedOperationException("Unsupported Floating Point Type: " + floatingPointType);
             }

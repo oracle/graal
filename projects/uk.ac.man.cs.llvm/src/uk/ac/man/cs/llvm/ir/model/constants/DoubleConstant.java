@@ -27,38 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir;
+package uk.ac.man.cs.llvm.ir.model.constants;
 
-import java.math.BigInteger;
-import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 
-public interface ConstantGenerator {
+public final class DoubleConstant extends FloatingPointConstant {
 
-    void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs);
+    private final double value;
 
-    void createBlockAddress(Type type, int function, int block);
+    private DoubleConstant(double value) {
+        super(FloatingPointType.DOUBLE);
+        this.value = value;
+    }
 
-    void createCastExpression(Type type, int opcodee, int value);
+    public double getValue() {
+        return value;
+    }
 
-    void createCompareExpression(Type type, int opcode, int lhs, int rhs);
+    @Override
+    public String toString() {
+        return String.format("%.6f", value);
+    }
 
-    void createFloatingPoint(Type type, long[] value);
-
-    void createFromData(Type type, long[] data);
-
-    void creatFromString(Type type, String string, boolean isCString);
-
-    void createFromValues(Type type, int[] values);
-
-    void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds);
-
-    void createInlineASM(Type type, long[] args);
-
-    void createInteger(Type type, long value);
-
-    void createInteger(Type type, BigInteger value);
-
-    void createNull(Type type);
-
-    void createUndefined(Type type);
+    public static DoubleConstant create(double value) {
+        return new DoubleConstant(value);
+    }
 }

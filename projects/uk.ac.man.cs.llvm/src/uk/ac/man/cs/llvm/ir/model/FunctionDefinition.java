@@ -199,8 +199,8 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
-    public void createFloatingPoint(Type type, long bits) {
-        symbols.addSymbol(new FloatingPointConstant((FloatingPointType) type, bits));
+    public void createFloatingPoint(Type type, long[] bits) {
+        symbols.addSymbol(FloatingPointConstant.create((FloatingPointType) type, bits));
     }
 
     @Override
