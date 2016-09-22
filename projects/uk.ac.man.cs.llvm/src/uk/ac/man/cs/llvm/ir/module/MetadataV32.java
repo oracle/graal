@@ -31,6 +31,7 @@ package uk.ac.man.cs.llvm.ir.module;
 
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import uk.ac.man.cs.llvm.ir.module.records.MetadataRecord;
 import uk.ac.man.cs.llvm.ir.SymbolGenerator;
@@ -192,13 +193,13 @@ public class MetadataV32 extends Metadata {
 
                 default:
                     metadata.add(null);
-                    System.out.println("! - TODO: #" + record + " - " + ident);
+                    LLVMLogger.info("! - TODO: #" + record + " - " + ident);
                     break;
             }
         } else {
             parsedArgs.rewind();
             metadata.add(null);
-            System.out.println("! - TODO: #" + MetadataRecord.OLD_NODE + ": " + parsedArgs);
+            LLVMLogger.info("! - TODO: #" + MetadataRecord.OLD_NODE + ": " + parsedArgs);
         }
     }
 
