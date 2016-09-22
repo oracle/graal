@@ -32,6 +32,7 @@ import com.oracle.graal.debug.DebugMemUseTracker;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -151,9 +152,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
             double sizeBefore = 0.0D;
+            Mark before = null;
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
                     sizeBefore = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
+                    before = graph.getMark();
                 }
             }
             if (dumpGraph && Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL)) {
@@ -164,11 +167,13 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount.increment();
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
-                    double sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
-                    if (Debug.isLogEnabled(Debug.VERBOSE_LOG_LEVEL)) {
-                        Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
+                    if (!before.isCurrent()) {
+                        double sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
+                        if (Debug.isLogEnabled(Debug.VERBOSE_LOG_LEVEL)) {
+                            Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
+                        }
+                        NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this);
                     }
-                    NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this);
                 }
             }
             if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
