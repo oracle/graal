@@ -46,16 +46,13 @@ public class NodeCostUtil {
     private static final DebugCounter sizeVerificationCount = Debug.counter("GraphCostVerificationCount_Size");
 
     @SuppressWarnings("try")
-    public static double computeGraphSize(StructuredGraph graph, NodeCostProvider nodeCostProvider) {
+    public static int computeGraphSize(StructuredGraph graph, NodeCostProvider nodeCostProvider) {
         sizeComputationCount.increment();
-        double size = 0;
-        try (Debug.Scope s = Debug.scope("NodeCostSummary")) {
-            for (Node n : graph.getNodes()) {
-                size += nodeCostProvider.getEstimatedCodeSize(n);
-            }
+        int size = 0;
+        for (Node n : graph.getNodes()) {
+            size += nodeCostProvider.getEstimatedCodeSize(n);
         }
-        assert size >= 0D;
-        assert Double.isFinite(size);
+        assert size >= 0;
         return size;
     }
 
@@ -102,13 +99,8 @@ public class NodeCostUtil {
     private static int deltaCompare(double a, double b, double delta) {
         if (Math.abs(a - b) <= delta) {
             return 0;
-        } else {
-            if (a < b) {
-                return -1;
-            } else {
-                return 1;
-            }
         }
+        return Double.compare(a, b);
     }
 
     /**
@@ -119,12 +111,12 @@ public class NodeCostUtil {
      */
     private static final double DELTA = 0.001D;
 
-    public static void phaseAdheresSizeContract(StructuredGraph graph, double codeSizeBefore, double codeSizeAfter, PhaseSizeContract contract) {
+    public static void phaseAdheresSizeContract(StructuredGraph graph, int codeSizeBefore, int codeSizeAfter, PhaseSizeContract contract) {
         sizeVerificationCount.increment();
-        ResolvedJavaMethod method = graph.method();
         final double codeSizeIncrease = contract.codeSizeIncrease();
         final double graphSizeDelta = codeSizeBefore * DELTA;
         if (deltaCompare(codeSizeAfter, codeSizeBefore * codeSizeIncrease, graphSizeDelta) > 0) {
+            ResolvedJavaMethod method = graph.method();
             throw new VerificationError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %.2f, after: %.2f)%s",
                             contract.contractorName(), codeSizeIncrease, (codeSizeAfter / codeSizeBefore), codeSizeBefore, codeSizeAfter,
                             method != null ? " when compiling method " + method.format("%H.%n(%p)") + "." : ".");
