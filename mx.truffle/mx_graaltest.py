@@ -29,22 +29,30 @@
 import sys
 import mx
 import os
+import shutil
 from os.path import exists
 from os.path import join
+from os.path import isdir
 
 def testgraal(args):
     cloneFrom = mx.get_env("GRAAL_URL")
     if not cloneFrom:
         cloneFrom = "http://github.com/graalvm/graal-core"
 
-    suite = mx.primary_suite()
+    suite = mx.suite('truffle')
     suiteDir = suite.dir
     workDir = join(suiteDir, 'mxbuild', 'sanitycheck')
-    mx.run(['mkdir', '-p', join(workDir, suite.name)])
+    mx.ensure_dir_exists(join(workDir, suite.name))
     for f in os.listdir(suiteDir):
         if 'mxbuild' == f:
             continue
-        mx.run(['cp', '-rf', join(suiteDir, f), join(workDir, suite.name, f)])
+        src = join(suiteDir, f)
+        tgt = join(workDir, suite.name, f)
+        if isdir(src):
+            shutil.rmtree(tgt)
+            shutil.copytree(src, tgt)
+        else:
+            shutil.copy(src, tgt)
 
     sanityDir = join(workDir, 'sanity')
     git = mx.GitConfig()
