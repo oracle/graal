@@ -191,7 +191,7 @@ in a second loop:
 
 When `i=SLOTS (4095)` the condition should be false, since `4095 > (1 * 4095)`.
 However, since the second last element has the probability `0.999999762` the condition
-is `4095 > (0.999999762 * 4095)` and hence `false`. The loop does not terminate
+is `4095 > (0.999999762 * 4095)` and hence `true`. The loop does not terminate
 and continues to read `table->p` where `table` points to out-of-bounds memory.
 The program does not crash when executed by the (Native) Sulong contained
 in this repo, and when executed as an executable compiled with static
