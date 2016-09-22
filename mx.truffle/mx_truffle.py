@@ -32,6 +32,7 @@ import subprocess
 
 import mx
 
+from mx_graaltest import testgraal
 from mx_unittest import unittest
 from mx_sigtest import sigtest
 from mx_gate import Task
@@ -121,6 +122,7 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'repl' : [repl, '[REPL Debugger args|@VM options]'],
     'testdownstream' : [testdownstream, ''],
+    'testgraal' : [testgraal, ''],
 })
 
 """
