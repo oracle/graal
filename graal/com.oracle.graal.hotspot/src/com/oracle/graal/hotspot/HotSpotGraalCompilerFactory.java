@@ -100,7 +100,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         @Option(help = "Hook into VM-level mechanism for denoting compilations to be performed in first tier.", type = OptionType.Expert)
         public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(true);
 
-        @Option(help = "A method filter for methods which should be compiled by Graal.  All other requests will be reduced to CompilationLevel.Simple.", type = OptionType.Expert)
+        @Option(help = "A method filter selecting what should be compiled by Graal.  All other requests will be reduced to CompilationLevel.Simple.", type = OptionType.Expert)
         public static final OptionValue<String> GraalCompileOnly = new OptionValue<>(null);
         // @formatter:on
 
@@ -253,8 +253,11 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         if (graalCompileOnlyFilter != null) {
             if (level == CompilationLevel.FullOptimization) {
                 String declaringClassName = declaringClass.getName();
-                HotSpotSignature sig = new HotSpotSignature(HotSpotJVMCIRuntime.runtime(), signature);
+                HotSpotSignature sig = null;
                 for (MethodFilter filter : graalCompileOnlyFilter) {
+                    if (filter.hasSignature() && sig == null) {
+                        sig = new HotSpotSignature(HotSpotJVMCIRuntime.runtime(), signature);
+                    }
                     if (filter.matches(declaringClassName, name, sig)) {
                         return level;
                     }
