@@ -41,10 +41,11 @@ def testgraal(args):
 
     suite = mx.suite('truffle')
     suiteDir = suite.dir
-    workDir = join(suiteDir, 'mxbuild', 'sanitycheck')
+    workDir = join(suite.get_output_root(), 'sanitycheck')
     mx.ensure_dir_exists(join(workDir, suite.name))
     for f in os.listdir(suiteDir):
-        if 'mxbuild' == f:
+        subDir = os.path.join(suiteDir, f)
+        if subDir == suite.get_output_root():
             continue
         src = join(suiteDir, f)
         tgt = join(workDir, suite.name, f)
