@@ -1394,6 +1394,8 @@ public class PolyglotEngine {
 }
 
 class PolyglotEngineSnippets {
+    static final boolean loaded = true;
+
     abstract class YourLang extends TruffleLanguage<Object> {
         public static final String MIME_TYPE = "application/my-test-lang";
     }
