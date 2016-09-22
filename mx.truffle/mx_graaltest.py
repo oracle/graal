@@ -49,7 +49,8 @@ def testgraal(args):
         src = join(suiteDir, f)
         tgt = join(workDir, suite.name, f)
         if isdir(src):
-            shutil.rmtree(tgt)
+            if exists(tgt):
+                shutil.rmtree(tgt)
             shutil.copytree(src, tgt)
         else:
             shutil.copy(src, tgt)
