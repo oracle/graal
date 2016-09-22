@@ -348,4 +348,9 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
         return null;
     }
 
+    @Override
+    public LLVMFunction createAndRegisterFunctionDescriptor(String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
+        return null;
+    }
+
 }

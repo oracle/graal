@@ -104,6 +104,9 @@ public class LLVMFunctionRegistry {
         RootCallTarget[] newFunctionPtrCallTargetMap = new RootCallTarget[maxFunctionIndex];
         System.arraycopy(functionPtrCallTargetMap, 0, newFunctionPtrCallTargetMap, 0, functionPtrCallTargetMap.length);
         for (LLVMFunction func : functionCallTargets.keySet()) {
+            if (func.getFunctionIndex() == -1) {
+                throw new AssertionError(func.getName());
+            }
             newFunctionPtrCallTargetMap[func.getFunctionIndex()] = functionCallTargets.get(func);
         }
         functionPtrCallTargetMap = newFunctionPtrCallTargetMap;

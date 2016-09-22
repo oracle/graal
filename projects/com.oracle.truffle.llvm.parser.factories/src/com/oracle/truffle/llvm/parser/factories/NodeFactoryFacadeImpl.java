@@ -522,4 +522,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMFunctionDescriptor.create(name, returnType, paramTypes, varArgs, functionIndex);
     }
 
+    @Override
+    public LLVMFunction createAndRegisterFunctionDescriptor(String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
+        return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().createFunctionDescriptor(name, convertType, convertTypes, varArgs);
+    }
+
 }
