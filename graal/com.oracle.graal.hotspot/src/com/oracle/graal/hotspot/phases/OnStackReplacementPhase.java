@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.loop.phases.LoopTransformations;
 import com.oracle.graal.nodeinfo.InputType;
@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.extended.OSRLocalNode;
 import com.oracle.graal.nodes.extended.OSRStartNode;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -57,6 +58,7 @@ public class OnStackReplacementPhase extends Phase {
         if (graph.getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI) {
             // This happens during inlining in a OSR method, because the same phase plan will be
             // used.
+            assert graph.getNodes(EntryMarkerNode.TYPE).isEmpty();
             return;
         }
         Debug.dump(Debug.INFO_LOG_LEVEL, graph, "OnStackReplacement initial");
@@ -76,19 +78,18 @@ public class OnStackReplacementPhase extends Phase {
             if (osr.stateAfter().stackSize() != 0) {
                 throw new BailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
             }
-            LoopEx osrLoop = null;
             LoopsData loops = new LoopsData(graph);
-            for (LoopEx loop : loops.loops()) {
-                if (loop.inside().contains(osr)) {
-                    osrLoop = loop;
-                    break;
-                }
-            }
-            if (osrLoop == null) {
+            // Find the loop that contains the EntryMarker
+            Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+            if (l == null) {
                 break;
             }
+            // Peel the outermost loop first
+            while (l.getParent() != null) {
+                l = l.getParent();
+            }
 
-            LoopTransformations.peel(osrLoop);
+            LoopTransformations.peel(loops.loop(l));
             osr.replaceAtUsages(InputType.Guard, AbstractBeginNode.prevBegin((FixedNode) osr.predecessor()));
             for (Node usage : osr.usages().snapshot()) {
                 EntryProxyNode proxy = (EntryProxyNode) usage;
