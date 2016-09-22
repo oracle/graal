@@ -47,10 +47,11 @@ def testgraal(args):
         mx.run(['cp', '-rf', join(suiteDir, f), join(workDir, suite.name, f)])
 
     sanityDir = join(workDir, 'sanity')
+    git = mx.GitConfig()
     if exists(sanityDir):
-        mx.run(['git', 'pull'], cwd=sanityDir)
+        git.pull(sanityDir)
     else:
-        mx.run(['git', 'clone', cloneFrom, 'sanity'], cwd=workDir)
+        git.clone(cloneFrom, sanityDir)
 
     commands = [sys.executable, join(mx._mx_home, 'mx.py'), '-p', sanityDir, '--java-home=' + mx.get_jdk().home]
     return mx.run(commands + ['build'], cwd=sanityDir) + mx.run(commands + ['unittest', 'truffle'], cwd=sanityDir)
