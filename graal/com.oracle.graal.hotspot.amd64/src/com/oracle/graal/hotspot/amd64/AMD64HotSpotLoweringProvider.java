@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.AR
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
 
@@ -42,8 +41,8 @@ import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.replacements.amd64.AMD64ConvertSnippets;
-import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -102,7 +101,9 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         if (GraalArithmeticStubs.getValue()) {
             switch (operation) {
                 case POW:
-                    return ARITHMETIC_POW_STUB;
+                    // Temporarily disable pow stub
+                    // return ARITHMETIC_POW_STUB;
+                    return operation.foreignCallDescriptor;
             }
         } else if (operation == BinaryOperation.POW) {
             return operation.foreignCallDescriptor;

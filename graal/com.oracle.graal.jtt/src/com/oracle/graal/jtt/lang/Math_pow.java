@@ -83,4 +83,9 @@ public class Math_pow extends JTTTest {
     public void run9() throws Throwable {
         runTest("test", Double.NaN, 23d);
     }
+
+    @Test
+    public void run10() throws Throwable {
+        runTest("test", 0.999998, 1500000.0);
+    }
 }
