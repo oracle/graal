@@ -165,8 +165,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
                     double sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
-                    Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
-                    NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this, getName().toString());
+                    if (Debug.isLogEnabled(Debug.VERBOSE_LOG_LEVEL)) {
+                        Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
+                    }
+                    NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this);
                 }
             }
             if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
@@ -202,6 +204,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected abstract void run(StructuredGraph graph, C context);
+
+    @Override
+    public String contractorName() {
+        return (String) getName();
+    }
 
     @Override
     public float codeSizeIncrease() {
