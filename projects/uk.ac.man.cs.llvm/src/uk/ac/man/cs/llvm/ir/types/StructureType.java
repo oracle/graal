@@ -58,6 +58,23 @@ public final class StructureType implements AggregateType, ValueSymbol {
         return types[index];
     }
 
+    public long getElementOffset(int index) {
+        int offset = 0;
+        for (int i = 0; i <= index; i++) {
+            if (offset % types[i].getAlignment() != 0) {
+                offset += types[i].getAlignment() - (offset % types[i].getAlignment());
+            }
+
+            if (i == index) {
+                break;
+            }
+
+            offset += types[i].sizeof();
+        }
+
+        return offset * Byte.SIZE;
+    }
+
     @Override
     public int getElementCount() {
         return types.length;
