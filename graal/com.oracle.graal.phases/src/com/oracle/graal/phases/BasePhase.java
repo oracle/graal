@@ -51,14 +51,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
-        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<Boolean>(){
-            @SuppressWarnings("all")
-            protected Boolean defaultValue() {
-                boolean assertionsEnabled = false;
-                assert assertionsEnabled = true;
-                return assertionsEnabled;
-            }
-          };
+        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<>(false);
         // @formatter:on
     }
 
